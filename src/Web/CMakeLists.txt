@@ -12,6 +12,7 @@ include(GNUInstallDirs)
 qt_add_library(web
     STATIC
     HttpRequest.cpp HttpRequest.h
+    HttpResponseLog.cpp HttpResponseLog.h
     Shared.h
 )
 add_external_dependencies(web)

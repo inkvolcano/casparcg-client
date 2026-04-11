@@ -71,4 +71,5 @@ target_link_libraries(osc PUBLIC
 
 target_include_directories(osc PUBLIC
     ${OscPackRoot}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Core
 )

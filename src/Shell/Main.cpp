@@ -135,18 +135,19 @@ void loadDatabase(CommandLineArgs* args)
 void loadStyleSheets(QApplication& application)
 {
     QString stylesheet;
-    QString theme = DatabaseManager::getInstance().getConfigurationByName("Theme").getValue();
 
-    // Load default stylesheet..
+    // Bulk-load all config values in a single DB query (replaces ~49 individual SELECTs).
+    QMap<QString, QString> cfg = DatabaseManager::getInstance().getAllConfigurations();
+    auto cfgVal = [&cfg](const QString& key) -> QString { return cfg.value(key, QString()); };
+
+    QString theme = cfgVal("Theme");
+
+    // Load default stylesheet.
     QFile defaultStylesheet(QString(":/Appearances/Stylesheets/%1/Default.css").arg(theme));
     if (defaultStylesheet.open(QFile::ReadOnly))
     {
         QTextStream stream(&defaultStylesheet);
         stylesheet = stream.readAll();
-        defaultStylesheet.close();
-
-        application.setStyleSheet(stylesheet);
-
         defaultStylesheet.close();
     }
 
@@ -156,10 +157,6 @@ void loadStyleSheets(QApplication& application)
     {
         QTextStream stream(&extendedStylesheet);
         stylesheet += stream.readAll();
-        extendedStylesheet.close();
-
-        application.setStyleSheet(stylesheet);
-
         extendedStylesheet.close();
     }
 
@@ -176,11 +173,54 @@ void loadStyleSheets(QApplication& application)
         QTextStream stream(&platformStylesheet);
         stylesheet += stream.readAll();
         platformStylesheet.close();
-
-        application.setStyleSheet(stylesheet);
-
-        platformStylesheet.close();
     }
+
+    // Populate all ColorCache values from the bulk-loaded cache.
+    ColorCache::setPvwButton(cfgVal("PVWButtonColor"));
+    ColorCache::setStepButton(cfgVal("STEPButtonColor"));
+    ColorCache::setPreviewBorder(cfgVal("PreviewBorderColor"));
+    ColorCache::setAutostepHighlight(cfgVal("AutostepHighlightColor"));
+    ColorCache::setActiveIndicator(cfgVal("ActiveIndicatorColor"));
+    ColorCache::setLibrarySectionLine(cfgVal("LibrarySectionLineColor"));
+
+    // Header colors: master, rundown, per-widget overrides.
+    ColorCache::setHeaderLineMaster(cfgVal("HeaderLineMaster"));
+    ColorCache::setHeaderBlockMaster(cfgVal("HeaderBlockMaster"));
+    ColorCache::setHeaderTextMaster(cfgVal("HeaderTextMaster"));
+    ColorCache::setHeaderLineRundown(cfgVal("HeaderLineRundown"));
+    ColorCache::setHeaderBlockRundown(cfgVal("HeaderBlockRundown"));
+    ColorCache::setHeaderTextRundown(cfgVal("HeaderTextRundown"));
+    ColorCache::setCustomizeHeaders(cfgVal("CustomizeWidgetHeaders") == "true");
+
+    static const char* panelKeys[] = {
+        "Library", "Inspector", "AudioLevels", "Preview",
+        "Live", "Clock", "ServerStatus", "Activity", "TriggerBanks"
+    };
+    for (const auto& key : panelKeys)
+    {
+        QString lineVal  = cfgVal(QString("HeaderLine_%1").arg(key));
+        QString blockVal = cfgVal(QString("HeaderBlock_%1").arg(key));
+        QString textVal  = cfgVal(QString("HeaderText_%1").arg(key));
+        if (!lineVal.isEmpty())  ColorCache::setLineOverride(key, lineVal);
+        if (!blockVal.isEmpty()) ColorCache::setBlockOverride(key, blockVal);
+        if (!textVal.isEmpty())  ColorCache::setTextOverride(key, textVal);
+    }
+
+    ColorCache::setClockColor1(cfgVal("ClockColor1"));
+    ColorCache::setClockColor2(cfgVal("ClockColor2"));
+    ColorCache::setClockShadow(cfgVal("ClockShadowColor"));
+
+    QString headerCSS = WidgetHeaderCSS::generate();
+    if (!headerCSS.isEmpty())
+        stylesheet += headerCSS;
+
+    // Append font-size so it's included in the single setStyleSheet call.
+    QString fontSize = cfgVal("FontSize");
+    if (!fontSize.isEmpty())
+        stylesheet += QString("\nQWidget { font-size: %1px; }").arg(fontSize.toInt());
+
+    // Apply the complete stylesheet once (previously called 5 times during startup).
+    application.setStyleSheet(stylesheet);
 }
 
 void loadFonts(QApplication& application)
@@ -203,11 +243,8 @@ void loadFonts(QApplication& application)
 #endif
 }
 
-void loadConfiguration(QApplication& application, QMainWindow& window, CommandLineArgs* args)
+void loadConfiguration(QMainWindow& window, CommandLineArgs* args)
 {
-    QString stylesheet = QString("QWidget { font-size: %1px; }").arg(DatabaseManager::getInstance().getConfigurationByName("FontSize").getValue().toInt());
-    application.setStyleSheet(application.styleSheet() + stylesheet);
-
     // Check command line arguments followed by the configuration.
     if (args->fullscreen || DatabaseManager::getInstance().getConfigurationByName("StartFullscreen").getValue() == "true")
          window.showFullScreen();
@@ -299,7 +336,7 @@ int main(int argc, char* argv[])
     MainWindow window;
     splashScreen.finish(&window);
 
-    loadConfiguration(application, window, &args);
+    loadConfiguration(window, &args);
 
     window.show();
 

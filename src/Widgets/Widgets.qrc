@@ -80,6 +80,9 @@
         <file>Images/DeckLinkProducer.png</file>
         <file>Images/SeparatorSmall.png</file>
         <file>Images/SeparatorSmallHover.png</file>
+        <file>Images/gateway_entry.png</file>
+        <file>Images/gateway_exit.png</file>
+        <file>Images/gatewaySmall.png</file>
         <file>Images/Snapshot.png</file>
         <file>Images/SnapshotSmall.png</file>
         <file>Images/SnapshotSmallHover.png</file>
@@ -263,6 +266,10 @@
         <file>Images/StreamNotAvailable.png</file>
         <file>Images/StreamNotAvailableSmall.png</file>
     </qresource>
+    <qresource prefix="/Data">
+        <file alias="CHANGES.html">../../CHANGES.html</file>
+        <file alias="MANUAL.html">../../MANUAL.html</file>
+    </qresource>
     <qresource prefix="/Appearances">
         <file>Stylesheets/Flat/Default.css</file>
         <file>Stylesheets/Flat/Extended.css</file>
@@ -274,5 +281,8 @@
         <file>Stylesheets/Curve/Linux.css</file>
         <file>Stylesheets/Curve/Mac.css</file>
         <file>Stylesheets/Curve/Windows.css</file>
+        <file>Stylesheets/Light/Default.css</file>
+        <file>Stylesheets/Light/Extended.css</file>
+        <file>Stylesheets/Light/Windows.css</file>
     </qresource>
 </RCC>

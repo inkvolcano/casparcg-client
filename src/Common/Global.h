@@ -8,6 +8,7 @@
 #include <QtCore/QByteArray>
 #include <QtCore/QDebug>
 #include <QtCore/QEvent>
+#include <QtCore/QHash>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 #include <QtCore/QList>
@@ -34,6 +35,7 @@ namespace Osc
 {
     static const bool DEFAULT_USE_BUNDLE = false;
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
+    static const int DEFAULT_REFRESH_RATE = 200;
     static const int DEFAULT_MONITOR_PORT = 6250;
     static const int DEFAULT_CONTROL_PORT = 3250;
     static const int DEFAULT_WEBSOCKET_PORT = 4250;
@@ -96,8 +98,6 @@ namespace Osc
     static const QString RUNDOWN_CONTROL_DOWN_FILTER = "/control/down";
     static const QString RUNDOWN_CONTROL_UP_FILTER = "/control/up";
     static const QString RUNDOWN_CONTROL_PLAYNOWIFCHANNEL_FILTER = "/control/playnowifchannel";
-    static const QString RUNDOWN_CONTROL_PLAYANDAUTOSTEP_FILTER = "/control/playandautostep";
-    static const QString RUNDOWN_CONTROL_PLAYNOWANDAUTOSTEP_FILTER = "/control/playnowandautostep";
 }
 
 namespace Route
@@ -169,33 +169,63 @@ namespace Appearance
 
 namespace Color
 {
-    static const QString DEFAULT_ACTIVE_COLOR = "rgba(0, 255, 0, 255)";
-    static const QString DEFAULT_CONSUMER_COLOR = "DarkSlateGray";
-    static const QString DEFAULT_GPI_COLOR = "Chocolate";
-    static const QString DEFAULT_GROUP_COLOR = "rgba(70, 115, 195, 255)";
-    static const QString DEFAULT_AUDIO_COLOR = "SlateGray";
-    static const QString DEFAULT_STILL_COLOR = "Goldenrod";
-    static const QString DEFAULT_MOVIE_COLOR = "DarkKhaki";
-    static const QString DEFAULT_PRINT_COLOR = "Goldenrod";
-    static const QString DEFAULT_CLEAR_OUTPUT_COLOR = "Goldenrod";
-    static const QString DEFAULT_COLOR_PRODUCER_COLOR = "Goldenrod";
-    static const QString DEFAULT_MIXER_COLOR = "Sienna";
-    static const QString DEFAULT_HTTP_COLOR = "DarkOliveGreen";
-    static const QString DEFAULT_PRODUCER_COLOR = "SeaGreen";
-    static const QString DEFAULT_TEMPLATE_COLOR = "OliveDrab";
-    static const QString DEFAULT_SEPARATOR_COLOR = "Maroon";
-    static const QString DEFAULT_STORED_DATA_COLOR = "Chocolate";
+    static const QString DEFAULT_ACTIVE_COLOR = "rgba(0, 255, 0, 255)";           // Active indicator (bright green)
+    static const QString DEFAULT_CONSUMER_COLOR = "rgba(25, 40, 110, 160)";       // Navy
+    static const QString DEFAULT_GPI_COLOR = "rgba(220, 120, 30, 128)";           // Orange
+    static const QString DEFAULT_GROUP_COLOR = "rgba(50, 100, 200, 128)";         // Blue
+    static const QString DEFAULT_AUDIO_COLOR = "rgba(90, 105, 125, 120)";         // Cool Gray
+    static const QString DEFAULT_STILL_COLOR = "rgba(200, 170, 40, 128)";         // Gold
+    static const QString DEFAULT_MOVIE_COLOR = "rgba(70, 150, 210, 112)";         // Sky Blue
+    static const QString DEFAULT_PRINT_COLOR = "rgba(200, 150, 30, 128)";         // Amber
+    static const QString DEFAULT_CLEAR_OUTPUT_COLOR = "rgba(200, 85, 85, 100)";   // Soft Red
+    static const QString DEFAULT_COLOR_PRODUCER_COLOR = "rgba(130, 60, 180, 128)";// Purple
+    static const QString DEFAULT_MIXER_COLOR = "rgba(180, 80, 20, 140)";          // Burnt Orange
+    static const QString DEFAULT_HTTP_COLOR = "rgba(110, 130, 40, 128)";          // Olive
+    static const QString DEFAULT_PRODUCER_COLOR = "rgba(50, 160, 50, 128)";       // Green
+    static const QString DEFAULT_TEMPLATE_COLOR = "rgba(40, 150, 140, 128)";      // Teal
+    static const QString DEFAULT_SEPARATOR_COLOR = "rgba(150, 25, 25, 160)";      // Dark Red
+    static const QString DEFAULT_AUTOPLAYGATEWAY_COLOR = "rgba(0, 150, 136, 128)"; // Teal
+    static const QString DEFAULT_FOCUSGATEWAY_COLOR = "rgba(100, 80, 180, 128)";  // Purple
+    static const QString DEFAULT_COMMANDGATEWAY_COLOR = "rgba(180, 100, 40, 128)"; // Burnt Orange
+    static const QString DEFAULT_STORED_DATA_COLOR = "rgba(120, 70, 30, 140)";    // Brown
     static const QString DEFAULT_TRANSPARENT_COLOR = "Transparent";
-    static const QString SIENNA_COLOR = "rgba(136, 45, 23, 128)";
-    static const QString OLIVEDRAB_COLOR = "rgba(107, 142, 35, 128)";
-    static const QString SEAGREEN_COLOR = "rgba(46, 139, 87, 128)";
-    static const QString CHOCOLATE_COLOR = "rgba(123, 63, 0, 128)";
-    static const QString DARKSLATEGRAY_COLOR = "rgba(47, 79, 79, 128)";
-    static const QString STEELBLUE_COLOR = "rgba(70, 130, 179, 128)";
-    static const QString MAROON_COLOR = "rgba(128, 0, 0, 192)";
-    static const QString MAROONLIGHT_COLOR = "rgba(128, 0, 0, 64)";
-    static const QString DARKKHAKI_COLOR = "rgba(189, 183, 107, 64)";
-    static const QString ROYALBLUE_COLOR = "rgba(65, 105, 225, 64)";
+    // Reds
+    static const QString BRIGHT_RED_COLOR = "rgba(220, 50, 50, 128)";
+    static const QString DARK_RED_COLOR = "rgba(150, 25, 25, 160)";
+    static const QString SOFT_RED_COLOR = "rgba(200, 85, 85, 100)";
+    static const QString ROSE_COLOR = "rgba(200, 60, 100, 128)";
+    // Oranges
+    static const QString ORANGE_COLOR = "rgba(220, 120, 30, 128)";
+    static const QString BURNT_ORANGE_COLOR = "rgba(180, 80, 20, 140)";
+    static const QString PEACH_COLOR = "rgba(220, 160, 100, 100)";
+    // Yellows
+    static const QString GOLD_COLOR = "rgba(200, 170, 40, 128)";
+    static const QString YELLOW_COLOR = "rgba(210, 195, 50, 112)";
+    static const QString AMBER_COLOR = "rgba(200, 150, 30, 128)";
+    // Greens
+    static const QString GREEN_COLOR = "rgba(50, 160, 50, 128)";
+    static const QString DARK_GREEN_COLOR = "rgba(30, 110, 30, 150)";
+    static const QString LIME_COLOR = "rgba(120, 185, 40, 120)";
+    static const QString OLIVE_COLOR = "rgba(110, 130, 40, 128)";
+    static const QString TEAL_COLOR = "rgba(40, 150, 140, 128)";
+    static const QString MINT_COLOR = "rgba(80, 190, 140, 100)";
+    // Blues
+    static const QString BLUE_COLOR = "rgba(50, 100, 200, 128)";
+    static const QString DARK_BLUE_COLOR = "rgba(30, 60, 150, 150)";
+    static const QString LIGHT_BLUE_COLOR = "rgba(100, 165, 220, 100)";
+    static const QString SKY_BLUE_COLOR = "rgba(70, 150, 210, 112)";
+    static const QString NAVY_COLOR = "rgba(25, 40, 110, 160)";
+    static const QString CYAN_COLOR = "rgba(40, 180, 200, 112)";
+    // Purples
+    static const QString PURPLE_COLOR = "rgba(130, 60, 180, 128)";
+    static const QString DARK_PURPLE_COLOR = "rgba(80, 30, 130, 150)";
+    static const QString LAVENDER_COLOR = "rgba(150, 120, 200, 100)";
+    static const QString MAGENTA_COLOR = "rgba(180, 50, 150, 128)";
+    // Neutrals & Browns
+    static const QString BROWN_COLOR = "rgba(120, 70, 30, 140)";
+    static const QString WARM_GRAY_COLOR = "rgba(140, 115, 100, 120)";
+    static const QString COOL_GRAY_COLOR = "rgba(90, 105, 125, 120)";
+    static const QString CHARCOAL_COLOR = "rgba(60, 60, 75, 160)";
 }
 
 namespace Stylesheet
@@ -257,6 +287,7 @@ namespace Still
     static const QString DEFAULT_NAME = "";
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_USE_AUTO = false;
+    static const bool DEFAULT_AUTO_PLAY = false;
 }
 
 namespace ImageScroller
@@ -302,6 +333,7 @@ namespace Template
     static const bool DEFAULT_USE_UPPERCASE_DATA = false;
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_SEND_AS_JSON = false;
+    static const int DEFAULT_NEWLINE_BEHAVIOR = 2;  // 0=Ignore, 1=innerText, 2=innerHTML
 }
 
 namespace DeckLinkInput
@@ -363,8 +395,211 @@ namespace ClearOutput
 namespace Group
 {
     static const QString DEFAULT_NOTE = "";
-    static const bool DEFAULT_AUTO_STEP = false;
     static const bool DEFAULT_AUTO_PLAY = false;
+    static const bool DEFAULT_LOOP = false;
+}
+
+namespace TriggerBank
+{
+    static const int BANK_COUNT = 9;
+}
+
+namespace ChannelColor
+{
+    // Configurable parameters with defaults.
+    // Cached in statics to avoid per-frame DB reads.
+    static const double DEFAULT_ANGLE = 137.508;
+    static const double DEFAULT_OFFSET = 120.0;
+    static const double DEFAULT_SATURATION = 0.65;
+    static const double DEFAULT_LIGHTNESS = 0.30;
+
+    inline double& cachedAngle()      { static double v = DEFAULT_ANGLE;      return v; }
+    inline double& cachedOffset()     { static double v = DEFAULT_OFFSET;     return v; }
+    inline double& cachedSaturation() { static double v = DEFAULT_SATURATION; return v; }
+    inline double& cachedLightness()  { static double v = DEFAULT_LIGHTNESS;  return v; }
+
+    inline double angle()      { return cachedAngle(); }
+    inline double offset()     { return cachedOffset(); }
+    inline double saturation() { return cachedSaturation(); }
+    inline double lightness()  { return cachedLightness(); }
+
+    inline void setAngle(double v)      { cachedAngle() = v; }
+    inline void setOffset(double v)     { cachedOffset() = v; }
+    inline void setSaturation(double v) { cachedSaturation() = v; }
+    inline void setLightness(double v)  { cachedLightness() = v; }
+
+    // Derived values for active indicator (brighter than badge).
+    inline double activeSaturation() { return qMin(saturation() + 0.20, 1.0); }
+    inline double activeLightness()  { return qMin(lightness() + 0.20, 0.50); }
+
+    // Returns hue in degrees [0, 360).
+    inline double hue(int channel)
+    {
+        double h = channel * angle() + offset();
+        return h - static_cast<int>(h / 360.0) * 360.0;
+    }
+}
+
+// Cached custom colors to avoid per-frame DB reads.
+// Load once at startup via ColorCache::loadAll(), update from SettingsDialog on change.
+namespace ColorCache
+{
+    inline QString& cachedActiveIndicator()     { static QString v; return v; }
+    inline QString& cachedAutostepHighlight()   { static QString v; return v; }
+    inline QString& cachedPreviewBorder()       { static QString v; return v; }
+    inline QString& cachedPvwButton()           { static QString v; return v; }
+    inline QString& cachedStepButton()          { static QString v; return v; }
+    inline QString& cachedClockColor1()         { static QString v; return v; }
+    inline QString& cachedClockColor2()         { static QString v; return v; }
+    inline QString& cachedClockShadow()         { static QString v; return v; }
+    inline QString& cachedLibrarySectionLine()  { static QString v; return v; }
+
+    // Header colors: master, rundown override, per-widget overrides.
+    inline QString& cachedHeaderLineMaster()    { static QString v; return v; }
+    inline QString& cachedHeaderBlockMaster()   { static QString v; return v; }
+    inline QString& cachedHeaderTextMaster()    { static QString v; return v; }
+    inline QString& cachedHeaderLineRundown()   { static QString v; return v; }
+    inline QString& cachedHeaderBlockRundown()  { static QString v; return v; }
+    inline QString& cachedHeaderTextRundown()   { static QString v; return v; }
+    inline bool& cachedCustomizeHeaders()       { static bool v = false; return v; }
+    inline QHash<QString, QString>& cachedLineOverrides()  { static QHash<QString, QString> v; return v; }
+    inline QHash<QString, QString>& cachedBlockOverrides() { static QHash<QString, QString> v; return v; }
+    inline QHash<QString, QString>& cachedTextOverrides()  { static QHash<QString, QString> v; return v; }
+
+    // Getters.
+    inline const QString& activeIndicator()     { return cachedActiveIndicator(); }
+    inline const QString& autostepHighlight()   { return cachedAutostepHighlight(); }
+    inline const QString& previewBorder()       { return cachedPreviewBorder(); }
+    inline const QString& pvwButton()           { return cachedPvwButton(); }
+    inline const QString& stepButton()          { return cachedStepButton(); }
+    inline const QString& clockColor1()         { return cachedClockColor1(); }
+    inline const QString& clockColor2()         { return cachedClockColor2(); }
+    inline const QString& clockShadow()         { return cachedClockShadow(); }
+    inline const QString& librarySectionLine()  { return cachedLibrarySectionLine(); }
+
+    inline const QString& headerLineMaster()    { return cachedHeaderLineMaster(); }
+    inline const QString& headerBlockMaster()   { return cachedHeaderBlockMaster(); }
+    inline const QString& headerTextMaster()    { return cachedHeaderTextMaster(); }
+    inline const QString& headerLineRundown()   { return cachedHeaderLineRundown(); }
+    inline const QString& headerBlockRundown()  { return cachedHeaderBlockRundown(); }
+    inline const QString& headerTextRundown()   { return cachedHeaderTextRundown(); }
+    inline bool customizeHeaders()              { return cachedCustomizeHeaders(); }
+    inline QString lineOverride(const QString& panel)  { return cachedLineOverrides().value(panel); }
+    inline QString blockOverride(const QString& panel) { return cachedBlockOverrides().value(panel); }
+    inline QString textOverride(const QString& panel)  { return cachedTextOverrides().value(panel); }
+
+    // Setters.
+    inline void setActiveIndicator(const QString& v)     { cachedActiveIndicator() = v; }
+    inline void setAutostepHighlight(const QString& v)   { cachedAutostepHighlight() = v; }
+    inline void setPreviewBorder(const QString& v)       { cachedPreviewBorder() = v; }
+    inline void setPvwButton(const QString& v)           { cachedPvwButton() = v; }
+    inline void setStepButton(const QString& v)          { cachedStepButton() = v; }
+    inline void setClockColor1(const QString& v)         { cachedClockColor1() = v; }
+    inline void setClockColor2(const QString& v)         { cachedClockColor2() = v; }
+    inline void setClockShadow(const QString& v)         { cachedClockShadow() = v; }
+    inline void setLibrarySectionLine(const QString& v)  { cachedLibrarySectionLine() = v; }
+
+    inline void setHeaderLineMaster(const QString& v)    { cachedHeaderLineMaster() = v; }
+    inline void setHeaderBlockMaster(const QString& v)   { cachedHeaderBlockMaster() = v; }
+    inline void setHeaderTextMaster(const QString& v)    { cachedHeaderTextMaster() = v; }
+    inline void setHeaderLineRundown(const QString& v)   { cachedHeaderLineRundown() = v; }
+    inline void setHeaderBlockRundown(const QString& v)  { cachedHeaderBlockRundown() = v; }
+    inline void setHeaderTextRundown(const QString& v)   { cachedHeaderTextRundown() = v; }
+    inline void setCustomizeHeaders(bool v)              { cachedCustomizeHeaders() = v; }
+    inline void setLineOverride(const QString& panel, const QString& v)  { cachedLineOverrides()[panel] = v; }
+    inline void setBlockOverride(const QString& panel, const QString& v) { cachedBlockOverrides()[panel] = v; }
+    inline void setTextOverride(const QString& panel, const QString& v)  { cachedTextOverrides()[panel] = v; }
+}
+
+// Generates CSS override rules for widget header colors from ColorCache values.
+namespace WidgetHeaderCSS
+{
+    inline QString generate()
+    {
+        QString css;
+
+        // ── Master header colors (all panels) ────────────────────
+        QString masterLine  = ColorCache::headerLineMaster();
+        QString masterBlock = ColorCache::headerBlockMaster();
+        QString masterText  = ColorCache::headerTextMaster();
+
+        if (!masterLine.isEmpty())
+            css += QString("QTabWidget::pane { border-top-color: %1; } "
+                           "#treeWidgetRundown { border-top-color: %1; } ").arg(masterLine);
+        if (!masterBlock.isEmpty() || !masterText.isEmpty())
+        {
+            css += "QTabBar::tab:selected { ";
+            if (!masterBlock.isEmpty()) css += QString("background-color: %1; ").arg(masterBlock);
+            if (!masterText.isEmpty())  css += QString("color: %1; ").arg(masterText);
+            css += "} ";
+        }
+
+        // ── Rundown override (always applied when set) ───────────
+        QString rundownLine  = ColorCache::headerLineRundown();
+        QString rundownBlock = ColorCache::headerBlockRundown();
+        QString rundownText  = ColorCache::headerTextRundown();
+
+        static const char* rundownWidgets[] = {"tabWidgetRundown", "tabWidgetRundownSecondary"};
+        for (const auto& w : rundownWidgets)
+        {
+            if (!rundownLine.isEmpty())
+                css += QString("#%1::pane { border-top-color: %2; } ").arg(w, rundownLine);
+            if (!rundownBlock.isEmpty() || !rundownText.isEmpty())
+            {
+                css += QString("#%1 QTabBar::tab:selected { ").arg(w);
+                if (!rundownBlock.isEmpty()) css += QString("background-color: %1; ").arg(rundownBlock);
+                if (!rundownText.isEmpty())  css += QString("color: %1; ").arg(rundownText);
+                css += "} ";
+            }
+        }
+        if (!rundownLine.isEmpty())
+            css += QString("#treeWidgetRundown { border-top-color: %1; } ").arg(rundownLine);
+
+        // ── Per-widget overrides (9 panels, when customization enabled) ──
+        if (ColorCache::customizeHeaders())
+        {
+            struct P { const char* key; const char* widgets[2]; };
+            static const P panels[] = {
+                {"Library",      {"tabWidgetLibrary", nullptr}},
+                {"Inspector",    {"tabWidgetInspector", nullptr}},
+                {"AudioLevels",  {"tabWidgetAudioLevels", nullptr}},
+                {"Preview",      {"tabWidgetPreview", nullptr}},
+                {"Live",         {"tabWidgetLive", nullptr}},
+                {"Clock",        {"tabWidgetClock", nullptr}},
+                {"ServerStatus", {"tabWidgetServer", nullptr}},
+                {"Activity",     {"tabWidgetActivity", nullptr}},
+                {"TriggerBanks", {"tabWidgetBanks", nullptr}},
+                {"Ndi",          {"tabWidgetNdi", nullptr}},
+                {"Performance",  {"tabWidgetPerformance", nullptr}},
+            };
+            for (const auto& p : panels)
+            {
+                QString line  = ColorCache::lineOverride(p.key);
+                QString block = ColorCache::blockOverride(p.key);
+                QString text  = ColorCache::textOverride(p.key);
+                if (line.isEmpty() && block.isEmpty() && text.isEmpty()) continue;
+                for (int i = 0; i < 2 && p.widgets[i]; ++i)
+                {
+                    if (!line.isEmpty())
+                        css += QString("#%1::pane { border-top-color: %2; } ").arg(p.widgets[i], line);
+                    if (!block.isEmpty() || !text.isEmpty())
+                    {
+                        css += QString("#%1 QTabBar::tab:selected { ").arg(p.widgets[i]);
+                        if (!block.isEmpty()) css += QString("background-color: %1; ").arg(block);
+                        if (!text.isEmpty())  css += QString("color: %1; ").arg(text);
+                        css += "} ";
+                    }
+                }
+            }
+        }
+
+        // Library section line (QToolBox open section indicator).
+        QString sectionLine = ColorCache::librarySectionLine();
+        if (!sectionLine.isEmpty())
+            css += QString("QToolBox::tab:selected { border-bottom-color: %1; } ").arg(sectionLine);
+
+        return css;
+    }
 }
 
 namespace Rundown
@@ -408,6 +643,9 @@ namespace Rundown
     static const QString ANCHOR = "ANCHOR";
     static const QString ROUTECHANNEL = "ROUTECHANNEL";
     static const QString ROUTEVIDEOLAYER = "ROUTEVIDEOLAYER";
+    static const QString AUTOPLAYGATEWAY = "AUTOPLAYGATEWAY";
+    static const QString FOCUSGATEWAY = "FOCUSGATEWAY";
+    static const QString COMMANDGATEWAY = "COMMANDGATEWAY";
     static const int MAX_NUMBER_OF_RUNDONWS = 10;
     static const QString DEFAULT_NAME = "New Rundown";
     static const QString DEFAULT_AUDIO_NAME = "Audio";
@@ -433,9 +671,15 @@ namespace Panel
     static const int DEFAULT_PREVIEW_HEIGHT = 188;
     static const int DEFAULT_LIVE_HEIGHT = 188;
     static const int DEFAULT_AUDIOLEVELS_HEIGHT = 147;
+    static const int DEFAULT_CLOCK_HEIGHT = 58;
     static const int COMPACT_PREVIEW_HEIGHT = 25;
     static const int COMPACT_LIVE_HEIGHT = 25;
     static const int COMPACT_AUDIOLEVELS_HEIGHT = 25;
+    static const int COMPACT_CLOCK_HEIGHT = 25;
+    static const int DEFAULT_PERFORMANCE_HEIGHT = 110;
+    static const int COMPACT_PERFORMANCE_HEIGHT = 25;
+    static const int DEFAULT_HTTPLOG_HEIGHT = 200;
+    static const int COMPACT_HTTPLOG_HEIGHT = 25;
 }
 
 namespace Action

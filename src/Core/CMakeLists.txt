@@ -16,6 +16,7 @@ qt_add_library(core
     Commands/AbstractPlayoutCommand.cpp Commands/AbstractPlayoutCommand.h
     Commands/AbstractProperties.cpp Commands/AbstractProperties.h
     Commands/AnchorCommand.cpp Commands/AnchorCommand.h
+    Commands/GatewayCommand.cpp Commands/GatewayCommand.h
     Commands/AudioCommand.cpp Commands/AudioCommand.h
     Commands/BlendModeCommand.cpp Commands/BlendModeCommand.h
     Commands/BrightnessCommand.cpp Commands/BrightnessCommand.h
@@ -54,10 +55,13 @@ qt_add_library(core
     Commands/SolidColorCommand.cpp Commands/SolidColorCommand.h
     Commands/StillCommand.cpp Commands/StillCommand.h
     Commands/TemplateCommand.cpp Commands/TemplateCommand.h
+    Commands/TransformData.cpp Commands/TransformData.h
     Commands/VolumeCommand.cpp Commands/VolumeCommand.h
     DatabaseManager.cpp DatabaseManager.h
     DeviceManager.cpp DeviceManager.h
     EventManager.cpp EventManager.h
+    CloneGroupRegistry.cpp CloneGroupRegistry.h
+    TriggerBankRegistry.cpp TriggerBankRegistry.h
     Events/Action/AddActionItemEvent.cpp Events/Action/AddActionItemEvent.h
     Events/AddPresetItemEvent.cpp Events/AddPresetItemEvent.h
     Events/CloseApplicationEvent.cpp Events/CloseApplicationEvent.h
@@ -86,10 +90,15 @@ qt_add_library(core
     Events/OscOutputChangedEvent.cpp Events/OscOutputChangedEvent.h
     Events/PresetChangedEvent.cpp Events/PresetChangedEvent.h
     Events/PreviewEvent.cpp Events/PreviewEvent.h
+    Events/Rundown/AssignBankEvent.cpp Events/Rundown/AssignBankEvent.h
+    Events/Rundown/BankAssignmentChangedEvent.cpp Events/Rundown/BankAssignmentChangedEvent.h
+    Events/Rundown/PlaybackProgressEvent.cpp Events/Rundown/PlaybackProgressEvent.h
+    Events/Rundown/ChannelActivityEvent.cpp Events/Rundown/ChannelActivityEvent.h
     Events/Rundown/ActiveRundownChangedEvent.cpp Events/Rundown/ActiveRundownChangedEvent.h
     Events/Rundown/AddRudnownItemEvent.cpp Events/Rundown/AddRudnownItemEvent.h
     Events/Rundown/AllowRemoteTriggeringEvent.cpp Events/Rundown/AllowRemoteTriggeringEvent.h
     Events/Rundown/AllowRemoteTriggeringMenuEvent.cpp Events/Rundown/AllowRemoteTriggeringMenuEvent.h
+    Events/Rundown/LockRundownEvent.cpp Events/Rundown/LockRundownEvent.h
     Events/Rundown/AutoPlayNextRundownItemEvent.cpp Events/Rundown/AutoPlayNextRundownItemEvent.h
     Events/Rundown/AutoPlayRundownItemEvent.cpp Events/Rundown/AutoPlayRundownItemEvent.h
     Events/Rundown/ClearCurrentPlayingItemEvent.cpp Events/Rundown/ClearCurrentPlayingItemEvent.h
@@ -148,6 +157,7 @@ qt_add_library(core
     Models/TypeModel.cpp Models/TypeModel.h
     OscDeviceManager.cpp OscDeviceManager.h
     OscSubscription.cpp OscSubscription.h
+    OscSubscriptionRegistry.cpp OscSubscriptionRegistry.h
     OscWebSocketManager.cpp OscWebSocketManager.h
     Shared.h
     ThumbnailWorker.cpp ThumbnailWorker.h
@@ -190,6 +200,17 @@ set(Core_resource_files
     "Sql/ChangeScript-215.sql"
     "Sql/ChangeScript-216.sql"
     "Sql/ChangeScript-217.sql"
+    "Sql/ChangeScript-218.sql"
+    "Sql/ChangeScript-219.sql"
+    "Sql/ChangeScript-220.sql"
+    "Sql/ChangeScript-221.sql"
+    "Sql/ChangeScript-222.sql"
+    "Sql/ChangeScript-223.sql"
+    "Sql/ChangeScript-224.sql"
+    "Sql/ChangeScript-225.sql"
+    "Sql/ChangeScript-226.sql"
+    "Sql/ChangeScript-227.sql"
+    "Sql/ChangeScript-228.sql"
     "Sql/Schema.sql"
 )
 

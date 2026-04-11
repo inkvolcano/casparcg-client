@@ -55,15 +55,21 @@ qt_add_library(widgets
     Inspector/InspectorRotationWidget.cpp Inspector/InspectorRotationWidget.h Inspector/InspectorRotationWidget.ui
     Inspector/InspectorRouteChannelWidget.cpp Inspector/InspectorRouteChannelWidget.h Inspector/InspectorRouteChannelWidget.ui
     Inspector/InspectorRouteVideolayerWidget.cpp Inspector/InspectorRouteVideolayerWidget.h Inspector/InspectorRouteVideolayerWidget.ui
+    Inspector/InspectorGatewayWidget.cpp Inspector/InspectorGatewayWidget.h
+    Inspector/InspectorInvokeWidget.cpp Inspector/InspectorInvokeWidget.h
     Inspector/InspectorSaturationWidget.cpp Inspector/InspectorSaturationWidget.h Inspector/InspectorSaturationWidget.ui
     Inspector/InspectorSolidColorWidget.cpp Inspector/InspectorSolidColorWidget.h Inspector/InspectorSolidColorWidget.ui
     Inspector/InspectorStillWidget.cpp Inspector/InspectorStillWidget.h Inspector/InspectorStillWidget.ui
     Inspector/InspectorTemplateWidget.cpp Inspector/InspectorTemplateWidget.h Inspector/InspectorTemplateWidget.ui
+    Inspector/InspectorTransformWidget.cpp Inspector/InspectorTransformWidget.h
+    Inspector/NumericValueDelegate.cpp Inspector/NumericValueDelegate.h
     Inspector/InspectorVolumeWidget.cpp Inspector/InspectorVolumeWidget.h Inspector/InspectorVolumeWidget.ui
     Inspector/InspectorWidget.cpp Inspector/InspectorWidget.h Inspector/InspectorWidget.ui
     Inspector/KeyValueDialog.cpp Inspector/KeyValueDialog.h Inspector/KeyValueDialog.ui
     Inspector/TargetComboBaseWidget.cpp Inspector/TargetComboBaseWidget.h
     Inspector/TemplateDataTreeBaseWidget.cpp Inspector/TemplateDataTreeBaseWidget.h
+    HttpResponsePanelWidget.cpp HttpResponsePanelWidget.h HttpResponsePanelWidget.ui
+    LayoutEditorWidget.cpp LayoutEditorWidget.h
     Library/AudioTreeBaseWidget.cpp Library/AudioTreeBaseWidget.h
     Library/DataTreeBaseWidget.cpp Library/DataTreeBaseWidget.h
     Library/DeviceFilterWidget.cpp Library/DeviceFilterWidget.h Library/DeviceFilterWidget.ui
@@ -76,13 +82,22 @@ qt_add_library(widgets
     LiveDialog.cpp LiveDialog.h LiveDialog.ui
     LiveWidget.cpp LiveWidget.h LiveWidget.ui
     MainWindow.cpp MainWindow.h MainWindow.ui
+    NdiPanelWidget.cpp NdiPanelWidget.h NdiPanelWidget.ui
+    NdiViewerWidget.cpp NdiViewerWidget.h
+    PerformancePanelWidget.cpp PerformancePanelWidget.h PerformancePanelWidget.ui
+    PanelHelper.h
+    PanelResizeHandle.cpp PanelResizeHandle.h
     OscOutputDialog.cpp OscOutputDialog.h OscOutputDialog.ui
     OscTimeWidget.cpp OscTimeWidget.h OscTimeWidget.ui
     PresetDialog.cpp PresetDialog.h PresetDialog.ui
+    PreviewContentWidget.cpp PreviewContentWidget.h
     PreviewWidget.cpp PreviewWidget.h PreviewWidget.ui
     Rundown/AbstractRundownWidget.h
     Rundown/OpenRundownFromUrlDialog.cpp Rundown/OpenRundownFromUrlDialog.h Rundown/OpenRundownFromUrlDialog.ui
     Rundown/RundownAnchorWidget.cpp Rundown/RundownAnchorWidget.h Rundown/RundownAnchorWidget.ui
+    Rundown/RundownAutoPlayGatewayWidget.cpp Rundown/RundownAutoPlayGatewayWidget.h Rundown/RundownAutoPlayGatewayWidget.ui
+    Rundown/RundownFocusGatewayWidget.cpp Rundown/RundownFocusGatewayWidget.h Rundown/RundownFocusGatewayWidget.ui
+    Rundown/RundownCommandGatewayWidget.cpp Rundown/RundownCommandGatewayWidget.h Rundown/RundownCommandGatewayWidget.ui
     Rundown/RundownAudioWidget.cpp Rundown/RundownAudioWidget.h Rundown/RundownAudioWidget.ui
     Rundown/RundownBlendModeWidget.cpp Rundown/RundownBlendModeWidget.h Rundown/RundownBlendModeWidget.ui
     Rundown/RundownBrightnessWidget.cpp Rundown/RundownBrightnessWidget.h Rundown/RundownBrightnessWidget.ui
@@ -127,6 +142,10 @@ qt_add_library(widgets
     Rundown/RundownVolumeWidget.cpp Rundown/RundownVolumeWidget.h Rundown/RundownVolumeWidget.ui
     Rundown/RundownWidget.cpp Rundown/RundownWidget.h Rundown/RundownWidget.ui
     SettingsDialog.cpp SettingsDialog.h SettingsDialog.ui
+    ClockWidget.cpp ClockWidget.h ClockWidget.ui
+    StatusBarWidget.cpp StatusBarWidget.h
+    StatusPanelWidget.cpp StatusPanelWidget.h StatusPanelWidget.ui
+    WhatsNewDialog.cpp WhatsNewDialog.h
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
 )
@@ -136,6 +155,7 @@ target_include_directories(widgets PUBLIC
     ../Common
     ../Core
     ../Gpi
+    ../Ndi
     ../Osc
     ../Repository
     ../Web
@@ -155,15 +175,19 @@ target_link_libraries(widgets PUBLIC
     common
     core
     gpi
+    ndi
     osc
     repository
     web
 
     Qt::Core
     Qt::Gui
+    Qt::Multimedia
     Qt::Network
     Qt::Sql
     Qt::Widgets
+
+    $<$<PLATFORM_ID:Windows>:psapi>
 )
 
 # Resources:
@@ -246,6 +270,9 @@ set(Widgets_resource_files
     "Images/Fill.png"
     "Images/FillSmall.png"
     "Images/FillSmallHover.png"
+    "Images/gateway_entry.png"
+    "Images/gateway_exit.png"
+    "Images/gatewaySmall.png"
     "Images/GpiConnected.png"
     "Images/GpiDisconnected.png"
     "Images/GpiOutput.png"
@@ -399,4 +426,11 @@ qt_add_resources(widgets "Widgets1"
         "/Appearances"
     FILES
         ${Widgets1_resource_files}
+)
+set_source_files_properties("../../CHANGES.html" PROPERTIES QT_RESOURCE_ALIAS "CHANGES.html")
+qt_add_resources(widgets "Widgets2"
+    PREFIX
+        "/Data"
+    FILES
+        "../../CHANGES.html"
 )

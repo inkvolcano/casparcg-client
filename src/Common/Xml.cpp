@@ -26,6 +26,15 @@ QString Xml::encode(const QString& data)
             case '>':
                 temp += "&gt;";
                 break;
+            case '\n':
+                temp += "&#10;";
+                break;
+            case '\r':
+                temp += "&#13;";
+                break;
+            case '\t':
+                temp += "&#9;";
+                break;
             default:
                 temp += character;
                 break;
@@ -44,6 +53,9 @@ QString Xml::decode(const QString& data)
     temp.replace("&quot;", "\"");
     temp.replace("&lt;", "<");
     temp.replace("&gt;", ">");
+    temp.replace("&#10;", "\n");
+    temp.replace("&#13;", "\r");
+    temp.replace("&#9;", "\t");
 
     return temp;
 }

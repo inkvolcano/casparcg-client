@@ -68,6 +68,7 @@ target_link_libraries(shell PRIVATE
     common
     core
     gpi
+    ndi
     osc
     repository
     web
@@ -75,6 +76,7 @@ target_link_libraries(shell PRIVATE
 
     Qt::Core
     Qt::Gui
+    Qt::Multimedia
     Qt::Network
     Qt::Sql
     Qt::Widgets
@@ -137,5 +139,20 @@ add_custom_command(TARGET casparcg_copy_dependencies POST_BUILD COMMAND ${CMAKE_
 
 # copy any runtime dependencies
 casparcg_copy_runtime_dependencies()
+
+# Copy NDI runtime DLL so the app works without NDI Runtime installed on target.
+if(WIN32)
+    set(NDI_REDIST_FOLDER "$ENV{NDI_RUNTIME_DIR_V6}")
+    if(NOT NDI_REDIST_FOLDER STREQUAL "")
+        add_custom_command(TARGET casparcg_copy_dependencies POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${NDI_REDIST_FOLDER}/Processing.NDI.Lib.x64.dll"
+                "${OUTPUT_FOLDER}/Processing.NDI.Lib.x64.dll"
+            COMMENT "Copying NDI runtime DLL to output directory"
+        )
+    else()
+        message(WARNING "NDI_RUNTIME_DIR_V6 not set — NDI DLL will not be copied to output directory")
+    endif()
+endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/../Packaging.cmake)
