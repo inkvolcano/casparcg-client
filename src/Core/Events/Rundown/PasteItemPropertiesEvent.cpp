@@ -2,6 +2,12 @@
 
 #include "Global.h"
 
-PasteItemPropertiesEvent::PasteItemPropertiesEvent()
+PasteItemPropertiesEvent::PasteItemPropertiesEvent(bool noData)
+    : noData(noData)
 {
+}
+
+bool PasteItemPropertiesEvent::getNoData() const
+{
+    return this->noData;
 }

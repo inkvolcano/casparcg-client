@@ -34,6 +34,7 @@ class CORE_EXPORT DatabaseManager
         void uninitialize() {}
 
         ConfigurationModel getConfigurationByName(const QString& name);
+        QMap<QString, QString> getAllConfigurations();
         void updateConfiguration(const ConfigurationModel& model);
 
         QList<FormatModel> getFormat();
@@ -74,7 +75,7 @@ class CORE_EXPORT DatabaseManager
         DeviceModel getDeviceById(int deviceId);
         DeviceModel getDeviceByName(const QString& name);
         DeviceModel getDeviceByAddress(const QString& address);
-        void insertDevice(const DeviceModel& model);
+        QString insertDevice(const DeviceModel& model);
         void updateDevice(const DeviceModel& model);
         void updateDeviceVersion(const DeviceModel& model);
         void updateDeviceChannels(const DeviceModel& model);

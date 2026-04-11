@@ -142,3 +142,52 @@ const QSharedPointer<CasparDevice> DeviceManager::getDeviceByName(const QString&
 {
     return this->devices.value(name);
 }
+
+bool DeviceManager::isChannelLocked(const QString& deviceName, int channel) const
+{
+    if (this->globalLockedChannels.contains(channel))
+        return true;
+
+    if (this->lockedChannels.contains(deviceName))
+        return this->lockedChannels.value(deviceName).contains(channel);
+
+    return false;
+}
+
+void DeviceManager::toggleChannelLock(const QString& deviceName, int channel)
+{
+    if (this->lockedChannels[deviceName].contains(channel))
+        this->lockedChannels[deviceName].remove(channel);
+    else
+        this->lockedChannels[deviceName].insert(channel);
+
+    bool locked = isChannelLocked(deviceName, channel);
+    emit channelLockChanged(deviceName, channel, locked);
+}
+
+void DeviceManager::toggleGlobalChannelLock(int channel)
+{
+    if (this->globalLockedChannels.contains(channel))
+        this->globalLockedChannels.remove(channel);
+    else
+        this->globalLockedChannels.insert(channel);
+
+    bool globalLocked = this->globalLockedChannels.contains(channel);
+
+    // Emit for each device so UI updates all rows.
+    foreach (const QString& deviceName, this->devices.keys())
+        emit channelLockChanged(deviceName, channel, globalLocked || this->lockedChannels.value(deviceName).contains(channel));
+
+    // Emit with empty device name to signal global change.
+    emit channelLockChanged(QString(), channel, globalLocked);
+}
+
+QSet<int> DeviceManager::getLockedChannels(const QString& deviceName) const
+{
+    return this->lockedChannels.value(deviceName);
+}
+
+QSet<int> DeviceManager::getGlobalLockedChannels() const
+{
+    return this->globalLockedChannels;
+}

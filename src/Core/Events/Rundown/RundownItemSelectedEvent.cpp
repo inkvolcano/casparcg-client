@@ -2,8 +2,9 @@
 
 #include "Global.h"
 
-RundownItemSelectedEvent::RundownItemSelectedEvent(AbstractCommand* command, LibraryModel* model, QWidget* source, QWidget* parent)
-    : command(command), model(model), source(source), parent(parent)
+RundownItemSelectedEvent::RundownItemSelectedEvent(AbstractCommand* command, LibraryModel* model, QWidget* source, QWidget* parent,
+                                                     const QList<AbstractCommand*>& allCommands)
+    : command(command), model(model), source(source), parent(parent), allCommands(allCommands)
 {
 }
 
@@ -25,4 +26,9 @@ QWidget* RundownItemSelectedEvent::getSource() const
 QWidget* RundownItemSelectedEvent::getParent() const
 {
     return this->parent;
+}
+
+const QList<AbstractCommand*>& RundownItemSelectedEvent::getAllCommands() const
+{
+    return this->allCommands;
 }

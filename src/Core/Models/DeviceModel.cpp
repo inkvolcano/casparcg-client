@@ -2,9 +2,11 @@
 
 DeviceModel::DeviceModel(int id, const QString& name, const QString& address, int port, const QString& username,
                          const QString& password, const QString& description, const QString& version, const QString& shadow,
-                         int channels, const QString& channelFormats, int previewChannel, int lockedChannel)
+                         int channels, const QString& channelFormats, int previewChannel, int lockedChannel,
+                         const QString& templatePath, const QString& mediaPath, const QString& serverPath)
     : id(id), port(port), name(name), address(address), username(username),  password(password), description(description),
-      version(version), shadow(shadow), channels(channels), channelFormats(channelFormats), previewChannel(previewChannel), lockedChannel(lockedChannel)
+      version(version), shadow(shadow), channels(channels), channelFormats(channelFormats), previewChannel(previewChannel), lockedChannel(lockedChannel),
+      templatePath(templatePath), mediaPath(mediaPath), serverPath(serverPath)
 {
 }
 
@@ -71,4 +73,19 @@ int DeviceModel::getPreviewChannel() const
 int DeviceModel::getLockedChannel() const
 {
     return this->lockedChannel;
+}
+
+const QString& DeviceModel::getTemplatePath() const
+{
+    return this->templatePath;
+}
+
+const QString& DeviceModel::getMediaPath() const
+{
+    return this->mediaPath;
+}
+
+const QString& DeviceModel::getServerPath() const
+{
+    return this->serverPath;
 }

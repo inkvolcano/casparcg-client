@@ -26,6 +26,11 @@ void EventManager::fireClearDelayedCommands()
     emit clearDelayedCommands();
 }
 
+void EventManager::fireUnitSettingsChangedEvent()
+{
+    emit unitSettingsChanged();
+}
+
 void EventManager::fireInsertRepositoryChangesEvent(const InsertRepositoryChangesEvent& event)
 {
     emit insertRepositoryChanges(event);
@@ -331,6 +336,11 @@ void EventManager::fireAllowRemoteTriggeringEvent(const AllowRemoteTriggeringEve
     emit allowRemoteTriggering(event);
 }
 
+void EventManager::fireLockRundownEvent(const LockRundownEvent& event)
+{
+    emit lockRundown(event);
+}
+
 void EventManager::fireAddRudnownItemEvent(const LibraryModel& model)
 {
     emit addRudnownItem(AddRudnownItemEvent(model));
@@ -349,6 +359,126 @@ void EventManager::fireCopyItemPropertiesEvent(const CopyItemPropertiesEvent& ev
 void EventManager::firePasteItemPropertiesEvent(const PasteItemPropertiesEvent& event)
 {
     emit pasteItemProperties(PasteItemPropertiesEvent(event));
+}
+
+void EventManager::fireBankAssignmentChangedEvent(const BankAssignmentChangedEvent& event)
+{
+    emit bankAssignmentChanged(event);
+}
+
+void EventManager::fireAssignBankEvent(const AssignBankEvent& event)
+{
+    emit assignBank(event);
+}
+
+void EventManager::firePlaybackProgressEvent(const PlaybackProgressEvent& event)
+{
+    emit playbackProgress(event);
+}
+
+void EventManager::fireChannelActivityEvent(const ChannelActivityEvent& event)
+{
+    emit channelActivity(event);
+}
+
+void EventManager::fireMuteAudioEvent(bool mute)
+{
+    emit muteAudio(mute);
+}
+
+void EventManager::fireDisconnectStreamEvent()
+{
+    emit disconnectStream();
+}
+
+void EventManager::fireGatewayExitsChangedEvent(const QString& gatewayId)
+{
+    emit gatewayExitsChanged(gatewayId);
+}
+
+void EventManager::fireRebuildLayout()
+{
+    emit rebuildLayout();
+}
+
+void EventManager::fireUndoLimitChangedEvent(int limit)
+{
+    emit undoLimitChanged(limit);
+}
+
+bool EventManager::getPreviewMode() const
+{
+    return this->previewModeActive;
+}
+
+void EventManager::setPreviewMode(bool active)
+{
+    if (this->previewModeActive != active)
+    {
+        this->previewModeActive = active;
+        emit previewModeChanged(active);
+    }
+}
+
+void EventManager::setPreviewModifierHeld(bool held)
+{
+    if (this->previewModifierIsHeld != held)
+    {
+        this->previewModifierIsHeld = held;
+        emit previewModifierHeld(held);
+    }
+}
+
+bool EventManager::getAutostepMode() const
+{
+    return this->autostepModeActive;
+}
+
+void EventManager::setAutostepMode(bool active)
+{
+    if (this->autostepModeActive != active)
+    {
+        this->autostepModeActive = active;
+        emit autostepModeChanged(active);
+    }
+}
+
+bool EventManager::getBigBoldMode() const
+{
+    return this->bigBoldModeActive;
+}
+
+void EventManager::setBigBoldMode(bool active)
+{
+    if (this->bigBoldModeActive != active)
+    {
+        this->bigBoldModeActive = active;
+        emit bigBoldModeChanged(active);
+    }
+}
+
+void EventManager::setGatewayExitLabelProvider(std::function<QStringList(const QString&)> provider)
+{
+    this->gatewayExitLabelProvider = provider;
+}
+
+QStringList EventManager::getGatewayExitLabels(const QString& gatewayId) const
+{
+    if (this->gatewayExitLabelProvider)
+        return this->gatewayExitLabelProvider(gatewayId);
+    return QStringList();
+}
+
+void EventManager::setGatewayEntranceProvider(std::function<QList<QPair<QString, QString>>(const QString&)> provider)
+{
+    this->gatewayEntranceProvider = provider;
+}
+
+QList<QPair<QString, QString>> EventManager::getGatewayEntrances(const QString& type) const
+{
+    if (this->gatewayEntranceProvider)
+        return this->gatewayEntranceProvider(type);
+    return QList<QPair<QString, QString>>();
 }
 
 void EventManager::fireAddRudnownItemEvent(const QString& type)
@@ -431,4 +561,8 @@ void EventManager::fireAddRudnownItemEvent(const QString& type)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Route Channel", "", "", Rundown::ROUTECHANNEL, 0, "")));
     else if (type ==  Rundown::ROUTEVIDEOLAYER)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Route Videolayer", "", "", Rundown::ROUTEVIDEOLAYER, 0, "")));
+    else if (type == Rundown::AUTOPLAYGATEWAY)
+        emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Autoplay Gateway", "", "", Rundown::AUTOPLAYGATEWAY, 0, "")));
+    else if (type == Rundown::COMMANDGATEWAY)
+        emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Command Gateway", "", "", Rundown::COMMANDGATEWAY, 0, "")));
 }

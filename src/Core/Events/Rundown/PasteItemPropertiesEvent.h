@@ -7,5 +7,10 @@
 class CORE_EXPORT PasteItemPropertiesEvent
 {
     public:
-        explicit PasteItemPropertiesEvent();
+        explicit PasteItemPropertiesEvent(bool noData = false);
+
+        bool getNoData() const;
+
+    private:
+        bool noData = false;
 };

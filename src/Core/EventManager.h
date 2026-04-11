@@ -4,6 +4,10 @@
 
 #include "Global.h"
 
+#include <functional>
+#include <QtCore/QPair>
+#include <QtCore/QStringList>
+
 #include "Commands/AbstractCommand.h"
 #include "Events/AddPresetItemEvent.h"
 #include "Events/DataChangedEvent.h"
@@ -59,6 +63,7 @@
 #include "Events/Rundown/SaveMenuEvent.h"
 #include "Events/Rundown/SaveAsMenuEvent.h"
 #include "Events/Rundown/AllowRemoteTriggeringEvent.h"
+#include "Events/Rundown/LockRundownEvent.h"
 #include "Events/Rundown/RemoveItemFromAutoPlayQueueEvent.h"
 #include "Events/Rundown/ClearCurrentPlayingItemEvent.h"
 #include "Events/Rundown/RundownItemSelectedEvent.h"
@@ -70,6 +75,10 @@
 #include "Events/Rundown/InsertRepositoryChangesEvent.h"
 #include "Events/Rundown/ReloadRundownMenuEvent.h"
 #include "Events/Rundown/CurrentItemChangedEvent.h"
+#include "Events/Rundown/BankAssignmentChangedEvent.h"
+#include "Events/Rundown/AssignBankEvent.h"
+#include "Events/Rundown/ChannelActivityEvent.h"
+#include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/BlendModeModel.h"
 #include "Models/LibraryModel.h"
 
@@ -134,6 +143,7 @@ class CORE_EXPORT EventManager : public QObject
         Q_SIGNAL void compactView(const CompactViewEvent&);
         Q_SIGNAL void executeRundownItem(const ExecuteRundownItemEvent&);
         Q_SIGNAL void allowRemoteTriggering(const AllowRemoteTriggeringEvent&);
+        Q_SIGNAL void lockRundown(const LockRundownEvent&);
         Q_SIGNAL void autoPlayRundownItem(const AutoPlayRundownItemEvent&);
         Q_SIGNAL void autoPlayChanged(const AutoPlayChangedEvent&);
         Q_SIGNAL void autoPlayNextRundownItem(const AutoPlayNextRundownItemEvent&);
@@ -156,8 +166,24 @@ class CORE_EXPORT EventManager : public QObject
         Q_SIGNAL void reloadRundownMenu(const ReloadRundownMenuEvent&);
         Q_SIGNAL void showAddHttpGetDataDialog(const ShowAddHttpGetDataDialogEvent&);
         Q_SIGNAL void showAddHttpPostDataDialog(const ShowAddHttpPostDataDialogEvent&);
+        Q_SIGNAL void bankAssignmentChanged(const BankAssignmentChangedEvent&);
+        Q_SIGNAL void assignBank(const AssignBankEvent&);
+        Q_SIGNAL void playbackProgress(const PlaybackProgressEvent&);
+        Q_SIGNAL void channelActivity(const ChannelActivityEvent&);
+        Q_SIGNAL void muteAudio(bool mute);
+        Q_SIGNAL void disconnectStream();
+        Q_SIGNAL void playoutAction(const QString& action, const QString& label, const QString& device, int channel, int videolayer);
+        Q_SIGNAL void previewModeChanged(bool active);
+        Q_SIGNAL void previewModifierHeld(bool held);
+        Q_SIGNAL void autostepModeChanged(bool active);
+        Q_SIGNAL void bigBoldModeChanged(bool active);
+        Q_SIGNAL void gatewayExitsChanged(const QString& gatewayId);
+        Q_SIGNAL void undoLimitChanged(int limit);
+        Q_SIGNAL void unitSettingsChanged();
+        Q_SIGNAL void rebuildLayout();
 
         void fireClearDelayedCommands();
+        void fireUnitSettingsChangedEvent();
         void fireCurrentItemChangedEvent(const CurrentItemChangedEvent&);
         void fireShowAddHttpPostDataDialogEvent(const ShowAddHttpPostDataDialogEvent&);
         void fireShowAddHttpGetDataDialogEvent(const ShowAddHttpGetDataDialogEvent&);
@@ -207,6 +233,7 @@ class CORE_EXPORT EventManager : public QObject
         void fireCompactViewEvent(const CompactViewEvent& event);
         void fireExecuteRundownItemEvent(const ExecuteRundownItemEvent& event);
         void fireAllowRemoteTriggeringEvent(const AllowRemoteTriggeringEvent& event);
+        void fireLockRundownEvent(const LockRundownEvent& event);
         void fireAutoPlayRundownItemEvent(const AutoPlayRundownItemEvent&);
         void fireAutoPlayNextRundownItemEvent(const AutoPlayNextRundownItemEvent&);
         void fireShowAddTemplateDataDialogEvent(const ShowAddTemplateDataDialogEvent&);
@@ -224,4 +251,38 @@ class CORE_EXPORT EventManager : public QObject
         void fireSaveMenuEvent(const SaveMenuEvent&);
         void fireSaveAsMenuEvent(const SaveAsMenuEvent&);
         void fireInsertRepositoryChangesEvent(const InsertRepositoryChangesEvent&);
+        void fireBankAssignmentChangedEvent(const BankAssignmentChangedEvent&);
+        void fireAssignBankEvent(const AssignBankEvent&);
+        void firePlaybackProgressEvent(const PlaybackProgressEvent&);
+        void fireChannelActivityEvent(const ChannelActivityEvent&);
+        void fireMuteAudioEvent(bool mute);
+        void fireDisconnectStreamEvent();
+        void fireGatewayExitsChangedEvent(const QString& gatewayId);
+        void fireRebuildLayout();
+        void fireUndoLimitChangedEvent(int limit);
+
+        bool getPreviewMode() const;
+        void setPreviewMode(bool active);
+        void setPreviewModifierHeld(bool held);
+
+        bool getAutostepMode() const;
+        void setAutostepMode(bool active);
+
+        bool getBigBoldMode() const;
+        void setBigBoldMode(bool active);
+
+        void setGatewayExitLabelProvider(std::function<QStringList(const QString&)> provider);
+        QStringList getGatewayExitLabels(const QString& gatewayId) const;
+
+        // Returns list of (gatewayId, displayLabel) pairs for gateway entrances of the given type.
+        void setGatewayEntranceProvider(std::function<QList<QPair<QString, QString>>(const QString&)> provider);
+        QList<QPair<QString, QString>> getGatewayEntrances(const QString& type) const;
+
+    private:
+        bool previewModeActive = false;
+        bool previewModifierIsHeld = false;
+        bool autostepModeActive = false;
+        bool bigBoldModeActive = false;
+        std::function<QStringList(const QString&)> gatewayExitLabelProvider;
+        std::function<QList<QPair<QString, QString>>(const QString&)> gatewayEntranceProvider;
 };

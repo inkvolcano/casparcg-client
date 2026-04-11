@@ -1,0 +1,1 @@
+ALTER TABLE Device ADD COLUMN MediaPath TEXT DEFAULT '';

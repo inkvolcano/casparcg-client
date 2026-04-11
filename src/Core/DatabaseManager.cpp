@@ -32,6 +32,41 @@ void DatabaseManager::initialize()
         createDatabase();
     else
         upgradeDatabase();
+
+    // Ensure Device.TemplatePath, Device.MediaPath, and Device.ServerPath columns exist (safety net for migration issues).
+    QSqlQuery check;
+    check.exec("PRAGMA table_info(Device)");
+    bool hasTemplatePath = false;
+    bool hasMediaPath = false;
+    bool hasServerPath = false;
+    while (check.next())
+    {
+        QString colName = check.value(1).toString();
+        if (colName == "TemplatePath")
+            hasTemplatePath = true;
+        else if (colName == "MediaPath")
+            hasMediaPath = true;
+        else if (colName == "ServerPath")
+            hasServerPath = true;
+    }
+    if (!hasTemplatePath)
+    {
+        qWarning("Device.TemplatePath column missing - adding it now");
+        if (!check.exec("ALTER TABLE Device ADD COLUMN TemplatePath TEXT DEFAULT ''"))
+            qCritical("Failed to add TemplatePath column: %s", qPrintable(check.lastError().text()));
+    }
+    if (!hasMediaPath)
+    {
+        qWarning("Device.MediaPath column missing - adding it now");
+        if (!check.exec("ALTER TABLE Device ADD COLUMN MediaPath TEXT DEFAULT ''"))
+            qCritical("Failed to add MediaPath column: %s", qPrintable(check.lastError().text()));
+    }
+    if (!hasServerPath)
+    {
+        qWarning("Device.ServerPath column missing - adding it now");
+        if (!check.exec("ALTER TABLE Device ADD COLUMN ServerPath TEXT DEFAULT ''"))
+            qCritical("Failed to add ServerPath column: %s", qPrintable(check.lastError().text()));
+    }
 }
 
 void DatabaseManager::createDatabase()
@@ -43,6 +78,8 @@ void DatabaseManager::createDatabase()
 
         file.close();
 
+        QSqlDatabase::database().transaction();
+
         QSqlQuery sql;
         foreach (QString query, queries)
         {
@@ -50,12 +87,18 @@ void DatabaseManager::createDatabase()
                 continue;
 
             if (!sql.exec(query))
+            {
+                QSqlDatabase::database().rollback();
                 qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+            }
         }
 
 #if defined(Q_OS_WIN)
-        if (!sql.exec("INSERT INTO Device (Name, Address, Port, Username, Password, Description, Version, Shadow, Channels, ChannelFormats, PreviewChannel, LockedChannel) VALUES('Localhost', '127.0.0.1', 5250, '', '', '', '', 'No', 0, '', 0, 0)"))
+        if (!sql.exec("INSERT INTO Device (Name, Address, Port, Username, Password, Description, Version, Shadow, Channels, ChannelFormats, PreviewChannel, LockedChannel, TemplatePath, MediaPath, ServerPath) VALUES('Localhost', '127.0.0.1', 5250, '', '', '', '', 'No', 0, '', 0, 0, '', '', '')"))
+        {
+            QSqlDatabase::database().rollback();
             qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+        }
 #endif
 
         sql.prepare("UPDATE Configuration SET Value = :Value "
@@ -63,7 +106,12 @@ void DatabaseManager::createDatabase()
         sql.bindValue(":Value", DATABASE_VERSION);
 
         if (!sql.exec())
+        {
+            QSqlDatabase::database().rollback();
             qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+        }
+
+        QSqlDatabase::database().commit();
     }
 }
 
@@ -85,13 +133,18 @@ void DatabaseManager::upgradeDatabase()
 
             file.close();
 
+            QSqlDatabase::database().transaction();
+
             foreach(const QString& query, queries)
             {
                  if (query.trimmed().isEmpty())
                      continue;
 
                  if (!sql.exec(query))
+                 {
+                    QSqlDatabase::database().rollback();
                     qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+                 }
             }
 
             sql.prepare("UPDATE Configuration SET Value = :Value "
@@ -99,7 +152,12 @@ void DatabaseManager::upgradeDatabase()
             sql.bindValue(":Value", version + 1);
 
             if (!sql.exec())
+            {
+                QSqlDatabase::database().rollback();
                 qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+            }
+
+            QSqlDatabase::database().commit();
 
             qDebug("Successfully updated to ChangeScript-%d", version + 1);
         }
@@ -123,6 +181,17 @@ void DatabaseManager::updateConfiguration(const ConfigurationModel& model)
     if (!sql.exec())
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
+    if (sql.numRowsAffected() == 0)
+    {
+        QSqlQuery insertSql;
+        insertSql.prepare("INSERT INTO Configuration (Name, Value) VALUES (:Name, :Value)");
+        insertSql.bindValue(":Name", model.getName());
+        insertSql.bindValue(":Value", model.getValue());
+
+        if (!insertSql.exec())
+            qCritical("Failed to insert configuration: %s, Error: %s", qPrintable(insertSql.lastQuery()), qPrintable(insertSql.lastError().text()));
+    }
+
     QSqlDatabase::database().commit();
 }
 
@@ -141,6 +210,22 @@ ConfigurationModel DatabaseManager::getConfigurationByName(const QString& name)
     sql.first();
 
     return ConfigurationModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Value").toString());
+}
+
+QMap<QString, QString> DatabaseManager::getAllConfigurations()
+{
+    QMutexLocker locker(&mutex);
+
+    QMap<QString, QString> result;
+    QSqlQuery sql;
+    if (!sql.exec("SELECT Name, Value FROM Configuration"))
+    {
+        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+        return result;
+    }
+    while (sql.next())
+        result[sql.value("Name").toString()] = sql.value("Value").toString();
+    return result;
 }
 
 QList<FormatModel> DatabaseManager::getFormat()
@@ -209,7 +294,7 @@ void DatabaseManager::insertOpenRecent(const QString& path)
     if (!sql.exec("SELECT Count(*) FROM OpenRecent"))
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
-    if (sql.first() && sql.value("Id").toInt() > 10)
+    if (sql.first() && sql.value(0).toInt() > 10)
     {
         if (!sql.exec("DELETE FROM OpenRecent WHERE Id IN (SELECT min(Id) FROM OpenRecent)"))
            qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
@@ -609,14 +694,15 @@ TypeModel DatabaseManager::getTypeByValue(const QString& value)
 QList<DeviceModel> DatabaseManager::getDevice()
 {
     QSqlQuery sql;
-    if (!sql.exec("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel FROM Device d ORDER BY d.Name"))
+    if (!sql.exec("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel, d.TemplatePath, d.MediaPath, d.ServerPath FROM Device d ORDER BY d.Name"))
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
     QList<DeviceModel> models;
     while (sql.next())
         models.push_back(DeviceModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
                                      sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
-                                     sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt()));
+                                     sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
+                                     sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString()));
 
     return models;
 }
@@ -627,7 +713,7 @@ DeviceModel DatabaseManager::getDeviceById(int deviceId)
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel FROM Device d "
+    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel, d.TemplatePath, d.MediaPath, d.ServerPath FROM Device d "
                 "WHERE d.Id = :Id");
     sql.bindValue(":Id", deviceId);
 
@@ -638,7 +724,8 @@ DeviceModel DatabaseManager::getDeviceById(int deviceId)
 
     return DeviceModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
                        sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
-                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt());
+                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
+                       sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString());
 }
 
 DeviceModel DatabaseManager::getDeviceByName(const QString& name)
@@ -646,7 +733,7 @@ DeviceModel DatabaseManager::getDeviceByName(const QString& name)
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel FROM Device d "
+    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel, d.TemplatePath, d.MediaPath, d.ServerPath FROM Device d "
                 "WHERE d.Name = :Name");
     sql.bindValue(":Name", name);
 
@@ -657,7 +744,8 @@ DeviceModel DatabaseManager::getDeviceByName(const QString& name)
 
     return DeviceModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
                        sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
-                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt());
+                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
+                       sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString());
 }
 
 DeviceModel DatabaseManager::getDeviceByAddress(const QString& address)
@@ -665,7 +753,7 @@ DeviceModel DatabaseManager::getDeviceByAddress(const QString& address)
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel FROM Device d "
+    sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel, d.TemplatePath, d.MediaPath, d.ServerPath FROM Device d "
                 "WHERE d.Address = :Address");
     sql.bindValue(":Address", address);
 
@@ -676,18 +764,19 @@ DeviceModel DatabaseManager::getDeviceByAddress(const QString& address)
 
     return DeviceModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
                        sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
-                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt());
+                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
+                       sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString());
 }
 
-void DatabaseManager::insertDevice(const DeviceModel& model)
+QString DatabaseManager::insertDevice(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
 
     QSqlDatabase::database().transaction();
 
     QSqlQuery sql;
-    sql.prepare("INSERT INTO Device (Name, Address, Port, Username, Password, Description, Version, Shadow, Channels, ChannelFormats, PreviewChannel, LockedChannel) "
-                "VALUES(:Name, :Address, :Port, :Username, :Password, :Description, :Version, :Shadow, :Channels, :ChannelFormats, :PreviewChannel, :LockedChannel)");
+    sql.prepare("INSERT INTO Device (Name, Address, Port, Username, Password, Description, Version, Shadow, Channels, ChannelFormats, PreviewChannel, LockedChannel, TemplatePath, MediaPath, ServerPath) "
+                "VALUES(:Name, :Address, :Port, :Username, :Password, :Description, :Version, :Shadow, :Channels, :ChannelFormats, :PreviewChannel, :LockedChannel, :TemplatePath, :MediaPath, :ServerPath)");
     sql.bindValue(":Name", model.getName());
     sql.bindValue(":Address", model.getAddress());
     sql.bindValue(":Port", model.getPort());
@@ -700,11 +789,20 @@ void DatabaseManager::insertDevice(const DeviceModel& model)
     sql.bindValue(":ChannelFormats", model.getChannelFormats());
     sql.bindValue(":PreviewChannel", model.getPreviewChannel());
     sql.bindValue(":LockedChannel", model.getLockedChannel());
+    sql.bindValue(":TemplatePath", model.getTemplatePath());
+    sql.bindValue(":MediaPath", model.getMediaPath());
+    sql.bindValue(":ServerPath", model.getServerPath());
 
     if (!sql.exec())
-       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+    {
+       QString error = sql.lastError().text();
+       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(error));
+       QSqlDatabase::database().rollback();
+       return error;
+    }
 
     QSqlDatabase::database().commit();
+    return QString();
 }
 
 void DatabaseManager::updateDevice(const DeviceModel& model)
@@ -714,7 +812,7 @@ void DatabaseManager::updateDevice(const DeviceModel& model)
     QSqlDatabase::database().transaction();
 
     QSqlQuery sql;
-    sql.prepare("UPDATE Device SET Name = :Name, Address = :Address, Port = :Port, Username = :Username, Password = :Password, Description = :Description, Version = :Version, Shadow = :Shadow, Channels = :Channels, ChannelFormats = :ChannelFormats, PreviewChannel = :PreviewChannel, LockedChannel = :LockedChannel "
+    sql.prepare("UPDATE Device SET Name = :Name, Address = :Address, Port = :Port, Username = :Username, Password = :Password, Description = :Description, Version = :Version, Shadow = :Shadow, Channels = :Channels, ChannelFormats = :ChannelFormats, PreviewChannel = :PreviewChannel, LockedChannel = :LockedChannel, TemplatePath = :TemplatePath, MediaPath = :MediaPath, ServerPath = :ServerPath "
                 "WHERE Id = :Id");
     sql.bindValue(":Name", model.getName());
     sql.bindValue(":Address", model.getAddress());
@@ -728,6 +826,9 @@ void DatabaseManager::updateDevice(const DeviceModel& model)
     sql.bindValue(":ChannelFormats", model.getChannelFormats());
     sql.bindValue(":PreviewChannel", model.getPreviewChannel());
     sql.bindValue(":LockedChannel", model.getLockedChannel());
+    sql.bindValue(":TemplatePath", model.getTemplatePath());
+    sql.bindValue(":MediaPath", model.getMediaPath());
+    sql.bindValue(":ServerPath", model.getServerPath());
     sql.bindValue(":Id", model.getId());
 
     if (!sql.exec())
