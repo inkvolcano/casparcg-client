@@ -21,12 +21,14 @@ void ClearOutputCommand::setClearChannel(bool clearChannel)
 {
     this->clearChannel = clearChannel;
     emit clearChannelChanged(this->clearChannel);
+    emit propertyChanged();
 }
 
 void ClearOutputCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void ClearOutputCommand::readProperties(boost::property_tree::wptree& pt)

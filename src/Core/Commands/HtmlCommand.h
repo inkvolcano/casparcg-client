@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractCommand.h"
+#include "TransformData.h"
 
 #include "Global.h"
 
@@ -41,6 +42,9 @@ class CORE_EXPORT HtmlCommand : public AbstractCommand
         void setTriggerOnNext(bool triggerOnNext);
         void setUseAuto(bool useAuto);
 
+        TransformData& getTransform();
+        const TransformData& getTransform() const;
+
     private:
         QString url = Html::DEFAULT_URL;
         QString transition = Mixer::DEFAULT_TRANSITION;
@@ -50,6 +54,7 @@ class CORE_EXPORT HtmlCommand : public AbstractCommand
         bool freezeOnLoad = Html::DEFAULT_FREEZE_ON_LOAD;
         bool triggerOnNext = Html::DEFAULT_TRIGGER_ON_NEXT;
         bool useAuto = Html::DEFAULT_USE_AUTO;
+        TransformData m_transform;
 
         Q_SIGNAL void urlChanged(const QString&);
         Q_SIGNAL void transitionChanged(const QString&);

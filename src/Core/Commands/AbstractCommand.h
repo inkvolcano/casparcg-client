@@ -27,6 +27,8 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual bool getAllowRemoteTriggering() const;
         virtual QString getRemoteTriggerId() const;
         virtual QString getStoryId() const;
+        virtual int getTriggerBank() const;
+        virtual QString getCloneGroupId() const;
 
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
@@ -36,6 +38,14 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual void setAllowRemoteTriggering(bool allowRemoteTriggering);
         virtual void setRemoteTriggerId(const QString& remoteTriggerId);
         virtual void setStoryId(const QString& storyId);
+        virtual void setTriggerBank(int triggerBank);
+        virtual void setCloneGroupId(const QString& cloneGroupId);
+
+        // Temporary channel override for preview mode. Does not emit signals.
+        // Use getBaseChannel() when you need the configured channel (e.g. inspector display).
+        void setChannelOverride(int channel);
+        void clearChannelOverride();
+        int getBaseChannel() const;
 
         virtual void readProperties(boost::property_tree::wptree& pt);
         virtual void writeProperties(QXmlStreamWriter& writer);
@@ -47,20 +57,25 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         QString remoteTriggerId = Output::DEFAULT_REMOTE_TRIGGER_ID;
 
         int channel = Output::DEFAULT_CHANNEL;
+        int channelOverrideValue = 0;
         int videolayer = Output::DEFAULT_VIDEOLAYER;
         int delay = Output::DEFAULT_DELAY;
         int duration = Output::DEFAULT_DURATION ;
         bool allowGpi = Output::DEFAULT_ALLOW_GPI;
         bool allowRemoteTriggering = Output::DEFAULT_ALLOW_REMOTE_TRIGGERING;
+        int triggerBank = 0;
+        QString cloneGroupId;
 
-
-    private:
-        Q_SIGNAL void channelChanged(int);
-        Q_SIGNAL void videolayerChanged(int);
-        Q_SIGNAL void delayChanged(int);
-        Q_SIGNAL void durationChanged(int);
-        Q_SIGNAL void allowGpiChanged(bool);
-        Q_SIGNAL void allowRemoteTriggeringChanged(bool);
-        Q_SIGNAL void remoteTriggerIdChanged(const QString&);
-        Q_SIGNAL void storyIdChanged(const QString&);
+    signals:
+        void channelChanged(int);
+        void videolayerChanged(int);
+        void delayChanged(int);
+        void durationChanged(int);
+        void allowGpiChanged(bool);
+        void allowRemoteTriggeringChanged(bool);
+        void remoteTriggerIdChanged(const QString&);
+        void storyIdChanged(const QString&);
+        void triggerBankChanged(int);
+        void cloneGroupIdChanged(const QString&);
+        void propertyChanged();
 };

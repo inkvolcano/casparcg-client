@@ -32,24 +32,28 @@ void VolumeCommand::setVolume(float volume)
 {
     this->volume = volume;
     emit volumeChanged(this->volume);
+    emit propertyChanged();
 }
 
 void VolumeCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void VolumeCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void VolumeCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void VolumeCommand::readProperties(boost::property_tree::wptree& pt)

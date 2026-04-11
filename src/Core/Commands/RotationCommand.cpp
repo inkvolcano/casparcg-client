@@ -36,30 +36,35 @@ void RotationCommand::setRotation(float rotation)
 {
     this->rotation = rotation;
     emit rotationChanged(this->rotation);
+    emit propertyChanged();
 }
 
 void RotationCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void RotationCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void RotationCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void RotationCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void RotationCommand::readProperties(boost::property_tree::wptree& pt)

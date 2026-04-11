@@ -26,18 +26,21 @@ void RouteVideolayerCommand::setFromChannel(int fromChannel)
 {
     this->fromChannel = fromChannel;
     emit fromChannelChanged(this->fromChannel);
+    emit propertyChanged();
 }
 
 void RouteVideolayerCommand::setFromVideolayer(int fromVideolayer)
 {
     this->fromVideolayer = fromVideolayer;
     emit fromVideolayerChanged(this->fromVideolayer);
+    emit propertyChanged();
 }
 
 void RouteVideolayerCommand::setOutputDelay(int delay)
 {
     this->outputDelay = delay;
     emit outputDelayChanged(this->outputDelay);
+    emit propertyChanged();
 }
 
 void RouteVideolayerCommand::readProperties(boost::property_tree::wptree& pt)

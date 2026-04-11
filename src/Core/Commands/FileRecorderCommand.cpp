@@ -31,24 +31,28 @@ void FileRecorderCommand::setOutput(const QString& output)
 {
     this->output = output;
     emit outputChanged(this->output);
+    emit propertyChanged();
 }
 
 void FileRecorderCommand::setCodec(const QString& codec)
 {
     this->codec = codec;
     emit codecChanged(this->codec);
+    emit propertyChanged();
 }
 
 void FileRecorderCommand::setPreset(const QString& preset)
 {
     this->preset = preset;
     emit presetChanged(this->preset);
+    emit propertyChanged();
 }
 
 void FileRecorderCommand::setWithAlpha(bool withAlpha)
 {
     this->withAlpha = withAlpha;
     emit withAlphaChanged(this->withAlpha);
+    emit propertyChanged();
 }
 
 void FileRecorderCommand::readProperties(boost::property_tree::wptree& pt)

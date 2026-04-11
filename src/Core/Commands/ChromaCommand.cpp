@@ -31,24 +31,28 @@ void ChromaCommand::setKey(const QString& chromaKey)
 {
     this->key = chromaKey;
     emit keyChanged(this->key);
+    emit propertyChanged();
 }
 
 void ChromaCommand::setSpread(float stop)
 {
     this->spread = stop;
     emit spreadChanged(this->spread);
+    emit propertyChanged();
 }
 
 void ChromaCommand::setSpill(float spill)
 {
     this->spill = spill;
     emit spillChanged(this->spill);
+    emit propertyChanged();
 }
 
 void ChromaCommand::setThreshold(float start)
 {
     this->threshold = start;
     emit thresholdChanged(this->threshold);
+    emit propertyChanged();
 }
 
 void ChromaCommand::readProperties(boost::property_tree::wptree& pt)

@@ -23,20 +23,20 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         virtual void readProperties(boost::property_tree::wptree& pt);
         virtual void writeProperties(QXmlStreamWriter& writer);
 
-        bool getAutoStep() const;
         const QString& getNotes() const;
         bool getAutoPlay() const;
+        bool getLoop() const;
 
-        void setAutoStep(bool autoStep);
         void setNotes(const QString& notes);
         void setAutoPlay(bool autoPlay);
+        void setLoop(bool loop);
 
     private:
         QString notes = Group::DEFAULT_NOTE;
-        bool autoStep = Group::DEFAULT_AUTO_STEP;
         bool autoPlay = Group::DEFAULT_AUTO_PLAY;
+        bool loop = Group::DEFAULT_LOOP;
 
         Q_SIGNAL void notesChanged(const QString&);
-        Q_SIGNAL void autoStepChanged(bool);
         Q_SIGNAL void autoPlayChanged(bool);
+        Q_SIGNAL void loopChanged(bool);
 };

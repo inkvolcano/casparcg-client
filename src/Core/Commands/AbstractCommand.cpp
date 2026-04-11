@@ -1,5 +1,7 @@
 #include "AbstractCommand.h"
 
+#include "CloneGroupRegistry.h"
+
 #include <QtCore/QXmlStreamWriter>
 
 AbstractCommand::AbstractCommand(QObject* parent)
@@ -12,6 +14,23 @@ AbstractCommand::~AbstractCommand()
 }
 
 int AbstractCommand::getChannel() const
+{
+    if (this->channelOverrideValue > 0)
+        return this->channelOverrideValue;
+    return this->channel;
+}
+
+void AbstractCommand::setChannelOverride(int channel)
+{
+    this->channelOverrideValue = channel;
+}
+
+void AbstractCommand::clearChannelOverride()
+{
+    this->channelOverrideValue = 0;
+}
+
+int AbstractCommand::getBaseChannel() const
 {
     return this->channel;
 }
@@ -54,49 +73,88 @@ QString AbstractCommand::getStoryId() const
 void AbstractCommand::setChannel(int channel)
 {
     this->channel = channel;
+    this->channelOverrideValue = 0; // Clear preview override when channel is explicitly set.
     emit channelChanged(this->channel);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setVideolayer(int videolayer)
 {
     this->videolayer = videolayer;
     emit videolayerChanged(this->videolayer);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setDelay(int delay)
 {
     this->delay = delay;
     emit delayChanged(this->delay);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setDuration(int duration)
 {
     this->duration = duration;
     emit durationChanged(this->duration);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setAllowGpi(bool allowGpi)
 {
     this->allowGpi = allowGpi;
     emit allowGpiChanged(this->allowGpi);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setAllowRemoteTriggering(bool allowRemoteTriggering)
 {
     this->allowRemoteTriggering = allowRemoteTriggering;
     emit allowRemoteTriggeringChanged(this->allowRemoteTriggering);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setRemoteTriggerId(const QString& remoteTriggerId)
 {
     this->remoteTriggerId = remoteTriggerId;
     emit remoteTriggerIdChanged(this->remoteTriggerId);
+    emit propertyChanged();
 }
 
 void AbstractCommand::setStoryId(const QString& storyId)
 {
     this->storyId = storyId;
     emit storyIdChanged(this->storyId);
+    emit propertyChanged();
+}
+
+int AbstractCommand::getTriggerBank() const
+{
+    return this->triggerBank;
+}
+
+void AbstractCommand::setTriggerBank(int triggerBank)
+{
+    this->triggerBank = triggerBank;
+    emit triggerBankChanged(this->triggerBank);
+    emit propertyChanged();
+}
+
+QString AbstractCommand::getCloneGroupId() const
+{
+    return this->cloneGroupId;
+}
+
+void AbstractCommand::setCloneGroupId(const QString& cloneGroupId)
+{
+    if (!this->cloneGroupId.isEmpty() && this->cloneGroupId != cloneGroupId)
+        CloneGroupRegistry::getInstance().unregisterCommand(this);
+
+    this->cloneGroupId = cloneGroupId;
+
+    if (!cloneGroupId.isEmpty())
+        CloneGroupRegistry::getInstance().registerCommand(cloneGroupId, this);
+
+    emit cloneGroupIdChanged(this->cloneGroupId);
 }
 
 void AbstractCommand::readProperties(boost::property_tree::wptree& pt)
@@ -109,11 +167,13 @@ void AbstractCommand::readProperties(boost::property_tree::wptree& pt)
     setAllowRemoteTriggering(pt.get(L"allowremotetriggering", Output::DEFAULT_ALLOW_REMOTE_TRIGGERING));
     setRemoteTriggerId(QString::fromStdWString(pt.get(L"remotetriggerid", Output::DEFAULT_REMOTE_TRIGGER_ID.toStdWString())));
     setStoryId(QString::fromStdWString(pt.get(L"storyid", QString("").toStdWString())));
+    setTriggerBank(pt.get(L"triggerbank", 0));
+    setCloneGroupId(QString::fromStdWString(pt.get(L"clonegroupid", QString("").toStdWString())));
 }
 
 void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
 {
-    writer.writeTextElement("channel", QString::number(getChannel()));
+    writer.writeTextElement("channel", QString::number(getBaseChannel()));
     writer.writeTextElement("videolayer", QString::number(getVideolayer()));
     writer.writeTextElement("delay", QString::number(getDelay()));
     writer.writeTextElement("duration", QString::number(getDuration()));
@@ -121,4 +181,7 @@ void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("allowremotetriggering", (getAllowRemoteTriggering() == true) ? "true" : "false");
     writer.writeTextElement("remotetriggerid", getRemoteTriggerId());
     writer.writeTextElement("storyid", getStoryId());
+    writer.writeTextElement("triggerbank", QString::number(getTriggerBank()));
+    if (!getCloneGroupId().isEmpty())
+        writer.writeTextElement("clonegroupid", getCloneGroupId());
 }

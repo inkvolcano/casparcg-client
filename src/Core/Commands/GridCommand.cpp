@@ -31,24 +31,28 @@ void GridCommand::setGrid(int grid)
 {
     this->grid = grid;
     emit gridChanged(this->grid);
+    emit propertyChanged();
 }
 
 void GridCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void GridCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void GridCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void GridCommand::readProperties(boost::property_tree::wptree& pt)

@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractCommand.h"
+#include "TransformData.h"
 
 #include "Global.h"
 
@@ -41,6 +42,9 @@ class CORE_EXPORT AudioCommand : public AbstractCommand
         void setLoop(bool loop);
         void setUseAuto(bool useAuto);
 
+        TransformData& getTransform();
+        const TransformData& getTransform() const;
+
     private:
         QString audioName = Audio::DEFAULT_NAME;
         QString transition = Mixer::DEFAULT_TRANSITION;
@@ -50,6 +54,7 @@ class CORE_EXPORT AudioCommand : public AbstractCommand
         bool loop = Audio::DEFAULT_LOOP;
         bool triggerOnNext = Audio::DEFAULT_TRIGGER_ON_NEXT;
         bool useAuto = Audio::DEFAULT_USE_AUTO;
+        TransformData m_transform;
 
         Q_SIGNAL void audioNameChanged(const QString&);
         Q_SIGNAL void transitionChanged(const QString&);

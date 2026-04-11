@@ -41,36 +41,42 @@ void DeckLinkInputCommand::setDevice(int device)
 {
     this->device = device;
     emit deviceChanged(this->device);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::setFormat(const QString& format)
 {
     this->format = format;
     emit formatChanged(this->format);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::setTransition(const QString& transition)
 {
     this->transition = transition;
     emit transitionChanged(this->transition);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::setDirection(const QString& direction)
 {
     this->direction = direction;
     emit directionChanged(this->direction);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void DeckLinkInputCommand::readProperties(boost::property_tree::wptree& pt)

@@ -16,6 +16,7 @@ void BlendModeCommand::setBlendMode(const QString& blendMode)
 {
     this->blendMode = blendMode;
     emit blendModeChanged(this->blendMode);
+    emit propertyChanged();
 }
 
 void BlendModeCommand::readProperties(boost::property_tree::wptree& pt)

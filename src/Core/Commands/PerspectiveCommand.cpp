@@ -76,78 +76,91 @@ void PerspectiveCommand::setUpperLeftX(float upperLeftX)
 {
     this->upperLeftX = upperLeftX;
     emit upperLeftXChanged(this->upperLeftX);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setUpperLeftY(float upperLeftY)
 {
     this->upperLeftY = upperLeftY;
     emit upperLeftYChanged(this->upperLeftY);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setUpperRightX(float upperRightX)
 {
     this->upperRightX = upperRightX;
     emit upperRightXChanged(this->upperRightX);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setUpperRightY(float upperRightY)
 {
     this->upperRightY = upperRightY;
     emit upperRightYChanged(this->upperRightY);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setLowerRightX(float lowerRightX)
 {
     this->lowerRightX = lowerRightX;
     emit lowerRightXChanged(this->lowerRightX);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setLowerRightY(float lowerRightY)
 {
     this->lowerRightY = lowerRightY;
     emit lowerRightYChanged(this->lowerRightY);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setLowerLeftX(float lowerLeftX)
 {
     this->lowerLeftX = lowerLeftX;
     emit lowerLeftXChanged(this->lowerLeftX);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setLowerLeftY(float lowerLeftY)
 {
     this->lowerLeftY = lowerLeftY;
     emit lowerLeftYChanged(this->lowerLeftY);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::setUseMipmap(bool useMipmap)
 {
     this->useMipmap = useMipmap;
     emit useMipmapChanged(this->useMipmap);
+    emit propertyChanged();
 }
 
 void PerspectiveCommand::readProperties(boost::property_tree::wptree& pt)

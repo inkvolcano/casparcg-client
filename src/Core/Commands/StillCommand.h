@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractCommand.h"
+#include "TransformData.h"
 
 #include "Global.h"
 
@@ -30,6 +31,7 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         const QString& getDirection() const;
         bool getTriggerOnNext() const;
         bool getUseAuto() const;
+        bool getAutoPlay() const;
 
         void setImageName(const QString& imageName);
         void setTransition(const QString& transition);
@@ -38,6 +40,10 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         void setDirection(const QString& direction);
         void setTriggerOnNext(bool triggerOnNext);
         void setUseAuto(bool useAuto);
+        void setAutoPlay(bool autoPlay);
+
+        TransformData& getTransform();
+        const TransformData& getTransform() const;
 
     private:
         QString imageName = Still::DEFAULT_NAME;
@@ -47,6 +53,8 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         QString direction = Mixer::DEFAULT_DIRECTION;
         bool triggerOnNext = Still::DEFAULT_TRIGGER_ON_NEXT;
         bool useAuto = Still::DEFAULT_USE_AUTO;
+        bool autoPlay = false;
+        TransformData m_transform;
 
         Q_SIGNAL void imageNameChanged(const QString&);
         Q_SIGNAL void transitionChanged(const QString&);
@@ -55,4 +63,5 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         Q_SIGNAL void tweenChanged(const QString&);
         Q_SIGNAL void triggerOnNextChanged(bool);
         Q_SIGNAL void useAutoChanged(bool);
+        Q_SIGNAL void autoPlayChanged(bool);
 };

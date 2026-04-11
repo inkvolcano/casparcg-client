@@ -36,18 +36,21 @@ void HttpPostCommand::setUrl(const QString& url)
 {
     this->url = url;
     emit urlChanged(this->url);
+    emit propertyChanged();
 }
 
 void HttpPostCommand::setHttpDataModels(const QList<KeyValueModel>& models)
 {
     this->models = models;
     emit httpDataChanged(this->models);
+    emit propertyChanged();
 }
 
 void HttpPostCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void HttpPostCommand::readProperties(boost::property_tree::wptree& pt)
@@ -61,8 +64,8 @@ void HttpPostCommand::readProperties(boost::property_tree::wptree& pt)
     {
         for (const boost::property_tree::wptree::value_type &value : pt.get_child(L"httpdata"))
         {
-            this->models.push_back(KeyValueModel(QString::fromStdWString(value.second.get<std::wstring>(L"key")),
-                                                 QString::fromStdWString(value.second.get<std::wstring>(L"value"))));
+            this->models.push_back(KeyValueModel(QString::fromStdWString(value.second.get(L"key", L"")),
+                                                 QString::fromStdWString(value.second.get(L"value", L""))));
         }
     }
 }

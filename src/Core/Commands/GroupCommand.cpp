@@ -7,11 +7,6 @@ GroupCommand::GroupCommand(QObject* parent)
 {
 }
 
-bool GroupCommand::getAutoStep() const
-{
-    return this->autoStep;
-}
-
 const QString& GroupCommand::getNotes() const
 {
     return this->notes;
@@ -22,22 +17,30 @@ bool GroupCommand::getAutoPlay() const
     return this->autoPlay;
 }
 
-void GroupCommand::setAutoStep(bool autoStep)
+bool GroupCommand::getLoop() const
 {
-    this->autoStep = autoStep;
-    emit autoStepChanged(this->autoStep);
+    return this->loop;
 }
 
 void GroupCommand::setAutoPlay(bool autoPlay)
 {
     this->autoPlay = autoPlay;
     emit autoPlayChanged(this->autoPlay);
+    emit propertyChanged();
+}
+
+void GroupCommand::setLoop(bool loop)
+{
+    this->loop = loop;
+    emit loopChanged(this->loop);
+    emit propertyChanged();
 }
 
 void GroupCommand::setNotes(const QString& notes)
 {
     this->notes = notes;
     emit notesChanged(this->notes);
+    emit propertyChanged();
 }
 
 void GroupCommand::readProperties(boost::property_tree::wptree& pt)
@@ -45,8 +48,8 @@ void GroupCommand::readProperties(boost::property_tree::wptree& pt)
     AbstractCommand::readProperties(pt);
 
     setNotes(QString::fromStdWString(pt.get(L"notes", Group::DEFAULT_NOTE.toStdWString())));
-    setAutoStep(pt.get(L"autostep", Group::DEFAULT_AUTO_STEP));
     setAutoPlay(pt.get(L"autoplay", Group::DEFAULT_AUTO_PLAY));
+    setLoop(pt.get(L"loop", Group::DEFAULT_LOOP));
 }
 
 void GroupCommand::writeProperties(QXmlStreamWriter& writer)
@@ -54,6 +57,6 @@ void GroupCommand::writeProperties(QXmlStreamWriter& writer)
     AbstractCommand::writeProperties(writer);
 
     writer.writeTextElement("notes", this->getNotes());
-    writer.writeTextElement("autostep", (getAutoStep() == true) ? "true" : "false");
     writer.writeTextElement("autoplay", (getAutoPlay() == true) ? "true" : "false");
+    writer.writeTextElement("loop", (getLoop() == true) ? "true" : "false");
 }

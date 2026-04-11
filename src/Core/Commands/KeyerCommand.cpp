@@ -16,6 +16,7 @@ void KeyerCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void KeyerCommand::readProperties(boost::property_tree::wptree& pt)

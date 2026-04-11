@@ -16,6 +16,7 @@ void PlayoutCommand::setPlayoutCommand(const QString& command)
 {
     this->command = command;
     emit playoutCommandChanged(this->command);
+    emit propertyChanged();
 }
 
 void PlayoutCommand::readProperties(boost::property_tree::wptree& pt)

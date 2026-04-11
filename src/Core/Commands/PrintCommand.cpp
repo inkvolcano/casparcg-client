@@ -16,6 +16,7 @@ void PrintCommand::setOutput(const QString& output)
 {
     this->output = output;
     emit outputChanged(this->output);
+    emit propertyChanged();
 }
 
 void PrintCommand::readProperties(boost::property_tree::wptree& pt)

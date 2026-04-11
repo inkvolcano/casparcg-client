@@ -19,11 +19,24 @@ const QString SolidColorCommand::getPremultipliedColor() const
     QString hexColor = this->color;
     hexColor.remove('#');
 
-    int alpha = hexColor.mid(0, 2).toInt(0, 16);
-    int red = hexColor.mid(2, 2).toInt(0, 16);
-    int green = hexColor.mid(4, 2).toInt(0, 16);
-    int blue = hexColor.mid(6, 2).toInt(0, 16);
+    // Support both #AARRGGBB (8-char) and #RRGGBB (6-char) formats.
+    int alpha, red, green, blue;
+    if (hexColor.length() >= 8)
+    {
+        alpha = hexColor.mid(0, 2).toInt(nullptr, 16);
+        red = hexColor.mid(2, 2).toInt(nullptr, 16);
+        green = hexColor.mid(4, 2).toInt(nullptr, 16);
+        blue = hexColor.mid(6, 2).toInt(nullptr, 16);
+    }
+    else
+    {
+        alpha = 255;
+        red = hexColor.mid(0, 2).toInt(nullptr, 16);
+        green = hexColor.mid(2, 2).toInt(nullptr, 16);
+        blue = hexColor.mid(4, 2).toInt(nullptr, 16);
+    }
 
+    // CasparCG expects premultiplied alpha for the color producer.
     red = (red * alpha) / 255;
     green = (green * alpha) / 255;
     blue = (blue * alpha) / 255;
@@ -68,42 +81,49 @@ void SolidColorCommand::setColor(const QString& color)
 {
     this->color = color;
     emit colorChanged(this->color);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setTransition(const QString& transition)
 {
     this->transition = transition;
     emit transitionChanged(this->transition);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setDirection(const QString& direction)
 {
     this->direction = direction;
     emit directionChanged(this->direction);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setUseAuto(bool useAuto)
 {
     this->useAuto = useAuto;
     emit useAutoChanged(this->useAuto);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void SolidColorCommand::readProperties(boost::property_tree::wptree& pt)

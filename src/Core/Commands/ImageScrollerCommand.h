@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractCommand.h"
+#include "TransformData.h"
 
 #include "Global.h"
 
@@ -35,12 +36,16 @@ class CORE_EXPORT ImageScrollerCommand : public AbstractCommand
         void setPremultiply(bool premultiply);
         void setProgressive(bool progressive);
 
+        TransformData& getTransform();
+        const TransformData& getTransform() const;
+
     private:
         QString imageScrollerName = ImageScroller::DEFAULT_NAME;
         int blur = ImageScroller::DEFAULT_BLUR;
         int speed = ImageScroller::DEFAULT_SPEED;
         bool premultiply = ImageScroller::DEFAULT_PREMULTIPLY;
         bool progressive = ImageScroller::DEFAULT_PROGRESSIVE;
+        TransformData m_transform;
 
         Q_SIGNAL void blurChanged(int);
         Q_SIGNAL void speedChanged(int);

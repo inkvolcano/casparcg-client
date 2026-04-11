@@ -41,36 +41,42 @@ void OscOutputCommand::setOutput(const QString& output)
 {
     this->output = output;
     emit outputChanged(this->output);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::setPath(const QString& path)
 {
     this->path = path;
     emit pathChanged(this->path);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::setMessage(const QString& message)
 {
     this->message = message;
     emit messageChanged(this->message);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::setType(const QString& type)
 {
     this->type = type;
     emit typeChanged(this->type);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::setUseBundle(bool useBundle)
 {
     this->useBundle = useBundle;
     emit useBundleChanged(this->useBundle);
+    emit propertyChanged();
 }
 
 void OscOutputCommand::readProperties(boost::property_tree::wptree& pt)

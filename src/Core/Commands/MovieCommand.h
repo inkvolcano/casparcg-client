@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractCommand.h"
+#include "TransformData.h"
 
 #include "Global.h"
 
@@ -47,6 +48,9 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         void setLength(int length);
         void setAutoPlay(bool autoPlay);
 
+        TransformData& getTransform();
+        const TransformData& getTransform() const;
+
     private:
         QString videoName = Movie::DEFAULT_NAME;
         QString transition = Mixer::DEFAULT_TRANSITION;
@@ -59,6 +63,7 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         int seek = Movie::DEFAULT_SEEK;
         int length = Movie::DEFAULT_LENGTH;
         bool autoPlay = Movie::DEFAULT_AUTO_PLAY;
+        TransformData m_transform;
 
         Q_SIGNAL void videoNameChanged(const QString&);
         Q_SIGNAL void transitionChanged(const QString&);

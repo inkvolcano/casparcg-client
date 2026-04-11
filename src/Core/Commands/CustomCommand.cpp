@@ -71,72 +71,84 @@ void CustomCommand::setStopCommand(const QString& command)
 {
     this->stopCommand = command;
     emit stopCommandChanged(this->stopCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setPlayCommand(const QString& command)
 {
     this->playCommand = command;
     emit playCommandChanged(this->playCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setLoadCommand(const QString& command)
 {
     this->loadCommand = command;
     emit loadCommandChanged(this->loadCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setPauseCommand(const QString& command)
 {
     this->pauseCommand = command;
     emit pauseCommandChanged(this->pauseCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setNextCommand(const QString& command)
 {
     this->nextCommand = command;
     emit nextCommandChanged(this->nextCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setUpdateCommand(const QString& command)
 {
     this->updateCommand = command;
     emit updateCommandChanged(this->updateCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setInvokeCommand(const QString& command)
 {
     this->invokeCommand = command;
     emit invokeCommandChanged(this->invokeCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setPreviewCommand(const QString& command)
 {
     this->previewCommand = command;
     emit previewCommandChanged(this->previewCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setClearCommand(const QString& command)
 {
     this->clearCommand = command;
     emit clearCommandChanged(this->clearCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setClearVideolayerCommand(const QString& command)
 {
     this->clearVideolayerCommand = command;
     emit clearVideolayerCommandChanged(this->clearVideolayerCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setClearChannelCommand(const QString& command)
 {
     this->clearChannelCommand = command;
     emit clearChannelCommandChanged(this->clearChannelCommand);
+    emit propertyChanged();
 }
 
 void CustomCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void CustomCommand::readProperties(boost::property_tree::wptree& pt)

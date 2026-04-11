@@ -7,6 +7,9 @@ HtmlCommand::HtmlCommand(QObject* parent)
 {
 }
 
+TransformData& HtmlCommand::getTransform() { return this->m_transform; }
+const TransformData& HtmlCommand::getTransform() const { return this->m_transform; }
+
 const QString& HtmlCommand::getUrl() const
 {
     return this->url;
@@ -51,48 +54,56 @@ void HtmlCommand::setUrl(const QString& url)
 {
     this->url = url;
     emit urlChanged(this->url);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setTransition(const QString& transition)
 {
     this->transition = transition;
     emit transitionChanged(this->transition);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setDirection(const QString& direction)
 {
     this->direction = direction;
     emit directionChanged(this->direction);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setFreezeOnLoad(bool freezeOnLoad)
 {
     this->freezeOnLoad = freezeOnLoad;
     emit freezeOnLoadChanged(this->freezeOnLoad);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void HtmlCommand::setUseAuto(bool useAuto)
 {
     this->useAuto = useAuto;
     emit useAutoChanged(this->useAuto);
+    emit propertyChanged();
 }
 
 void HtmlCommand::readProperties(boost::property_tree::wptree& pt)
@@ -107,6 +118,9 @@ void HtmlCommand::readProperties(boost::property_tree::wptree& pt)
     setFreezeOnLoad(pt.get(L"freezeonload", Html::DEFAULT_FREEZE_ON_LOAD));
     setTriggerOnNext(pt.get(L"triggeronnext", Html::DEFAULT_TRIGGER_ON_NEXT));
     setUseAuto(pt.get(L"useauto", Html::DEFAULT_USE_AUTO));
+
+    if (pt.count(L"transform") > 0)
+        m_transform.readProperties(pt.get_child(L"transform"));
 }
 
 void HtmlCommand::writeProperties(QXmlStreamWriter& writer)
@@ -121,4 +135,6 @@ void HtmlCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("freezeonload", (getFreezeOnLoad() == true) ? "true" : "false");
     writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
     writer.writeTextElement("useauto", (getUseAuto() == true) ? "true" : "false");
+
+    m_transform.writeProperties(writer);
 }

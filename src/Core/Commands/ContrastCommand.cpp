@@ -31,24 +31,28 @@ void ContrastCommand::setContrast(float contrast)
 {
     this->contrast = contrast;
     emit contrastChanged(this->contrast);
+    emit propertyChanged();
 }
 
 void ContrastCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void ContrastCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void ContrastCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void ContrastCommand::readProperties(boost::property_tree::wptree& pt)

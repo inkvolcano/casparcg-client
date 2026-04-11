@@ -31,24 +31,28 @@ void BrightnessCommand::setBrightness(float brightness)
 {
     this->brightness = brightness;
     emit brightnessChanged(this->brightness);
+    emit propertyChanged();
 }
 
 void BrightnessCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void BrightnessCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void BrightnessCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void BrightnessCommand::readProperties(boost::property_tree::wptree& pt)

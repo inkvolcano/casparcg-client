@@ -56,54 +56,63 @@ void FillCommand::setPositionX(float positionX)
 {
     this->positionX = positionX;
     emit positionXChanged(this->positionX);
+    emit propertyChanged();
 }
 
 void FillCommand::setPositionY(float positionY)
 {
     this->positionY = positionY;
     emit positionYChanged(this->positionY);
+    emit propertyChanged();
 }
 
 void FillCommand::setScaleX(float scaleX)
 {
     this->scaleX = scaleX;
     emit scaleXChanged(this->scaleX);
+    emit propertyChanged();
 }
 
 void FillCommand::setScaleY(float scaleY)
 {
     this->scaleY = scaleY;
     emit scaleYChanged(this->scaleY);
+    emit propertyChanged();
 }
 
 void FillCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void FillCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void FillCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void FillCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void FillCommand::setUseMipmap(bool useMipmap)
 {
     this->useMipmap = useMipmap;
     emit useMipmapChanged(this->useMipmap);
+    emit propertyChanged();
 }
 
 void FillCommand::readProperties(boost::property_tree::wptree& pt)

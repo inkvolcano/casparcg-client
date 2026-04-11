@@ -46,42 +46,49 @@ void CropCommand::setLeft(float left)
 {
     this->left = left;
     emit leftChanged(this->left);
+    emit propertyChanged();
 }
 
 void CropCommand::setTop(float top)
 {
     this->top = top;
     emit topChanged(this->top);
+    emit propertyChanged();
 }
 
 void CropCommand::setRight(float right)
 {
     this->right = right;
     emit rightChanged(this->right);
+    emit propertyChanged();
 }
 
 void CropCommand::setBottom(float bottom)
 {
     this->bottom = bottom;
     emit bottomChanged(this->bottom);
+    emit propertyChanged();
 }
 
 void CropCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void CropCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void CropCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void CropCommand::readProperties(boost::property_tree::wptree& pt)

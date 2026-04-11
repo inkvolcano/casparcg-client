@@ -51,48 +51,56 @@ void LevelsCommand::setMinIn(float minIn)
 {
     this->minIn = minIn;
     emit minInChanged(this->minIn);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setMaxIn(float maxIn)
 {
     this->maxIn = maxIn;
     emit maxInChanged(this->maxIn);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setMinOut(float minOut)
 {
     this->minOut = minOut;
     emit minOutChanged(this->minOut);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setMaxOut(float maxOut)
 {
     this->maxOut = maxOut;
     emit maxOutChanged(this->maxOut);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setGamma(float gamma)
 {
     this->gamma = gamma;
     emit gammaChanged(this->gamma);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void LevelsCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void LevelsCommand::readProperties(boost::property_tree::wptree& pt)

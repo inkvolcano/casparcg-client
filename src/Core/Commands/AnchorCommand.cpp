@@ -41,36 +41,42 @@ void AnchorCommand::setPositionX(float positionX)
 {
     this->positionX = positionX;
     emit positionXChanged(this->positionX);
+    emit propertyChanged();
 }
 
 void AnchorCommand::setPositionY(float positionY)
 {
     this->positionY = positionY;
     emit positionYChanged(this->positionY);
+    emit propertyChanged();
 }
 
 void AnchorCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void AnchorCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void AnchorCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void AnchorCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void AnchorCommand::readProperties(boost::property_tree::wptree& pt)

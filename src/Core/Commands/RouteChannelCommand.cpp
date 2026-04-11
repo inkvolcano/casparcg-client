@@ -21,12 +21,14 @@ void RouteChannelCommand::setFromChannel(int fromChannel)
 {
     this->fromChannel = fromChannel;
     emit fromChannelChanged(this->fromChannel);
+    emit propertyChanged();
 }
 
 void RouteChannelCommand::setOutputDelay(int delay)
 {
     this->outputDelay = delay;
     emit outputDelayChanged(this->outputDelay);
+    emit propertyChanged();
 }
 
 void RouteChannelCommand::readProperties(boost::property_tree::wptree& pt)

@@ -46,42 +46,49 @@ void ClipCommand::setLeft(float left)
 {
     this->left = left;
     emit leftChanged(this->left);
+    emit propertyChanged();
 }
 
 void ClipCommand::setWidth(float width)
 {
     this->width = width;
     emit widthChanged(this->width);
+    emit propertyChanged();
 }
 
 void ClipCommand::setTop(float top)
 {
     this->top = top;
     emit topChanged(this->top);
+    emit propertyChanged();
 }
 
 void ClipCommand::setHeight(float height)
 {
     this->height = height;
     emit heightChanged(this->height);
+    emit propertyChanged();
 }
 
 void ClipCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void ClipCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void ClipCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void ClipCommand::readProperties(boost::property_tree::wptree& pt)

@@ -7,6 +7,9 @@ MovieCommand::MovieCommand(QObject* parent)
 {
 }
 
+TransformData& MovieCommand::getTransform() { return this->m_transform; }
+const TransformData& MovieCommand::getTransform() const { return this->m_transform; }
+
 const QString& MovieCommand::getVideoName() const
 {
     return this->videoName;
@@ -66,66 +69,77 @@ void MovieCommand::setVideoName(const QString& videoName)
 {
     this->videoName = videoName;
     emit videoNameChanged(this->videoName);
+    emit propertyChanged();
 }
 
 void MovieCommand::setTransition(const QString& transition)
 {
     this->transition = transition;
     emit transitionChanged(this->transition);
+    emit propertyChanged();
 }
 
 void MovieCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void MovieCommand::setDirection(const QString& direction)
 {
     this->direction = direction;
     emit directionChanged(this->direction);
+    emit propertyChanged();
 }
 
 void MovieCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void MovieCommand::setLoop(bool loop)
 {
     this->loop = loop;
     emit loopChanged(this->loop);
+    emit propertyChanged();
 }
 
 void MovieCommand::setFreezeOnLoad(bool freezeOnLoad)
 {
     this->freezeOnLoad = freezeOnLoad;
     emit freezeOnLoadChanged(this->freezeOnLoad);
+    emit propertyChanged();
 }
 
 void MovieCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void MovieCommand::setSeek(int seek)
 {
     this->seek = seek;
     emit seekChanged(this->seek);
+    emit propertyChanged();
 }
 
 void MovieCommand::setLength(int length)
 {
     this->length = length;
     emit lengthChanged(this->length);
+    emit propertyChanged();
 }
 
 void MovieCommand::setAutoPlay(bool autoPlay)
 {
     this->autoPlay = autoPlay;
     emit autoPlayChanged(this->autoPlay);
+    emit propertyChanged();
 }
 
 void MovieCommand::readProperties(boost::property_tree::wptree& pt)
@@ -142,6 +156,9 @@ void MovieCommand::readProperties(boost::property_tree::wptree& pt)
     setFreezeOnLoad(pt.get(L"freezeonload", Movie::DEFAULT_FREEZE_ON_LOAD));
     setTriggerOnNext(pt.get(L"triggeronnext", Movie::DEFAULT_TRIGGER_ON_NEXT));
     setAutoPlay(pt.get(L"autoplay", Movie::DEFAULT_AUTO_PLAY));
+
+    if (pt.count(L"transform") > 0)
+        m_transform.readProperties(pt.get_child(L"transform"));
 }
 
 void MovieCommand::writeProperties(QXmlStreamWriter& writer)
@@ -158,4 +175,6 @@ void MovieCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("freezeonload", (getFreezeOnLoad() == true) ? "true" : "false");
     writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
     writer.writeTextElement("autoplay", (getAutoPlay() == true) ? "true" : "false");
+
+    m_transform.writeProperties(writer);
 }

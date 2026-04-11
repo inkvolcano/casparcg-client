@@ -21,12 +21,14 @@ void GpiOutputCommand::setGpoPort(int gpoPort)
 {
     this->gpoPort = gpoPort;
     emit gpoPortChanged(gpoPort);
+    emit propertyChanged();
 }
 
 void GpiOutputCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void GpiOutputCommand::readProperties(boost::property_tree::wptree& pt)

@@ -36,30 +36,35 @@ void OpacityCommand::setOpacity(float opacity)
 {
     this->opacity = opacity;
     emit opacityChanged(this->opacity);
+    emit propertyChanged();
 }
 
 void OpacityCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void OpacityCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void OpacityCommand::setTriggerOnNext(bool triggerOnNext)
 {
     this->triggerOnNext = triggerOnNext;
     emit triggerOnNextChanged(this->triggerOnNext);
+    emit propertyChanged();
 }
 
 void OpacityCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void OpacityCommand::readProperties(boost::property_tree::wptree& pt)

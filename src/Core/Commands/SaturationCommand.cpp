@@ -31,24 +31,28 @@ void SaturationCommand::setSaturation(float saturation)
 {
     this->saturation = saturation;
     emit saturationChanged(this->saturation);
+    emit propertyChanged();
 }
 
 void SaturationCommand::setTransitionDuration(int transitionDuration)
 {
     this->transitionDuration = transitionDuration;
     emit transitionDurationChanged(this->transitionDuration);
+    emit propertyChanged();
 }
 
 void SaturationCommand::setTween(const QString& tween)
 {
     this->tween = tween;
     emit tweenChanged(this->tween);
+    emit propertyChanged();
 }
 
 void SaturationCommand::setDefer(bool defer)
 {
     this->defer = defer;
     emit deferChanged(this->defer);
+    emit propertyChanged();
 }
 
 void SaturationCommand::readProperties(boost::property_tree::wptree& pt)
