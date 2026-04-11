@@ -3,6 +3,8 @@
 /build/
 /build-*
 /.DS_Store
+/.claude/
+nul
 
 # /src/
 /src/Solution.pro.user
@@ -11,3 +13,5 @@
 /src/.vs
 /src/cmake-build-*
 /src/.idea
+/src/Widgets/Images/SplashScreenold.png
+Usersnvanlcasparcg-clienttemp_tree.json
