@@ -1,12 +1,20 @@
 #include "InspectorTemplateWidget.h"
 #include "KeyValueDialog.h"
+#include "NumericValueDelegate.h"
 
 #include "Global.h"
 
+#include "DatabaseManager.h"
 #include "EventManager.h"
+#include "Events/StatusbarEvent.h"
+#include "Models/DeviceModel.h"
 #include "Models/KeyValueModel.h"
 
 #include <QtCore/QDebug>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QRegularExpression>
+#include <QtCore/QTextStream>
 
 #include <QtGui/QClipboard>
 #include <QtGui/QCursor>
@@ -14,6 +22,7 @@
 #include <QtGui/QResizeEvent>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QHeaderView>
 
 InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
     : QWidget(parent),
@@ -21,7 +30,30 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
 {
     setupUi(this);
 
-    this->treeWidgetTemplateData->setColumnWidth(1, 87);
+    this->labelFlashlayerField->hide();
+    this->spinBoxFlashlayer->hide();
+
+    this->comboBoxNewlineBehavior->addItem("Ignore");
+    this->comboBoxNewlineBehavior->addItem("innerText");
+    this->comboBoxNewlineBehavior->addItem("innerHTML");
+
+    // Numeric value delegate for the tree (shows up/down arrows per-row based on mode).
+    this->numericDelegate = new NumericValueDelegate(this);
+    this->treeWidgetTemplateData->setItemDelegateForColumn(1, this->numericDelegate);
+    this->treeWidgetTemplateData->setItemDelegateForColumn(2, this->numericDelegate);
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::dataChanged,
+                     this, [this]() {
+        if (this->command && !this->lock)
+            updateTemplateDataModels();
+    });
+
+    this->treeWidgetTemplateData->setColumnWidth(1, 44);
+
+    // Add a narrow 3rd column for up/down arrow buttons.
+    this->treeWidgetTemplateData->setColumnCount(3);
+    this->treeWidgetTemplateData->headerItem()->setText(2, "");
+    this->treeWidgetTemplateData->header()->resizeSection(2, 20);
+    this->treeWidgetTemplateData->header()->setSectionResizeMode(2, QHeaderView::Fixed);
     this->fieldCounter = this->treeWidgetTemplateData->invisibleRootItem()->childCount();
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(showAddTemplateDataDialog(const ShowAddTemplateDataDialogEvent&)), this, SLOT(showAddTemplateDataDialog(const ShowAddTemplateDataDialogEvent&)));
@@ -77,6 +109,8 @@ void InspectorTemplateWidget::showAddTemplateDataDialog(const ShowAddTemplateDat
         QTreeWidgetItem* treeItem = new QTreeWidgetItem();
         treeItem->setText(0, dialog->getKey());
         treeItem->setText(1, dialog->getValue());
+        treeItem->setData(0, Qt::UserRole, dialog->getMode());
+        treeItem->setData(0, Qt::UserRole + 1, dialog->getCycleValues());
 
         this->treeWidgetTemplateData->invisibleRootItem()->insertChild(this->treeWidgetTemplateData->currentIndex().row() + 1, treeItem);
         this->treeWidgetTemplateData->setCurrentItem(treeItem);
@@ -117,11 +151,12 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
         this->command = dynamic_cast<TemplateCommand*>(event.getCommand());
 
         this->spinBoxFlashlayer->setValue(this->command->getFlashlayer());
-        this->lineEditInvoke->setText(this->command->getInvoke());
+
         this->checkBoxUseStoredData->setChecked(this->command->getUseStoredData());
         this->checkBoxUseUppercaseData->setChecked(this->command->getUseUppercaseData());
         this->checkBoxTriggerOnNext->setChecked(this->command->getTriggerOnNext());
         this->checkBoxSendAsJson->setChecked(this->command->getSendAsJson());
+        this->comboBoxNewlineBehavior->setCurrentIndex(this->command->getNewlineBehavior());
 
         for (int i = this->treeWidgetTemplateData->invisibleRootItem()->childCount() - 1; i >= 0; i--)
             delete this->treeWidgetTemplateData->invisibleRootItem()->child(i);
@@ -132,6 +167,8 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
             QTreeWidgetItem* treeItem = new QTreeWidgetItem();
             treeItem->setText(0, model.getKey());
             treeItem->setText(1, model.getValue());
+            treeItem->setData(0, Qt::UserRole, model.getMode());
+            treeItem->setData(0, Qt::UserRole + 1, model.getCycleValues());
 
             this->treeWidgetTemplateData->invisibleRootItem()->addChild(treeItem);
 
@@ -145,11 +182,11 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
 void InspectorTemplateWidget::blockAllSignals(bool block)
 {
     this->spinBoxFlashlayer->blockSignals(block);
-    this->lineEditInvoke->blockSignals(block);
     this->checkBoxUseStoredData->blockSignals(block);
     this->checkBoxUseUppercaseData->blockSignals(block);
     this->checkBoxTriggerOnNext->blockSignals(block);
     this->checkBoxSendAsJson->blockSignals(block);
+    this->comboBoxNewlineBehavior->blockSignals(block);
     this->treeWidgetTemplateData->blockSignals(block);
 }
 
@@ -157,8 +194,12 @@ void InspectorTemplateWidget::updateTemplateDataModels()
 {
     QList<KeyValueModel> models;
     for (int i = 0; i < this->treeWidgetTemplateData->invisibleRootItem()->childCount(); i++)
-        models.push_back(KeyValueModel(this->treeWidgetTemplateData->invisibleRootItem()->child(i)->text(0),
-                                       this->treeWidgetTemplateData->invisibleRootItem()->child(i)->text(1)));
+    {
+        QTreeWidgetItem* child = this->treeWidgetTemplateData->invisibleRootItem()->child(i);
+        models.push_back(KeyValueModel(child->text(0), child->text(1),
+                                       child->data(0, Qt::UserRole).toInt(),
+                                       child->data(0, Qt::UserRole + 1).toString()));
+    }
 
     this->command->setTemplateDataModels(models);
 }
@@ -174,6 +215,8 @@ bool InspectorTemplateWidget::addRow()
         QTreeWidgetItem* treeItem = new QTreeWidgetItem();
         treeItem->setText(0, dialog->getKey());
         treeItem->setText(1, dialog->getValue());
+        treeItem->setData(0, Qt::UserRole, dialog->getMode());
+        treeItem->setData(0, Qt::UserRole + 1, dialog->getCycleValues());
 
         this->treeWidgetTemplateData->invisibleRootItem()->insertChild(this->treeWidgetTemplateData->currentIndex().row() + 1, treeItem);
         this->treeWidgetTemplateData->setCurrentItem(treeItem);
@@ -194,10 +237,14 @@ bool InspectorTemplateWidget::editRow()
     dialog->setTitle("Edit Template Data");
     dialog->setKey(this->treeWidgetTemplateData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetTemplateData->currentItem()->text(1));
+    dialog->setMode(this->treeWidgetTemplateData->currentItem()->data(0, Qt::UserRole).toInt());
+    dialog->setCycleValues(this->treeWidgetTemplateData->currentItem()->data(0, Qt::UserRole + 1).toString());
     if (dialog->exec() == QDialog::Accepted)
     {
         this->treeWidgetTemplateData->currentItem()->setText(0, dialog->getKey());
         this->treeWidgetTemplateData->currentItem()->setText(1, dialog->getValue());
+        this->treeWidgetTemplateData->currentItem()->setData(0, Qt::UserRole, dialog->getMode());
+        this->treeWidgetTemplateData->currentItem()->setData(0, Qt::UserRole + 1, dialog->getCycleValues());
 
         updateTemplateDataModels();
     }
@@ -237,8 +284,11 @@ bool InspectorTemplateWidget::copySelectedItem()
     if (this->treeWidgetTemplateData->selectedItems().count() == 0)
         return true;
 
-    data = this->treeWidgetTemplateData->selectedItems().at(0)->text(0);
-    data += "#" + this->treeWidgetTemplateData->selectedItems().at(0)->text(1);
+    QTreeWidgetItem* item = this->treeWidgetTemplateData->selectedItems().at(0);
+    data = item->text(0);
+    data += "#" + item->text(1);
+    data += "#" + QString::number(item->data(0, Qt::UserRole).toInt());
+    data += "#" + item->data(0, Qt::UserRole + 1).toString();
 
     qApp->clipboard()->setText(data);
 
@@ -250,29 +300,32 @@ bool InspectorTemplateWidget::pasteSelectedItem()
     if (qApp->clipboard()->text().isEmpty())
         return true;
 
-    if (qApp->clipboard()->text().split("#").count() < 2)
+    QStringList parts = qApp->clipboard()->text().split("#");
+    if (parts.count() < 2)
         return true;
 
     QTreeWidgetItem* treeItem = new QTreeWidgetItem();
-    treeItem->setText(0, qApp->clipboard()->text().split("#").at(0));
-    treeItem->setText(1, qApp->clipboard()->text().split("#").at(1));
+    treeItem->setText(0, parts.at(0));
+    treeItem->setText(1, parts.at(1));
+    if (parts.count() >= 3)
+        treeItem->setData(0, Qt::UserRole, parts.at(2).toInt());
+    if (parts.count() >= 4)
+        treeItem->setData(0, Qt::UserRole + 1, parts.at(3));
 
     this->treeWidgetTemplateData->invisibleRootItem()->insertChild(this->treeWidgetTemplateData->currentIndex().row() + 1, treeItem);
 
     return true;
 }
 
-void InspectorTemplateWidget::itemDoubleClicked(QTreeWidgetItem* current, int index)
+void InspectorTemplateWidget::itemDoubleClicked(QTreeWidgetItem* current, int column)
 {
     Q_UNUSED(current);
-    Q_UNUSED(index);
+
+    // Don't open the edit dialog when clicking the arrow button column.
+    if (column == 2)
+        return;
 
     editRow();
-}
-
-void InspectorTemplateWidget::invokeChanged(QString invoke)
-{
-    this->command->setInvoke(invoke);
 }
 
 void InspectorTemplateWidget::flashlayerChanged(int flashlayer)
@@ -300,6 +353,14 @@ void InspectorTemplateWidget::triggerOnNextChanged(int state)
     this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
 }
 
+void InspectorTemplateWidget::newlineBehaviorChanged(int index)
+{
+    if (this->command == NULL)
+        return;
+
+    this->command->setNewlineBehavior(index);
+}
+
 void InspectorTemplateWidget::currentItemChanged(QTreeWidgetItem* current, QTreeWidgetItem* previous)
 {
     Q_UNUSED(previous);
@@ -309,3 +370,96 @@ void InspectorTemplateWidget::currentItemChanged(QTreeWidgetItem* current, QTree
 
     updateTemplateDataModels();
 }
+
+void InspectorTemplateWidget::loadDebugData()
+{
+    try
+    {
+        if (this->command == NULL || this->model == NULL)
+            return;
+
+        QString deviceName = this->model->getDeviceName();
+        if (deviceName.isEmpty())
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("Load debug data: no device assigned to this item"));
+            return;
+        }
+
+        DeviceModel deviceModel = DatabaseManager::getInstance().getDeviceByName(deviceName);
+        QString templatePath = deviceModel.getTemplatePath();
+
+        if (templatePath.isEmpty())
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("No template path configured for device: " + deviceName));
+            return;
+        }
+
+        QString templateName = this->command->getTemplateName();
+        if (templateName.isEmpty())
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("Load debug data: no template name set"));
+            return;
+        }
+
+        QString filePath = QDir(templatePath).filePath(templateName + ".html");
+
+        QFile file(filePath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("Could not open template file: " + filePath));
+            return;
+        }
+
+        QString content = QTextStream(&file).readAll();
+        file.close();
+
+        QRegularExpression debugDataRegex("window\\.debugData\\s*=\\s*\\{([^}]*)\\}");
+        QRegularExpressionMatch match = debugDataRegex.match(content);
+        if (!match.hasMatch())
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("No window.debugData found in: " + filePath));
+            return;
+        }
+
+        QString dataBlock = match.captured(1);
+        QRegularExpression kvRegex("['\"]([^'\"]+)['\"]\\s*:\\s*['\"]([^'\"]*)['\"]");
+        QRegularExpressionMatchIterator it = kvRegex.globalMatch(dataBlock);
+
+        for (int i = this->treeWidgetTemplateData->invisibleRootItem()->childCount() - 1; i >= 0; i--)
+            delete this->treeWidgetTemplateData->invisibleRootItem()->child(i);
+
+        this->fieldCounter = 0;
+        while (it.hasNext())
+        {
+            QRegularExpressionMatch kvMatch = it.next();
+            QTreeWidgetItem* treeItem = new QTreeWidgetItem();
+            treeItem->setText(0, kvMatch.captured(1));
+            treeItem->setText(1, this->checkBoxImportValues->isChecked() ? kvMatch.captured(2) : QString());
+            this->treeWidgetTemplateData->invisibleRootItem()->addChild(treeItem);
+            this->fieldCounter++;
+        }
+
+        if (this->fieldCounter == 0)
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent("window.debugData found but no key-value pairs parsed in: " + filePath));
+            return;
+        }
+
+        updateTemplateDataModels();
+
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("Loaded %1 debug data fields from: %2").arg(this->fieldCounter).arg(filePath)));
+    }
+    catch (...)
+    {
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent("Load debug data: unexpected error occurred"));
+    }
+}
+

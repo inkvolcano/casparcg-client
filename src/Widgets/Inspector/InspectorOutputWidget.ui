@@ -123,18 +123,30 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="minimum">
+        <number>0</number>
+       </property>
        <property name="maximum">
-        <number>99999</number>
+        <number>999999999</number>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="labelDurationMillisecond">
+      <widget class="QPushButton" name="buttonDurationUnit">
        <property name="text">
-        <string/>
+        <string>ms</string>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>30</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -154,7 +166,7 @@
         </sizepolicy>
        </property>
        <property name="minimum">
-        <number>-1</number>
+        <number>0</number>
        </property>
        <property name="maximum">
         <number>999999999</number>
@@ -162,12 +174,21 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="labelDelayMillisecond">
+      <widget class="QPushButton" name="buttonDelayUnit">
        <property name="text">
-        <string/>
+        <string>ms</string>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>30</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="flat">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -177,6 +198,9 @@
     <widget class="QLineEdit" name="lineEditRemoteTriggerId">
      <property name="enabled">
       <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>OSC path: /control/UID/play (send integer 1 to trigger). Commands: play, playnow, stop, load, pause, next, update, invoke, preview, clear</string>
      </property>
     </widget>
    </item>
@@ -235,10 +259,30 @@
    <item row="8" column="0">
     <widget class="QLabel" name="labelRemoteTriggerIdField">
      <property name="text">
+      <string>⇥</string>
+     </property>
+     <property name="toolTip">
       <string>UID</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="0">
+    <widget class="QLabel" name="labelTriggerBankField">
+     <property name="text">
+      <string>Bank</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QLabel" name="labelTriggerBank">
+     <property name="text">
+      <string/>
      </property>
     </widget>
    </item>

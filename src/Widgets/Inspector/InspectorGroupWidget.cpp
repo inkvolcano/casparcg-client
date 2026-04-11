@@ -35,19 +35,26 @@ void InspectorGroupWidget::rundownItemSelected(const RundownItemSelectedEvent& e
         this->command = dynamic_cast<GroupCommand*>(event.getCommand());
 
         this->plainTextEditNotes->setPlainText(this->command->getNotes());
-        this->checkBoxAutoStep->setChecked(this->command->getAutoStep());
 
         if (this->enableOscInputControl)
         {
             this->labelAutoPlay->setVisible(true);
             this->checkBoxAutoPlay->setVisible(true);
             this->checkBoxAutoPlay->setChecked(this->command->getAutoPlay());
+
+            this->labelLoop->setVisible(true);
+            this->checkBoxLoop->setVisible(true);
+            this->checkBoxLoop->setChecked(this->command->getLoop());
         }
         else
         {
             this->labelAutoPlay->setVisible(false);
             this->checkBoxAutoPlay->setVisible(false);
             this->checkBoxAutoPlay->setChecked(false);
+
+            this->labelLoop->setVisible(false);
+            this->checkBoxLoop->setVisible(false);
+            this->checkBoxLoop->setChecked(false);
         }
     }
 
@@ -57,8 +64,8 @@ void InspectorGroupWidget::rundownItemSelected(const RundownItemSelectedEvent& e
 void InspectorGroupWidget::blockAllSignals(bool block)
 {
     this->plainTextEditNotes->blockSignals(block);
-    this->checkBoxAutoStep->blockSignals(block);
     this->checkBoxAutoPlay->blockSignals(block);
+    this->checkBoxLoop->blockSignals(block);
 }
 
 void InspectorGroupWidget::notesChanged()
@@ -74,22 +81,14 @@ void InspectorGroupWidget::resetNotes(QString note)
     this->command->setNotes(this->plainTextEditNotes->toPlainText());
 }
 
-void InspectorGroupWidget::autoStepChanged(int state)
-{
-    this->command->setAutoStep((state == Qt::Checked) ? true : false);
-}
-
-void InspectorGroupWidget::resetAutoStep(QString note)
-{
-    Q_UNUSED(note);
-
-    this->checkBoxAutoStep->setChecked(Group::DEFAULT_AUTO_STEP);
-    this->command->setAutoStep(this->checkBoxAutoStep->isChecked());
-}
-
 void InspectorGroupWidget::autoPlayChanged(int state)
 {
     this->command->setAutoPlay((state == Qt::Checked) ? true : false);
 
     EventManager::getInstance().fireAutoPlayChangedEvent(AutoPlayChangedEvent(this->checkBoxAutoPlay->isChecked()));
+}
+
+void InspectorGroupWidget::loopChanged(int state)
+{
+    this->command->setLoop((state == Qt::Checked) ? true : false);
 }

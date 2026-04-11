@@ -1,4 +1,5 @@
 #include "InspectorOutputWidget.h"
+#include "../Rundown/RundownWidgetHelper.h"
 
 #include "Global.h"
 
@@ -25,6 +26,7 @@
 #include "Commands/PrintCommand.h"
 #include "Commands/SaturationCommand.h"
 #include "Commands/SeparatorCommand.h"
+#include "Commands/GatewayCommand.h"
 #include "Commands/SolidColorCommand.h"
 #include "Commands/FadeToBlackCommand.h"
 #include "Commands/VolumeCommand.h"
@@ -44,13 +46,15 @@
 #include "Events/Inspector/LabelChangedEvent.h"
 #include "Events/Inspector/TargetChangedEvent.h"
 #include "Events/Inspector/VideolayerChangedEvent.h"
+#include "Models/ConfigurationModel.h"
 
+#include <QtCore/QtMath>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QLineEdit>
 
 InspectorOutputWidget::InspectorOutputWidget(QWidget *parent)
     : QWidget(parent),
-      command(NULL), model(NULL), delayType(""), libraryFilter("")
+      command(NULL), model(NULL), delayType(""), libraryFilter(""), forceMilliseconds(false)
 {
     setupUi(this);
 
@@ -59,6 +63,12 @@ InspectorOutputWidget::InspectorOutputWidget(QWidget *parent)
     this->delayType = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
 
     this->comboBoxTarget->lineEdit()->setStyleSheet("background-color: transparent; border-width: 0px;");
+
+    this->buttonDelayUnit->setStyleSheet("min-width: 20px; max-width: 30px; padding: 2px 4px;");
+    this->buttonDurationUnit->setStyleSheet("min-width: 20px; max-width: 30px; padding: 2px 4px;");
+
+    QObject::connect(this->buttonDelayUnit, &QPushButton::clicked, this, &InspectorOutputWidget::toggleDelayUnit);
+    QObject::connect(this->buttonDurationUnit, &QPushButton::clicked, this, &InspectorOutputWidget::toggleDurationUnit);
 
     QObject::connect(&DeviceManager::getInstance(), SIGNAL(deviceRemoved()), this, SLOT(deviceRemoved()));
     QObject::connect(&DeviceManager::getInstance(), SIGNAL(deviceAdded(CasparDevice &)), this, SLOT(deviceAdded(CasparDevice &)));
@@ -70,6 +80,123 @@ InspectorOutputWidget::InspectorOutputWidget(QWidget *parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(mediaChanged(const MediaChangedEvent &)), this, SLOT(mediaChanged(const MediaChangedEvent &)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(templateChanged(const TemplateChangedEvent &)), this, SLOT(templateChanged(const TemplateChangedEvent &)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(libraryFilterChanged(const LibraryFilterChangedEvent &)), this, SLOT(libraryFilterChanged(const LibraryFilterChangedEvent &)));
+    QObject::connect(&EventManager::getInstance(), SIGNAL(bankAssignmentChanged(const BankAssignmentChangedEvent &)), this, SLOT(bankAssignmentChanged(const BankAssignmentChangedEvent &)));
+}
+
+void InspectorOutputWidget::updateUnitButtons()
+{
+    if (this->forceMilliseconds)
+    {
+        this->buttonDelayUnit->setText("ms");
+        this->buttonDelayUnit->setEnabled(false);
+        this->buttonDurationUnit->setText("ms");
+        this->buttonDurationUnit->setEnabled(false);
+    }
+    else
+    {
+        QString delayUnit = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
+        QString durationUnit = DatabaseManager::getInstance().getConfigurationByName("DurationUnit").getValue();
+
+        this->buttonDelayUnit->setText(delayUnit == Output::DEFAULT_DELAY_IN_FRAMES ? "fr" : "ms");
+        this->buttonDelayUnit->setEnabled(this->spinBoxDelay->isEnabled());
+        this->buttonDurationUnit->setText(durationUnit == Output::DEFAULT_DELAY_IN_FRAMES ? "fr" : "ms");
+        this->buttonDurationUnit->setEnabled(this->spinBoxDuration->isEnabled());
+    }
+}
+
+double InspectorOutputWidget::getCurrentFps()
+{
+    if (this->model == nullptr)
+        return 50.0;
+
+    QString deviceName = this->comboBoxDevice->currentText();
+    int channel = this->spinBoxChannel->value();
+
+    if (deviceName.isEmpty() || channel <= 0)
+        return 50.0;
+
+    const QStringList channelFormats = DatabaseManager::getInstance().getDeviceByName(deviceName).getChannelFormats().split(",");
+    if (channel > channelFormats.count())
+        return 50.0;
+
+    double fps = DatabaseManager::getInstance().getFormat(channelFormats[channel - 1]).getFramesPerSecond().toDouble();
+    return (fps > 0) ? fps : 50.0;
+}
+
+void InspectorOutputWidget::toggleDelayUnit()
+{
+    if (this->command == nullptr || this->forceMilliseconds)
+        return;
+
+    QString currentUnit = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
+    QString newUnit = (currentUnit == Output::DEFAULT_DELAY_IN_MILLISECONDS)
+                        ? Output::DEFAULT_DELAY_IN_FRAMES
+                        : Output::DEFAULT_DELAY_IN_MILLISECONDS;
+
+    double fps = getCurrentFps();
+    int currentValue = this->spinBoxDelay->value();
+    int newValue = currentValue;
+
+    if (currentValue > 0)
+    {
+        if (newUnit == Output::DEFAULT_DELAY_IN_FRAMES)
+            newValue = qRound(currentValue * fps / 1000.0);
+        else
+            newValue = qRound(currentValue * 1000.0 / fps);
+    }
+
+    // Save to DB first so format functions pick up the new unit.
+    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DelayType", newUnit));
+    RundownWidgetHelper::invalidateConfigCache();
+
+    this->buttonDelayUnit->setText(newUnit == Output::DEFAULT_DELAY_IN_FRAMES ? "fr" : "ms");
+
+    // Update spinbox — triggers delayChanged which updates the rundown item.
+    blockAllSignals(true);
+    this->spinBoxDelay->setValue(newValue);
+    blockAllSignals(false);
+
+    for (AbstractCommand* cmd : this->allCommands)
+        cmd->setDelay(newValue);
+
+    // Refresh all rundown item labels.
+    EventManager::getInstance().fireUnitSettingsChangedEvent();
+}
+
+void InspectorOutputWidget::toggleDurationUnit()
+{
+    if (this->command == nullptr || this->forceMilliseconds)
+        return;
+
+    QString currentUnit = DatabaseManager::getInstance().getConfigurationByName("DurationUnit").getValue();
+    QString newUnit = (currentUnit == Output::DEFAULT_DELAY_IN_MILLISECONDS)
+                        ? Output::DEFAULT_DELAY_IN_FRAMES
+                        : Output::DEFAULT_DELAY_IN_MILLISECONDS;
+
+    double fps = getCurrentFps();
+    int currentValue = this->spinBoxDuration->value();
+    int newValue = currentValue;
+
+    if (currentValue > 0)
+    {
+        if (newUnit == Output::DEFAULT_DELAY_IN_FRAMES)
+            newValue = qRound(currentValue * fps / 1000.0);
+        else
+            newValue = qRound(currentValue * 1000.0 / fps);
+    }
+
+    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DurationUnit", newUnit));
+
+    this->buttonDurationUnit->setText(newUnit == Output::DEFAULT_DELAY_IN_FRAMES ? "fr" : "ms");
+
+    blockAllSignals(true);
+    this->spinBoxDuration->setValue(newValue);
+    blockAllSignals(false);
+
+    for (AbstractCommand* cmd : this->allCommands)
+        cmd->setDuration(newValue);
+
+    EventManager::getInstance().fireUnitSettingsChangedEvent();
 }
 
 void InspectorOutputWidget::libraryFilterChanged(const LibraryFilterChangedEvent &event)
@@ -83,6 +210,8 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
 {
     this->command = nullptr;
     this->model = event.getLibraryModel();
+    this->allCommands = event.getAllCommands();
+    this->forceMilliseconds = false;
 
     const QSharedPointer<DeviceModel> deviceModel = DeviceManager::getInstance().getDeviceModelByName(this->model->getDeviceName());
 
@@ -101,43 +230,47 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
     this->labelRemoteTriggerIdField->setEnabled(true);
     this->lineEditRemoteTriggerId->setEnabled(true);
 
-    this->labelDelayMillisecond->setVisible(true);
-    this->labelDurationMillisecond->setVisible(true);
-    if (this->delayType == Output::DEFAULT_DELAY_IN_FRAMES)
-    {
-        this->labelDelayMillisecond->setText("frm");
-        this->labelDurationMillisecond->setText("frm");
-    }
-    else if (this->delayType == Output::DEFAULT_DELAY_IN_MILLISECONDS)
-    {
-        this->labelDelayMillisecond->setText("ms");
-        this->labelDurationMillisecond->setText("ms");
-    }
+    this->buttonDelayUnit->setVisible(true);
+    this->buttonDurationUnit->setVisible(true);
 
     if (event.getCommand() != NULL && event.getLibraryModel() != NULL)
     {
         this->command = event.getCommand();
 
         int index = this->comboBoxDevice->findText(this->model->getDeviceName());
-        if (index == -1)
-            this->spinBoxChannel->setMaximum(1);
-        else
+        int channelMax = 8; // Reasonable default — always allow channel selection.
+        if (index != -1 && deviceModel != NULL)
         {
-            if (deviceModel != NULL)
-            {
-                const QStringList &channelFormats = DatabaseManager::getInstance().getDeviceByName(deviceModel->getName()).getChannelFormats().split(",");
-                this->spinBoxChannel->setMaximum(channelFormats.count());
-            }
+            const QStringList &channelFormats = DatabaseManager::getInstance().getDeviceByName(deviceModel->getName()).getChannelFormats().split(",");
+            int reportedChannels = channelFormats.count();
+            if (reportedChannels > 1 || (!channelFormats.isEmpty() && !channelFormats.first().isEmpty()))
+                channelMax = reportedChannels;
         }
+        // Ensure the maximum accommodates the item's current channel value.
+        int itemChannel = this->command->getBaseChannel();
+        if (itemChannel > channelMax)
+            channelMax = itemChannel;
+        this->spinBoxChannel->setMaximum(channelMax);
 
         this->comboBoxDevice->setCurrentIndex(index);
-        this->spinBoxChannel->setValue(this->command->getChannel());
+        this->spinBoxChannel->setValue(itemChannel);
         this->spinBoxVideolayer->setValue(this->command->getVideolayer());
         this->spinBoxDelay->setValue(this->command->getDelay());
         this->spinBoxDuration->setValue(this->command->getDuration());
         this->checkBoxAllowGpi->setChecked(this->command->getAllowGpi());
         this->checkBoxAllowRemoteTriggering->setChecked(this->command->getAllowRemoteTriggering());
         this->lineEditRemoteTriggerId->setText(this->command->getRemoteTriggerId());
+
+        int bank = this->command->getTriggerBank();
+        if (bank > 0)
+        {
+            QString hotkey = DatabaseManager::getInstance().getConfigurationByName(QString("HotkeyBank%1").arg(bank)).getValue();
+            this->labelTriggerBank->setText(QString("Bank %1 (%2)").arg(bank).arg(hotkey.isEmpty() ? "-" : hotkey));
+        }
+        else
+        {
+            this->labelTriggerBank->setText("");
+        }
 
         if (!this->checkBoxAllowRemoteTriggering->isChecked())
         {
@@ -182,8 +315,7 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
             this->spinBoxDelay->setEnabled(false);
             this->spinBoxDuration->setEnabled(false);
 
-            this->labelDelayMillisecond->setText("ms");
-            this->labelDurationMillisecond->setText("ms");
+            this->forceMilliseconds = true;
 
             this->comboBoxDevice->setCurrentIndex(-1);
             this->comboBoxTarget->setCurrentIndex(-1);
@@ -203,8 +335,7 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
             this->spinBoxVideolayer->setEnabled(false);
             this->spinBoxDuration->setEnabled(false);
 
-            this->labelDelayMillisecond->setText("ms");
-            this->labelDurationMillisecond->setText("ms");
+            this->forceMilliseconds = true;
 
             this->comboBoxDevice->setCurrentIndex(-1);
             this->comboBoxTarget->setCurrentIndex(-1);
@@ -212,7 +343,8 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
             this->spinBoxVideolayer->setValue(Output::DEFAULT_VIDEOLAYER);
             this->spinBoxDuration->setValue(Output::DEFAULT_DURATION);
         }
-        else if (dynamic_cast<SeparatorCommand *>(event.getCommand()))
+        else if (dynamic_cast<SeparatorCommand *>(event.getCommand()) ||
+                 dynamic_cast<GatewayCommand *>(event.getCommand()))
         {
             this->comboBoxDevice->setEnabled(false);
             this->comboBoxTarget->setEnabled(false);
@@ -282,6 +414,8 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
         }
     }
 
+    updateUnitButtons();
+
     if (deviceModel != NULL && deviceModel->getLockedChannel() > 0 && deviceModel->getLockedChannel() <= this->spinBoxChannel->maximum())
     {
         this->spinBoxChannel->setEnabled(false);
@@ -318,15 +452,16 @@ void InspectorOutputWidget::libraryItemSelected(const LibraryItemSelectedEvent &
     this->labelRemoteTriggerIdField->setEnabled(false);
     this->lineEditRemoteTriggerId->setEnabled(false);
 
-    this->labelDelayMillisecond->setText("");
-    this->labelDelayMillisecond->setVisible(false);
-    this->labelDurationMillisecond->setText("");
-    this->labelDurationMillisecond->setVisible(false);
+    this->buttonDelayUnit->setText("");
+    this->buttonDelayUnit->setVisible(false);
+    this->buttonDurationUnit->setText("");
+    this->buttonDurationUnit->setVisible(false);
 
     this->comboBoxDevice->setCurrentIndex(this->comboBoxDevice->findText(this->model->getDeviceName()));
     this->checkBoxAllowGpi->setChecked(Output::DEFAULT_ALLOW_GPI);
     this->checkBoxAllowRemoteTriggering->setChecked(Output::DEFAULT_ALLOW_REMOTE_TRIGGERING);
     this->lineEditRemoteTriggerId->setText(Output::DEFAULT_REMOTE_TRIGGER_ID);
+    this->labelTriggerBank->setText("");
 
     fillTargetCombo(this->model->getType());
 
@@ -361,10 +496,10 @@ void InspectorOutputWidget::emptyRundown(const EmptyRundownEvent &event)
     this->labelRemoteTriggerIdField->setEnabled(false);
     this->lineEditRemoteTriggerId->setEnabled(false);
 
-    this->labelDelayMillisecond->setText("");
-    this->labelDelayMillisecond->setVisible(false);
-    this->labelDurationMillisecond->setText("");
-    this->labelDurationMillisecond->setVisible(false);
+    this->buttonDelayUnit->setText("");
+    this->buttonDelayUnit->setVisible(false);
+    this->buttonDurationUnit->setText("");
+    this->buttonDurationUnit->setVisible(false);
 
     this->comboBoxDevice->setCurrentIndex(-1);
     this->spinBoxChannel->setValue(Output::DEFAULT_CHANNEL);
@@ -374,6 +509,7 @@ void InspectorOutputWidget::emptyRundown(const EmptyRundownEvent &event)
     this->checkBoxAllowGpi->setChecked(Output::DEFAULT_ALLOW_GPI);
     this->checkBoxAllowRemoteTriggering->setChecked(Output::DEFAULT_ALLOW_REMOTE_TRIGGERING);
     this->lineEditRemoteTriggerId->setText(Output::DEFAULT_REMOTE_TRIGGER_ID);
+    this->labelTriggerBank->setText("");
 
     checkEmptyDevice();
     checkEmptyTarget();
@@ -479,22 +615,6 @@ void InspectorOutputWidget::fillTargetCombo(const QString &type, QString deviceN
         }
     }
 
-    // Include current target when it is not already an option.
-    if (this->comboBoxTarget->findText(this->model->getName()) == -1)
-    {
-        if (!this->model->getName().isEmpty() &&
-            (this->model->getType() == Rundown::AUDIO || this->model->getType() == Rundown::STILL ||
-             this->model->getType() == Rundown::IMAGESCROLLER || this->model->getType() == Rundown::TEMPLATE || this->model->getType() == Rundown::MOVIE) &&
-            this->model->getName() != Rundown::DEFAULT_AUDIO_NAME &&
-            this->model->getName() != Rundown::DEFAULT_STILL_NAME &&
-            this->model->getName() != Rundown::DEFAULT_IMAGESCROLLER_NAME &&
-            this->model->getName() != Rundown::DEFAULT_TEMPLATE_NAME &&
-            this->model->getName() != Rundown::DEFAULT_MOVIE_NAME)
-        {
-            this->comboBoxTarget->addItem(this->model->getName());
-        }
-    }
-
     this->comboBoxTarget->setCurrentIndex(this->comboBoxTarget->findText(this->model->getName()));
 }
 
@@ -595,42 +715,95 @@ void InspectorOutputWidget::channelChanged(int channel)
     if (this->command == NULL)
         return;
 
+    // Always set on the primary command, even if allCommands is empty or stale.
     this->command->setChannel(channel);
+
+    for (AbstractCommand* cmd : this->allCommands)
+    {
+        if (cmd != this->command)
+            cmd->setChannel(channel);
+    }
 
     EventManager::getInstance().fireChannelChangedEvent(ChannelChangedEvent(channel));
 }
 
 void InspectorOutputWidget::videolayerChanged(int videolayer)
 {
-    this->command->setVideolayer(videolayer);
+    if (this->command != NULL)
+        this->command->setVideolayer(videolayer);
+
+    for (AbstractCommand* cmd : this->allCommands)
+    {
+        if (cmd != this->command)
+            cmd->setVideolayer(videolayer);
+    }
 
     EventManager::getInstance().fireVideolayerChangedEvent(VideolayerChangedEvent(videolayer));
 }
 
 void InspectorOutputWidget::delayChanged(int delay)
 {
-    this->command->setDelay(delay);
+    if (this->command != NULL)
+        this->command->setDelay(delay);
+
+    for (AbstractCommand* cmd : this->allCommands)
+    {
+        if (cmd != this->command)
+            cmd->setDelay(delay);
+    }
 }
 
 void InspectorOutputWidget::durationChanged(int duration)
 {
-    this->command->setDuration(duration);
+    if (this->command != NULL)
+        this->command->setDuration(duration);
+
+    for (AbstractCommand* cmd : this->allCommands)
+    {
+        if (cmd != this->command)
+            cmd->setDuration(duration);
+    }
 }
 
 void InspectorOutputWidget::allowGpiChanged(int state)
 {
-    this->command->setAllowGpi((state == Qt::Checked) ? true : false);
+    bool checked = (state == Qt::Checked) ? true : false;
+    for (AbstractCommand* cmd : this->allCommands)
+        cmd->setAllowGpi(checked);
 }
 
 void InspectorOutputWidget::allowRemoteTriggeringChanged(int state)
 {
-    this->command->setAllowRemoteTriggering((state == Qt::Checked) ? true : false);
+    bool checked = (state == Qt::Checked) ? true : false;
+    for (AbstractCommand* cmd : this->allCommands)
+        cmd->setAllowRemoteTriggering(checked);
 
     this->labelRemoteTriggerIdField->setEnabled(this->command->getAllowRemoteTriggering());
     this->lineEditRemoteTriggerId->setEnabled(this->command->getAllowRemoteTriggering());
+
+    // Re-trigger remoteTriggerIdChanged so the rundown widget label updates.
+    for (AbstractCommand* cmd : this->allCommands)
+        cmd->setRemoteTriggerId(cmd->getRemoteTriggerId());
 }
 
 void InspectorOutputWidget::remoteTriggerIdChanged(QString id)
 {
     this->command->setRemoteTriggerId(id);
+}
+
+void InspectorOutputWidget::bankAssignmentChanged(const BankAssignmentChangedEvent& event)
+{
+    if (this->command == nullptr)
+        return;
+
+    int bank = this->command->getTriggerBank();
+    if (bank > 0)
+    {
+        QString hotkey = DatabaseManager::getInstance().getConfigurationByName(QString("HotkeyBank%1").arg(bank)).getValue();
+        this->labelTriggerBank->setText(QString("Bank %1 (%2)").arg(bank).arg(hotkey.isEmpty() ? "-" : hotkey));
+    }
+    else
+    {
+        this->labelTriggerBank->setText("");
+    }
 }

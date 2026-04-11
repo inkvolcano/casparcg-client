@@ -47,11 +47,8 @@ void InspectorMovieWidget::rundownItemSelected(const RundownItemSelectedEvent& e
         this->checkBoxFreezeOnLoad->setChecked(this->command->getFreezeOnLoad());
         this->checkBoxTriggerOnNext->setChecked(this->command->getTriggerOnNext());
 
-        RundownGroupWidget* parent = dynamic_cast<RundownGroupWidget*>(event.getParent());
-        AbstractRundownWidget* source = dynamic_cast<AbstractRundownWidget*>(event.getSource());
-
-        // Only show auto play option if we are in a group. OSC needs to be enabled.
-        if (this->enableOscInputControl && source != NULL && parent != NULL && source->isInGroup() && dynamic_cast<GroupCommand*>(parent->getCommand())->getAutoPlay())
+        // Show auto play option when OSC input control is enabled.
+        if (this->enableOscInputControl)
         {
             this->labelAutoPlay->setEnabled(true);
             this->checkBoxAutoPlay->setEnabled(true);

@@ -20,43 +20,6 @@
    <property name="bottomMargin">
     <number>20</number>
    </property>
-   <item row="1" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayoutAutoStep">
-     <item>
-      <widget class="QCheckBox" name="checkBoxAutoStep">
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacerAutoStep2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="labelAutoStep">
-     <property name="text">
-      <string>Auto step</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
    <item row="0" column="0">
     <widget class="QLabel" name="labelNotes">
      <property name="text">
@@ -83,7 +46,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
+   <item row="1" column="0">
     <widget class="QLabel" name="labelAutoPlay">
      <property name="text">
       <string>Auto play</string>
@@ -93,7 +56,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="1" column="1">
     <layout class="QHBoxLayout" name="horizontalLayoutAutoPlay">
      <item>
       <widget class="QCheckBox" name="checkBoxAutoPlay">
@@ -120,12 +83,49 @@
      </item>
     </layout>
    </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="labelLoop">
+     <property name="text">
+      <string>Loop</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayoutLoop">
+     <item>
+      <widget class="QCheckBox" name="checkBoxLoop">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacerLoop">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
   </layout>
  </widget>
  <tabstops>
   <tabstop>plainTextEditNotes</tabstop>
-  <tabstop>checkBoxAutoStep</tabstop>
   <tabstop>checkBoxAutoPlay</tabstop>
+  <tabstop>checkBoxLoop</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -162,38 +162,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>labelAutoStep</sender>
-   <signal>linkActivated(QString)</signal>
-   <receiver>InspectorGroupWidget</receiver>
-   <slot>resetAutoStep(QString)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>51</x>
-     <y>75</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>50</x>
-     <y>106</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxAutoStep</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>InspectorGroupWidget</receiver>
-   <slot>autoStepChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>89</x>
-     <y>73</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>103</x>
-     <y>88</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>checkBoxAutoPlay</sender>
    <signal>stateChanged(int)</signal>
    <receiver>InspectorGroupWidget</receiver>
@@ -209,12 +177,27 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>checkBoxLoop</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>InspectorGroupWidget</receiver>
+   <slot>loopChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>78</x>
+     <y>120</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>86</x>
+     <y>140</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>resetNotes(QString)</slot>
   <slot>notesChanged()</slot>
-  <slot>resetAutoStep(QString)</slot>
-  <slot>autoStepChanged(int)</slot>
   <slot>autoPlayChanged(int)</slot>
+  <slot>loopChanged(int)</slot>
  </slots>
 </ui>

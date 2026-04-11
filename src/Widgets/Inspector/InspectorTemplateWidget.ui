@@ -53,19 +53,6 @@
     </widget>
    </item>
    <item row="1" column="0">
-    <widget class="QLabel" name="labelInvoke">
-     <property name="text">
-      <string>Invoke</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QLineEdit" name="lineEditInvoke"/>
-   </item>
-   <item row="2" column="0">
     <widget class="QLabel" name="labelUseStoredData">
      <property name="text">
       <string>Use stored data</string>
@@ -75,7 +62,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
+   <item row="1" column="1">
     <layout class="QHBoxLayout" name="horizontalLayoutLoop">
      <item>
       <widget class="QCheckBox" name="checkBoxUseStoredData">
@@ -102,7 +89,7 @@
      </item>
     </layout>
    </item>
-   <item row="3" column="0">
+   <item row="2" column="0">
     <widget class="QLabel" name="labelUseUppercaseData">
      <property name="text">
       <string>Use uppercase data</string>
@@ -112,7 +99,7 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
+   <item row="2" column="1">
     <layout class="QHBoxLayout" name="horizontalLayoutLoop_2">
      <item>
       <widget class="QCheckBox" name="checkBoxUseUppercaseData">
@@ -139,7 +126,7 @@
      </item>
     </layout>
    </item>
-   <item row="4" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="labelTriggerOnNext">
      <property name="text">
       <string>Trigger on next</string>
@@ -149,7 +136,7 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="1">
+   <item row="3" column="1">
     <layout class="QHBoxLayout" name="horizontalLayoutTriggerOnNext">
      <item>
       <widget class="QCheckBox" name="checkBoxTriggerOnNext">
@@ -176,7 +163,7 @@
      </item>
     </layout>
    </item>
-   <item row="5" column="0">
+   <item row="4" column="0">
     <widget class="QLabel" name="labelSendAsJson">
      <property name="text">
       <string>Send as JSON</string>
@@ -186,7 +173,7 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="1">
+   <item row="4" column="1">
     <layout class="QHBoxLayout" name="horizontalLayoutSendAsJson">
      <item>
       <widget class="QCheckBox" name="checkBoxSendAsJson">
@@ -213,25 +200,105 @@
      </item>
     </layout>
    </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="labelNewlineBehavior">
+     <property name="text">
+      <string>Newline behavior</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QComboBox" name="comboBoxNewlineBehavior">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
    <item row="6" column="0" colspan="2">
-    <layout class="QGridLayout" name="gridLayoutData">
-     <item row="0" column="0">
-      <spacer name="verticalSpacerDataTop">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>23</height>
-        </size>
-       </property>
-      </spacer>
+    <layout class="QVBoxLayout" name="verticalLayoutData">
+     <property name="spacing">
+      <number>4</number>
+     </property>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayoutDataButtons">
+       <item>
+        <spacer name="horizontalSpacerDataButtons">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QToolButton" name="toolButtonAddTemplateData">
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string>QToolButton { background-color: rgba(50, 50, 50, 200); color: rgba(100, 100, 100, 200); border-radius: 3px; font-size: 9px; font-weight: bold; border: 1px solid rgba(70, 70, 70, 200); } QToolButton:hover { background-color: rgba(70, 70, 70, 200); }</string>
+         </property>
+         <property name="toolTip">
+          <string>Add new field</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="toolButtonRemoveTemplateData">
+         <property name="minimumSize">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string>QToolButton { background-color: rgba(50, 50, 50, 200); color: rgba(100, 100, 100, 200); border-radius: 3px; font-size: 9px; font-weight: bold; border: 1px solid rgba(70, 70, 70, 200); } QToolButton:hover { background-color: rgba(70, 70, 70, 200); }</string>
+         </property>
+         <property name="toolTip">
+          <string>Remove field</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
-     <item row="0" column="1" rowspan="4">
+     <item>
       <widget class="HttpDataTreeBaseWidget" name="treeWidgetTemplateData">
        <property name="showDropIndicator" stdset="0">
         <bool>false</bool>
@@ -249,7 +316,7 @@
         <bool>false</bool>
        </property>
        <attribute name="headerDefaultSectionSize">
-        <number>87</number>
+        <number>44</number>
        </attribute>
        <attribute name="headerShowSortIndicator" stdset="0">
         <bool>false</bool>
@@ -266,68 +333,66 @@
        </column>
       </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QToolButton" name="toolButtonAddTemplateData">
+    </layout>
+   </item>
+   <item row="7" column="0" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayoutImportRow">
+     <property name="topMargin">
+      <number>4</number>
+     </property>
+     <item>
+      <widget class="QPushButton" name="toolButtonLoadDebugData">
        <property name="minimumSize">
         <size>
-         <width>33</width>
-         <height>22</height>
+         <width>0</width>
+         <height>24</height>
         </size>
        </property>
        <property name="maximumSize">
         <size>
-         <width>33</width>
-         <height>22</height>
+         <width>16777215</width>
+         <height>24</height>
         </size>
        </property>
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string>QPushButton { background-color: rgba(50, 50, 50, 200); color: rgba(100, 100, 100, 200); border-radius: 3px; font-size: 10px; font-weight: bold; border: 1px solid rgba(70, 70, 70, 200); padding: 3px 10px; } QPushButton:hover { background-color: rgba(70, 70, 70, 200); }</string>
        </property>
        <property name="toolTip">
-        <string>Add new device</string>
+        <string>Import field names (and optionally values) from window.debugData in the HTML template</string>
+       </property>
+       <property name="text">
+        <string>Import Fields</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
-      <widget class="QToolButton" name="toolButtonRemoveTemplateData">
-       <property name="minimumSize">
-        <size>
-         <width>33</width>
-         <height>22</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>33</width>
-         <height>22</height>
-        </size>
-       </property>
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+     <item>
+      <widget class="QCheckBox" name="checkBoxImportValues">
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
        </property>
        <property name="toolTip">
-        <string>Remove device</string>
+        <string>When checked, import both keys and values. When unchecked, import only field names with empty values.</string>
+       </property>
+       <property name="text">
+        <string>+ values</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <spacer name="verticalSpacerDataBottom">
+     <item>
+      <spacer name="horizontalSpacerImportRow">
        <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::MinimumExpanding</enum>
+        <enum>Qt::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
-         <width>20</width>
-         <height>40</height>
+         <width>40</width>
+         <height>20</height>
         </size>
        </property>
       </spacer>
@@ -345,14 +410,16 @@
  </customwidgets>
  <tabstops>
   <tabstop>spinBoxFlashlayer</tabstop>
-  <tabstop>lineEditInvoke</tabstop>
   <tabstop>checkBoxUseStoredData</tabstop>
   <tabstop>checkBoxUseUppercaseData</tabstop>
   <tabstop>checkBoxTriggerOnNext</tabstop>
   <tabstop>checkBoxSendAsJson</tabstop>
-  <tabstop>treeWidgetTemplateData</tabstop>
+  <tabstop>comboBoxNewlineBehavior</tabstop>
   <tabstop>toolButtonAddTemplateData</tabstop>
   <tabstop>toolButtonRemoveTemplateData</tabstop>
+  <tabstop>treeWidgetTemplateData</tabstop>
+  <tabstop>toolButtonLoadDebugData</tabstop>
+  <tabstop>checkBoxImportValues</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -404,23 +471,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>lineEditInvoke</sender>
-   <signal>textChanged(QString)</signal>
-   <receiver>InspectorTemplateWidget</receiver>
-   <slot>invokeChanged(QString)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>167</x>
-     <y>50</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>3</x>
-     <y>41</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
+<connection>
    <sender>checkBoxUseStoredData</sender>
    <signal>stateChanged(int)</signal>
    <receiver>InspectorTemplateWidget</receiver>
@@ -501,6 +552,22 @@
    </hints>
   </connection>
   <connection>
+   <sender>toolButtonLoadDebugData</sender>
+   <signal>clicked()</signal>
+   <receiver>InspectorTemplateWidget</receiver>
+   <slot>loadDebugData()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>44</x>
+     <y>304</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>211</x>
+     <y>425</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
    <sender>checkBoxSendAsJson</sender>
    <signal>stateChanged(int)</signal>
    <receiver>InspectorTemplateWidget</receiver>
@@ -516,17 +583,34 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>comboBoxNewlineBehavior</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>InspectorTemplateWidget</receiver>
+   <slot>newlineBehaviorChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>200</x>
+     <y>200</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>200</x>
+     <y>210</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>flashlayerChanged(int)</slot>
   <slot>addRow()</slot>
   <slot>removeRow()</slot>
-  <slot>invokeChanged(QString)</slot>
+  <slot>loadDebugData()</slot>
   <slot>useStoredDataChanged(int)</slot>
   <slot>itemDoubleClicked(QTreeWidgetItem*,int)</slot>
   <slot>currentItemChanged(QTreeWidgetItem*,QTreeWidgetItem*)</slot>
   <slot>useUppercaseDataChanged(int)</slot>
   <slot>triggerOnNextChanged(int)</slot>
   <slot>sendAsJsonChanged(int)</slot>
+  <slot>newlineBehaviorChanged(int)</slot>
  </slots>
 </ui>

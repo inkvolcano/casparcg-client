@@ -137,6 +137,43 @@
      </property>
     </widget>
    </item>
+   <item row="6" column="1" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayoutAutoPlay">
+     <item>
+      <widget class="QCheckBox" name="checkBoxAutoPlay">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacerAutoPlay">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item row="6" column="0">
+    <widget class="QLabel" name="labelAutoPlay">
+     <property name="text">
+      <string>Auto play</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="1" colspan="2">
     <widget class="QComboBox" name="comboBoxTransition">
      <property name="sizePolicy">
@@ -196,6 +233,7 @@
   <tabstop>comboBoxDirection</tabstop>
   <tabstop>checkBoxUseAuto</tabstop>
   <tabstop>checkBoxTriggerOnNext</tabstop>
+  <tabstop>checkBoxAutoPlay</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -295,6 +333,22 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>checkBoxAutoPlay</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>InspectorStillWidget</receiver>
+   <slot>autoPlayChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>113</x>
+     <y>195</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>146</x>
+     <y>280</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>transitionDurationChanged(int)</slot>
@@ -317,5 +371,6 @@
   <slot>useAutoChanged(int)</slot>
   <slot>resetTriggerOnNext(QString)</slot>
   <slot>triggerOnNextChanged(int)</slot>
+  <slot>autoPlayChanged(int)</slot>
  </slots>
 </ui>

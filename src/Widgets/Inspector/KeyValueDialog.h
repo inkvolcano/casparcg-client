@@ -17,10 +17,17 @@ class WIDGETS_EXPORT KeyValueDialog : public QDialog, Ui::KeyValueDialog
 
         const QString getKey() const;
         const QString getValue() const;
+        int getMode() const;
+        const QString getCycleValues() const;
 
         void setKey(const QString& key);
         void setValue(const QString& value);
+        void setMode(int mode);
+        void setCycleValues(const QString& cycleValues);
         void setTitle(const QString& title);
+
+    private:
+        Q_SLOT void modeChanged(int index);
 
     protected:
         virtual bool eventFilter(QObject* target, QEvent* event);

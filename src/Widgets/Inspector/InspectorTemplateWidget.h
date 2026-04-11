@@ -16,6 +16,8 @@
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QWidget>
 
+class NumericValueDelegate;
+
 class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemplateWidget
 {
     Q_OBJECT
@@ -31,6 +33,7 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         LibraryModel* model;
         TemplateCommand* command;
         bool lock;
+        NumericValueDelegate* numericDelegate;
 
         void updateTemplateDataModels();
         void blockAllSignals(bool block);
@@ -41,10 +44,10 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         Q_SLOT bool duplicateSelectedItem();
         Q_SLOT bool copySelectedItem();
         Q_SLOT bool pasteSelectedItem();
-        Q_SLOT void invokeChanged(QString);
         Q_SLOT void flashlayerChanged(int);
         Q_SLOT void useStoredDataChanged(int);
         Q_SLOT void sendAsJsonChanged(int);
+        Q_SLOT void newlineBehaviorChanged(int);
         Q_SLOT void useUppercaseDataChanged(int);
         Q_SLOT void currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*);
         Q_SLOT void itemDoubleClicked(QTreeWidgetItem*, int);
@@ -53,4 +56,5 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         Q_SLOT void showAddTemplateDataDialog(const ShowAddTemplateDataDialogEvent&);
         Q_SLOT void triggerOnNextChanged(int);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
+        Q_SLOT void loadDebugData();
 };

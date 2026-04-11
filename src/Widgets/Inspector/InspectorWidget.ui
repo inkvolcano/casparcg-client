@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
     <horstretch>0</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
@@ -39,22 +39,9 @@
     <number>0</number>
    </property>
    <property name="spacing">
-    <number>10</number>
+    <number>0</number>
    </property>
-   <item row="1" column="1">
-    <spacer name="horizontalSpacerMasterVolume">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item row="0" column="0" colspan="3">
+   <item row="0" column="0">
     <widget class="QToolBox" name="toolBox">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -186,6 +173,29 @@
              <item>
               <property name="text">
                <string>Output</string>
+              </property>
+              <property name="background">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>45</red>
+                 <green>45</green>
+                 <blue>45</blue>
+                </color>
+               </brush>
+              </property>
+              <property name="foreground">
+               <brush brushstyle="NoBrush">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Invoke</string>
               </property>
               <property name="background">
                <brush brushstyle="SolidPattern">
@@ -1057,6 +1067,29 @@
                </brush>
               </property>
              </item>
+             <item>
+              <property name="text">
+               <string>Gateway</string>
+              </property>
+              <property name="background">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>45</red>
+                 <green>45</green>
+                 <blue>45</blue>
+                </color>
+               </brush>
+              </property>
+              <property name="foreground">
+               <brush brushstyle="SolidPattern">
+                <color alpha="255">
+                 <red>255</red>
+                 <green>255</green>
+                 <blue>255</blue>
+                </color>
+               </brush>
+              </property>
+             </item>
             </widget>
            </item>
           </layout>
@@ -1067,62 +1100,10 @@
      </widget>
     </widget>
    </item>
-   <item row="1" column="0">
-    <widget class="QToolButton" name="toolButtonDisableCommand">
-     <property name="minimumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="toolTip">
-      <string>Disable Commands</string>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="2">
-    <widget class="QToolButton" name="toolButtonMasterVolume">
-     <property name="minimumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="toolTip">
-      <string>Master Volume</string>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
  <tabstops>
   <tabstop>scrollArea</tabstop>
-  <tabstop>toolButtonDisableCommand</tabstop>
-  <tabstop>toolButtonMasterVolume</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -1142,42 +1123,8 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>toolButtonMasterVolume</sender>
-   <signal>clicked()</signal>
-   <receiver>InspectorWidget</receiver>
-   <slot>masterVolumeClicked()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>287</x>
-     <y>864</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>98</x>
-     <y>591</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>toolButtonDisableCommand</sender>
-   <signal>clicked()</signal>
-   <receiver>InspectorWidget</receiver>
-   <slot>disableCommandClicked()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>32</x>
-     <y>864</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>0</x>
-     <y>502</y>
-    </hint>
-   </hints>
-  </connection>
  </connections>
  <slots>
-  <slot>masterVolumeClicked()</slot>
-  <slot>disableCommandClicked()</slot>
   <slot>toggleExpandItem(QTreeWidgetItem*,int)</slot>
  </slots>
 </ui>

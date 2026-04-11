@@ -10,9 +10,11 @@
 
 InspectorStillWidget::InspectorStillWidget(QWidget* parent)
     : QWidget(parent),
-      model(NULL), command(NULL)
+      model(NULL), command(NULL), enableOscInputControl(false)
 {
     setupUi(this);
+
+    this->enableOscInputControl = (DatabaseManager::getInstance().getConfigurationByName("EnableOscInputControl").getValue() == "true") ? true : false;
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemSelected(const RundownItemSelectedEvent&)), this, SLOT(rundownItemSelected(const RundownItemSelectedEvent&)));
 
@@ -38,6 +40,20 @@ void InspectorStillWidget::rundownItemSelected(const RundownItemSelectedEvent& e
         this->comboBoxDirection->setCurrentIndex(this->comboBoxDirection->findText(this->command->getDirection()));
         this->checkBoxTriggerOnNext->setChecked(this->command->getTriggerOnNext());
         this->checkBoxUseAuto->setChecked(this->command->getUseAuto());
+
+        // Show auto play option when OSC input control is enabled.
+        if (this->enableOscInputControl)
+        {
+            this->labelAutoPlay->setEnabled(true);
+            this->checkBoxAutoPlay->setEnabled(true);
+            this->checkBoxAutoPlay->setChecked(this->command->getAutoPlay());
+        }
+        else
+        {
+            this->labelAutoPlay->setEnabled(false);
+            this->checkBoxAutoPlay->setEnabled(false);
+            this->checkBoxAutoPlay->setChecked(false);
+        }
     }
 
     blockAllSignals(false);
@@ -51,6 +67,7 @@ void InspectorStillWidget::blockAllSignals(bool block)
     this->comboBoxDirection->blockSignals(block);
     this->checkBoxTriggerOnNext->blockSignals(block);
     this->checkBoxUseAuto->blockSignals(block);
+    this->checkBoxAutoPlay->blockSignals(block);
 }
 
 void InspectorStillWidget::loadDirection()
@@ -120,4 +137,9 @@ void InspectorStillWidget::useAutoChanged(int state)
 void InspectorStillWidget::triggerOnNextChanged(int state)
 {
     this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+}
+
+void InspectorStillWidget::autoPlayChanged(int state)
+{
+    this->command->setAutoPlay((state == Qt::Checked) ? true : false);
 }

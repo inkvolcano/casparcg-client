@@ -11,6 +11,9 @@
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
 
+#include <QtWidgets/QMenu>
+#include <QtWidgets/QTabWidget>
+#include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
@@ -21,14 +24,16 @@ class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
         explicit InspectorWidget(QWidget* parent = 0);
 
     private:
-        bool masterVolumeMuted;
-        bool disableCommand;
+        bool collapsed = false;
+        QTabWidget* tabWidgetInspector;
+        QToolButton* menuButton = nullptr;
+        QMenu* dropdownMenu = nullptr;
+        QAction* expandCollapseAction = nullptr;
 
         void setDefaultVisibleWidgets();
 
-        Q_SLOT void masterVolumeClicked();
+        Q_SLOT void toggleExpandCollapse();
         Q_SLOT void toggleExpandItem(QTreeWidgetItem*, int);
-        Q_SLOT void disableCommandClicked();
         Q_SLOT void emptyRundown(const EmptyRundownEvent&);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
         Q_SLOT void libraryItemSelected(const LibraryItemSelectedEvent&);

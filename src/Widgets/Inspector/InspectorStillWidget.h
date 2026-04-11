@@ -23,6 +23,7 @@ class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWi
     private:
         LibraryModel* model;
         StillCommand* command;
+        bool enableOscInputControl;
 
         void loadDirection();
         void loadTransition();
@@ -35,5 +36,6 @@ class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWi
         Q_SLOT void tweenChanged(QString);
         Q_SLOT void useAutoChanged(int);
         Q_SLOT void triggerOnNextChanged(int);
+        Q_SLOT void autoPlayChanged(int);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
 };

@@ -11,6 +11,7 @@
 #include "Events/Inspector/TemplateChangedEvent.h"
 #include "Events/Library/LibraryItemSelectedEvent.h"
 #include "Events/Library/LibraryFilterChangedEvent.h"
+#include "Events/Rundown/BankAssignmentChangedEvent.h"
 #include "Events/Rundown/EmptyRundownEvent.h"
 #include "Events/Rundown/RundownItemSelectedEvent.h"
 #include "Models/LibraryModel.h"
@@ -31,12 +32,16 @@ class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutput
     private:
         AbstractCommand* command;
         LibraryModel* model;
+        QList<AbstractCommand*> allCommands;
         QString delayType;
         QString libraryFilter;
+        bool forceMilliseconds;
 
         void checkEmptyDevice();
         void checkEmptyTarget();
         void blockAllSignals(bool block);
+        void updateUnitButtons();
+        double getCurrentFps();
 
         void fillTargetCombo(const QString& type, QString deviceName = "");
 
@@ -58,4 +63,7 @@ class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutput
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
         Q_SLOT void libraryItemSelected(const LibraryItemSelectedEvent&);
         Q_SLOT void libraryFilterChanged(const LibraryFilterChangedEvent&);
+        Q_SLOT void bankAssignmentChanged(const BankAssignmentChangedEvent&);
+        Q_SLOT void toggleDelayUnit();
+        Q_SLOT void toggleDurationUnit();
 };
