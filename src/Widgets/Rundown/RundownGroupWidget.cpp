@@ -1,4 +1,6 @@
 #include "RundownGroupWidget.h"
+#include "RundownWidgetHelper.h"
+#include "AbstractRundownWidget.h"
 
 #include "Global.h"
 #include "GpiManager.h"
@@ -11,6 +13,7 @@
 
 #include <QtCore/QDebug>
 #include <QtCore/QObject>
+#include <QtCore/QSet>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QTreeWidget>
@@ -27,26 +30,47 @@ RundownGroupWidget::RundownGroupWidget(const LibraryModel& model, QWidget* paren
 
     this->animation = new ActiveAnimation(this->labelActiveColor);
 
-    this->markUsedItems = (DatabaseManager::getInstance().getConfigurationByName("MarkUsedItems").getValue() == "true") ? true : false;
+    this->markUsedItems = RundownWidgetHelper::cachedMarkUsedItems();
     this->useDropFrameNotation = (DatabaseManager::getInstance().getConfigurationByName("UseDropFrameNotation").getValue() == "true") ? true : false;
 
     setColor(this->color);
     setActive(this->active);
     setCompactView(this->compactView);
 
-    this->labelAutoStep->setVisible(false);
     this->labelAutoPlay->setVisible(false);
+    this->labelLoop->setVisible(false);
 
     this->labelGroupColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_GROUP_COLOR));
-    this->labelColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_GROUP_COLOR));
+
+    // Set up channel badge on labelColor.
+    RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, this->command.getChannel(), this->command.getVideolayer());
+
+    // Create type list label AFTER setupChannelBadge to avoid capture by setupBottomRow().
+    // Apply badge shift manually since the label wasn't present during the shift loop.
+    this->labelTypeList = new QLabel(this->frameItem);
+    this->labelTypeList->setGeometry(80 + RundownWidgetHelper::BADGE_SHIFT, 19, 130, 16);
+    this->labelTypeList->setStyleSheet("color: rgba(200, 200, 200, 180); font-size: 11px;");
+    this->labelTypeList->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    this->labelTypeList->setText("");
+    this->labelTypeList->raise();
+    this->labelColor->setText("-");
+
+    QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
+    QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+        RundownWidgetHelper::updateBankBadge(bankBadge, bank);
+        RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
+    });
+    RundownWidgetHelper::updateBankBadge(bankBadge, this->command.getTriggerBank());
+    RundownWidgetHelper::configureBankOscSubscriptions(this, this, this->command.getTriggerBank());
+    RundownWidgetHelper::setupCloneSupport(this, this->frameItem, &this->command);
 
     this->labelLabel->setText(this->model.getLabel());
 
     QObject::connect(&this->command, SIGNAL(durationChanged(int)), this, SLOT(durationChanged(int)));
     QObject::connect(&this->command, SIGNAL(notesChanged(const QString&)), this, SLOT(notesChanged(const QString&)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
-    QObject::connect(&this->command, SIGNAL(autoStepChanged(bool)), this, SLOT(autoStepChanged(bool)));
     QObject::connect(&this->command, SIGNAL(autoPlayChanged(bool)), this, SLOT(autoPlayChanged(bool)));
+    QObject::connect(&this->command, SIGNAL(loopChanged(bool)), this, SLOT(loopChanged(bool)));
     QObject::connect(&this->command, SIGNAL(allowRemoteTriggeringChanged(bool)), this, SLOT(configureOscSubscriptions()));
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
@@ -81,8 +105,9 @@ AbstractRundownWidget* RundownGroupWidget::clone()
     command->setAllowRemoteTriggering(this->command.getAllowRemoteTriggering());
     command->setRemoteTriggerId(this->command.getRemoteTriggerId());
     command->setNotes(this->command.getNotes());
-    command->setAutoStep(this->command.getAutoStep());
     command->setAutoPlay(this->command.getAutoPlay());
+    command->setLoop(this->command.getLoop());
+    command->setTriggerBank(this->command.getTriggerBank());
 
     return widget;
 }
@@ -101,19 +126,21 @@ void RundownGroupWidget::setCompactView(bool compactView)
 {
     if (compactView)
     {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::COMPACT_ITEM_HEIGHT);
         this->labelGroupColor->move(this->labelGroupColor->x(), Rundown::COMPACT_ITEM_HEIGHT - 1);
         this->labelIcon->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
         this->labelGpiConnected->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
-        this->labelAutoStep->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
         this->labelAutoPlay->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
+        this->labelLoop->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
     }
     else
     {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::DEFAULT_ITEM_HEIGHT);
         this->labelGroupColor->move(this->labelGroupColor->x(), Rundown::DEFAULT_ITEM_HEIGHT - 1);
         this->labelIcon->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
         this->labelGpiConnected->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
-        this->labelAutoStep->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
         this->labelAutoPlay->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
+        this->labelLoop->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
     }
 
     this->compactView = compactView;
@@ -126,7 +153,12 @@ bool RundownGroupWidget::isGroup() const
 
 bool RundownGroupWidget::isInGroup() const
 {
-    return false;
+    return this->inGroup;
+}
+
+void RundownGroupWidget::setInGroup(bool inGroup)
+{
+    this->inGroup = inGroup;
 }
 
 AbstractCommand* RundownGroupWidget::getCommand()
@@ -167,9 +199,9 @@ void RundownGroupWidget::setActive(bool active)
     this->animation->stop();
 
     if (this->active)
-        this->labelActiveColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_ACTIVE_COLOR));
+        RundownWidgetHelper::setActiveColorPalette(this->labelActiveColor, this->command.getChannel());
     else
-        this->labelActiveColor->setStyleSheet("");
+        RundownWidgetHelper::clearActiveColorPalette(this->labelActiveColor);
 }
 
 void RundownGroupWidget::setUsed(bool used)
@@ -191,7 +223,10 @@ void RundownGroupWidget::setUsed(bool used)
 bool RundownGroupWidget::executeCommand(Playout::PlayoutType type)
 {
     if (this->active)
+    {
+        this->animation->setChannel(this->command.getChannel());
         this->animation->start(1);
+    }
 
     if (type == Playout::PlayoutType::Play || type == Playout::PlayoutType::PlayNow)
     {
@@ -248,42 +283,42 @@ void RundownGroupWidget::checkGpiConnection()
     this->labelGpiConnected->setVisible(this->command.getAllowGpi());
 
     if (GpiManager::getInstance().getGpiDevice()->isConnected())
-        this->labelGpiConnected->setPixmap(QPixmap(":/Graphics/Images/GpiConnected.png"));
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiConnectedPixmap());
     else
-        this->labelGpiConnected->setPixmap(QPixmap(":/Graphics/Images/GpiDisconnected.png"));
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiDisconnectedPixmap());
 }
 
 void RundownGroupWidget::configureOscSubscriptions()
 {
-    if (this->stopControlSubscription != NULL)
-        this->stopControlSubscription->disconnect(); // Disconnect all events.
+    delete this->stopControlSubscription;
+    this->stopControlSubscription = nullptr;
 
-    if (this->playControlSubscription != NULL)
-        this->playControlSubscription->disconnect(); // Disconnect all events.
+    delete this->playControlSubscription;
+    this->playControlSubscription = nullptr;
 
-    if (this->loadControlSubscription != NULL)
-        this->loadControlSubscription->disconnect(); // Disconnect all events.
+    delete this->loadControlSubscription;
+    this->loadControlSubscription = nullptr;
 
-    if (this->pauseControlSubscription != NULL)
-        this->pauseControlSubscription->disconnect(); // Disconnect all events.
+    delete this->pauseControlSubscription;
+    this->pauseControlSubscription = nullptr;
 
-    if (this->nextControlSubscription != NULL)
-        this->nextControlSubscription->disconnect(); // Disconnect all events.
+    delete this->nextControlSubscription;
+    this->nextControlSubscription = nullptr;
 
-    if (this->updateControlSubscription != NULL)
-        this->updateControlSubscription->disconnect(); // Disconnect all events.
+    delete this->updateControlSubscription;
+    this->updateControlSubscription = nullptr;
 
-    if (this->invokeControlSubscription != NULL)
-        this->invokeControlSubscription->disconnect(); // Disconnect all events.
+    delete this->invokeControlSubscription;
+    this->invokeControlSubscription = nullptr;
 
-    if (this->clearControlSubscription != NULL)
-        this->clearControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearControlSubscription;
+    this->clearControlSubscription = nullptr;
 
-    if (this->clearVideolayerControlSubscription != NULL)
-        this->clearVideolayerControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearVideolayerControlSubscription;
+    this->clearVideolayerControlSubscription = nullptr;
 
-    if (this->clearChannelControlSubscription != NULL)
-        this->clearChannelControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearChannelControlSubscription;
+    this->clearChannelControlSubscription = nullptr;
 
     if (!this->command.getAllowRemoteTriggering() || this->command.getRemoteTriggerId().trimmed().isEmpty())
         return;
@@ -371,11 +406,6 @@ void RundownGroupWidget::allowGpiChanged(bool allowGpi)
     checkGpiConnection();
 }
 
-void RundownGroupWidget::autoStepChanged(bool autoStep)
-{
-    this->labelAutoStep->setVisible(autoStep);
-}
-
 void RundownGroupWidget::gpiConnectionStateChanged(bool connected, GpiDevice* device)
 {
     Q_UNUSED(connected);
@@ -389,11 +419,19 @@ void RundownGroupWidget::autoPlayChanged(bool autoPlay)
     this->labelAutoPlay->setVisible(autoPlay);
 }
 
+void RundownGroupWidget::loopChanged(bool loop)
+{
+    this->labelLoop->setVisible(loop);
+}
+
 void RundownGroupWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
 {
     configureOscSubscriptions();
 
-    this->labelRemoteTriggerId->setText(QString("UID: %1").arg(remoteTriggerId));
+    if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
+        this->labelRemoteTriggerId->setText("");
+    else
+        this->labelRemoteTriggerId->setText(QString::fromUtf8("\xe2\x87\xa5 %1").arg(remoteTriggerId));
 }
 
 void RundownGroupWidget::stopControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -401,7 +439,13 @@ void RundownGroupWidget::stopControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Stop);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Stop);
+    }
 }
 
 void RundownGroupWidget::playControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -409,7 +453,13 @@ void RundownGroupWidget::playControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Play);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Play);
+    }
 }
 
 void RundownGroupWidget::loadControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -417,7 +467,13 @@ void RundownGroupWidget::loadControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Load);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Load);
+    }
 }
 
 void RundownGroupWidget::pauseControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -425,7 +481,13 @@ void RundownGroupWidget::pauseControlSubscriptionReceived(const QString& predica
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::PauseResume);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PauseResume);
+    }
 }
 
 void RundownGroupWidget::invokeControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -433,7 +495,13 @@ void RundownGroupWidget::invokeControlSubscriptionReceived(const QString& predic
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Invoke);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Invoke);
+    }
 }
 
 void RundownGroupWidget::nextControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -441,7 +509,13 @@ void RundownGroupWidget::nextControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Next);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Next);
+    }
 }
 
 void RundownGroupWidget::updateControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -449,7 +523,13 @@ void RundownGroupWidget::updateControlSubscriptionReceived(const QString& predic
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Update);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Update);
+    }
 }
 
 void RundownGroupWidget::clearControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -457,7 +537,13 @@ void RundownGroupWidget::clearControlSubscriptionReceived(const QString& predica
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::Clear);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Clear);
+    }
 }
 
 void RundownGroupWidget::clearVideolayerControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -465,7 +551,13 @@ void RundownGroupWidget::clearVideolayerControlSubscriptionReceived(const QStrin
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::ClearVideoLayer);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearVideoLayer);
+    }
 }
 
 void RundownGroupWidget::clearChannelControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -473,5 +565,124 @@ void RundownGroupWidget::clearChannelControlSubscriptionReceived(const QString& 
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeOscCommand(Playout::PlayoutType::ClearChannel);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
+    }
+}
+
+void RundownGroupWidget::updateGroupInfo(QTreeWidgetItem* groupItem)
+{
+    if (groupItem == nullptr)
+        return;
+
+    QTreeWidget* treeWidget = groupItem->treeWidget();
+    if (treeWidget == nullptr)
+        return;
+
+    QSet<int> channels;
+    int imageCount = 0;
+    int videoCount = 0;
+    int templateCount = 0;
+    int audioCount = 0;
+    int otherCount = 0;
+
+    for (int i = 0; i < groupItem->childCount(); i++)
+    {
+        QTreeWidgetItem* child = groupItem->child(i);
+        QWidget* childWidget = treeWidget->itemWidget(child, 0);
+        if (childWidget == nullptr)
+            continue;
+
+        AbstractRundownWidget* rundownWidget = dynamic_cast<AbstractRundownWidget*>(childWidget);
+        if (rundownWidget == nullptr)
+            continue;
+
+        QString type = rundownWidget->getLibraryModel()->getType();
+        int channel = rundownWidget->getCommand()->getChannel();
+        channels.insert(channel);
+
+        if (type == Rundown::STILL)
+            imageCount++;
+        else if (type == Rundown::MOVIE)
+            videoCount++;
+        else if (type == Rundown::TEMPLATE)
+            templateCount++;
+        else if (type == Rundown::AUDIO)
+            audioCount++;
+        else
+            otherCount++;
+    }
+
+    // Build type list in fixed order with counts and plurals.
+    int typeLineCount = 0;
+    QString html = "<table cellspacing='0' cellpadding='0'>";
+    auto addRow = [&](int count, const QString& singular, const QString& plural)
+    {
+        if (count > 0)
+        {
+            html += QString("<tr><td align='right'>%1</td><td>&nbsp;%2</td></tr>")
+                    .arg(count).arg(count == 1 ? singular : plural);
+            typeLineCount++;
+        }
+    };
+    addRow(imageCount, "Image", "Images");
+    addRow(videoCount, "Video", "Videos");
+    addRow(templateCount, "Template", "Templates");
+    addRow(audioCount, "Audio", "Audio");
+    addRow(otherCount, "Other", "Others");
+    html += "</table>";
+
+    this->labelTypeList->setTextFormat(Qt::RichText);
+    this->labelTypeList->setText(html);
+
+    // Update channel badge text and color based on children's channels.
+    QFont badgeFont = this->labelColor->font();
+    if (channels.isEmpty())
+    {
+        badgeFont.setPixelSize(16);
+        this->labelColor->setFont(badgeFont);
+        this->labelColor->setText("-");
+        QColor color = RundownWidgetHelper::channelColor(0);
+        this->labelColor->setStyleSheet(QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
+    }
+    else if (channels.size() == 1)
+    {
+        badgeFont.setPixelSize(16);
+        this->labelColor->setFont(badgeFont);
+        this->labelColor->setText(QString::number(*channels.begin()));
+        QColor color = RundownWidgetHelper::channelColor(*channels.begin());
+        this->labelColor->setStyleSheet(QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
+    }
+    else
+    {
+        badgeFont.setPixelSize(10);
+        this->labelColor->setFont(badgeFont);
+        this->labelColor->setText("mix");
+        this->labelColor->setStyleSheet("background-color: #444444; color: white; border: 2px solid #1a1a1a;");
+    }
+
+    // Calculate needed height based on type lines.
+    int lineHeight = 16;
+    int bottomPadding = 6;
+    int baseHeight = Rundown::DEFAULT_ITEM_HEIGHT;
+    int neededHeight = qMax(baseHeight, 19 + typeLineCount * lineHeight + bottomPadding);
+
+    if (this->compactView)
+        neededHeight = qMax((int)Rundown::COMPACT_ITEM_HEIGHT, neededHeight);
+
+    // Resize the widget, badge, and activity bar.
+    this->setFixedHeight(neededHeight);
+    this->labelColor->setFixedHeight(neededHeight);
+    this->labelActiveColor->setFixedSize(this->labelActiveColor->width(), neededHeight);
+
+    // Reposition labelGroupColor to the bottom edge.
+    this->labelGroupColor->move(this->labelGroupColor->x(), neededHeight - 1);
+
+    // Resize the type list label to fit.
+    this->labelTypeList->setGeometry(this->labelTypeList->x(), this->labelTypeList->y(),
+                                      this->labelTypeList->width(), typeLineCount * lineHeight);
 }

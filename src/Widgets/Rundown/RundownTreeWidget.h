@@ -28,6 +28,7 @@
 #include "Events/Rundown/PasteItemPropertiesEvent.h"
 #include "Events/Rundown/InsertRepositoryChangesEvent.h"
 #include "Events/Rundown/CurrentItemChangedEvent.h"
+#include "Events/Rundown/AssignBankEvent.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -35,6 +36,7 @@
 #include <QtCore/QEvent>
 #include <QtCore/QMap>
 #include <QtCore/QObject>
+#include <QtCore/QPair>
 #include <QtCore/QString>
 #include <QtCore/QXmlStreamWriter>
 #include <QtCore/QSharedPointer>
@@ -45,6 +47,14 @@
 
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkAccessManager>
+
+struct AutoPlayQueueInfo
+{
+    QList<AbstractRundownWidget*>* queue;
+    QTreeWidgetItem* groupItem;
+    bool pendingEndOfClip = false;
+    bool isTopLevelChain = false;
+};
 
 class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 {
@@ -64,17 +74,42 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         bool checkForSave() const;
 
         bool getAllowRemoteTriggering() const;
-        bool executeCommand(Playout::PlayoutType type, Action::ActionType source, QTreeWidgetItem* item = NULL);
+        bool isLocked() const;
+        void setLocked(bool locked);
+        RundownTreeBaseWidget* treeWidget() const;
+        QUndoStack* undoStack() const;
+        bool executeCommand(Playout::PlayoutType type, Action::ActionType source, QTreeWidgetItem* item = NULL, bool allowPreview = false);
+
+        // Cross-tab gateway support.
+        bool hasGatewayExit(const QString& gatewayId) const;
+        bool startAutoPlayFromGatewayExit(const QString& gatewayId, const QString& exitLabel = QString());
+        bool relayCommandToGatewayExit(const QString& gatewayId, Playout::PlayoutType type, const QString& exitLabel = QString());
+        bool hasFocusGatewayPartner(const QString& gatewayId, bool fromIsExit, const QString& exitLabel = QString()) const;
+        bool executeFocusJump(const QString& gatewayId, bool fromIsExit, const QString& exitLabel = QString());
+        QList<QPair<QString, QString>> getGatewayEntrances(const QString& type) const;
+        QStringList getGatewayExitLabels(const QString& gatewayId) const;
 
         Q_SLOT void gpiBindingChanged(int, Playout::PlayoutType);
 
+    Q_SIGNALS:
+        void requestCrossTabGateway(const QString& gatewayId, const QString& exitLabel);
+        void requestCrossTabGatewayRelay(const QString& gatewayId, Playout::PlayoutType type, const QString& exitLabel);
+        void requestCrossTabFocusGateway(const QString& gatewayId, bool fromIsExit, const QString& exitLabel);
+
     private:
+        struct GatewayExitLocation
+        {
+            QTreeWidgetItem* exitItem = nullptr;
+            QTreeWidgetItem* container = nullptr; // nullptr = top-level root
+            int childIndex = -1;
+        };
+        GatewayExitLocation findGatewayExitInTree(const QString& gatewayId, const QString& exitLabel = QString()) const;
+        GatewayExitLocation findGatewayPartnerInTree(const QString& gatewayId, bool partnerIsExit, const QString& exitLabel = QString()) const;
+        QList<GatewayExitLocation> findAllGatewayExitsInTree(const QString& gatewayId) const;
         bool active;
         bool enterPressed;
         bool allowRemoteRundownTriggering;
         bool repositoryRundown;
-        bool previewOnAutoStep;
-        bool clearDelayedCommandsOnAutoStep;
 
         QString page;
         QString activeRundown;
@@ -87,20 +122,21 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QMenu* contextMenuOther;
         QMenu* contextMenuLibrary;
         QMenu* contextMenuRundown;
+        QAction* addGatewayExitAction;
 
         QMap<int, Playout::PlayoutType> gpiBindings;
 
         AbstractRundownWidget* currentAutoPlayWidget;
-        QList<QList<AbstractRundownWidget*>* > autoPlayQueues;
+        QList<AutoPlayQueueInfo> autoPlayQueues;
 
         QTreeWidgetItem* copyItem;
-        QTreeWidgetItem* currentPlayingItem;
+        QMap<int, QTreeWidgetItem*> currentPlayingItems;  // Per-channel tracking of last fired items
         QTreeWidgetItem* currentPlayingAutoStepItem;
+        QTreeWidgetItem* currentAutostepHighlightItem;
+        QList<QTreeWidgetItem*> previousSelectedItems;
 
         OscSubscription* upControlSubscription;
         OscSubscription* downControlSubscription;
-        OscSubscription* playAndAutoStepControlSubscription;
-        OscSubscription* playNowAndAutoStepControlSubscription;
         OscSubscription* playNowIfChannelControlSubscription;
         OscSubscription* stopControlSubscription;
         OscSubscription* playControlSubscription;
@@ -121,12 +157,22 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         bool pasteSelectedItems();
         bool duplicateSelectedItems();
-        bool copySelectedItems() const;
+        bool copySelectedItems();
         void setupMenus();
+        void insertRundownItem(const LibraryModel& model);
+        void insertPresetItem(const QString& preset);
         void colorizeItems(const QString& color);
+        void wireGatewayWidget(AbstractRundownWidget* widget, QTreeWidgetItem* treeItem);
+        void handleFocusJumpToEntrance(const QString& gatewayId);
+        void wireAllGatewayWidgets();
         void resetOscSubscriptions();
         void configureOscSubscriptions();
         QString colorLookup(const QString& color, bool reverse) const;
+        QTreeWidgetItem* findTopLevelTreeItem(AbstractRundownWidget* widget);
+        void chainToNextTopLevelItem(int queueIndex, AbstractRundownWidget* lastWidget);
+        void setAutoPlayHighlight(AbstractRundownWidget* widget, bool highlight);
+        void setAutostepHighlight(QTreeWidgetItem* item, bool highlight);
+        bool shouldPreviewRedirect() const;
 
         Q_SLOT void addPlayoutCommandItem();
         Q_SLOT void addCustomCommandItem();
@@ -166,6 +212,13 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addHtmlItem();
         Q_SLOT void addRouteChannelItem();
         Q_SLOT void addRouteVideolayerItem();
+        Q_SLOT void addAutoPlayGatewayItem();
+        Q_SLOT void addFocusGatewayItem();
+        Q_SLOT void addCommandGatewayItem();
+        Q_SLOT void addAutoPlayGatewayExitItem();
+        Q_SLOT void addFocusGatewayExitItem();
+        Q_SLOT void addCommandGatewayExitItem();
+        Q_SLOT void addGatewayExit();
         Q_SLOT void contextMenuColorTriggered(QAction*);
         Q_SLOT void contextMenuRundownTriggered(QAction*);
         Q_SLOT void customContextMenuRequested(const QPoint&);
@@ -192,8 +245,6 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void autoPlayRundownItem(const AutoPlayRundownItemEvent&);
         Q_SLOT void autoPlayChanged(const AutoPlayChangedEvent&);
         Q_SLOT void autoPlayNextRundownItem(const AutoPlayNextRundownItemEvent&);
-        Q_SLOT void playAndAutoStepControlSubscriptionReceived(const QString&, const QList<QVariant>&);
-        Q_SLOT void playNowAndAutoStepControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playNowIfChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void upControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void downControlSubscriptionReceived(const QString&, const QList<QVariant>&);
@@ -218,9 +269,18 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void pasteItemProperties(const PasteItemPropertiesEvent&);
         Q_SLOT void copyItemProperties();
         Q_SLOT void pasteItemProperties();
+        Q_SLOT void pasteItemPropertiesNoData();
+        Q_SLOT void createLinkedClone();
+        Q_SLOT void unlinkClone();
+        Q_SLOT void absorbTransforms();
+        Q_SLOT void extractTransforms();
         Q_SLOT void repositoryConnectionStateChanged(RepositoryDevice&);
         Q_SLOT void repositoryChanged(const RepositoryChangeModel&, RepositoryDevice&);
         Q_SLOT void insertRepositoryChanges(const InsertRepositoryChangesEvent&);
         Q_SLOT void currentItemChanged(const CurrentItemChangedEvent&);
         Q_SLOT void clearDelayedCommands();
+        Q_SLOT void assignBank(const AssignBankEvent&);
+        Q_SLOT void bankTriggered(int bankId);
+        Q_SLOT void autostepModeChanged(bool active);
+        Q_SLOT void refreshUnitLabels();
 };

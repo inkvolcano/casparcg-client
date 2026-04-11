@@ -2,6 +2,7 @@
 
 #include "Global.h"
 
+#include "RundownWidgetHelper.h"
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "GpiManager.h"
@@ -24,8 +25,8 @@ RundownHtmlWidget::RundownHtmlWidget(const LibraryModel& model, QWidget* parent,
 
     this->animation = new ActiveAnimation(this->labelActiveColor);
 
-    this->delayType = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
-    this->markUsedItems = (DatabaseManager::getInstance().getConfigurationByName("MarkUsedItems").getValue() == "true") ? true : false;
+    this->delayType = RundownWidgetHelper::cachedDelayType();
+    this->markUsedItems = RundownWidgetHelper::cachedMarkUsedItems();
 
     setColor(this->color);
     setActive(this->active);
@@ -33,13 +34,22 @@ RundownHtmlWidget::RundownHtmlWidget(const LibraryModel& model, QWidget* parent,
 
     this->labelGroupColor->setVisible(this->inGroup);
     this->labelGroupColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_GROUP_COLOR));
-    this->labelColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_PRINT_COLOR));
 
     this->labelLabel->setText(this->model.getLabel());
-    this->labelChannel->setText(QString("Channel: %1").arg(this->command.getChannel()));
-    this->labelVideolayer->setText(QString("Video layer: %1").arg(this->command.getVideolayer()));
-    this->labelDelay->setText(QString("Delay: %1").arg(this->command.getDelay()));
-    this->labelDevice->setText(QString("Server: %1").arg(this->model.getDeviceName()));
+    this->labelChannel->setText(QString("%1").arg(this->command.getChannel()));
+    this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(this->command.getVideolayer()));
+    this->labelDelay->setText(RundownWidgetHelper::formatDelay(this->command.getDelay(), this->delayType, RundownWidgetHelper::getChannelFps(this->model.getDeviceName(), this->command.getChannel())));
+    this->labelDevice->setText(QString("%1").arg(this->model.getDeviceName()));
+    RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, this->command.getChannel(), this->command.getVideolayer());
+    QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
+    QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+        RundownWidgetHelper::updateBankBadge(bankBadge, bank);
+        RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
+    });
+    RundownWidgetHelper::updateBankBadge(bankBadge, this->command.getTriggerBank());
+    RundownWidgetHelper::configureBankOscSubscriptions(this, this, this->command.getTriggerBank());
+    RundownWidgetHelper::setupCloneSupport(this, this->frameItem, &this->command);
+    this->labelChannel->setVisible(false);
 
     QObject::connect(&this->itemScheduler, SIGNAL(executePlay()), this, SLOT(executePlay()));
     QObject::connect(&this->itemScheduler, SIGNAL(executeStop()), this, SLOT(executeStop()));
@@ -91,7 +101,7 @@ void RundownHtmlWidget::deviceChanged(const DeviceChangedEvent& event)
 
         // Update the model with the new device.
         this->model.setDeviceName(event.getDeviceName());
-        this->labelDevice->setText(QString("Server: %1").arg(this->model.getDeviceName()));
+        this->labelDevice->setText(QString("%1").arg(this->model.getDeviceName()));
 
         // Connect connectionStateChanged() to the new device.
         const QSharedPointer<CasparDevice> newDevice = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
@@ -132,12 +142,14 @@ void RundownHtmlWidget::setCompactView(bool compactView)
 {
     if (compactView)
     {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::COMPACT_ITEM_HEIGHT);
         this->labelIcon->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
         this->labelGpiConnected->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
         this->labelDisconnected->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
     }
     else
     {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::DEFAULT_ITEM_HEIGHT);
         this->labelIcon->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
         this->labelGpiConnected->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
         this->labelDisconnected->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
@@ -188,9 +200,9 @@ void RundownHtmlWidget::setActive(bool active)
     this->animation->stop();
 
     if (this->active)
-        this->labelActiveColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_ACTIVE_COLOR));
+        RundownWidgetHelper::setActiveColorPalette(this->labelActiveColor, this->command.getChannel());
     else
-        this->labelActiveColor->setStyleSheet("");
+        RundownWidgetHelper::clearActiveColorPalette(this->labelActiveColor);
 }
 
 void RundownHtmlWidget::setInGroup(bool inGroup)
@@ -283,7 +295,10 @@ bool RundownHtmlWidget::executeCommand(Playout::PlayoutType type)
         executeLoadPreview();
 
     if (this->active)
+    {
+        this->animation->setChannel(this->command.getChannel());
         this->animation->start(1);
+    }
 
     return true;
 }
@@ -296,11 +311,6 @@ void RundownHtmlWidget::executeStop()
     if (device != NULL && device->isConnected())
     {
         device->stop(this->command.getChannel(), this->command.getVideolayer());
-
-        // Stop preview channels item.
-        const QSharedPointer<DeviceModel> deviceModel = DeviceManager::getInstance().getDeviceModelByName(this->model.getDeviceName());
-        if (deviceModel != NULL && deviceModel->getPreviewChannel() > 0)
-            device->stop(deviceModel->getPreviewChannel(), this->command.getVideolayer());
     }
 
     foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
@@ -310,13 +320,7 @@ void RundownHtmlWidget::executeStop()
 
         const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
         if (deviceShadow != NULL && deviceShadow->isConnected())
-        {
             deviceShadow->stop(this->command.getChannel(), this->command.getVideolayer());
-
-            // Stop preview channels item.
-            if (model.getPreviewChannel() > 0)
-                deviceShadow->stop(model.getPreviewChannel(), this->command.getVideolayer());
-        }
     }
 
     this->paused = false;
@@ -329,6 +333,14 @@ void RundownHtmlWidget::executePlay()
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
     if (device != NULL && device->isConnected())
     {
+        // Apply embedded transforms atomically before content plays.
+        if (this->command.getTransform().hasAnyTransform())
+        {
+            this->command.getTransform().applyDeferred(device.data(),
+                this->command.getChannel(), this->command.getVideolayer());
+            this->command.getTransform().commit(device.data(), this->command.getChannel());
+        }
+
         if (this->loaded)
         {
             device->play(this->command.getChannel(), this->command.getVideolayer());
@@ -339,6 +351,11 @@ void RundownHtmlWidget::executePlay()
                              this->command.getTransition(), this->command.getTransitionDuration(), this->command.getTween(),
                              this->command.getDirection(), this->command.getUseAuto());
         }
+
+        // Entrance animation (after content is on-air).
+        if (this->command.getTransform().entrance.has_value())
+            this->command.getTransform().applyEntrance(device.data(),
+                this->command.getChannel(), this->command.getVideolayer());
     }
 
     foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
@@ -349,6 +366,14 @@ void RundownHtmlWidget::executePlay()
         const QSharedPointer<CasparDevice>  deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
         if (deviceShadow != NULL && deviceShadow->isConnected())
         {
+            // Apply embedded transforms atomically before content plays.
+            if (this->command.getTransform().hasAnyTransform())
+            {
+                this->command.getTransform().applyDeferred(deviceShadow.data(),
+                    this->command.getChannel(), this->command.getVideolayer());
+                this->command.getTransform().commit(deviceShadow.data(), this->command.getChannel());
+            }
+
             if (this->loaded)
             {
                 deviceShadow->play(this->command.getChannel(), this->command.getVideolayer());
@@ -359,6 +384,11 @@ void RundownHtmlWidget::executePlay()
                                        this->command.getTransition(), this->command.getTransitionDuration(), this->command.getTween(),
                                        this->command.getDirection(), this->command.getUseAuto());
             }
+
+            // Entrance animation (after content is on-air).
+            if (this->command.getTransform().entrance.has_value())
+                this->command.getTransform().applyEntrance(deviceShadow.data(),
+                    this->command.getChannel(), this->command.getVideolayer());
         }
     }
 
@@ -471,11 +501,6 @@ void RundownHtmlWidget::executeClearVideolayer()
     if (device != NULL && device->isConnected())
     {
         device->clearVideolayer(this->command.getChannel(), this->command.getVideolayer());
-
-        // Clear preview channels videolayer.
-        const QSharedPointer<DeviceModel> deviceModel = DeviceManager::getInstance().getDeviceModelByName(this->model.getDeviceName());
-        if (deviceModel != NULL && deviceModel->getPreviewChannel() > 0)
-            device->clearVideolayer(deviceModel->getPreviewChannel(), this->command.getVideolayer());
     }
 
     foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
@@ -485,13 +510,7 @@ void RundownHtmlWidget::executeClearVideolayer()
 
         const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
         if (deviceShadow != NULL && deviceShadow->isConnected())
-        {
             deviceShadow->clearVideolayer(this->command.getChannel(), this->command.getVideolayer());
-
-            // Clear preview channels videolayer.
-            if (model.getPreviewChannel() > 0)
-                deviceShadow->clearVideolayer(model.getPreviewChannel(), this->command.getVideolayer());
-        }
     }
 
     this->paused = false;
@@ -508,14 +527,6 @@ void RundownHtmlWidget::executeClearChannel()
     {
         device->clearChannel(this->command.getChannel());
         device->clearMixerChannel(this->command.getChannel());
-
-        // Clear preview channel.
-        const QSharedPointer<DeviceModel> deviceModel = DeviceManager::getInstance().getDeviceModelByName(this->model.getDeviceName());
-        if (deviceModel != NULL && deviceModel->getPreviewChannel() > 0)
-        {
-            device->clearChannel(deviceModel->getPreviewChannel());
-            device->clearMixerChannel(deviceModel->getPreviewChannel());
-        }
     }
 
     foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
@@ -528,13 +539,6 @@ void RundownHtmlWidget::executeClearChannel()
         {
             deviceShadow->clearChannel(this->command.getChannel());
             deviceShadow->clearMixerChannel(this->command.getChannel());
-
-            // Clear preview channel.
-            if (model.getPreviewChannel() > 0)
-            {
-                deviceShadow->clearChannel(model.getPreviewChannel());
-                deviceShadow->clearMixerChannel(model.getPreviewChannel());
-            }
         }
     }
 
@@ -545,17 +549,19 @@ void RundownHtmlWidget::executeClearChannel()
 
 void RundownHtmlWidget::videolayerChanged(int videolayer)
 {
-    this->labelVideolayer->setText(QString("Video layer: %1").arg(videolayer));
+    this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getChannel(), videolayer);
 }
 
 void RundownHtmlWidget::channelChanged(int channel)
 {
-    this->labelChannel->setText(QString("Channel: %1").arg(channel));
+    this->labelChannel->setText(QString("%1").arg(channel));
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, channel, this->command.getVideolayer());
 }
 
 void RundownHtmlWidget::delayChanged(int delay)
 {
-    this->labelDelay->setText(QString("Delay: %1").arg(delay));
+    this->labelDelay->setText(RundownWidgetHelper::formatDelay(delay, this->delayType, RundownWidgetHelper::getChannelFps(this->model.getDeviceName(), this->command.getChannel())));
 }
 
 void RundownHtmlWidget::checkGpiConnection()
@@ -563,9 +569,9 @@ void RundownHtmlWidget::checkGpiConnection()
     this->labelGpiConnected->setVisible(this->command.getAllowGpi());
 
     if (GpiManager::getInstance().getGpiDevice()->isConnected())
-        this->labelGpiConnected->setPixmap(QPixmap(":/Graphics/Images/GpiConnected.png"));
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiConnectedPixmap());
     else
-        this->labelGpiConnected->setPixmap(QPixmap(":/Graphics/Images/GpiDisconnected.png"));
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiDisconnectedPixmap());
 }
 
 void RundownHtmlWidget::checkDeviceConnection()
@@ -582,26 +588,26 @@ void RundownHtmlWidget::configureOscSubscriptions()
     if (!this->command.getAllowRemoteTriggering())
         return;
 
-    if (this->stopControlSubscription != NULL)
-        this->stopControlSubscription->disconnect(); // Disconnect all events.
+    delete this->stopControlSubscription;
+    this->stopControlSubscription = nullptr;
 
-    if (this->playControlSubscription != NULL)
-        this->playControlSubscription->disconnect(); // Disconnect all events.
+    delete this->playControlSubscription;
+    this->playControlSubscription = nullptr;
 
-    if (this->playNowControlSubscription != NULL)
-        this->playNowControlSubscription->disconnect(); // Disconnect all events.
+    delete this->playNowControlSubscription;
+    this->playNowControlSubscription = nullptr;
 
-    if (this->updateControlSubscription != NULL)
-        this->updateControlSubscription->disconnect(); // Disconnect all events.
+    delete this->updateControlSubscription;
+    this->updateControlSubscription = nullptr;
 
-    if (this->clearControlSubscription != NULL)
-        this->clearControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearControlSubscription;
+    this->clearControlSubscription = nullptr;
 
-    if (this->clearVideolayerControlSubscription != NULL)
-        this->clearVideolayerControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearVideolayerControlSubscription;
+    this->clearVideolayerControlSubscription = nullptr;
 
-    if (this->clearChannelControlSubscription != NULL)
-        this->clearChannelControlSubscription->disconnect(); // Disconnect all events.
+    delete this->clearChannelControlSubscription;
+    this->clearChannelControlSubscription = nullptr;
 
     QString stopControlFilter = Osc::ITEM_CONTROL_STOP_FILTER;
     stopControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
@@ -684,7 +690,10 @@ void RundownHtmlWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
 {
     configureOscSubscriptions();
 
-    this->labelRemoteTriggerId->setText(QString("UID: %1").arg(remoteTriggerId));
+    if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
+        this->labelRemoteTriggerId->setText("");
+    else
+        this->labelRemoteTriggerId->setText(QString::fromUtf8("\xe2\x87\xa5 %1").arg(remoteTriggerId));
 }
 
 void RundownHtmlWidget::deviceConnectionStateChanged(CasparDevice& device)
@@ -707,7 +716,13 @@ void RundownHtmlWidget::stopControlSubscriptionReceived(const QString& predicate
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Stop);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Stop);
+    }
 }
 
 void RundownHtmlWidget::playControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -715,7 +730,13 @@ void RundownHtmlWidget::playControlSubscriptionReceived(const QString& predicate
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Play);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Play);
+    }
 }
 
 void RundownHtmlWidget::playNowControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -723,7 +744,13 @@ void RundownHtmlWidget::playNowControlSubscriptionReceived(const QString& predic
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::PlayNow);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PlayNow);
+    }
 }
 
 void RundownHtmlWidget::loadControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -731,7 +758,13 @@ void RundownHtmlWidget::loadControlSubscriptionReceived(const QString& predicate
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Load);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Load);
+    }
 }
 
 void RundownHtmlWidget::pauseControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -739,7 +772,13 @@ void RundownHtmlWidget::pauseControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::PauseResume);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PauseResume);
+    }
 }
 
 void RundownHtmlWidget::updateControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -747,7 +786,13 @@ void RundownHtmlWidget::updateControlSubscriptionReceived(const QString& predica
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Update);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Update);
+    }
 }
 
 void RundownHtmlWidget::previewControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -755,7 +800,13 @@ void RundownHtmlWidget::previewControlSubscriptionReceived(const QString& predic
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Preview);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Preview);
+    }
 }
 
 void RundownHtmlWidget::clearControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -763,7 +814,13 @@ void RundownHtmlWidget::clearControlSubscriptionReceived(const QString& predicat
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::Clear);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Clear);
+    }
 }
 
 void RundownHtmlWidget::clearVideolayerControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -771,7 +828,13 @@ void RundownHtmlWidget::clearVideolayerControlSubscriptionReceived(const QString
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::ClearVideoLayer);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearVideoLayer);
+    }
 }
 
 void RundownHtmlWidget::clearChannelControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
@@ -779,5 +842,11 @@ void RundownHtmlWidget::clearChannelControlSubscriptionReceived(const QString& p
     Q_UNUSED(predicate);
 
     if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
         executeCommand(Playout::PlayoutType::ClearChannel);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
+    }
 }

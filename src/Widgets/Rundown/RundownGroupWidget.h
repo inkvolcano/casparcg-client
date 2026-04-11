@@ -20,7 +20,10 @@
 
 #include <QtCore/QString>
 
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QWidget>
+
+class QTreeWidgetItem;
 
 class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget, public AbstractRundownWidget, public AbstractPlayoutCommand
 {
@@ -43,7 +46,7 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
 
         virtual void setExpanded(bool expanded);
         virtual void setActive(bool active);
-        virtual void setInGroup(bool /* inGroup */) {}
+        virtual void setInGroup(bool inGroup);
         virtual void setColor(const QString& color);
         virtual void readProperties(boost::property_tree::wptree& pt);
         virtual void writeProperties(QXmlStreamWriter& writer);
@@ -52,8 +55,11 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
 
+        void updateGroupInfo(QTreeWidgetItem* groupItem);
+
     private:
         bool active = false;
+        bool inGroup = false;
         bool compactView = false;
         bool useDropFrameNotation = false;
         QString color; 
@@ -63,6 +69,8 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         QString delayType;
         bool markUsedItems;
         bool selected = false;
+
+        QLabel* labelTypeList;
 
         OscSubscription* stopControlSubscription;
         OscSubscription* playControlSubscription;
@@ -82,9 +90,9 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         Q_SLOT void durationChanged(int);
         Q_SLOT void notesChanged(const QString&);
         Q_SLOT void allowGpiChanged(bool);
-        Q_SLOT void autoStepChanged(bool);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);
         Q_SLOT void autoPlayChanged(bool);
+        Q_SLOT void loopChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void stopControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playControlSubscriptionReceived(const QString&, const QList<QVariant>&);

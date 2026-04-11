@@ -18,10 +18,14 @@
 #include "Events/Inspector/TargetChangedEvent.h"
 #include "Events/Inspector/LabelChangedEvent.h"
 #include "Events/Inspector/DeviceChangedEvent.h"
+#include "Events/Rundown/AutoPlayRundownItemEvent.h"
+#include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/LibraryModel.h"
 #include "Utils/ItemScheduler.h"
 
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QString>
+#include <QtCore/QTimer>
 
 #include <QtWidgets/QWidget>
 
@@ -70,6 +74,7 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         QString delayType;
         bool markUsedItems;
         bool selected = false;
+        bool sendAutoPlay = false;
 
         OscSubscription* stopControlSubscription;
         OscSubscription* playControlSubscription;
@@ -83,11 +88,16 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
 
         ItemScheduler itemScheduler;
 
+        QTimer* progressTimer = nullptr;
+        QElapsedTimer progressElapsed;
+        int progressDurationMs = 0;
+
         void setThumbnail();
         void checkEmptyDevice();
         void checkGpiConnection();
         void checkDeviceConnection();
         void configureOscSubscriptions();
+        void updateDurationLabel();
 
         Q_SLOT void executeClearVideolayer();
         Q_SLOT void executeClearChannel();
@@ -99,6 +109,8 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         Q_SLOT void executePlayPreview();
         Q_SLOT void videolayerChanged(int);
         Q_SLOT void delayChanged(int);
+        Q_SLOT void durationChanged(int);
+        Q_SLOT void autoPlayChanged(bool);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);
@@ -113,6 +125,7 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         Q_SLOT void clearControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void clearVideolayerControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void updateProgress();
         Q_SLOT void labelChanged(const LabelChangedEvent&);
         Q_SLOT void targetChanged(const TargetChangedEvent&);
         Q_SLOT void deviceChanged(const DeviceChangedEvent&);

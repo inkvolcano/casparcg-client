@@ -59,6 +59,8 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
 
+        void requestEndOfClipAutoPlay();
+
     private:
         bool active;
         bool loaded;
@@ -76,7 +78,9 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         QString delayType;
         bool markUsedItems;
         bool useFreezeOnLoad;
+        bool oscLoop = false;
         bool selected = false;
+        bool fireAtEndOfClip = false;
 
         OscFileModel fileModel;
         OscSubscription* timeSubscription;

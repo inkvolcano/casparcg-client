@@ -97,6 +97,7 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         void checkGpiConnection();
         void checkDeviceConnection();
         void configureOscSubscriptions();
+        void updateDurationLabel();
 
         Q_SLOT void channelChanged(int);
         Q_SLOT void executeStop();
@@ -112,7 +113,7 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         Q_SLOT void executeStopPreview();
         Q_SLOT void videolayerChanged(int);
         Q_SLOT void delayChanged(int);
-        Q_SLOT void flashlayerChanged(int);
+        Q_SLOT void durationChanged(int);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);

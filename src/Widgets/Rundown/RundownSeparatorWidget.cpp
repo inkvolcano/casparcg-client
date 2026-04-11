@@ -1,6 +1,8 @@
 #include "RundownSeparatorWidget.h"
 
 #include "Global.h"
+
+#include "RundownWidgetHelper.h"
 #include "GpiManager.h"
 
 #include "EventManager.h"
@@ -26,9 +28,17 @@ RundownSeparatorWidget::RundownSeparatorWidget(const LibraryModel& model, QWidge
     this->labelGroupColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_GROUP_COLOR));
 
     this->labelActiveColor->setVisible(false);
-    //this->labelColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_SEPARATOR_COLOR));
 
     this->labelLabel->setText(this->model.getLabel());
+    RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, 0);
+    QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
+    QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+        RundownWidgetHelper::updateBankBadge(bankBadge, bank);
+        RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
+    });
+    RundownWidgetHelper::updateBankBadge(bankBadge, this->command.getTriggerBank());
+    RundownWidgetHelper::configureBankOscSubscriptions(this, this, this->command.getTriggerBank());
+    RundownWidgetHelper::setupCloneSupport(this, this->frameItem, &this->command);
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
 }
@@ -65,9 +75,15 @@ void RundownSeparatorWidget::writeProperties(QXmlStreamWriter& writer)
 void RundownSeparatorWidget::setCompactView(bool compactView)
 {
     if (compactView)
+    {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::COMPACT_ITEM_HEIGHT);
         this->labelIcon->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
+    }
     else
+    {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::DEFAULT_ITEM_HEIGHT);
         this->labelIcon->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
+    }
 
     this->compactView = compactView;
 }
@@ -119,9 +135,9 @@ void RundownSeparatorWidget::setActive(bool active)
     this->animation->stop();
 
     if (this->active)
-        this->labelActiveColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_ACTIVE_COLOR));
+        RundownWidgetHelper::setActiveColorPalette(this->labelActiveColor, this->command.getChannel());
     else
-        this->labelActiveColor->setStyleSheet("");
+        RundownWidgetHelper::clearActiveColorPalette(this->labelActiveColor);
 }
 
 void RundownSeparatorWidget::setInGroup(bool inGroup)
@@ -135,7 +151,10 @@ bool RundownSeparatorWidget::executeCommand(Playout::PlayoutType type)
     Q_UNUSED(type);
 
     if (this->active)
+    {
+        this->animation->setChannel(this->command.getChannel());
         this->animation->start(1);
+    }
 
     return false;
 }

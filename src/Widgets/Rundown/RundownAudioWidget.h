@@ -18,6 +18,7 @@
 #include "Events/Inspector/DeviceChangedEvent.h"
 #include "Events/Inspector/LabelChangedEvent.h"
 #include "Events/Inspector/TargetChangedEvent.h"
+#include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/LibraryModel.h"
 #include "Utils/ItemScheduler.h"
 
@@ -82,12 +83,30 @@ class WIDGETS_EXPORT RundownAudioWidget : public QWidget, Ui::RundownAudioWidget
         OscSubscription* clearVideolayerControlSubscription;
         OscSubscription* clearChannelControlSubscription;
 
+        OscSubscription* timeSubscription = nullptr;
+        OscSubscription* clipSubscription = nullptr;
+        OscSubscription* fpsSubscription = nullptr;
+        OscSubscription* nameSubscription = nullptr;
+        OscSubscription* pausedOscSubscription = nullptr;
+        OscSubscription* loopOscSubscription = nullptr;
+
+        double oscTime = 0;
+        double oscTotalTime = 0;
+        double oscClip = 0;
+        double oscTotalClip = 0;
+        double oscFps = 0;
+        QString oscName;
+        bool oscPaused = false;
+        bool oscLoop = false;
+
         ItemScheduler itemScheduler;
 
         void checkEmptyDevice();
         void checkGpiConnection();
         void checkDeviceConnection();
         void configureOscSubscriptions();
+        void updateDurationLabel();
+        void executePlayPreview();
 
         Q_SLOT void channelChanged(int);
         Q_SLOT void executeClearVideolayer();
@@ -98,6 +117,7 @@ class WIDGETS_EXPORT RundownAudioWidget : public QWidget, Ui::RundownAudioWidget
         Q_SLOT void executeStop();
         Q_SLOT void videolayerChanged(int);
         Q_SLOT void delayChanged(int);
+        Q_SLOT void durationChanged(int);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void loopChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
@@ -114,7 +134,15 @@ class WIDGETS_EXPORT RundownAudioWidget : public QWidget, Ui::RundownAudioWidget
         Q_SLOT void clearControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void clearVideolayerControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void timeSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void clipSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void fpsSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void nameSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void pausedSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void loopOscSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void labelChanged(const LabelChangedEvent&);
         Q_SLOT void targetChanged(const TargetChangedEvent&);
         Q_SLOT void deviceChanged(const DeviceChangedEvent&);
+
+        void fireProgressEvent();
 };

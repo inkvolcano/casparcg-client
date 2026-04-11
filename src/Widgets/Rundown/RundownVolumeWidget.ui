@@ -53,14 +53,14 @@
      <widget class="QLabel" name="labelChannel">
       <property name="geometry">
        <rect>
-        <x>62</x>
-        <y>19</y>
-        <width>75</width>
-        <height>16</height>
+        <x>0</x>
+        <y>0</y>
+        <width>0</width>
+        <height>0</height>
        </rect>
       </property>
       <property name="text">
-       <string>Channel:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelLabel">
@@ -68,7 +68,7 @@
        <rect>
         <x>62</x>
         <y>2</y>
-        <width>561</width>
+        <width>5000</width>
         <height>16</height>
        </rect>
       </property>
@@ -79,14 +79,14 @@
      <widget class="QLabel" name="labelVideolayer">
       <property name="geometry">
        <rect>
-        <x>149</x>
+        <x>140</x>
         <y>19</y>
-        <width>110</width>
+        <width>40</width>
         <height>16</height>
        </rect>
       </property>
       <property name="text">
-       <string>Video layer:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelColor">
@@ -118,40 +118,40 @@
      <widget class="QLabel" name="labelDevice">
       <property name="geometry">
        <rect>
-        <x>360</x>
+        <x>62</x>
         <y>19</y>
-        <width>260</width>
+        <width>75</width>
         <height>16</height>
        </rect>
       </property>
       <property name="text">
-       <string>Server:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelDelay">
       <property name="geometry">
        <rect>
-        <x>268</x>
+        <x>185</x>
         <y>19</y>
-        <width>83</width>
+        <width>55</width>
         <height>16</height>
        </rect>
       </property>
       <property name="text">
-       <string>Delay:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelRemoteTriggerId">
       <property name="geometry">
        <rect>
-        <x>629</x>
+        <x>245</x>
         <y>19</y>
-        <width>111</width>
+        <width>70</width>
         <height>16</height>
        </rect>
       </property>
       <property name="text">
-       <string>UID:</string>
+       <string></string>
       </property>
      </widget>
     </widget>

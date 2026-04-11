@@ -40,6 +40,9 @@
 #include "RundownRouteChannelWidget.h"
 #include "RundownRouteVideolayerWidget.h"
 #include "RundownHttpPostWidget.h"
+#include "RundownAutoPlayGatewayWidget.h"
+#include "RundownFocusGatewayWidget.h"
+#include "RundownCommandGatewayWidget.h"
 
 Q_GLOBAL_STATIC(RundownItemFactory, rundownItemFactory)
 
@@ -89,6 +92,9 @@ AbstractRundownWidget* RundownItemFactory::createWidget(const LibraryModel& mode
     else if (model.getType() == Rundown::HTML) return new RundownHtmlWidget(model, this);
     else if (model.getType() == Rundown::ROUTECHANNEL) return new RundownRouteChannelWidget(model, this);
     else if (model.getType() == Rundown::ROUTEVIDEOLAYER) return new RundownRouteVideolayerWidget(model, this);
+    else if (model.getType() == Rundown::AUTOPLAYGATEWAY) return new RundownAutoPlayGatewayWidget(model, this);
+    else if (model.getType() == Rundown::FOCUSGATEWAY) return new RundownFocusGatewayWidget(model, this);
+    else if (model.getType() == Rundown::COMMANDGATEWAY) return new RundownCommandGatewayWidget(model, this);
 
     return NULL;
 }

@@ -55,7 +55,7 @@
        <rect>
         <x>62</x>
         <y>2</y>
-        <width>561</width>
+        <width>5000</width>
         <height>16</height>
        </rect>
       </property>
@@ -99,7 +99,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>Delay:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelGpiOutputPort">
@@ -112,7 +112,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>GPO Port:</string>
+       <string></string>
       </property>
      </widget>
      <widget class="QLabel" name="labelRemoteTriggerId">
@@ -125,7 +125,7 @@
        </rect>
       </property>
       <property name="text">
-       <string>UID:</string>
+       <string></string>
       </property>
      </widget>
     </widget>
