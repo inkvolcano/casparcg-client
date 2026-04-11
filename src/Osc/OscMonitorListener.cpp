@@ -1,4 +1,5 @@
 #include "OscMonitorListener.h"
+#include "OscSubscriptionRegistry.h"
 
 #include <QtCore/QString>
 #include <QtCore/QThread>
@@ -23,11 +24,12 @@ OscMonitorListener::~OscMonitorListener()
     }
 }
 
-void OscMonitorListener::start(int port)
+void OscMonitorListener::start(int port, int batchInterval)
 {
     try
     {
         this->port = port;
+        this->batchInterval = batchInterval;
 
         this->socket = new UdpSocket();
         this->socket->SetAllowReuse(true);
@@ -41,7 +43,7 @@ void OscMonitorListener::start(int port)
         this->thread = new OscThread(this->multiplexer, this);
         this->thread->start();
 
-        QTimer::singleShot(200, this, SLOT(sendEventBatch()));
+        QTimer::singleShot(this->batchInterval, this, SLOT(sendEventBatch()));
     }
     catch (std::runtime_error &e)
     {
@@ -93,7 +95,7 @@ void OscMonitorListener::sendEventBatch()
     }
 
     foreach (const QString& eventPath, other.keys())
-        emit messageReceived(eventPath, other[eventPath]);
+        OscSubscriptionRegistry::getInstance().dispatch(eventPath, other[eventPath]);
 
-    QTimer::singleShot(200, this, SLOT(sendEventBatch()));
+    QTimer::singleShot(this->batchInterval, this, SLOT(sendEventBatch()));
 }

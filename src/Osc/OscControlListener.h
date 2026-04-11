@@ -20,7 +20,7 @@ class OSC_EXPORT OscControlListener : public QObject, public osc::OscPacketListe
         explicit OscControlListener(QObject* parent = 0);
         ~OscControlListener();
 
-        void start(int port);
+        void start(int port, int batchInterval = 400);
 
         Q_SIGNAL void messageReceived(const QString&, const QList<QVariant>&);
 
@@ -28,7 +28,8 @@ class OSC_EXPORT OscControlListener : public QObject, public osc::OscPacketListe
         virtual void ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint);
 
     private:
-        int port;
+        int port = 0;
+        int batchInterval = 400;
         QMutex eventsMutex;
         QMap<QString, QList<QVariant>> events;
         OscThread* thread = nullptr;

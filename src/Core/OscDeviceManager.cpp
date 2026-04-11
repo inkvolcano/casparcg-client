@@ -1,5 +1,6 @@
 #include "OscDeviceManager.h"
 #include "DatabaseManager.h"
+#include "Global.h"
 
 #include <QtCore/QSharedPointer>
 
@@ -18,15 +19,21 @@ void OscDeviceManager::initialize()
 {
     this->oscSender = QSharedPointer<OscSender>();
 
-    QString oscMonitorPort = DatabaseManager::getInstance().getConfigurationByName("OscMonitorPort").getValue();
-    this->oscMonitorListener = QSharedPointer<OscMonitorListener>(new OscMonitorListener());
-    if (DatabaseManager::getInstance().getConfigurationByName("EnableOscInputMonitor").getValue() == "true")
-        this->oscMonitorListener->start((oscMonitorPort.isEmpty() == true) ? Osc::DEFAULT_MONITOR_PORT : oscMonitorPort.toInt());
+    // Bulk-load all config values in a single DB query (replaces 5 individual SELECTs).
+    QMap<QString, QString> cfg = DatabaseManager::getInstance().getAllConfigurations();
 
-    QString oscControlPort = DatabaseManager::getInstance().getConfigurationByName("OscControlPort").getValue();
+    QString refreshStr = cfg.value("OscRefreshRate", QString());
+    int refreshRate = refreshStr.isEmpty() ? Osc::DEFAULT_REFRESH_RATE : refreshStr.toInt();
+
+    QString oscMonitorPort = cfg.value("OscMonitorPort", QString());
+    this->oscMonitorListener = QSharedPointer<OscMonitorListener>(new OscMonitorListener());
+    if (cfg.value("EnableOscInputMonitor", QString()) == "true")
+        this->oscMonitorListener->start((oscMonitorPort.isEmpty() == true) ? Osc::DEFAULT_MONITOR_PORT : oscMonitorPort.toInt(), refreshRate);
+
+    QString oscControlPort = cfg.value("OscControlPort", QString());
     this->oscControlListener = QSharedPointer<OscControlListener>(new OscControlListener());
-    if (DatabaseManager::getInstance().getConfigurationByName("EnableOscInputControl").getValue() == "true")
-        this->oscControlListener->start((oscControlPort.isEmpty() == true) ? Osc::DEFAULT_CONTROL_PORT : oscControlPort.toInt());
+    if (cfg.value("EnableOscInputControl", QString()) == "true")
+        this->oscControlListener->start((oscControlPort.isEmpty() == true) ? Osc::DEFAULT_CONTROL_PORT : oscControlPort.toInt(), refreshRate * 2);
 }
 
 void OscDeviceManager::uninitialize()

@@ -1,4 +1,5 @@
 #include "OscWebSocketListener.h"
+#include "OscSubscriptionRegistry.h"
 
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
@@ -85,7 +86,7 @@ void OscWebSocketListener::textMessageReceived(const QString& message)
 
         qDebug("Received OSC message over WebSocket from %s:%d: %s", qPrintable(socket->peerAddress().toString()), socket->peerPort(), qPrintable(path));
 
-        emit messageReceived(path, arguments);
+        OscSubscriptionRegistry::getInstance().dispatch(path, arguments);
     }
 }
 

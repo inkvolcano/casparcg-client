@@ -1,8 +1,11 @@
 #include "HttpRequest.h"
+#include "HttpResponseLog.h"
 
 #include <QtCore/QDebug>
 #include <QtCore/QPair>
 #include <QtCore/QUrl>
+
+#include <QtNetwork/QNetworkRequest>
 
 HttpRequest::HttpRequest(QObject* parent)
     : QObject(parent)
@@ -14,7 +17,9 @@ void HttpRequest::sendGet(const QString& url, const QUrlQuery& query)
     QUrl request(url);
     request.setQuery(query);
 
-    qDebug("HttpRequest::sendGet %s", qPrintable(request.toString()));
+    this->pendingGetUrl = request.toString();
+
+    qDebug("HttpRequest::sendGet %s", qPrintable(this->pendingGetUrl));
 
     this->networkManager = new QNetworkAccessManager(this);
     QObject::connect(this->networkManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(sendGetFinished(QNetworkReply*)));
@@ -24,8 +29,11 @@ void HttpRequest::sendGet(const QString& url, const QUrlQuery& query)
 void HttpRequest::sendGetFinished(QNetworkReply* reply)
 {
     QString data = QString::fromUtf8(reply->readAll());
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
-    qDebug("HttpRequest::sendGetFinished %s", qPrintable(data));
+    qDebug("HttpRequest::sendGetFinished %d %s", statusCode, qPrintable(data));
+
+    HttpResponseLog::getInstance().logResponse("GET", this->pendingGetUrl, statusCode, data);
 
     reply->deleteLater();
     this->networkManager->deleteLater();
@@ -33,6 +41,8 @@ void HttpRequest::sendGetFinished(QNetworkReply* reply)
 
 void HttpRequest::sendPost(const QString& url, const QUrlQuery& query)
 {
+    this->pendingPostUrl = url;
+
     qDebug("HttpRequest::sendPost %s, %s", qPrintable(url), qPrintable(query.toString(QUrl::FullyEncoded)));
 
     this->networkManager = new QNetworkAccessManager(this);
@@ -43,8 +53,11 @@ void HttpRequest::sendPost(const QString& url, const QUrlQuery& query)
 void HttpRequest::sendPostFinished(QNetworkReply* reply)
 {
     QString data = QString::fromUtf8(reply->readAll());
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
-    qDebug("HttpRequest::sendPostFinished %s", qPrintable(data));
+    qDebug("HttpRequest::sendPostFinished %d %s", statusCode, qPrintable(data));
+
+    HttpResponseLog::getInstance().logResponse("POST", this->pendingPostUrl, statusCode, data);
 
     reply->deleteLater();
     this->networkManager->deleteLater();

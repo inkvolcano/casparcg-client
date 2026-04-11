@@ -124,6 +124,8 @@ class CASPAR_EXPORT CasparDevice : public AmcpDevice
         void setCrop(int channel, int videolayer, float upperLeftX, float upperLeftY, float lowerRightX, float lowerRightY, int duration, const QString& easing, bool defer = false);
         void setMasterVolume(int channel, float masterVolume);
 
+        void setLoop(int channel, int videolayer, bool loop);
+
         Q_SIGNAL void connectionStateChanged(CasparDevice&);
         Q_SIGNAL void infoChanged(const QList<QString>&, CasparDevice&);
         Q_SIGNAL void infoSystemChanged(const QList<QString>&, CasparDevice&);

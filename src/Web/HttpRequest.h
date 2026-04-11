@@ -22,6 +22,8 @@ class WEB_EXPORT HttpRequest : public QObject
 
     private:
         QNetworkAccessManager* networkManager;
+        QString pendingGetUrl;
+        QString pendingPostUrl;
 
         Q_SLOT void sendGetFinished(QNetworkReply*);
         Q_SLOT void sendPostFinished(QNetworkReply*);
