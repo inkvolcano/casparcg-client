@@ -1,0 +1,1049 @@
+<html>
+<head>
+<title>CasparCG Client — User Manual</title>
+<style>
+body {
+    background: #1e1e1e;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    padding: 24px 32px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+}
+h1 {
+    color: #fff;
+    border-bottom: 3px solid #4a9eff;
+    padding-bottom: 10px;
+    font-size: 26px;
+    margin-top: 0;
+}
+h2 {
+    color: #4a9eff;
+    border-bottom: 1px solid #333;
+    padding-top: 12px;
+    padding-bottom: 6px;
+    font-size: 20px;
+    margin-top: 40px;
+}
+h3 {
+    color: #e0e0e0;
+    font-size: 16px;
+    margin-top: 20px;
+    margin-bottom: 8px;
+}
+h4 {
+    color: #aaa;
+    font-size: 14px;
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+a { color: #6cb4ee; }
+ul { margin-top: 4px; margin-bottom: 10px; }
+li { margin-bottom: 4px; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+th, td { border: 1px solid #444; padding: 6px 12px; text-align: left; }
+th { background: #2a2a2a; color: #ccc; font-weight: 600; }
+td { background: #252525; }
+code {
+    background: #333;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #e0e0e0;
+}
+kbd {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-family: "Consolas", monospace;
+    color: #fff;
+}
+p { margin: 6px 0; }
+.toc {
+    background: #252525;
+    padding: 16px 24px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border: 1px solid #333;
+}
+.toc b {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+    color: #fff;
+}
+.toc a {
+    display: inline-block;
+    padding: 2px 0;
+    text-decoration: none;
+    color: #6cb4ee;
+    width: 48%;
+}
+.toc a:hover { text-decoration: underline; }
+hr {
+    border: none;
+    border-top: 1px solid #333;
+    margin: 32px 0;
+}
+.tip {
+    background: #1a2e1a;
+    border-left: 3px solid #4caf50;
+    padding: 8px 14px;
+    margin: 10px 0;
+    border-radius: 0 4px 4px 0;
+}
+.warning {
+    background: #2e2a1a;
+    border-left: 3px solid #ff9800;
+    padding: 8px 14px;
+    margin: 10px 0;
+    border-radius: 0 4px 4px 0;
+}
+.note {
+    background: #1a1e2e;
+    border-left: 3px solid #4a9eff;
+    padding: 8px 14px;
+    margin: 10px 0;
+    border-radius: 0 4px 4px 0;
+}
+</style>
+</head>
+<body>
+
+<h1>CasparCG Client &mdash; User Manual</h1>
+
+<p>Complete reference for the CasparCG Client application. This manual covers all panels, features, keyboard shortcuts, and configuration options.</p>
+
+<div class="toc">
+<b>Table of Contents</b>
+<a href="#overview">1. Overview</a>
+<a href="#getting-started">2. Getting Started</a>
+<a href="#interface">3. Interface Layout</a>
+<a href="#rundown">4. Rundown</a>
+<a href="#item-types">5. Item Types</a>
+<a href="#groups">6. Groups</a>
+<a href="#autoplay">7. AutoPlay</a>
+<a href="#gateways">8. Gateways</a>
+<a href="#trigger-banks">9. Trigger Banks</a>
+<a href="#linked-clones">10. Linked Clones</a>
+<a href="#library">11. Library Panel</a>
+<a href="#inspector">12. Inspector Panel</a>
+<a href="#templates">13. Templates</a>
+<a href="#preview">14. Preview Panel</a>
+<a href="#preview-mode">15. Preview Mode</a>
+<a href="#ndi">16. NDI Panel</a>
+<a href="#audio-meters">17. Audio Meters</a>
+<a href="#status-panel">18. Status Panel</a>
+<a href="#server-management">19. Server Management</a>
+<a href="#activity">20. Activity Monitor</a>
+<a href="#clock">21. Clock Widget</a>
+<a href="#performance">22. Performance Panel</a>
+<a href="#http-log">23. HTTP Log Panel</a>
+<a href="#status-bar">24. Status Bar</a>
+<a href="#split-view">25. Split View</a>
+<a href="#undo-redo">26. Undo / Redo</a>
+<a href="#search">27. Rundown Search</a>
+<a href="#lock">28. Rundown Lock</a>
+<a href="#autostep">29. Autostep Mode</a>
+<a href="#panic">30. Panic Button</a>
+<a href="#layout-system">31. Layout System</a>
+<a href="#hotkeys">32. Keyboard Shortcuts</a>
+<a href="#settings">33. Settings</a>
+<a href="#themes">34. Themes</a>
+<a href="#database">35. Database</a>
+</div>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="overview">1. Overview</h2>
+
+<p>CasparCG Client is a playout control application for <b>CasparCG Server</b> &mdash; an open-source video and graphics playout server used in television broadcast, live events, and digital signage. The client provides a visual interface to build rundowns (playlists), trigger media playback, control graphics templates, and monitor output.</p>
+
+<h3>Key Capabilities</h3>
+<ul>
+<li><b>Rundown management</b> &mdash; create, edit, save, and load playlists of media and graphics items</li>
+<li><b>Multi-server</b> &mdash; connect to multiple CasparCG servers simultaneously</li>
+<li><b>Live playout</b> &mdash; play, stop, update, and transition media with keyboard shortcuts</li>
+<li><b>Template graphics</b> &mdash; load HTML/Flash templates with data fields for lower thirds, scoreboards, etc.</li>
+<li><b>AutoPlay</b> &mdash; automatic chaining of items for hands-free sequential playback</li>
+<li><b>NDI monitoring</b> &mdash; live video preview via NDI directly in the client</li>
+<li><b>Customizable layout</b> &mdash; rearrange panels, resize, span across columns</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="getting-started">2. Getting Started</h2>
+
+<h3>Requirements</h3>
+<ul>
+<li>Windows 10 or later (64-bit)</li>
+<li>CasparCG Server 2.2+ running on localhost or a network machine</li>
+<li>Optional: NDI Runtime for live video monitoring</li>
+</ul>
+
+<h3>First Launch</h3>
+<ol>
+<li>Launch <code>casparcg-client.exe</code></li>
+<li>The client auto-creates a default device ("Localhost" at 127.0.0.1:5250)</li>
+<li>Start your CasparCG Server &mdash; the client will auto-connect</li>
+<li>The Library panel refreshes with available media from the server</li>
+<li>Drag items from the Library into the Rundown to build your playlist</li>
+</ol>
+
+<h3>Adding a Server</h3>
+<ol>
+<li>Go to <b>Settings</b> (gear icon or menu)</li>
+<li>In the <b>Devices</b> section, click <b>Add</b></li>
+<li>Enter a name, IP address, and port (default 5250)</li>
+<li>Optional: set Template path, Media path, and Server path</li>
+<li>Click <b>Test Connection</b> to verify, then <b>OK</b></li>
+</ol>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="interface">3. Interface Layout</h2>
+
+<p>The interface is divided into a central <b>Rundown area</b> (with tabs) flanked by up to four <b>side panel columns</b>. Each column can hold multiple panels stacked vertically.</p>
+
+<h3>Available Panels</h3>
+<table>
+<tr><th>Panel</th><th>Purpose</th></tr>
+<tr><td>Library</td><td>Browse available media, templates, audio, and tools from connected servers</td></tr>
+<tr><td>Inspector</td><td>Edit properties of the selected rundown item (channel, layer, duration, etc.)</td></tr>
+<tr><td>Preview</td><td>Thumbnail preview with local video playback and zoom</td></tr>
+<tr><td>Audio Levels</td><td>8-channel audio meters per server channel</td></tr>
+<tr><td>NDI</td><td>Live video monitoring via NDI (up to 9 outputs)</td></tr>
+<tr><td>Live</td><td>Legacy VLC-based live stream viewer</td></tr>
+<tr><td>Clock</td><td>Dual-timezone LCD clock display</td></tr>
+<tr><td>Server Status</td><td>Connection status, channel locks, PVW/STEP toggles</td></tr>
+<tr><td>Activity</td><td>Live "now playing" with progress bars and countdown timers</td></tr>
+<tr><td>Trigger Banks</td><td>Quick-access bank assignments (B1-B9)</td></tr>
+<tr><td>Performance</td><td>CPU/RAM stats for client, server, and system</td></tr>
+<tr><td>HTTP Log</td><td>Response log for HTTP GET/POST commands</td></tr>
+<tr><td>Status Bar</td><td>Foldable message log with timestamps</td></tr>
+</table>
+
+<h3>Panel Controls</h3>
+<p>Every panel has a <b>hamburger menu</b> (&#8801;) in its tab corner with these options:</p>
+<ul>
+<li><b>Move Up/Down/Left/Right</b> &mdash; reposition the panel within or across columns</li>
+<li><b>Size Mode</b> &mdash; Fixed, Resizable (with drag handle), or Expanding (fills space)</li>
+<li><b>Anchor</b> &mdash; Up (default) or Down (pushes panel to bottom of column)</li>
+<li><b>Span / Span More / Span Less</b> &mdash; stretch across multiple columns</li>
+<li><b>Collapse / Expand</b> &mdash; fold panel to just the tab bar</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="rundown">4. Rundown</h2>
+
+<p>The rundown is the central playlist area. It displays items as a vertical tree where each row represents a media clip, graphic template, or control command.</p>
+
+<h3>Creating Items</h3>
+<ul>
+<li><b>Drag from Library</b> &mdash; drag any media file, template, or tool from the Library panel into the rundown</li>
+<li><b>Double-click in Library</b> &mdash; adds the item below the current selection</li>
+<li>Items are inserted below the currently selected item</li>
+</ul>
+
+<h3>Channel/Layer Selector</h3>
+<p>The Library panel has <b>CH</b> and <b>L</b> spinboxes in its filter row. Items dragged into the rundown automatically inherit the selected channel and video layer, instead of defaulting to CH1/L10.</p>
+
+<h3>Editing Items</h3>
+<ul>
+<li><b>Select</b> &mdash; click an item to select it; the Inspector shows its properties</li>
+<li><b>Multi-select</b> &mdash; hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click</li>
+<li><b>Move</b> &mdash; <kbd>Ctrl+Up/Down</kbd> to reorder, <kbd>Ctrl+Right</kbd> to move into a group, <kbd>Ctrl+Left</kbd> to move out</li>
+<li><b>Delete</b> &mdash; press <kbd>Delete</kbd></li>
+<li><b>Duplicate</b> &mdash; <kbd>Ctrl+D</kbd></li>
+<li><b>Copy/Paste</b> &mdash; <kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd></li>
+<li><b>Cut</b> &mdash; <kbd>Ctrl+X</kbd> (preserves clone links)</li>
+</ul>
+
+<h3>Playing Items</h3>
+<table>
+<tr><th>Action</th><th>Default Key</th><th>Description</th></tr>
+<tr><td>Stop</td><td><kbd>F1</kbd></td><td>Stop the selected item</td></tr>
+<tr><td>Play</td><td><kbd>F2</kbd></td><td>Play the selected item (uses LOADBG + PLAY for smooth transitions)</td></tr>
+<tr><td>Play Now</td><td><kbd>F3</kbd></td><td>Play immediately without preloading</td></tr>
+<tr><td>Load</td><td><kbd>F4</kbd></td><td>Load (freeze on first frame) without playing</td></tr>
+<tr><td>Pause/Resume</td><td><kbd>F5</kbd></td><td>Toggle pause on the selected item</td></tr>
+<tr><td>Next</td><td><kbd>F6</kbd></td><td>Trigger the next preloaded item</td></tr>
+<tr><td>Update</td><td><kbd>F7</kbd></td><td>Update template data on a playing template</td></tr>
+<tr><td>Invoke</td><td><kbd>F8</kbd></td><td>Call a template function (e.g., next page)</td></tr>
+<tr><td>Preview</td><td><kbd>F9</kbd></td><td>Preview the item on the preview channel</td></tr>
+<tr><td>Clear</td><td><kbd>F10</kbd></td><td>Clear the item's video layer</td></tr>
+<tr><td>Clear Video Layer</td><td><kbd>F11</kbd></td><td>Clear video layer only</td></tr>
+<tr><td>Clear Channel</td><td><kbd>F12</kbd></td><td>Clear entire channel</td></tr>
+</table>
+
+<h3>Context Menu</h3>
+<p>Right-click any item for options including:</p>
+<ul>
+<li>Copy / Paste / Paste Properties / Paste Properties (No Data)</li>
+<li>Group / Ungroup</li>
+<li>Create Linked Clone / Unlink Clone</li>
+<li>Mark as Used / Unused</li>
+</ul>
+
+<h3>Paste Properties (No Data)</h3>
+<p>A special paste mode that copies all command settings (channel, layer, transition, etc.) from the clipboard but <b>preserves the target item's existing template data/variables</b>. Useful for applying formatting from one template item to another without overwriting its content.</p>
+
+<h3>Rundown Hamburger Menu</h3>
+<p>The &#8801; button on the rundown tab bar provides file operations:</p>
+<ul>
+<li>New Rundown / Open Rundown / Open from Repository / Open Recent</li>
+<li>Save / Save As</li>
+<li>Mark Item submenu</li>
+<li>Compact View toggle</li>
+<li>Allow Remote Triggering / Lock Rundown</li>
+<li>Reload / Close Rundown</li>
+<li>Split Horizontal / Vertical / Close Split</li>
+</ul>
+
+<h3>Item Display</h3>
+<p>Each rundown item shows:</p>
+<ul>
+<li><b>Channel badge</b> &mdash; colored badge (unique per channel) on the left</li>
+<li><b>Item name and label</b> &mdash; media filename or custom label</li>
+<li><b>Duration</b> &mdash; human-readable ("1m23s") or timecode format</li>
+<li><b>Delay indicator</b> &mdash; hourglass icon with delay value</li>
+<li><b>Status icons</b> &mdash; overlay on the right (GPI, AutoPlay, loop, etc.)</li>
+<li><b>Bottom row</b> &mdash; device name, layer, delay, duration, UID</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="item-types">5. Item Types</h2>
+
+<h3>Media Items</h3>
+<table>
+<tr><th>Type</th><th>Description</th></tr>
+<tr><td>Movie</td><td>Video file playback (MP4, MOV, MXF, etc.) with loop, transition, and in/out points</td></tr>
+<tr><td>Still / Image</td><td>Static image display with optional duration timer</td></tr>
+<tr><td>Audio</td><td>Audio file playback on a separate audio layer</td></tr>
+<tr><td>Image Scroller</td><td>Scrolling image (crawl) with configurable speed and direction</td></tr>
+<tr><td>Template</td><td>HTML or Flash template with data fields</td></tr>
+<tr><td>HTML</td><td>HTML page loaded via URL</td></tr>
+</table>
+
+<h3>Mixer Items</h3>
+<table>
+<tr><th>Type</th><th>Description</th></tr>
+<tr><td>Fill</td><td>Position and scale a layer (x, y, width, height)</td></tr>
+<tr><td>Clip</td><td>Crop a layer's visible area</td></tr>
+<tr><td>Anchor</td><td>Set the anchor/pivot point for transformations</td></tr>
+<tr><td>Rotation</td><td>Rotate a layer in degrees</td></tr>
+<tr><td>Perspective</td><td>4-corner perspective distortion</td></tr>
+<tr><td>Opacity</td><td>Set layer transparency</td></tr>
+<tr><td>Volume</td><td>Set audio volume level</td></tr>
+<tr><td>Brightness</td><td>Adjust brightness</td></tr>
+<tr><td>Contrast</td><td>Adjust contrast</td></tr>
+<tr><td>Saturation</td><td>Adjust color saturation</td></tr>
+<tr><td>Levels</td><td>Adjust input/output levels and gamma</td></tr>
+<tr><td>Chroma</td><td>Chroma key (green/blue screen removal)</td></tr>
+<tr><td>Blend Mode</td><td>Layer blending mode (add, multiply, screen, etc.)</td></tr>
+<tr><td>Grid</td><td>Tile multiple channels into a grid layout</td></tr>
+<tr><td>Keyer</td><td>Enable/disable layer as key+fill</td></tr>
+<tr><td>Crop</td><td>Crop layer edges</td></tr>
+</table>
+
+<h3>Other Items</h3>
+<table>
+<tr><th>Type</th><th>Description</th></tr>
+<tr><td>Group</td><td>Container for organizing items; supports loop, autoplay, and nesting</td></tr>
+<tr><td>Separator</td><td>Visual divider (not executable)</td></tr>
+<tr><td>GPI Output</td><td>Trigger a GPI (General Purpose Interface) output signal</td></tr>
+<tr><td>OSC Output</td><td>Send an OSC message to an external device</td></tr>
+<tr><td>HTTP GET/POST</td><td>Make HTTP requests (useful for API integrations)</td></tr>
+<tr><td>Playout Command</td><td>Special server commands (custom AMCP)</td></tr>
+<tr><td>Custom Command</td><td>Send a raw AMCP command string</td></tr>
+<tr><td>Print</td><td>Capture a frame to an image file</td></tr>
+<tr><td>File Recorder</td><td>Start/stop recording to file</td></tr>
+<tr><td>DeckLink Input</td><td>Route a DeckLink capture card input to a layer</td></tr>
+<tr><td>Route Channel</td><td>Route one channel's output to a layer on another channel</td></tr>
+<tr><td>Route Video Layer</td><td>Route a specific layer to another layer</td></tr>
+<tr><td>Solid Color</td><td>Fill a layer with a solid color</td></tr>
+<tr><td>Clear Output</td><td>Clear a channel or layer</td></tr>
+<tr><td>Fade To Black</td><td>Fade the entire channel to black</td></tr>
+<tr><td>Commit</td><td>Commit deferred mixer changes</td></tr>
+<tr><td>Reset</td><td>Reset mixer transformations to defaults</td></tr>
+</table>
+
+<h3>Gateways</h3>
+<table>
+<tr><th>Type</th><th>Description</th></tr>
+<tr><td>AutoPlay Gateway</td><td>Route autoplay chains to a different location in the rundown</td></tr>
+<tr><td>Focus Gateway</td><td>Jump visual focus without executing playback</td></tr>
+<tr><td>Command Gateway</td><td>Relay playout commands to remote items with conditional branching</td></tr>
+</table>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="groups">6. Groups</h2>
+
+<p>Groups are containers that organize items and control their playback behavior.</p>
+
+<h3>Creating Groups</h3>
+<ul>
+<li>Select one or more items and press <kbd>Ctrl+G</kbd> or right-click &gt; Group</li>
+<li>Drag items into an existing group</li>
+</ul>
+
+<h3>Nesting</h3>
+<p>Groups support <b>two levels of nesting</b>:</p>
+<ul>
+<li><b>Depth 0</b> &mdash; top-level groups</li>
+<li><b>Depth 1</b> &mdash; groups inside groups (inner groups)</li>
+<li>Items can be at depth 0, 1, or 2</li>
+</ul>
+
+<h3>Group Properties</h3>
+<ul>
+<li><b>Loop</b> &mdash; restart the group after the last item finishes</li>
+<li><b>AutoPlay</b> &mdash; chain to the next group automatically</li>
+<li><b>Expanded/Collapsed</b> &mdash; click the group header to toggle. Collapsed groups execute all children simultaneously when triggered</li>
+</ul>
+
+<h3>Ungrouping</h3>
+<p>Press <kbd>Ctrl+U</kbd> or right-click &gt; Ungroup to dissolve a group and promote its children one level up.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="autoplay">7. AutoPlay</h2>
+
+<p>AutoPlay enables automatic sequential playback of items within and across groups.</p>
+
+<h3>How It Works</h3>
+<ul>
+<li><b>Movies</b> preload the next item via <code>LOADBG AUTO</code> for gapless transitions</li>
+<li><b>Stills with duration</b> chain to the next item when their timer expires</li>
+<li><b>Group AutoPlay</b> chains between groups &mdash; when one group finishes, the next starts</li>
+</ul>
+
+<h3>Enabling AutoPlay</h3>
+<ul>
+<li>On a <b>group</b>: toggle the AutoPlay icon in the group's status bar, or set it in the Inspector</li>
+<li>On a <b>still</b>: enable AutoPlay in the Inspector (requires a duration to be set)</li>
+</ul>
+
+<h3>Loop</h3>
+<p>When a group has <b>Loop</b> enabled, it restarts from the first item after the last one finishes. Toggling loop on a playing movie sends a live <code>CALL LOOP</code> command &mdash; no need to restart.</p>
+
+<h3>Inner Groups</h3>
+<ul>
+<li><b>Expanded inner group</b>: children are flattened into the parent's autoplay queue</li>
+<li><b>Collapsed inner group</b>: all children execute at once as a single batch</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="gateways">8. Gateways</h2>
+
+<p>Gateways are special items that route playback, focus, or commands to different locations in the rundown. Each gateway has an <b>entrance</b> and one or more <b>exits</b>.</p>
+
+<h3>AutoPlay Gateway (Teal)</h3>
+<p>Routes the autoplay chain to a different location. When playback reaches the entrance, it jumps to the items after the selected exit and continues autoplay from there.</p>
+
+<h3>Focus Gateway (Purple)</h3>
+<p>UI-only navigation &mdash; jumps the visual selection/focus to the exit location without executing any playout commands. Useful for operator navigation.</p>
+
+<h3>Command Gateway (Orange)</h3>
+<p>Relays playout commands (Play, Stop, etc.) to items at the exit location. Supports time-based conditional branching.</p>
+
+<h3>Time Conditions</h3>
+<p>All gateway entrances support time-based conditions:</p>
+<ul>
+<li>Enable "time condition" in the Inspector</li>
+<li>Operators: "is after", "is before", "is at or after", "is at or before", "equals"</li>
+<li>Configure a time (HH:MM:SS) and a "Then" exit vs. "Else" exit</li>
+<li>The entrance buttons update in real-time to show which exit is currently active</li>
+</ul>
+
+<h3>Cross-Tab Gateways</h3>
+<p>Gateways work across tabs &mdash; an entrance in one rundown tab can route to an exit in a different tab.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="trigger-banks">9. Trigger Banks</h2>
+
+<p>Nine configurable trigger banks (B1&ndash;B9) for instant access to any item.</p>
+
+<h3>Assigning Items</h3>
+<ul>
+<li>Select a rundown item and set its bank number in the Inspector</li>
+<li>A bank badge overlay appears on the item</li>
+</ul>
+
+<h3>Triggering</h3>
+<ul>
+<li>Press <kbd>Ctrl+1</kbd> through <kbd>Ctrl+9</kbd> to trigger the assigned item</li>
+<li>The Trigger Banks panel shows current assignments with item names and channel badges</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="linked-clones">10. Linked Clones</h2>
+
+<p>Linked clones are items that share properties &mdash; change one and all siblings update automatically.</p>
+
+<h3>Creating Clones</h3>
+<ul>
+<li>Right-click &gt; <b>Create Linked Clone</b></li>
+<li><kbd>Ctrl+Shift+V</kbd> &mdash; paste copied items as new linked clones</li>
+</ul>
+
+<h3>Managing Clones</h3>
+<ul>
+<li>Cloned items show a blue link badge</li>
+<li>Right-click &gt; <b>Unlink Clone</b> to break the link</li>
+<li>When a clone group drops to one member, it auto-unlinks</li>
+<li>Cut/paste preserves clone links; regular copy/paste creates independent items</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="library">11. Library Panel</h2>
+
+<p>The Library panel shows media available on connected CasparCG servers, organized into sections.</p>
+
+<h3>Sections</h3>
+<ul>
+<li><b>Tools</b> &mdash; built-in item types (Library, Mixer, Other)</li>
+<li><b>Audio</b> &mdash; audio files from the server</li>
+<li><b>Images</b> &mdash; still image files</li>
+<li><b>Templates</b> &mdash; HTML and Flash templates</li>
+<li><b>Videos</b> &mdash; video files (with duration column)</li>
+<li><b>Stored Data</b> &mdash; saved template data sets</li>
+<li><b>Presets</b> &mdash; saved item presets</li>
+</ul>
+
+<h3>Filter Row</h3>
+<p>At the bottom of the Library panel:</p>
+<ul>
+<li><b>Search box</b> &mdash; type to filter items by name</li>
+<li><b>CH / L spinboxes</b> &mdash; set the default channel and layer for dragged items</li>
+<li><b>Device filter</b> &mdash; filter by connected server</li>
+</ul>
+
+<h3>Refreshing</h3>
+<ul>
+<li>Right-click the Library for refresh options</li>
+<li>Enable <b>Auto Refresh Library</b> in Settings for periodic updates</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="inspector">12. Inspector Panel</h2>
+
+<p>The Inspector shows and edits properties of the currently selected rundown item. It updates in real-time as you select different items.</p>
+
+<h3>Common Properties</h3>
+<table>
+<tr><th>Property</th><th>Description</th></tr>
+<tr><td>Label</td><td>Custom display name (overrides the filename)</td></tr>
+<tr><td>Channel</td><td>CasparCG output channel number</td></tr>
+<tr><td>Video Layer</td><td>Layer number within the channel</td></tr>
+<tr><td>Delay</td><td>Wait time before executing (ms or frames)</td></tr>
+<tr><td>Duration</td><td>How long to display (for stills/templates)</td></tr>
+<tr><td>Transition</td><td>Type (cut, mix, push, wipe, slide), duration, easing, direction</td></tr>
+<tr><td>Trigger Bank</td><td>Assign to a bank (B1-B9) for quick triggering</td></tr>
+</table>
+
+<h3>Unit Toggles</h3>
+<p>The delay and duration fields each have a <b>ms/fr</b> toggle button to switch between milliseconds and frames. The value auto-converts using the channel's FPS.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="templates">13. Templates</h2>
+
+<h3>Template Data</h3>
+<p>Template items have a key-value table for data fields. Each row represents a variable sent to the HTML/Flash template.</p>
+
+<h4>Data Edit Modes</h4>
+<p>Each data row has its own edit mode:</p>
+<table>
+<tr><th>Mode</th><th>Behavior</th></tr>
+<tr><td>Text</td><td>Plain text value (default)</td></tr>
+<tr><td>Integer</td><td>Up/down arrows increment by 1; preserves zero-padding</td></tr>
+<tr><td>Decimal</td><td>Up/down arrows increment by 0.1</td></tr>
+<tr><td>Boolean</td><td>Toggle between "true" and "false"</td></tr>
+<tr><td>Color</td><td>Color swatch opens a color picker; stores as "#rrggbb"</td></tr>
+<tr><td>Cycle</td><td>Cycles through pipe-separated values (e.g., "left|center|right")</td></tr>
+</table>
+
+<h3>Multi-Row Invoke</h3>
+<p>The Invoke section (between Output and Template in the Inspector) supports multiple invoke labels:</p>
+<ul>
+<li>Add/remove rows with [+] and [-] buttons</li>
+<li>Each row has a text field, play button, and F7 radio button</li>
+<li>The radio-selected invoke is used for <kbd>F7</kbd> and OSC invoke commands</li>
+</ul>
+
+<h3>Newline Behavior</h3>
+<p>Per-item dropdown controlling how newlines in template data are encoded:</p>
+<ul>
+<li><b>Ignore</b> &mdash; strips newlines</li>
+<li><b>innerText</b> &mdash; encodes as <code>&amp;#10;</code></li>
+<li><b>innerHTML</b> (default) &mdash; replaces with <code>&lt;br&gt;</code> tags</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="preview">14. Preview Panel</h2>
+
+<h3>Video Playback</h3>
+<p>When a video item is selected and the server has a <b>Media path</b> configured, the Preview panel plays the actual video file locally with transport controls (play/pause, seek slider, time display).</p>
+
+<h3>Content Zoom</h3>
+<ul>
+<li><b>Double-click</b> to zoom to 150%</li>
+<li><b>Double-click again</b> to return to fit view</li>
+<li>When zoomed: drag to pan, blue "150%" badge, blue border</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="preview-mode">15. Preview Mode</h2>
+
+<p>Preview mode redirects playout commands to a dedicated preview channel.</p>
+
+<h3>Activation</h3>
+<ul>
+<li><b>Modifier key</b> &mdash; hold Shift/Ctrl/Alt (configurable) while pressing a playout key</li>
+<li><b>PVW button</b> &mdash; toggle in the Server Status panel for persistent preview mode</li>
+<li><b>Hotkey</b> &mdash; <kbd>Ctrl+P</kbd> (default) to toggle</li>
+</ul>
+
+<h3>Setup</h3>
+<p>Configure a preview channel per device in Settings &gt; Devices &gt; "Preview on channel" checkbox.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="ndi">16. NDI Panel</h2>
+
+<p>Live video monitoring from CasparCG's built-in NDI output.</p>
+
+<h3>Setup</h3>
+<ol>
+<li>Install the free <a href="https://ndi.video/for-developers/ndi-sdk/">NDI Runtime</a></li>
+<li>Configure an NDI consumer on your CasparCG server channel</li>
+<li>Right-click a viewer &gt; Set Source to select the NDI source</li>
+</ol>
+
+<h3>Features</h3>
+<ul>
+<li><b>Multi-output grid</b> &mdash; 1 to 9 simultaneous viewers in configurable layouts</li>
+<li><b>Audio</b> &mdash; per-viewer audio playback with mute toggle</li>
+<li><b>Auto-recovery</b> &mdash; reconnects automatically when a source comes back online</li>
+<li><b>Quality settings</b> &mdash; Bandwidth (High/Low), Frame Rate Limit, Scaling (Smooth/Fast)</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="audio-meters">17. Audio Meters</h2>
+
+<p>The Audio Levels panel shows per-channel audio meters for all connected servers.</p>
+
+<ul>
+<li>One tab per server channel (e.g., "CH 1", "CH 2")</li>
+<li>Each tab has 8 audio level meters (channels 1&ndash;8)</li>
+<li>With multiple servers: tabs include the device name</li>
+<li>Audio levels are always live &mdash; independent of rundown selection</li>
+<li>Tabs rebuild automatically when devices connect or disconnect</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="status-panel">18. Status Panel</h2>
+
+<h3>Server Status</h3>
+<ul>
+<li>Connection status dot (green/red) per device</li>
+<li>Media data received dot</li>
+<li>Connect/Disconnect button</li>
+<li>Start/Restart buttons (when server path is configured)</li>
+</ul>
+
+<h3>Channel Lock Grid</h3>
+<p>Per-channel lock buttons prevent accidental playout on specific channels. Click a channel button to lock/unlock. Global lock buttons affect all devices.</p>
+
+<h3>PVW Button</h3>
+<p>Green when active. Click to toggle persistent preview mode.</p>
+
+<h3>STEP Button</h3>
+<p>Purple when active. Click to toggle autostep mode.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="server-management">19. Server Process Management</h2>
+
+<p>Start, stop, and restart CasparCG server processes directly from the Status Panel.</p>
+
+<h3>Setup</h3>
+<ol>
+<li>Go to Settings &gt; Devices &gt; Edit device</li>
+<li>Set the <b>Server path</b> to the CasparCG server executable (e.g., <code>C:\CasparCG\casparcg.exe</code>)</li>
+<li>Start and Restart buttons appear in the Status Panel for that device</li>
+</ol>
+
+<h3>Actions</h3>
+<ul>
+<li><b>Start</b> &mdash; launches the server process; button changes to "Stop"</li>
+<li><b>Stop</b> &mdash; disconnects AMCP and kills the process (with confirmation)</li>
+<li><b>Restart</b> &mdash; stops then immediately restarts (with confirmation)</li>
+<li>Auto-reconnects AMCP 3 seconds after start/restart</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="activity">20. Activity Monitor</h2>
+
+<p>Live "now playing" display in the Activity tab of the Status Panel.</p>
+
+<ul>
+<li>Progress bars for videos, audio, and stills with duration</li>
+<li>Countdown timer per entry</li>
+<li>Type badges (VIDEO, IMAGE, TEMPLATE, AUDIO) with color coding</li>
+<li>Loop and pause indicators</li>
+<li>Channel grouping with headers</li>
+<li>Auto-cleanup of stale entries</li>
+</ul>
+
+<h3>Auto-Grow</h3>
+<p>The Activity panel auto-grows to fit its content. A "Show No Activity" toggle shows a placeholder when empty.</p>
+
+<h3>Minimum Height</h3>
+<p>Set a floor height (30px, 50px, 80px, 100px) via the hamburger menu to prevent collapsing to zero.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="clock">21. Clock Widget</h2>
+
+<p>Dual-timezone clock with LCD segment-style digits.</p>
+
+<ul>
+<li>Two side-by-side or stacked clocks</li>
+<li>GMT offset labels (auto-updates for DST)</li>
+<li>Configurable digit colors and shadow color</li>
+<li>Timezone selection in Settings (e.g., "Europe/Amsterdam (GMT+1)")</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="performance">22. Performance Panel</h2>
+
+<p>Real-time system statistics updated every 2 seconds:</p>
+
+<table>
+<tr><th>Row</th><th>Shows</th></tr>
+<tr><td>Client</td><td>CasparCG Client CPU usage and RAM</td></tr>
+<tr><td>Server</td><td>Aggregated CPU and RAM of all CasparCG server processes</td></tr>
+<tr><td>System</td><td>Total system memory and CPU usage</td></tr>
+</table>
+
+<p>Values are color-coded: green (normal), yellow (moderate), red (high).</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="http-log">23. HTTP Log Panel</h2>
+
+<p>Shows responses from HTTP GET and POST commands executed from the rundown:</p>
+<ul>
+<li>Timestamp, method (GET/POST), URL, HTTP status code</li>
+<li>Response body (truncated to 500 characters)</li>
+<li>Auto-scrolls to latest; caps at 1000 entries</li>
+<li>Clear log via hamburger menu</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="status-bar">24. Status Bar</h2>
+
+<p>Foldable message log that shows the latest status message. Click the arrow to expand and see the last 10 messages with timestamps. Error messages are highlighted in red.</p>
+
+<h3>Last Action Display</h3>
+<p>Enable "Show last action in statusbar" in Settings to display the most recent playout action (e.g., "Play: ItemName on Server CH1-L10"). Off by default.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="split-view">25. Split View</h2>
+
+<p>Split the rundown area into two panes for working with multiple rundowns simultaneously.</p>
+
+<ul>
+<li><b>Split Horizontal/Vertical</b> via the rundown hamburger menu</li>
+<li><b>Double-tap arrow key</b> to switch focus between panes</li>
+<li><b>Drag tabs</b> between panes</li>
+<li><kbd>Ctrl+]</kbd> / <kbd>Ctrl+[</kbd> to cycle tabs in the active pane</li>
+<li><b>Close Split</b> to return to single pane</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="undo-redo">26. Undo / Redo</h2>
+
+<p>Full snapshot-based undo/redo with independent stacks per rundown tab.</p>
+
+<ul>
+<li><kbd>Ctrl+Z</kbd> &mdash; Undo</li>
+<li><kbd>Ctrl+Y</kbd> or <kbd>Ctrl+Shift+Z</kbd> &mdash; Redo</li>
+<li>Captures the full tree state before each editing operation</li>
+<li>Multi-step operations (e.g., paste multiple items) are grouped into a single undo action</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="search">27. Rundown Search</h2>
+
+<p>Press <kbd>Ctrl+F</kbd> to open a search bar above the rundown tabs.</p>
+
+<ul>
+<li>Searches item names and labels (case-insensitive)</li>
+<li>Match counter shows "1 of N"</li>
+<li><b>&#9650; / &#9660;</b> buttons or <kbd>Enter</kbd> to cycle through results</li>
+<li><kbd>Escape</kbd> or click &#10005; to close</li>
+<li>Each match is selected and scrolled into view</li>
+<li>Searches inside groups (children included)</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="lock">28. Rundown Lock</h2>
+
+<p>Lock a rundown tab to prevent accidental edits.</p>
+
+<ul>
+<li>Toggle via the rundown hamburger menu &gt; <b>Lock Rundown</b></li>
+<li>When locked: drag-and-drop, delete, paste, cut, group/ungroup, and move are all disabled</li>
+<li>Copy and playback commands still work</li>
+<li>Locked tabs show a &#128274; prefix in the tab title</li>
+<li>Repository rundowns are locked automatically on load</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="autostep">29. Autostep Mode</h2>
+
+<p>Global toggle that automatically advances selection to the next item after pressing Play.</p>
+
+<ul>
+<li><b>STEP button</b> in the Server Status panel (purple when active)</li>
+<li><kbd>Ctrl+Shift+N</kbd> to toggle</li>
+<li>Purple background highlight on the autostep item</li>
+<li>Group-aware: expanded groups step into first child; collapsed groups stay selected</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="panic">30. Panic Button</h2>
+
+<p>Double-tap <kbd>Escape</kbd> to instantly clear all outputs on all connected servers.</p>
+
+<ol>
+<li>First press arms the panic and shows a statusbar hint</li>
+<li>Second press within 500ms sends CLEAR to every channel on every device</li>
+<li>Red statusbar notification: "PANIC: Cleared all outputs"</li>
+<li>Auto-disarms after 500ms if no second press</li>
+</ol>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="layout-system">31. Layout System</h2>
+
+<h3>Layout Editor</h3>
+<p>Accessible via Settings &gt; Layout. Drag panels between columns to rearrange. Up to 4 side panel columns plus the main rundown area.</p>
+
+<h3>Panel Sizing</h3>
+<table>
+<tr><th>Mode</th><th>Behavior</th></tr>
+<tr><td>Fixed</td><td>Panel uses its natural height</td></tr>
+<tr><td>Resizable</td><td>Drag handle for manual height adjustment (persists across restarts)</td></tr>
+<tr><td>Expanding</td><td>Stretches to fill all remaining vertical space</td></tr>
+</table>
+
+<h3>Panel Span</h3>
+<p>Panels can span across multiple adjacent columns:</p>
+<ul>
+<li><b>Span</b> to start spanning into the next column</li>
+<li><b>Span More / Less</b> to adjust width</li>
+<li><b>Unspan</b> to remove spanning</li>
+<li>Draggable column dividers allow resizing widths</li>
+</ul>
+
+<h3>Per-Panel Anchor</h3>
+<p>Each panel can anchor <b>Up</b> (default) or <b>Down</b>. Down-anchored panels are pushed to the bottom of their column.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="hotkeys">32. Keyboard Shortcuts</h2>
+
+<h3>Playout</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>F1</kbd></td><td>Stop</td></tr>
+<tr><td><kbd>F2</kbd></td><td>Play</td></tr>
+<tr><td><kbd>F3</kbd></td><td>Play Now</td></tr>
+<tr><td><kbd>F4</kbd></td><td>Load</td></tr>
+<tr><td><kbd>F5</kbd></td><td>Pause / Resume</td></tr>
+<tr><td><kbd>F6</kbd></td><td>Next</td></tr>
+<tr><td><kbd>F7</kbd></td><td>Update</td></tr>
+<tr><td><kbd>F8</kbd></td><td>Invoke</td></tr>
+<tr><td><kbd>F9</kbd></td><td>Preview</td></tr>
+<tr><td><kbd>F10</kbd></td><td>Clear</td></tr>
+<tr><td><kbd>F11</kbd></td><td>Clear Video Layer</td></tr>
+<tr><td><kbd>F12</kbd></td><td>Clear Channel</td></tr>
+</table>
+
+<h3>Editing</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Ctrl+Z</kbd></td><td>Undo</td></tr>
+<tr><td><kbd>Ctrl+Y</kbd></td><td>Redo</td></tr>
+<tr><td><kbd>Ctrl+C</kbd></td><td>Copy</td></tr>
+<tr><td><kbd>Ctrl+V</kbd></td><td>Paste</td></tr>
+<tr><td><kbd>Ctrl+Shift+V</kbd></td><td>Paste as Linked Clone</td></tr>
+<tr><td><kbd>Ctrl+X</kbd></td><td>Cut</td></tr>
+<tr><td><kbd>Ctrl+D</kbd></td><td>Duplicate</td></tr>
+<tr><td><kbd>Delete</kbd></td><td>Remove selected items</td></tr>
+<tr><td><kbd>Ctrl+G</kbd></td><td>Group selected items</td></tr>
+<tr><td><kbd>Ctrl+U</kbd></td><td>Ungroup</td></tr>
+<tr><td><kbd>Ctrl+Up/Down</kbd></td><td>Move item up/down</td></tr>
+<tr><td><kbd>Ctrl+Right</kbd></td><td>Move item into group</td></tr>
+<tr><td><kbd>Ctrl+Left</kbd></td><td>Move item out of group</td></tr>
+</table>
+
+<h3>Navigation & View</h3>
+<table>
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td><kbd>Ctrl+F</kbd></td><td>Open rundown search</td></tr>
+<tr><td><kbd>Ctrl+]</kbd></td><td>Next tab</td></tr>
+<tr><td><kbd>Ctrl+[</kbd></td><td>Previous tab</td></tr>
+<tr><td><kbd>Ctrl+P</kbd></td><td>Toggle preview mode</td></tr>
+<tr><td><kbd>Ctrl+Shift+N</kbd></td><td>Toggle autostep</td></tr>
+<tr><td><kbd>Ctrl+1</kbd>&ndash;<kbd>9</kbd></td><td>Trigger bank 1&ndash;9</td></tr>
+<tr><td><kbd>Escape</kbd> x2</td><td>Panic (clear all outputs)</td></tr>
+</table>
+
+<p>All hotkeys are fully remappable in Settings &gt; Hotkeys.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="settings">33. Settings</h2>
+
+<h3>General</h3>
+<table>
+<tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+<tr><td>Start Fullscreen</td><td>Off</td><td>Launch in fullscreen mode</td></tr>
+<tr><td>Theme</td><td>Flat</td><td>Visual theme (Flat, Curve, or Light)</td></tr>
+<tr><td>Font Size</td><td>12</td><td>UI font size</td></tr>
+<tr><td>Duration Format</td><td>Human Readable</td><td>"1m23s" vs "00:01:23"</td></tr>
+<tr><td>Auto Refresh Library</td><td>Off</td><td>Periodically refresh media list</td></tr>
+<tr><td>Polling Rate</td><td>200ms</td><td>OSC data dispatch interval (50&ndash;1000ms)</td></tr>
+<tr><td>Reverse OSC Time</td><td>On</td><td>Count down instead of up</td></tr>
+<tr><td>Thumbnail Tooltips</td><td>On</td><td>Show thumbnails on hover in Library</td></tr>
+<tr><td>Show Last Action</td><td>Off</td><td>Display last playout action in statusbar</td></tr>
+<tr><td>Freeze on Load</td><td>Off</td><td>Show first frame when loading</td></tr>
+<tr><td>Mark Used Items</td><td>Off</td><td>Visually mark items after they play</td></tr>
+</table>
+
+<h3>Layout</h3>
+<ul>
+<li>Layout Editor &mdash; visual panel arrangement</li>
+<li>Panel Sizing &mdash; per-panel Fixed/Resizable/Expanding</li>
+<li>Show Empty Panels &mdash; keep empty columns visible</li>
+</ul>
+
+<h3>Customization</h3>
+<ul>
+<li><b>Channel Colors</b> &mdash; tune spacing, offset, saturation, lightness</li>
+<li><b>Interface Colors</b> &mdash; PVW button, STEP button, preview border, autostep highlight, active indicator, library line</li>
+<li><b>Header Colors</b> &mdash; per-panel tab bar colors (line, block, text)</li>
+<li><b>Clock</b> &mdash; digit colors, shadow color, timezone, layout</li>
+</ul>
+
+<h3>Hotkeys</h3>
+<p>All playout actions with primary + alternate key bindings. Restore defaults button to reset all.</p>
+
+<h3>Devices</h3>
+<p>Add, edit, remove CasparCG server connections. Each device has:</p>
+<ul>
+<li>Name, Address, Port</li>
+<li>Username / Password (optional)</li>
+<li>Template path, Media path, Server path (all optional)</li>
+<li>Preview channel, Locked channel</li>
+<li>Shadow server toggle</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="themes">34. Themes</h2>
+
+<table>
+<tr><th>Theme</th><th>Description</th></tr>
+<tr><td>Flat</td><td>Default dark theme with flat styling</td></tr>
+<tr><td>Curve</td><td>Dark theme with rounded/curved elements</td></tr>
+<tr><td>Light</td><td>Light backgrounds with dark text for bright environments</td></tr>
+</table>
+
+<p>Change via Settings &gt; General &gt; Theme. Takes effect on next launch.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="database">35. Database</h2>
+
+<p>All settings are stored in a local SQLite database that persists across restarts. The database auto-migrates when updating to a new version &mdash; no manual steps required.</p>
+
+<p>Database location is shown in Settings. To reset to defaults, delete the database file and restart.</p>
+
+<div class="warning">
+<b>Backup tip:</b> Before major updates, copy your database file to a safe location. The database contains all device configurations, layout settings, hotkey mappings, and color customizations.
+</div>
+
+<hr>
+
+<p style="text-align: center; color: #666; margin-top: 40px; font-size: 12px;">
+CasparCG Client User Manual &mdash; Generated for v2.3.1
+</p>
+
+</body>
+</html>

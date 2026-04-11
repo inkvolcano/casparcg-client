@@ -489,9 +489,13 @@ QMenu::icon
 QMenu::item
 {
     padding-bottom: 4px;
-    padding-left: 25px;
+    padding-left: 20px;
     padding-right: 19px;
     padding-top: 3px;
+}
+#menuView::item, #menuRundown::item, #menuOther::item
+{
+    padding-left: 0px;
 }
 QMenu::item:selected
 {
@@ -501,7 +505,9 @@ QMenu::indicator
 {
     background-color: transparent;
     border-width: 0px;
+    width: 12px;
     padding-left: 7px;
+    padding-right: 7px;
 }
 QMenu::separator
 {

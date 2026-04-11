@@ -1,0 +1,1002 @@
+<html>
+<head>
+<style>
+body {
+    background: #2d2d2d;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+h1 {
+    color: #fff;
+    border-bottom: 2px solid #555;
+    padding-bottom: 8px;
+    font-size: 22px;
+}
+h2 {
+    color: #e0e0e0;
+    border-bottom: 1px solid #444;
+    padding-top: 8px;
+    padding-bottom: 4px;
+    font-size: 18px;
+    margin-top: 28px;
+}
+h3 {
+    color: #ccc;
+    font-size: 15px;
+    margin-top: 16px;
+    margin-bottom: 6px;
+}
+a {
+    color: #6cb4ee;
+}
+ul {
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+li {
+    margin-bottom: 3px;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+}
+th, td {
+    border: 1px solid #555;
+    padding: 5px 10px;
+    text-align: left;
+}
+th {
+    background: #3a3a3a;
+    color: #e0e0e0;
+}
+code {
+    background: #3a3a3a;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 13px;
+}
+p {
+    margin: 6px 0;
+}
+.toc {
+    background: #353535;
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+.toc b {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 15px;
+    color: #fff;
+}
+.toc a {
+    display: block;
+    padding: 2px 0;
+    text-decoration: none;
+    color: #6cb4ee;
+}
+hr {
+    border: none;
+    border-top: 1px solid #555;
+    margin: 24px 0;
+}
+</style>
+</head>
+<body>
+
+<h1>CasparCG Client &mdash; What's New</h1>
+
+<p>All changes since forking the original CasparCG Client.</p>
+
+<div class="toc">
+<b>Contents</b>
+<a href="#nestable-groups">Nestable Groups</a><br>
+<a href="#visual-overhaul">Visual Overhaul</a><br>
+<a href="#autoplay">AutoPlay System</a><br>
+<a href="#gateways">Gateways</a><br>
+<a href="#trigger-banks">Trigger Banks</a><br>
+<a href="#linked-clones">Linked Clones</a><br>
+<a href="#preview-panel">Preview Panel &mdash; Video Playback and Zoom</a><br>
+<a href="#preview-mode">Preview Mode</a><br>
+<a href="#autostep">Autostep Mode</a><br>
+<a href="#layout-system">Layout System</a><br>
+<a href="#clock">Clock Widget</a><br>
+<a href="#status-bar">Status Bar</a><br>
+<a href="#status-panel">Status Panel</a><br>
+<a href="#undo-redo">Undo / Redo</a><br>
+<a href="#split-view">Split View Rundowns</a><br>
+<a href="#hotkeys">Configurable Hotkeys</a><br>
+<a href="#settings">Settings Options</a><br>
+<a href="#database">Database</a><br>
+<a href="#template-invoke">Multi-Row Template Invoke</a><br>
+<a href="#template-data-edit">Template Data Edit Mode</a><br>
+<a href="#template-newline">Template Newline Behavior</a><br>
+<a href="#ndi-panel">NDI Panel</a><br>
+<a href="#activity-progress">Activity Progress Bars for Stills and Audio</a><br>
+<a href="#performance-panel">Performance Panel</a><br>
+<a href="#embedded-transforms">Embedded Transforms</a><br>
+<a href="#http-log-panel">HTTP Response &amp; Playout Log Panel</a><br>
+<a href="#audio-meters">Audio Meters Per Channel</a><br>
+<a href="#panic-button">Panic Button</a><br>
+<a href="#rundown-lock">Rundown Lock Toggle</a><br>
+<a href="#rundown-search">Rundown Search</a><br>
+<a href="#library-channel-selector">Library Channel/Layer Selector</a><br>
+<a href="#server-management">Server Process Management</a><br>
+<a href="#light-theme">Light Theme</a><br>
+<a href="#ui-polish">UI Polish</a><br>
+<a href="#performance">Performance</a><br>
+<a href="#compatibility">Compatibility</a><br>
+<a href="#stability">Stability Fixes</a>
+</div>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="nestable-groups">Nestable Groups</h2>
+
+<p>Groups can now contain other groups, up to 2 levels deep. An outer group can hold inner groups, but inner groups cannot nest further.</p>
+
+<h3>Creating Inner Groups</h3>
+<ul>
+<li>Select items inside a group and use Group (right-click or shortcut) to wrap them in an inner group</li>
+<li>Drag a top-level group into another group to make it an inner group</li>
+<li>Copy/paste groups into other groups</li>
+</ul>
+
+<h3>Moving Items</h3>
+<ul>
+<li>Move-into-group works for both items and groups (with depth validation)</li>
+<li>Move-out-of-group promotes items one level: depth 2 items move to the outer group, depth 1 items move to top level</li>
+<li>Ungroup dissolves the selected group, promoting children to the parent level</li>
+</ul>
+
+<h3>Autoplay with Inner Groups</h3>
+<ul>
+<li><b>Expanded inner group</b>: Children are flattened into the parent group's autoplay queue &mdash; they play sequentially as if they were direct children</li>
+<li><b>Collapsed inner group</b>: All children execute at once as a single batch, then the outer queue advances to the next item</li>
+<li>Video-to-collapsed-group transitions defer to end-of-clip for clean handoffs</li>
+<li>Loop rebuild handles inner groups the same way as initial queue building</li>
+</ul>
+
+<h3>Depth Enforcement</h3>
+<ul>
+<li>Groups are allowed at depth 0 (top level) or depth 1 (inside a group)</li>
+<li>Non-group items are allowed at depth 0, 1, or 2</li>
+<li>All operations (group, ungroup, move, paste, drag-drop) enforce these limits</li>
+<li>Context menu disables "Group" when nesting would exceed the maximum depth</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="visual-overhaul">Visual Overhaul</h2>
+
+<h3>Channel Badges</h3>
+<p>Every rundown item now shows a <b>36px channel badge</b> with a unique color per channel, replacing the old plain color strip. Colors use golden-angle hue rotation with a 120&deg; offset for maximum visual separation: Ch1 blue, Ch2 orange, Ch3 cyan, Ch4 purple. The formula is centralized so badges, active animations, and activity entries all use identical colors.</p>
+
+<h3>Active Animation</h3>
+<p>When an item is triggered, it flashes from white to the channel-specific color instead of the old red-to-green flash.</p>
+
+<h3>Color Palette</h3>
+<p>The entire color system has been replaced with 30+ semantic RGBA colors organized by hue. Old named CSS colors like "Sienna" and "OliveDrab" are gone &mdash; everything uses translucent RGBA values with consistent opacity levels.</p>
+
+<h3>Menu Margins</h3>
+<p>All menus (top menubar dropdowns, right-click context menus, and hamburger/panel menus) now have consistent left padding. Previously only the hamburger menus had left margins.</p>
+
+<h3>Duration Labels</h3>
+<p>All item types now show human-readable duration labels:</p>
+<ul>
+<li>Movies and Audio: "1m23s" format instead of timecode</li>
+<li>Stills and Templates: duration with stopwatch icon</li>
+<li>Aware of delay/duration unit (frames vs milliseconds) and actual channel FPS</li>
+</ul>
+
+<h3>Delay Display</h3>
+<p>Delay indicators now use an hourglass icon and show human-readable values ("1s" instead of "1000").</p>
+
+<h3>Inspector Unit Toggles</h3>
+<p>The delay and duration fields in the inspector each have a toggle button ("ms" / "fr") to switch between milliseconds and frames independently. Clicking the button converts the value using the channel's FPS. Items without a CasparCG channel (Group, GPI, OSC, HTTP, Playout Command) are locked to milliseconds.</p>
+
+<h3>Duration Format Setting</h3>
+<p>A "Duration format" setting in Settings &gt; General lets you choose between:</p>
+<ul>
+<li><b>Human Readable</b> (default): "1m23s" style</li>
+<li><b>Timecode (HH:MM:SS)</b>: legacy "00:01:23" style</li>
+</ul>
+<p>Changing the format updates all rundown item labels immediately.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="autoplay">AutoPlay System</h2>
+
+<h3>Top-Level Chaining</h3>
+<p>Items can chain automatically between groups using autoplay. Movies preload via LOADBG AUTO, stills chain when their duration expires. Video-to-still transitions use deferred routing to ensure clean handoffs.</p>
+
+<h3>AutoPlay on Stills</h3>
+<p>Stills now have an AutoPlay toggle in the inspector, allowing them to participate in autoplay chains.</p>
+
+<h3>Group Loop &amp; AutoPlay</h3>
+<p>Groups have loop and autoplay properties with visual indicators. Loop causes the group to restart after the last item finishes; autoplay chains to the next group.</p>
+
+<h3>Live Loop Toggle</h3>
+<p>Toggling loop on a playing movie sends a live CALL LOOP command to CasparCG &mdash; no need to stop and restart.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="gateways">Gateways</h2>
+
+<p>Three gateway types for routing playback, focus, and commands across the rundown. Each gateway has an <b>entrance</b> and one or more <b>exits</b>. Place them anywhere in the rundown tree to create jump points.</p>
+
+<h3>AutoPlay Gateway (Teal)</h3>
+<p>Routes autoplay chains to a different location. When playback reaches the entrance, it jumps to the items after the selected exit and continues the autoplay queue from there.</p>
+<ul>
+<li>Entrance shows exit selection buttons &mdash; choose which exit to jump to</li>
+<li>Exit shows a "Return" button for focus navigation back to the entrance</li>
+<li>First movie after exit uses direct PLAY, subsequent items use LOADBG AUTO</li>
+<li>Works across tabs if the exit is in a different rundown pane</li>
+</ul>
+
+<h3>Focus Gateway (Purple)</h3>
+<p>UI-only navigation &mdash; jumps visual focus in the rundown tree without executing any playback commands.</p>
+<ul>
+<li>Entrance jumps focus to the selected exit</li>
+<li>Exit jumps focus back to the entrance</li>
+<li>Supports time-based conditional branching (same as other gateways)</li>
+<li>Works across tabs</li>
+</ul>
+
+<h3>Command Gateway (Orange)</h3>
+<p>Relays playout commands to items after the selected exit. Supports <b>time-based conditional branching</b>: configure a time condition to automatically choose a different exit based on the current clock.</p>
+<ul>
+<li>Entrance evaluates the time condition and relays the command to the item after the matching exit</li>
+<li>Time condition operators: after, before, at or after, at or before, exact time</li>
+<li>If condition is false (or disabled), falls back to the default selected exit</li>
+<li>Works across tabs</li>
+</ul>
+
+<h3>Time Conditions (All Gateways)</h3>
+<p>All three gateway types support time-based conditional branching on entrance items:</p>
+<ul>
+<li>Enable "time condition" in the inspector to choose a different exit based on the current clock</li>
+<li>Operators: "is after", "is before", "is at or after", "is at or before", "equals"</li>
+<li>Time includes hours, minutes, and seconds (HH:MM:SS)</li>
+<li>Inspector shows which exit is currently active (bold "Then use:" or "Else use:" label)</li>
+<li>Rundown entrance buttons highlight the effective exit in real-time, updating every 30 seconds</li>
+<li>Multi-line inspector layout: "If time at gateway" &rarr; operator dropdown &rarr; time spinboxes &rarr; Then/Else exits</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="trigger-banks">Trigger Banks</h2>
+
+<p>Nine configurable trigger banks (B1-B9) for quick item access:</p>
+<ul>
+<li>Assign any rundown item to a bank via the inspector</li>
+<li>Bank badge overlay shows the assignment on items</li>
+<li>Ctrl+1 through Ctrl+9 to trigger the assigned item</li>
+<li>Bank status displayed in the Trigger Banks panel</li>
+<li>All hotkeys are reconfigurable</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="linked-clones">Linked Clones</h2>
+
+<p>Items can be "linked clones" &mdash; change a property on one clone and all siblings update automatically:</p>
+<ul>
+<li>Right-click &gt; Create Linked Clone to link items</li>
+<li>Right-click &gt; Unlink Clone to break the link</li>
+<li>Blue link badge on cloned items</li>
+<li>When a group drops to one member, it auto-unlinks</li>
+<li>Cut (Ctrl+X) and paste (Ctrl+V) preserves clone links</li>
+<li>Ctrl+Shift+V pastes copied items as new linked clones of the originals</li>
+<li>Regular copy/paste (Ctrl+C / Ctrl+V) creates independent items</li>
+<li>File save/load preserves links</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="preview-panel">Preview Panel &mdash; Video Playback and Zoom</h2>
+
+<p>The Preview panel now supports local video playback and content zoom:</p>
+
+<h3>Video Playback</h3>
+<ul>
+<li>When a video item is selected and the server has a <b>Media path</b> configured, the preview plays the actual video file locally</li>
+<li>Transport bar at the bottom: play/pause button, seek slider, and time display (M:SS / M:SS)</li>
+<li>Transport bar only appears when a local video file is found &mdash; otherwise falls back to the static thumbnail</li>
+<li>Pauses at the first frame on load &mdash; click play to start</li>
+</ul>
+
+<h3>Media Path (Per-Device Setting)</h3>
+<ul>
+<li>New <b>Media path</b> field in the server configuration dialog (alongside the existing Template path)</li>
+<li>Points to the folder where CasparCG media files are stored (local or network path)</li>
+<li>The client resolves CasparCG media names to actual files by scanning for matching filenames with common video extensions (.mov, .mp4, .mxf, .avi, .mkv, etc.)</li>
+<li>Optional &mdash; without a media path, the preview works as before (static thumbnails only)</li>
+</ul>
+
+<h3>Content Zoom</h3>
+<ul>
+<li><b>Double-click</b> the preview content to zoom in to 150%</li>
+<li><b>Double-click again</b> to return to fit-to-panel view</li>
+<li>When zoomed: <b>drag to pan</b> the view, blue "150%" badge in the corner, blue border around the content</li>
+<li>Works for both video playback and still thumbnails</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="preview-mode">Preview Mode</h2>
+
+<p>Two ways to preview items on a separate channel:</p>
+<ul>
+<li><b>Hold modifier key</b> (Shift, Ctrl, or Alt &mdash; configurable) while pressing any playout hotkey to redirect to the preview channel</li>
+<li><b>Toggle PVW button</b> in the Server Status panel for persistent preview mode (green when active)</li>
+<li>Affects Play, PlayNow, and Load commands on Movies, Stills, Audio, and Templates</li>
+<li><b>Clean override</b>: Preview channel override is temporary &mdash; it does not affect the inspector display, saved rundown files, or subsequent OSC-triggered playback. Manually changing the channel in the inspector clears any lingering preview override</li>
+</ul>
+
+<p><b>Settings:</b> Preview modifier key selector in Hotkeys tab, configurable toggle hotkey (default Ctrl+P). Preview channel is configured per server in the device settings (requires restart).</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="autostep">Autostep Mode</h2>
+
+<p>Global toggle that automatically advances selection to the next item after pressing Play (F2) or Play Now:</p>
+<ul>
+<li><b>STEP button</b> in the Server Status panel (dark purple when active, grey when inactive)</li>
+<li><b>Configurable hotkey</b> (default Ctrl+Shift+N) to toggle on/off</li>
+<li><b>Purple background highlight</b> on the autostep item, alongside the normal green selection indicator</li>
+<li>Works on all item types &mdash; not limited to groups</li>
+<li>Group-aware stepping: expanded groups step into first child, collapsed groups stay selected</li>
+<li>Show/hide STEP button toggle in Settings &gt; General</li>
+</ul>
+
+<p>Replaces the old per-group AutoStep checkbox which has been removed.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="layout-system">Layout System</h2>
+
+<h3>Dynamic Panel Placement</h3>
+<p>The interface is divided into configurable columns. Each panel widget can be placed in any column via the <b>Layout Editor</b> in Settings &gt; Layout:</p>
+<ul>
+<li>Drag panels between columns to rearrange</li>
+<li>Available panels: AudioLevels, Library, Preview, Live, NDI, iNews, StatusBar, Clock, ServerStatus, Activity, TriggerBanks, Performance, Inspector</li>
+<li>Up to 4 side panels plus the main rundown area</li>
+<li>All 4 panels always visible in the editor &mdash; empty panels are hidden at runtime by default (configurable via "Show empty panel columns" in Settings)</li>
+</ul>
+
+<h3>Panel Sizing</h3>
+<p>Every panel has a <b>Size Mode</b> with three mutually exclusive options:</p>
+<ul>
+<li><b>Fixed</b>: Panel uses its natural fixed height</li>
+<li><b>Resizable</b>: Drag handle appears below the panel for manual height adjustment &mdash; custom height persists across restarts</li>
+<li><b>Expanding</b>: Panel stretches to fill all remaining vertical space in its column</li>
+</ul>
+
+<p>Change settings instantly via the hamburger menu on each panel (Size Mode submenu), or configure all panels at once in Settings &gt; Layout &gt; Panel Sizing. Changes apply immediately without restart.</p>
+
+<p>Default: Library/Inspector/Activity are Expanding, Preview/Live/NDI are Resizable, all others are Fixed.</p>
+
+<h3>Per-Panel Anchor</h3>
+<p>Each panel has its own anchor setting (Up or Down) in its hamburger menu. Setting a panel to "Down" inserts stretch above it, pushing it and any panels below it to the bottom of the column. Default is Up for all panels.</p>
+
+<h3>Live Panel Reordering</h3>
+<p>Panels can be moved via the <b>Move</b> submenu in their hamburger menu &mdash; no restart needed:</p>
+<ul>
+<li><b>Up/Down</b>: Reorders the panel within its column</li>
+<li><b>Left/Right</b>: Transfers the panel to an adjacent side panel column, skipping the main window area</li>
+<li>Actions are disabled when the move isn't possible (e.g. no panel to the left, already at top of column)</li>
+</ul>
+
+<h3>Panel Span</h3>
+<p>Panels can span across multiple adjacent side panel columns, never crossing the main window area. The span is incremental &mdash; each "Span More" click adds one column, "Span Less" removes one. Direction is automatic: expands right first, then left if right is exhausted. Multiple panels in the same column group can each span independently, and spans of different widths can be mixed freely.</p>
+<ul>
+<li><b>Span</b>: Start spanning into the next available column (right preferred, then left)</li>
+<li><b>Span More</b>: Expand span by one more column</li>
+<li><b>Span Less</b>: Shrink span by one column</li>
+<li><b>Unspan</b>: Remove all spanning (shown when span is exactly 1 column)</li>
+<li>Span widgets get their own full-width row with a resize handle below for height adjustment</li>
+<li>Non-span widgets above and below spans flow naturally in their own column containers</li>
+<li>Draggable vertical dividers between columns allow resizing column widths &mdash; widths stay consistent across all rows</li>
+<li>Partial-width spans share their row with uncovered column widgets in a resizable layout</li>
+<li>All size modes (Fixed, Resizable, Expanding) work on spanned panels</li>
+<li>Move Left/Right is disabled while a panel is spanning</li>
+</ul>
+
+<h3>Collapsible Panels</h3>
+<p>Every panel has a hamburger menu in its header with collapse/expand, size mode, anchor, and move options. Click collapse to fold a panel down to just the tab bar (25px).</p>
+
+<h3>Library Panel</h3>
+<p>Expands to fill all available vertical space in its column by default. Filter bar and device filter sit below the media list.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="clock">Clock Widget</h2>
+
+<p>Dual-timezone clock displayed as two side-by-side or stacked cards with LCD segment-style digits:</p>
+<ul>
+<li>Each card uses QLCDNumber with flat segment rendering and shadow digit outlines</li>
+<li>GMT offset label above each clock (e.g. "GMT+1", "UTC"), updates dynamically for DST &mdash; labels can be hidden</li>
+<li>Clock 1 and Clock 2 digit colors and shadow color are configurable in Settings</li>
+<li>Side-by-side or stacked layout (configurable in Settings)</li>
+<li>Collapsible to just the header bar</li>
+</ul>
+
+<p><b>Settings:</b> Two timezone dropdowns in Settings &gt; Layout with descriptive labels (e.g. "Europe/Amsterdam (GMT+1)"). Defaults to Local and UTC.</p>
+
+<p><b>Quick timezone change:</b> Right-click the clock panel &rarr; "Clock 1 Timezone" or "Clock 2 Timezone" to change timezone on the fly (Local, GMT-12 to GMT+14). Takes effect immediately without restart.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="status-bar">Status Bar</h2>
+
+<p>Foldable message log at the bottom of any panel:</p>
+<ul>
+<li>Shows the latest status message by default (single line)</li>
+<li>Click the arrow to expand and see the last 10 messages with timestamps</li>
+<li>Error messages highlighted in red</li>
+<li>Messages auto-clear after their timeout</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="status-panel">Status Panel</h2>
+
+<h3>Server Status</h3>
+<p>Shows each connected CasparCG server with:</p>
+<ul>
+<li>Device name, connection status dot (green/red), media availability dot</li>
+<li>Connect/Disconnect button per device</li>
+<li>Channel lock grid for locking specific channels per device or globally</li>
+<li>Device names truncate when the panel is narrowed</li>
+</ul>
+
+<h3>Activity Monitor</h3>
+<p>Live "now playing" display with:</p>
+<ul>
+<li>Progress bar per video with countdown timer</li>
+<li>Type badges (VIDEO, IMAGE, TEMPLATE, etc.) with color coding</li>
+<li>Loop and pause indicators</li>
+<li>Channel grouping with headers</li>
+<li>Automatic cleanup of stale entries</li>
+<li>Static entries for non-video items (stills, templates)</li>
+<li>Text labels truncate gracefully when the panel is narrowed &mdash; badges stay fixed size</li>
+</ul>
+
+<h3>Activity Panel Auto-Grow</h3>
+<p>The Activity panel now auto-grows to fit its content by default (matching the Trigger Banks panel behavior), instead of always expanding to fill available space. The Size Mode menu (Fixed/Resizable/Expanding) is still available for users who prefer the old behavior.</p>
+
+<p>A <b>"Show No Activity"</b> toggle in the Activity hamburger menu shows a placeholder label when there are no active entries, preventing the panel from collapsing to zero height.</p>
+
+<h3>Minimum Height (Activity &amp; Trigger Banks)</h3>
+<p>Both the Activity and Trigger Banks panels now have a <b>Minimum Height</b> setting in their hamburger menu, with presets (None, 30px, 50px, 80px, 100px). This sets a floor height that the panel won't shrink below, even when empty. The minimum height is respected across collapse/expand, layout rebuilds, and all size modes.</p>
+
+<h3>Big &amp; Bold Mode</h3>
+<p>Toggle <b>"Big &amp; Bold Mode"</b> in the Activity panel hamburger menu to increase the font size and row height of activity entries for better visibility at a distance.</p>
+
+<h3>Trigger Banks Display</h3>
+<p>Shows current bank assignments (B1-B9) with item name and channel badge. Bank icons light up orange when assigned. Text labels truncate when the panel is narrowed instead of forcing a minimum width.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="undo-redo">Undo / Redo</h2>
+
+<p>Full undo/redo support for rundown editing:</p>
+<ul>
+<li><b>Ctrl+Z</b> to undo, <b>Ctrl+Y</b> to redo</li>
+<li>Snapshot-based: each edit captures the full rundown state, so undo always restores a known-good configuration</li>
+<li>Covers adding, removing, reordering, grouping/ungrouping, and property changes</li>
+<li>Each rundown tab has its own independent undo stack</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="split-view">Split View Rundowns</h2>
+
+<p>The rundown area supports horizontal or vertical splitting:</p>
+<ul>
+<li>Secondary tab widget for the split pane</li>
+<li>Double-tap arrow key to switch focus between panes</li>
+<li>Drag tabs between panes</li>
+<li><b>Ctrl+]</b> / <b>Ctrl+[</b> to cycle between tabs in the active pane</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="hotkeys">Configurable Hotkeys</h2>
+
+<p>All playout actions can be remapped in Settings &gt; Hotkeys:</p>
+<ul>
+<li>Each action has a primary and alternate hotkey</li>
+<li>Default F1-F12 mapping: Stop, Play, PlayNow, Load, PauseResume, Next, Update, Invoke, Preview, Clear, ClearVideoLayer, ClearChannel</li>
+<li>Bank triggers: Ctrl+1 through Ctrl+9</li>
+<li>Preview toggle: Ctrl+P</li>
+<li>Autostep toggle: Ctrl+Shift+N</li>
+<li>Restore defaults button to reset all hotkeys</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="settings">Settings Options</h2>
+
+<h3>General</h3>
+<table>
+<tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+<tr><td>Start Fullscreen</td><td>Off</td><td>Launch in fullscreen mode</td></tr>
+<tr><td>Theme</td><td>Flat</td><td>Visual theme (Flat, Curve, or Light)</td></tr>
+<tr><td>Font Size</td><td>12</td><td>UI font size</td></tr>
+<tr><td>Drop Frame Notation</td><td>Off</td><td>Use drop-frame timecode format</td></tr>
+<tr><td>Auto Refresh Library</td><td>Off</td><td>Periodically refresh the media library</td></tr>
+<tr><td>Refresh Interval</td><td>60s</td><td>How often to auto-refresh</td></tr>
+<tr><td>Thumbnail Tooltips</td><td>On</td><td>Show media thumbnails on hover</td></tr>
+<tr><td>Reverse OSC Time</td><td>On</td><td>Count down instead of up</td></tr>
+<tr><td>Polling Rate</td><td>200ms</td><td>How often OSC data is batched and dispatched to the UI (50&ndash;1000ms). Lower = smoother audio meters, higher = less CPU</td></tr>
+<tr><td>Disable In/Out Points</td><td>On</td><td>Ignore in/out point markers</td></tr>
+<tr><td>Mark Used Items</td><td>Off</td><td>Visually mark items after they play</td></tr>
+<tr><td>Freeze on Load</td><td>Off</td><td>Show first frame when loading</td></tr>
+<tr><td>Preview Border</td><td>On</td><td>Show border on preview channel</td></tr>
+<tr><td>Duration Format</td><td>Human Readable</td><td>Display format for duration/delay labels (Human Readable or Timecode)</td></tr>
+<tr><td>Show STEP Button</td><td>On</td><td>Autostep mode toggle in Server Status</td></tr>
+<tr><td>Show PVW Button</td><td>On</td><td>Preview mode toggle in Server Status</td></tr>
+<tr><td>Show Servers</td><td>On</td><td>Device connection rows in Server Status</td></tr>
+<tr><td>Show Channel Locks</td><td>On</td><td>Per-channel lock grid in Server Status</td></tr>
+<tr><td>Show Channel Headers</td><td>On</td><td>Channel group labels in Activity</td></tr>
+<tr><td>Show Bank Icons</td><td>On</td><td>B1-B9 quick-status row in Trigger Banks</td></tr>
+<tr><td>Disconnect Mode</td><td>Ask</td><td>Confirm before disconnecting (ask/hidden/direct)</td></tr>
+<tr><td>Template Preview Freeze</td><td>Off</td><td>Load template without playing on F8 preview</td></tr>
+<tr><td>Activity Grow Mode</td><td>Grow</td><td>Activity panel fills space (grow) or fits content (fit)</td></tr>
+<tr><td>Show No Activity</td><td>On</td><td>Show "No Activity" placeholder when the Activity panel is empty</td></tr>
+<tr><td>Show Last Action</td><td>Off</td><td>Display the most recent playout action in the statusbar</td></tr>
+<tr><td>Active Indicator Per Channel</td><td>On</td><td>When on, each channel independently tracks its last fired item. When off (legacy mode), only one item is highlighted at a time across all channels</td></tr>
+<tr><td>NDI Outputs</td><td>1</td><td>Number of NDI viewer outputs in the NDI panel (1-9)</td></tr>
+<tr><td>Show Second Clock</td><td>On</td><td>Display second clock in Clock widget</td></tr>
+<tr><td>Clock Timezone 1</td><td>Local</td><td>Primary clock timezone</td></tr>
+<tr><td>Clock Timezone 2</td><td>UTC</td><td>Secondary clock timezone</td></tr>
+</table>
+
+<h3>Layout</h3>
+<table>
+<tr><th>Setting</th><th>Default</th><th>Description</th></tr>
+<tr><td>Layout Editor</td><td>&mdash;</td><td>Visual drag-and-drop panel arrangement</td></tr>
+<tr><td>Panel Sizing</td><td>&mdash;</td><td>Per-panel sizing mode (Fixed, Resizable, Expanding) for all panels</td></tr>
+<tr><td>Per-Panel Anchor</td><td>Up</td><td>Each panel can independently anchor Up (top) or Down (bottom of column) via its hamburger menu</td></tr>
+<tr><td>Panel Move</td><td>&mdash;</td><td>Move Up/Down/Left/Right in the hamburger menu for live reordering without restart</td></tr>
+<tr><td>Panel Span</td><td>Off</td><td>Incrementally span a panel across adjacent side panel columns via the hamburger menu (Span / Span More / Span Less / Unspan). Multiple panels can span in the same group, and different-width spans can be mixed freely. Draggable column dividers allow resizing column widths.</td></tr>
+<tr><td>Show Empty Panels</td><td>Off</td><td>Keep empty side panel columns visible instead of hiding them at runtime</td></tr>
+</table>
+
+<h3>Customization</h3>
+<p>Status panel visibility toggles grouped in their own section below the database path:</p>
+<ul>
+<li>Show PVW/STEP buttons, Servers, Channel Locks, Channel Headers, Bank Icons</li>
+<li>Disconnect Mode, Activity Grow Mode</li>
+<li>Show Second Clock, Clock Timezone pickers</li>
+</ul>
+
+<p><b>Channel Colors:</b> Four sliders to tune the channel color formula &mdash; Color spacing (golden angle), Color offset, Saturation, and Lightness. Five preview boxes show Ch1-Ch5 colors in real time as you adjust.</p>
+
+<p><b>Interface Colors:</b> Seven color pickers to customize accent colors throughout the UI:</p>
+<ul>
+<li>PVW button active color</li>
+<li>STEP button active color</li>
+<li>Preview mode window border color</li>
+<li>Autostep item highlight color</li>
+<li>Active play indicator color (overrides channel-based coloring when set)</li>
+<li>Library section line color (the green indicator under the open Library section header)</li>
+</ul>
+
+<p><b>Header Colors:</b> Three customizable color properties per panel &mdash; Line (border under tab bar), Block (selected tab background), and Text (selected tab text color):</p>
+<ul>
+<li>Master row sets default colors for all panels</li>
+<li>Active Rundown row overrides the master for the Rundown tabs</li>
+<li>"Customize individually" checkbox reveals per-widget rows for fine-grained control</li>
+<li>Each row has 3 clickable color swatches (Line, Block, Text) &mdash; click to open color picker</li>
+<li>Changes apply live &mdash; no restart needed</li>
+</ul>
+
+<p><b>Clock:</b> Three color pickers and two toggles for the clock widget:</p>
+<ul>
+<li>Clock 1 digit color, Clock 2 digit color, Shadow digit color</li>
+<li>Show/hide timezone labels above each clock</li>
+<li>Stack clocks vertically or keep side-by-side</li>
+</ul>
+
+<h3>Hotkeys</h3>
+<p>All playout actions with primary + alternate bindings (see <a href="#hotkeys">Configurable Hotkeys</a> above).</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="database">Database</h2>
+
+<p>Current version: <b>240</b>. All settings are stored in SQLite and persist across restarts. Migration scripts handle upgrades from any previous version automatically.</p>
+
+<ul>
+<li><b>Device addition error feedback</b>: Adding a device now shows a warning message if the database insert fails, instead of silently closing the dialog with no device added</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="template-invoke">Multi-Row Template Invoke</h2>
+
+<p>The template inspector's invoke field now supports multiple invoke labels, and lives in its own collapsible <b>Invoke</b> section in the inspector (between Output and Template):</p>
+<ul>
+<li><b>Separate inspector section</b>: Invoke has its own collapsible tree item, keeping it visually distinct from template data fields</li>
+<li><b>Add/remove rows</b> with [+] and [-] buttons</li>
+<li><b>Column headers</b> ("Function", "Call", "Key") label the text field, play button, and F7 radio columns</li>
+<li>Each row has a <b>text field</b>, a <b>play button</b> that triggers that specific invoke immediately, and an <b>F7 radio button</b> to select the default</li>
+<li>The radio-selected invoke is used for <b>F7 hotkey</b> and <b>OSC invoke</b> commands</li>
+<li><b>Backward compatible</b>: old rundowns with a single invoke load as one row; new format saves as a list</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="template-data-edit">Template Data Edit Mode</h2>
+
+<p>Each row in the template key-value table has its own <b>data edit mode</b>, set via the Mode dropdown in the add/edit dialog:</p>
+<ul>
+<li><b>Text</b> (default): Values are plain text &mdash; no interaction column</li>
+<li><b>Integer</b>: Up/down arrows increment/decrement by 1. Zero-padded values (e.g. "007") automatically preserve their padding width</li>
+<li><b>Decimal</b>: Up/down arrows increment/decrement by 0.1</li>
+<li><b>Boolean</b>: Toggle indicator in the interaction column &mdash; click to switch between "true" and "false"</li>
+<li><b>Color</b>: Color swatch in the interaction column &mdash; click opens a color picker, stores the value as "#rrggbb"</li>
+<li><b>Cycle</b>: Up/down arrows cycle through a pipe-separated list of values (e.g. "left|center|right"). The values are configured via a "Values" field that appears in the edit dialog when Cycle mode is selected</li>
+</ul>
+
+<p>The interaction column is narrow (20px) and separate from the value text, so clicking never accidentally opens the edit dialog. The mode is saved per-row in the rundown file and is not sent to CasparCG.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="template-newline">Template Newline Behavior</h2>
+
+<p>Per-item dropdown in the template inspector ("Newline behavior") controls how newlines in template data values are encoded when sent to CasparCG:</p>
+<ul>
+<li><b>Ignore</b>: Strips newlines from values &mdash; no line breaks in output</li>
+<li><b>innerText</b>: Encodes newlines as <code>&amp;#10;</code> XML entities &mdash; works with templates that use <code>innerText</code> to render values</li>
+<li><b>innerHTML</b> (default): Replaces newlines with <code>&lt;br&gt;</code> tags &mdash; works with templates that use <code>innerHTML</code> to render values</li>
+</ul>
+
+<p>The setting persists in rundown files. Default is innerHTML for maximum compatibility with common HTML templates.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="ndi-panel">NDI Panel</h2>
+
+<p>A new NDI (Network Device Interface) panel replaces the old VLC-based Live stream panel as the default video monitor. NDI provides low-latency video over the local network directly from CasparCG's built-in NDI output.</p>
+
+<h3>Multi-Output Grid</h3>
+<p>The NDI panel supports up to 9 simultaneous video outputs in a configurable grid layout:</p>
+<ul>
+<li>Choose 1&ndash;9 outputs via the hamburger menu or Settings &gt; General &gt; NDI Outputs</li>
+<li>Select from valid grid arrangements (e.g. 1x1, 2x2, 3x2, 3x3) via the Layout submenu</li>
+<li>Each viewer connects independently to any discovered NDI source</li>
+</ul>
+
+<h3>Source Discovery</h3>
+<p>NDI sources are discovered automatically on the local network:</p>
+<ul>
+<li>Right-click any viewer &gt; Set Source to see all available NDI sources</li>
+<li>Sources update in real-time as CasparCG servers come online or go offline</li>
+<li>Source assignments persist across restarts</li>
+</ul>
+
+<h3>Audio</h3>
+<p>Each viewer receives and plays audio from its NDI source:</p>
+<ul>
+<li>Audio plays through the default system output device</li>
+<li>Per-viewer mute toggle via right-click context menu</li>
+<li>Mute All / Unmute All in the hamburger menu</li>
+</ul>
+
+<h3>Connection Status</h3>
+<p>Visual overlay indicators show the current connection state:</p>
+<ul>
+<li>"Connecting..." while waiting for the first frame from a source</li>
+<li>Source name overlay once video is received</li>
+<li>"Signal Lost" with red background when the NDI source goes offline</li>
+<li>Automatic recovery when the source comes back &mdash; no need to reconnect manually</li>
+</ul>
+
+<h3>16:9 Grid Scaling</h3>
+<p>The viewer grid maintains 16:9 aspect ratio per cell, scaling to fill the available panel space while centering the grid. Changing the layout or resizing the panel recomputes the grid to use space optimally without stretching.</p>
+
+<h3>Performance Settings</h3>
+<p>Three configurable quality settings to reduce CPU and network usage, accessible from the hamburger menu (Quality submenu) and Settings &gt; General:</p>
+<ul>
+<li><b>Bandwidth</b>: High (full quality) or Low (reduced resolution from the NDI sender) &mdash; biggest single performance win</li>
+<li><b>Frame Rate Limit</b>: Off / 30 / 15 / 10 / 5 fps &mdash; skips frames in the capture loop</li>
+<li><b>Scaling</b>: Smooth (bicubic) or Fast (nearest-neighbor) &mdash; reduces CPU cost of display scaling</li>
+</ul>
+
+<p>Bandwidth changes reconnect the viewer; FPS limit and scaling apply instantly. Combined Low + 15fps + Fast can reduce CPU ~70-80%.</p>
+
+<h3>Panel Features</h3>
+<ul>
+<li>Collapsible to just the header bar (same as other panels)</li>
+<li>Resizable height via drag handle at the bottom edge</li>
+<li>Movable to any panel column via the Layout Editor in Settings</li>
+<li>If NDI Runtime is not installed, shows a clear error message with download link</li>
+</ul>
+
+<h3>Requirements</h3>
+<ul>
+<li>Install the free <a href="https://ndi.video/for-developers/ndi-sdk/">NDI Runtime</a> on Windows</li>
+<li>Configure CasparCG server with an NDI consumer per channel</li>
+</ul>
+
+<p>The old VLC-based Live panel remains available in the Layout Editor but is hidden by default.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="activity-progress">Activity Progress Bars for Stills and Audio</h2>
+
+<p>The Activity panel now shows progress bars for stills (with duration) and audio items, not just movies.</p>
+<ul>
+<li><b>Stills with duration</b>: When a still image plays with a duration set, a timer-based progress bar counts down in the Activity panel, matching the configured duration</li>
+<li><b>Audio files</b>: CasparCG sends real-time playback position via OSC for audio files. The Activity panel now subscribes to this data and shows a live progress bar with countdown, just like movies</li>
+<li><b>Type badges</b>: Each progress entry displays the correct type badge (IMAGE, AUDIO, VIDEO) with its own color, rather than always showing VIDEO</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="performance-panel">Performance Panel</h2>
+
+<p>A new Performance panel shows real-time system statistics in 3 compact rows, updated every 2 seconds:</p>
+<ul>
+<li><b>Client</b> &mdash; Combined CPU usage and RAM of the CasparCG Client process, shown as "X.X% | XXX MB" with individually colored values</li>
+<li><b>Server</b> &mdash; Aggregated CPU and RAM across all running CasparCG server processes, in the same format. Always visible (shows "--" when no server is detected)</li>
+<li><b>System</b> &mdash; Combined system memory and CPU usage, shown as "XX% | XX.X%" (memory | CPU) with individually colored values. Tooltip labels each percentage</li>
+</ul>
+
+<p>All values are color-coded independently: green (normal), yellow (moderate), red (high). The panel is collapsible, resizable, and movable to any column via the Layout Editor.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="embedded-transforms">Embedded Transforms</h2>
+
+<p>Content items (Template, Movie, Still, Audio, HTML, Image Scroller) can now carry their own MIXER transform properties &mdash; position, scale, crop, opacity, rotation, and more &mdash; directly on the item. No more separate transform items and visual jumps on-air.</p>
+
+<h3>How It Works</h3>
+<ul>
+<li>Select any content item and open the <b>Embedded Transform</b> section in the inspector</li>
+<li>Check any transform property to enable it: Fill, Opacity, Rotation, Anchor, Crop, Clip, Brightness, Contrast, Saturation, Volume</li>
+<li>On play, all enabled transforms are sent as <code>MIXER ... DEFER</code> commands, then <code>MIXER COMMIT</code>, then the content plays &mdash; fully atomic, no visual jumps</li>
+<li>Optional <b>Entrance Animation</b>: animate a property (e.g. fade opacity from 0 to 1) after the content appears</li>
+</ul>
+
+<h3>Rotation &amp; Anchor</h3>
+<ul>
+<li>Enabling Rotation automatically enables Anchor (pivot point, default center 0.5/0.5)</li>
+<li>Anchor is always sent before Rotation in the AMCP sequence; if Rotation is set without an explicit Anchor, center (0.5, 0.5) is used automatically</li>
+</ul>
+
+<h3>Absorb &amp; Extract</h3>
+<ul>
+<li><b>Right-click &gt; Absorb Transforms</b>: reads sibling standalone transform items (Fill, Opacity, etc.) on the same channel/layer into the content item's embedded transforms, and removes the absorbed items</li>
+<li><b>Right-click &gt; Extract Transforms</b>: creates standalone transform items (with defer=true) + a Commit item from the embedded transforms, then clears them from the content item</li>
+</ul>
+
+<h3>Compatibility</h3>
+<ul>
+<li>All standalone transform items (Fill, Opacity, Rotation, Clip, Crop, Anchor, Perspective, Brightness, Contrast, Saturation, Levels, Volume, BlendMode, Keyer, ChromaKey, Grid, Commit, Reset, FadeToBlack) remain fully functional &mdash; zero changes</li>
+<li>Old rundown files load without changes &mdash; no <code>&lt;transform&gt;</code> element means no embedded transforms</li>
+<li>Embedded transforms are serialized, cloned, copy/pasted, and undo/redo'd through the existing property pipeline</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="http-log-panel">HTTP Response &amp; Playout Log Panel</h2>
+
+<p>The Log panel displays HTTP responses and playout actions in a unified timeline.</p>
+
+<h3>HTTP Responses</h3>
+<ul>
+<li>Timestamp, HTTP method (GET/POST), request URL, and HTTP status code</li>
+<li>Response body (truncated to 500 characters for long responses)</li>
+</ul>
+
+<h3>Playout Action Log</h3>
+<ul>
+<li>Every playout action (Play, Stop, Load, Clear, etc.) is logged with timestamp, action type, item label, device, channel, and video layer</li>
+<li>OSC-triggered and bank-triggered actions are tagged with "(OSC)" to distinguish them from keyboard/mouse triggers</li>
+<li>Clear commands (F10/F11/F12) are logged even when triggered on groups</li>
+<li><b>"Log Playout Actions"</b> toggle in the panel hamburger menu &mdash; enabled by default, persisted to database</li>
+</ul>
+
+<p>The panel auto-scrolls to show the latest entry. Use the panel menu to clear the log. The panel is collapsible, resizable, and movable to any column via the Layout Editor.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="audio-meters">Audio Meters Per Channel</h2>
+
+<p>The Audio Levels panel now shows <b>per-channel tabs</b> for all connected CasparCG servers, instead of showing audio only for the selected rundown item.</p>
+<ul>
+<li>One tab per server channel (e.g. "CH 1", "CH 2"), each with 8 audio meters</li>
+<li>With multiple servers: tabs include the device name (e.g. "Server1 CH1", "Server2 CH1")</li>
+<li>Audio levels are always live &mdash; no need to select a rundown item first</li>
+<li>Tabs rebuild automatically when devices are added or removed</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="panic-button">Panic Button</h2>
+
+<p>Double-tap <b>Escape</b> to instantly clear all outputs on all connected CasparCG servers.</p>
+<ul>
+<li>First press arms the panic and shows a statusbar hint ("Press Esc again to CLEAR ALL outputs")</li>
+<li>Second press within 500ms sends CLEAR to every channel on every connected device</li>
+<li>Red statusbar notification confirms the action ("PANIC: Cleared all outputs")</li>
+<li>Auto-disarms after 500ms if no second press</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="light-theme">Light Theme</h2>
+
+<p>A new <b>Light</b> theme option is available in Settings &gt; General &gt; Theme, alongside the existing Curve and Flat dark themes.</p>
+<ul>
+<li>Light backgrounds with dark text for better readability in bright environments</li>
+<li>Full CSS coverage for all panels, rundown items, inspector, context menus, and dialogs</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="rundown-lock">Rundown Lock Toggle</h2>
+
+<p>Any rundown tab can be locked to prevent accidental edits. Repository rundowns are locked automatically on load.</p>
+<ul>
+<li><b>Lock Rundown</b> checkbox in the main menu bar (Rundown &gt; Lock Rundown) and the rundown hamburger menu &mdash; both stay in sync</li>
+<li>When locked: drag-and-drop, delete, paste, cut, group/ungroup, and move operations are all disabled</li>
+<li>Copy and playback commands still work on locked rundowns</li>
+<li>Locked tabs show a lock icon (&#128274;) prefix in the tab title for quick visual identification</li>
+<li>Lock state is per-tab and syncs correctly when switching between tabs or panes</li>
+<li><b>Override repository auto-lock</b>: Manually unlocking a repository rundown overrides the auto-lock &mdash; it stays unlocked even when repository events fire</li>
+<li><b>Channel locks respect OSC triggers</b>: OSC-triggered and bank-triggered playout commands now check channel locks before executing. Previously only keyboard/mouse triggers were blocked</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="rundown-search">Rundown Search</h2>
+
+<p>Press <b>Ctrl+F</b> to open a search bar above the rundown tabs. Search spans <b>all open rundowns</b> across all tabs and both split-view panes.</p>
+<ul>
+<li>Searches item names and labels (case-insensitive) across every open tab</li>
+<li>Match counter shows "1 of N" with &#9650;/&#9660; buttons to cycle through results</li>
+<li>Each match is selected and scrolled into view automatically</li>
+<li>Automatically switches to the correct tab and pane when navigating results</li>
+<li>Press Enter for next match, Escape to close the search bar</li>
+<li>Searches inside groups (children are included in results)</li>
+<li>Results refresh automatically when split view is toggled or closed</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="library-channel-selector">Library Channel/Layer Selector</h2>
+
+<p>Two small spinboxes (<b>CH</b> and <b>L</b>) in the Library panel's filter row. Items dragged from the library into the rundown automatically get the selected channel and video layer instead of the defaults (CH1, L10).</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="server-management">Server Process Management</h2>
+
+<p>Start, stop, and restart CasparCG server processes directly from the Status Panel.</p>
+<ul>
+<li>New optional <b>Server path</b> field in the device configuration dialog &mdash; point it to the CasparCG server executable</li>
+<li><b>Start</b> and <b>Restart</b> buttons appear inline per server in the Status Panel when a path is configured</li>
+<li>Start toggles to <b>Stop</b> while the server is running</li>
+<li>All actions require a confirmation dialog to prevent accidental stops</li>
+<li>Automatic AMCP reconnection 3 seconds after server start/restart</li>
+<li>Working directory is set to the server executable's folder (so casparcg.config is found)</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="ui-polish">UI Polish</h2>
+
+<ul>
+<li><b>Fixed-height panels</b>: Clock and StatusBar no longer grow to fill available column space when expanded &mdash; they take only the height they need</li>
+<li><b>Narrower device filter</b>: Library device filter dropdown reduced from 120px to 90px, giving the search bar more space</li>
+<li><b>What's New dialog timing</b>: The What's New dialog now appears after the interface has fully rendered, instead of showing over an unloaded window</li>
+<li><b>Settings General tab dynamic layout</b>: The General tab now uses a grid layout instead of absolute pixel positioning. All settings flow naturally &mdash; adding or removing an option no longer requires shifting every coordinate below it</li>
+<li><b>Resizable Preview &amp; Live panels</b>: Content (VLC stream / thumbnail) now scales to fill the panel size while maintaining aspect ratio, instead of being locked to a fixed 287x161 box. A subtle resize handle bar at the bottom edge provides a visual drag indicator</li>
+<li><b>Template inspector button sizes</b>: The [+], [&#128465;], [&#9654;], and [F7] buttons in the template inspector are now 40px wide instead of 28px, making them easier to click. The Import Fields button properly sizes to fit its text</li>
+<li><b>Aligned bottom row columns</b>: Rundown items with device/channel info use a fixed 5-column layout on the bottom row (device, layer, delay, duration, UID). Columns align vertically across different item types</li>
+<li><b>Status icons overlay</b>: Status icons (GPI, Disconnected, AutoPlay, Thumbnail, OscTime) now float as an overlay on the right side of rundown items instead of taking layout space</li>
+<li><b>Removed flash layer</b>: The unused flash layer property has been removed from the template widget</li>
+<li><b>Smooth scroll</b>: The rundown tree now scrolls pixel-by-pixel instead of jumping item-by-item, for smoother scrolling with trackpads and mouse wheels</li>
+<li><b>Paste Properties (No Data)</b>: New context menu option "Paste Properties (No Data)" pastes command settings from the clipboard but preserves the target item's existing template data/variables</li>
+<li><b>Drop indicator line</b>: A blue horizontal line now shows the exact drop position when dragging items in the rundown, making drag-and-drop reordering more precise</li>
+<li><b>Last action in statusbar</b>: Optional setting (Settings &gt; General &gt; "Show last action in statusbar") to display the most recent playout action (e.g. "Play: ItemName on Server CH1-L10") in the statusbar. Off by default</li>
+<li><b>Group channel badge</b>: Group items now show a channel color badge that reflects the channel of their children (single channel = that color, mixed channels = neutral dark, empty = default)</li>
+<li><b>Audio panel blue tab indicator</b>: The selected channel tab in the audio levels panel now has a blue bottom border matching the main window tab style</li>
+<li><b>Library CH/L selectors at top</b>: Channel and layer spinboxes moved from the bottom of the library panel to just below the tab header for quicker access</li>
+<li><b>Panel collapse persistence</b>: Collapsed panel state is now saved to the database and survives layout rebuilds, panel moves, and application restarts</li>
+<li><b>Window size constraint</b>: The application window is now clamped to the available screen geometry on startup and after layout changes, preventing panels from pushing the window off-screen</li>
+<li><b>Panel resize handle clamped</b>: Dragging a panel resize handle now stops at the window bottom edge instead of growing the window beyond the screen</li>
+<li><b>Inspector channel spinbox</b>: The channel spinbox now allows values up to the item's current channel even when the server hasn't reported its channel formats yet (fallback to 8 channels)</li>
+<li><b>Inspector channel reliability</b>: Channel, videolayer, delay, and duration changes from the inspector now always write to the primary command directly, preventing silent loss when the multi-select command list is empty or stale</li>
+<li><b>Audio panel tab style</b>: Selected channel tab in the audio levels panel now uses the same full blue background as the rundown tabs</li>
+<li><b>Library "Default" label</b>: The channel/layer selectors at the top of the library panel now have a "Default" label for clarity</li>
+<li><b>Inspector delay/duration minimum</b>: Delay and duration spinboxes are clamped to minimum 0 &mdash; negative values that could break server playout are no longer possible</li>
+<li><b>Solid color fix</b>: The SolidColor command now handles both #AARRGGBB (8-char) and #RRGGBB (6-char) color formats correctly &mdash; previously a 6-char color was parsed wrong, producing the wrong color on-air</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="performance">Performance</h2>
+
+<ul>
+<li><b>OSC subscription registry</b>: Replaced broadcast-based OSC message delivery with a centralized routing registry. Previously every OSC message was delivered to every subscription object in the application (up to 16,000 with large rundowns), each performing a string comparison. Now a hash-based registry does instant path lookup and notifies only matching subscribers &mdash; eliminates ~99.9% of per-message overhead</li>
+<li><b>OSC subscription memory leak fix</b>: Fixed a memory leak where changing a rundown item&rsquo;s channel or video layer would disconnect old OSC subscriptions but not delete them. The leaked objects continued to receive and process every OSC message. Now properly deleted before creating replacements</li>
+<li><b>Lightweight active animation</b>: The play animation (white flash to channel color) now uses QPalette instead of setStyleSheet. Previously each animation frame triggered full CSS parsing and style recalculation. QPalette directly sets the background color with no parsing overhead</li>
+<li><b>Configuration cache</b>: Frequently-read database settings (delay type, mark used items, freeze on load, reverse OSC time, thumbnail tooltips) are now cached in memory. Eliminates ~1,500 SQL queries during large rundown loads. Cache auto-refreshes when settings change</li>
+<li><b>Pixmap cache</b>: GPI connection status icons are loaded from resources once and shared across all widgets, instead of being re-decoded from PNG on every state change</li>
+<li><b>Preview border no longer causes UI slowdown</b>: Activating PVW mode (via button or modifier key) no longer degrades GUI performance. The border now uses a lightweight overlay frame instead of applying a stylesheet to the root widget</li>
+<li><b>Color cache</b>: All custom color settings are cached in memory at startup, eliminating repeated database reads during active animation, autostep highlighting, and clock rendering</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="stability">Stability Fixes</h2>
+
+<ul>
+<li><b>Fixed crash on group selection</b>: OscSubscription pointers were not nulled after deletion in <code>configureOscSubscriptions</code>, causing double-free / heap corruption when the method was called multiple times (e.g., during clone sync). Fixed across all 40 rundown widget types.</li>
+<li><b>Fixed ActiveAnimation use-after-free</b>: Animation target widget pointer changed from raw pointer to QPointer, preventing crashes when the widget is destroyed while the animation is still running.</li>
+<li><b>Clone sync signal cascade reduced</b>: Signals are now blocked on sibling commands during property sync, preventing unnecessary cascading signal emissions and repeated OscSubscription reconfiguration.</li>
+<li><b>AutoPlay null guard</b>: Added null checks in the autoplay handler for source widget and dynamic_cast results.</li>
+<li><b>Fixed active color indicator</b>: The per-channel "last fired" colored bar on rundown items was invisible because the global <code>QLabel { background-color: transparent; }</code> CSS rule overrode the QPalette-based coloring. Switched to setStyleSheet for compatibility.</li>
+<li><b>Fixed device add dialog</b>: Adding a new CasparCG server no longer fails with "parameter count mismatch" when the database is missing the ServerPath column. A safety-net check now adds the column on startup if needed.</li>
+<li><b>Fixed preview channel override leak</b>: After using Shift+Play (preview mode), the preview channel override no longer leaks into the inspector display, saved rundown files, or OSC-triggered playback. The inspector shows the real channel, writeProperties saves the real channel, and OSC handlers clear the override before executing.</li>
+<li><b>Fixed OSC trigger channel override</b>: OSC-triggered and bank-triggered commands now clear any lingering preview channel override before executing, ensuring they always use the configured channel.</li>
+</ul>
+
+<h2 id="compatibility">Compatibility</h2>
+
+<ul>
+<li>All changes are backward-compatible with existing rundown XML files</li>
+<li>New properties use sensible defaults when missing from old files</li>
+<li>Database auto-migrates on first launch after update</li>
+</ul>
+
+</body>
+</html>

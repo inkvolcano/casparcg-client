@@ -542,15 +542,11 @@ QMenu::item
 {
     color: rgba(190, 190, 190, 255);
     padding-bottom: 4px;
-    padding-left: 25px;
+    padding-left: 20px;
     padding-right: 19px;
     padding-top: 3px;
 }
-QMenu::item:checked
-{
-    padding-left: 0px;
-}
-QMenu::item:unchecked
+#menuView::item, #menuRundown::item, #menuOther::item
 {
     padding-left: 0px;
 }
@@ -567,6 +563,7 @@ QMenu::indicator
 {
     background-color: transparent;
     border-width: 0px;
+    width: 12px;
     padding-left: 7px;
     padding-right: 7px;
 }
@@ -608,7 +605,7 @@ QToolBox::tab:only-one
 }
 QToolBox::tab:selected
 {
-    border-bottom-color: rgba(70, 115, 195, 255);
+    border-bottom-color: rgba(76, 175, 80, 255);
     border-bottom-width: 1px;
 }
 QToolBox::tab:!selected

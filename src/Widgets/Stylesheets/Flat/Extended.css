@@ -5,7 +5,6 @@
 {
     background-color: rgba(45, 45, 45, 255);
 }
-
 /*
  * AddDeviceDialog
  */
@@ -169,12 +168,6 @@
     image: url(:/Graphics/Images/MasterVolumeOn.png);
     padding: 4px;
 }
-#toolButtonDisableCommand
-{
-    image: url(:/Graphics/Images/DisableCommandOn.png);
-    padding: 2px;
-}
-
 /*
  * InspectorSolidColorWidget
  */
@@ -220,17 +213,6 @@
 #frameRundownSpacer
 {
     min-height: 1px;
-}
-
-#toolButtonRundownDropdown
-{
-    background-color: transparent;
-    border-width: 0px;
-    image: url(:/Graphics/Images/Dropdown.png);
-}
-#toolButtonRundownDropdown::hover
-{
-    image: url(:/Graphics/Images/DropdownHover.png);
 }
 
 #tabWidgetRundown::pane
@@ -314,7 +296,7 @@
  */
 #labelPreview
 {
-    image: url(:/Graphics/Images/Checkerboard.png);
+    background-image: url(:/Graphics/Images/Checkerboard.png);
 }
 #tabPreview
 {
@@ -368,6 +350,7 @@
 }
 #tabWidgetAudioLevels QTabBar::tab:selected
 {
+    background-color: rgba(70, 115, 195, 255);
     padding-bottom: 3px;
 }
 
@@ -380,6 +363,90 @@
 #toolButtonAudioLevelsDropdown::hover
 {
     image: url(:/Graphics/Images/DropdownHover.png);
+}
+
+#toolButtonStatusPanelDropdown
+{
+    background-color: transparent;
+    border-width: 0px;
+    image: url(:/Graphics/Images/Dropdown.png);
+}
+#toolButtonStatusPanelDropdown::hover
+{
+    image: url(:/Graphics/Images/DropdownHover.png);
+}
+
+/*
+ * StatusPanelWidget
+ */
+#tabServer, #tabActivity, #tabBanks,
+#widgetServer, #widgetActivity, #widgetBanks
+{
+    background-color: rgba(35, 35, 35, 255);
+}
+#widgetServer QWidget, #widgetActivity QWidget, #widgetBanks QWidget
+{
+    background-color: transparent;
+}
+
+#tabWidgetServer::pane, #tabWidgetActivity::pane, #tabWidgetBanks::pane
+{
+    background-color: rgba(35, 35, 35, 255);
+    border-bottom-color: rgba(45, 45, 45, 255);
+    top: 0px;
+}
+#tabWidgetServer QTabBar::tab, #tabWidgetActivity QTabBar::tab, #tabWidgetBanks QTabBar::tab
+{
+    background-color: transparent;
+}
+#tabWidgetServer QTabBar::tab:selected, #tabWidgetActivity QTabBar::tab:selected, #tabWidgetBanks QTabBar::tab:selected
+{
+    padding-bottom: 3px;
+}
+
+#tabWidgetClock::pane
+{
+    background-color: rgba(35, 35, 35, 255);
+    border-bottom-color: rgba(45, 45, 45, 255);
+    top: 0px;
+}
+#tabWidgetClock QTabBar::tab
+{
+    background-color: transparent;
+}
+#tabWidgetClock QTabBar::tab:selected
+{
+    padding-bottom: 3px;
+}
+
+#tabWidgetInspector::pane
+{
+    background-color: rgba(35, 35, 35, 255);
+    border-bottom-color: rgba(45, 45, 45, 255);
+    top: 0px;
+}
+#tabWidgetInspector QTabBar::tab
+{
+    background-color: transparent;
+}
+#tabWidgetInspector QTabBar::tab:selected
+{
+    padding-bottom: 3px;
+}
+
+#tabWidgetLibrary::pane
+{
+    background-color: rgba(35, 35, 35, 255);
+    border-bottom-color: rgba(45, 45, 45, 255);
+    top: 0px;
+}
+#tabWidgetLibrary QTabBar::tab
+{
+    background-color: transparent;
+}
+#tabWidgetLibrary QTabBar::tab:selected
+{
+    padding-bottom: 3px;
 }
 
 /*
@@ -395,17 +462,6 @@
 {
     color: rgba(128, 128, 128, 255);
     font-size: 8px;
-}
-
-#progressBarAudioMeter
-{
-    border-color: rgba(65, 65, 65, 255);
-    border-style: solid;
-    border-width: 1px;
-}
-#progressBarAudioMeter::chunk
-{
-    background-color: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 green, stop: 1 lime);
 }
 
 /*
@@ -461,7 +517,9 @@
  */
 #labelLiveSmall
 {
-    image: url(:/Graphics/Images/StreamNotAvailableSmall.png);
+    background-image: url(:/Graphics/Images/StreamNotAvailableSmall.png);
+    background-repeat: no-repeat;
+    background-position: center;
 }
 #tabLive
 {
@@ -484,16 +542,6 @@
     padding-bottom: 3px;
 }
 
-#toolButtonLiveDropdown
-{
-    background-color: transparent;
-    border-width: 0px;
-    image: url(:/Graphics/Images/Dropdown.png);
-}
-#toolButtonLiveDropdown::hover
-{
-    image: url(:/Graphics/Images/DropdownHover.png);
-}
 
 /*
  * DurationWidget
@@ -542,4 +590,26 @@
 #treeWidgetHttpData
 {
     alternate-background-color: rgba(35, 35, 35, 255);
+}
+
+/*
+ * Split View Focus Indicator
+ */
+#tabWidgetRundown[focused="true"], #tabWidgetRundownSecondary[focused="true"]
+{
+    border: 2px solid rgba(204, 123, 25, 200);
+}
+#tabWidgetRundown[focused="false"], #tabWidgetRundownSecondary[focused="false"]
+{
+    border: 1px solid rgba(60, 60, 60, 200);
+}
+#tabWidgetRundownSecondary::pane
+{
+    border-width: 0px;
+    position: absolute;
+    top: 0px;
+}
+#tabWidgetRundownSecondary QTabBar::tab
+{
+    border-bottom-width: 0px;
 }
