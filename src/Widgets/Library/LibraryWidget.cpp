@@ -1,6 +1,7 @@
 #include "LibraryWidget.h"
 
 #include "Global.h"
+#include "../PanelHelper.h"
 
 #include "DeviceManager.h"
 #include "DatabaseManager.h"
@@ -29,16 +30,131 @@
 #include <QtGui/QStandardItemModel>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QLabel>
+
+static int s_dropChannel = Output::DEFAULT_CHANNEL;
+static int s_dropVideolayer = Output::DEFAULT_VIDEOLAYER;
+
+int LibraryWidget::dropChannel() { return s_dropChannel; }
+int LibraryWidget::dropVideolayer() { return s_dropVideolayer; }
 
 LibraryWidget::LibraryWidget(QWidget* parent)
     : QWidget(parent)
 {
     setupUi(this);
+
+    // Expand to fill all available vertical space in the panel.
+    this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    // Force each QToolBox page to expand vertically so tree widgets fill the space.
+    for (int i = 0; i < this->toolBoxLibrary->count(); i++)
+    {
+        QWidget* page = this->toolBoxLibrary->widget(i);
+        if (page)
+            page->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    }
+
+    // Wrap content in a QTabWidget for consistent panel header + collapse.
+    this->gridLayout->removeWidget(this->toolBoxLibrary);
+    this->gridLayout->removeWidget(this->lineEditFilter);
+    this->gridLayout->removeWidget(this->widgetDeviceFilter);
+    // Remove spacer.
+    QLayoutItem* spacer = this->gridLayout->itemAtPosition(1, 2);
+    if (spacer)
+        this->gridLayout->removeItem(spacer);
+    delete spacer;
+
+    this->tabWidgetLibrary = new QTabWidget(this);
+    this->tabWidgetLibrary->setObjectName("tabWidgetLibrary");
+    this->tabWidgetLibrary->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    this->toolBoxLibrary->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    QWidget* tabPage = new QWidget();
+    tabPage->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    QVBoxLayout* tabLayout = new QVBoxLayout(tabPage);
+    tabLayout->setContentsMargins(0, 0, 0, 0);
+    tabLayout->setSpacing(0);
+    // Channel/layer selectors at the top, just under the tab header.
+    QHBoxLayout* channelRow = new QHBoxLayout();
+    channelRow->setContentsMargins(2, 2, 2, 2);
+    channelRow->setSpacing(4);
+    QLabel* labelDefault = new QLabel("Default", this);
+    labelDefault->setStyleSheet("color: rgba(140, 140, 140, 200); font-size: 11px;");
+    channelRow->addWidget(labelDefault);
+    QLabel* labelCh = new QLabel("CH", this);
+    QSpinBox* spinCh = new QSpinBox(this);
+    spinCh->setRange(1, 99);
+    spinCh->setValue(Output::DEFAULT_CHANNEL);
+    spinCh->setFixedSize(45, 22);
+    QObject::connect(spinCh, QOverload<int>::of(&QSpinBox::valueChanged), [](int v) { s_dropChannel = v; });
+    channelRow->addWidget(labelCh);
+    channelRow->addWidget(spinCh);
+    QLabel* labelLayer = new QLabel("L", this);
+    QSpinBox* spinLayer = new QSpinBox(this);
+    spinLayer->setRange(1, 999);
+    spinLayer->setValue(Output::DEFAULT_VIDEOLAYER);
+    spinLayer->setFixedSize(50, 22);
+    QObject::connect(spinLayer, QOverload<int>::of(&QSpinBox::valueChanged), [](int v) { s_dropVideolayer = v; });
+    channelRow->addWidget(labelLayer);
+    channelRow->addWidget(spinLayer);
+    channelRow->addStretch();
+    tabLayout->addLayout(channelRow);
+
+    tabLayout->addWidget(this->toolBoxLibrary, 1);
+
+    // Search + device filter at the bottom.
+    QHBoxLayout* filterRow = new QHBoxLayout();
+    filterRow->setContentsMargins(0, 0, 0, 0);
+    filterRow->setSpacing(4);
+    this->lineEditFilter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    filterRow->addWidget(this->lineEditFilter);
+    static const int DEVICE_FILTER_WIDTH = 90;
+    this->widgetDeviceFilter->setFixedSize(DEVICE_FILTER_WIDTH, 22);
+    QComboBox* deviceCombo = this->widgetDeviceFilter->findChild<QComboBox*>("comboBoxDeviceFilter");
+    QLineEdit* deviceLineEdit = this->widgetDeviceFilter->findChild<QLineEdit*>("lineEditDeviceFilter");
+    if (deviceCombo)
+        deviceCombo->setGeometry(0, 0, DEVICE_FILTER_WIDTH, 22);
+    if (deviceLineEdit)
+        deviceLineEdit->setGeometry(4, 2, DEVICE_FILTER_WIDTH - 24, 19);
+    filterRow->addWidget(this->widgetDeviceFilter);
+    tabLayout->addLayout(filterRow);
+
+    this->tabWidgetLibrary->addTab(tabPage, "Library");
+
+    // Replace the .ui grid layout with a simple layout so the tab widget
+    // fills the entire LibraryWidget without leftover row constraints.
+    delete this->gridLayout;
+    QVBoxLayout* outerLayout = new QVBoxLayout(this);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
+    outerLayout->addWidget(this->tabWidgetLibrary, 1);
+
+    // Hamburger menu in tab corner.
+    this->dropdownMenu = new QMenu(this);
+    this->dropdownMenu->setObjectName("panelMenu");
+    PanelHelper::addMoveActions(this->dropdownMenu, "Library", this);
+    this->dropdownMenu->addSeparator();
+    this->expandCollapseAction = this->dropdownMenu->addAction("Collapse", this, &LibraryWidget::toggleExpandCollapse);
+
+    this->menuButton = new QToolButton(this->tabWidgetLibrary);
+    this->menuButton->setText(QString::fromUtf8("\xe2\x89\xa1"));
+    this->menuButton->setFixedSize(22, 22);
+    this->menuButton->setMenu(this->dropdownMenu);
+    this->menuButton->setPopupMode(QToolButton::InstantPopup);
+    this->tabWidgetLibrary->setCornerWidget(this->menuButton);
+
+    this->collapsed = PanelHelper::isPanelCollapsed("Library");
+    if (this->collapsed)
+        this->expandCollapseAction->setText("Expand");
+
     setupUiMenu();
     setupTools();
 
+    this->treeWidgetTool->setIndentation(10);
     this->treeWidgetTool->setColumnHidden(1, true);
     this->treeWidgetTool->setColumnHidden(2, true);
     this->treeWidgetTool->setColumnHidden(3, true);
@@ -318,6 +434,33 @@ void LibraryWidget::setupTools()
     widgetVolume->setText(3, "");
     widgetVolume->setText(4, Rundown::VOLUME);
     widgetVolume->setText(5, "0");
+
+    QTreeWidgetItem* widgetFocusGateway = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetFocusGateway->setIcon(0, QIcon(":/Graphics/Images/gatewaySmall.png"));
+    widgetFocusGateway->setText(0, "Gateway");
+    widgetFocusGateway->setText(1, "0");
+    widgetFocusGateway->setText(2, "Gateway");
+    widgetFocusGateway->setText(3, "");
+    widgetFocusGateway->setText(4, Rundown::FOCUSGATEWAY);
+    widgetFocusGateway->setText(5, "0");
+
+    QTreeWidgetItem* widgetAutoPlayGateway = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetAutoPlayGateway->setIcon(0, QIcon(":/Graphics/Images/gatewaySmall.png"));
+    widgetAutoPlayGateway->setText(0, "Autoplay Gateway");
+    widgetAutoPlayGateway->setText(1, "0");
+    widgetAutoPlayGateway->setText(2, "Autoplay Gateway");
+    widgetAutoPlayGateway->setText(3, "");
+    widgetAutoPlayGateway->setText(4, Rundown::AUTOPLAYGATEWAY);
+    widgetAutoPlayGateway->setText(5, "0");
+
+    QTreeWidgetItem* widgetCommandGateway = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetCommandGateway->setIcon(0, QIcon(":/Graphics/Images/gatewaySmall.png"));
+    widgetCommandGateway->setText(0, "Command Gateway");
+    widgetCommandGateway->setText(1, "0");
+    widgetCommandGateway->setText(2, "Command Gateway");
+    widgetCommandGateway->setText(3, "");
+    widgetCommandGateway->setText(4, Rundown::COMMANDGATEWAY);
+    widgetCommandGateway->setText(5, "0");
 
     QTreeWidgetItem* widgetChannelSnapshot = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
     widgetChannelSnapshot->setIcon(0, QIcon(":/Graphics/Images/SnapshotSmall.png"));
@@ -964,6 +1107,23 @@ void LibraryWidget::currentItemChanged(QTreeWidgetItem* current, QTreeWidgetItem
         return;
 
     EventManager::getInstance().fireLibraryItemSelectedEvent(LibraryItemSelectedEvent(NULL, this->model.data()));
+}
+
+void LibraryWidget::toggleExpandCollapse()
+{
+    this->collapsed = !this->collapsed;
+    PanelHelper::setPanelCollapsed("Library", this->collapsed);
+
+    this->expandCollapseAction->setText(this->collapsed ? "Expand" : "Collapse");
+
+    if (this->collapsed)
+    {
+        this->setFixedHeight(Panel::COMPACT_AUDIOLEVELS_HEIGHT);
+    }
+    else
+    {
+        PanelHelper::applyExpandedHeight(this, "Library", 200);
+    }
 }
 
 void LibraryWidget::toggleExpandItem(QTreeWidgetItem* item, int index)

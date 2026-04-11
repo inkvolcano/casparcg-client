@@ -7,7 +7,11 @@
 #include <QtGui/QCloseEvent>
 
 #include <QtWidgets/QAbstractButton>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QToolButton>
 
 DeviceDialog::DeviceDialog(QWidget* parent)
     : QDialog(parent),
@@ -17,6 +21,39 @@ DeviceDialog::DeviceDialog(QWidget* parent)
 
     this->lineEditDeviceName->setStyleSheet("border-color: firebrick;");
     this->lineEditAddress->setStyleSheet("border-color: firebrick;");
+
+    // Add Server Path row programmatically (after Media path, row 7 in the grid).
+    QGridLayout* grid = qobject_cast<QGridLayout*>(this->layout());
+    if (grid != nullptr)
+    {
+        int row = 7; // Insert before the preview/locked checkboxes.
+
+        // Shift existing rows down to make room.
+        // Grid items at row 7+ need to move to row+1.
+        // Qt doesn't support row insertion, so we add at a new row number.
+        // The grid is sparse — we can use row 7 if it's between media and preview.
+        // Actually the checkboxes are at row 7. Let's just add at a higher row number
+        // and let the grid sort it out. Use addWidget with specific row.
+
+        // Find the next available row.
+        row = grid->rowCount();
+
+        QLabel* label = new QLabel("Server path", this);
+        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+        this->lineEditServerPath = new QLineEdit(this);
+        this->lineEditServerPath->setPlaceholderText("Optional - path to CasparCG server executable");
+
+        QToolButton* browseButton = new QToolButton(this);
+        browseButton->setText("...");
+        browseButton->setFocusPolicy(Qt::NoFocus);
+        browseButton->setToolTip("Browse for server executable");
+        QObject::connect(browseButton, &QToolButton::clicked, this, &DeviceDialog::browseServerPath);
+
+        grid->addWidget(label, row, 1);
+        grid->addWidget(this->lineEditServerPath, row, 2, 1, 4);
+        grid->addWidget(browseButton, row, 6);
+    }
 
     this->lineEditDeviceName->installEventFilter(this);
 }
@@ -53,6 +90,10 @@ void DeviceDialog::setDeviceModel(const DeviceModel& model)
     this->checkBoxLocked->setChecked((model.getLockedChannel() > 0) ? true : false);
     this->spinBoxPreviewChannel->setValue((model.getPreviewChannel() > 0) ? model.getPreviewChannel() : 2);
     this->spinBoxLockedChannel->setValue((model.getLockedChannel() > 0) ? model.getLockedChannel() : 1);
+    this->lineEditTemplatePath->setText(model.getTemplatePath());
+    this->lineEditMediaPath->setText(model.getMediaPath());
+    if (this->lineEditServerPath != nullptr)
+        this->lineEditServerPath->setText(model.getServerPath());
     this->spinBoxPreviewChannel->setEnabled(this->checkBoxPreview->isChecked());
     this->spinBoxLockedChannel->setEnabled(this->checkBoxLocked->isChecked());
 }
@@ -103,6 +144,21 @@ int DeviceDialog::getPreviewChannel() const
 int DeviceDialog::getLockedChannel() const
 {
     return (this->checkBoxLocked->isChecked() == true) ? this->spinBoxLockedChannel->value() : 0;
+}
+
+const QString DeviceDialog::getTemplatePath() const
+{
+    return this->lineEditTemplatePath->text();
+}
+
+const QString DeviceDialog::getMediaPath() const
+{
+    return this->lineEditMediaPath->text();
+}
+
+const QString DeviceDialog::getServerPath() const
+{
+    return (this->lineEditServerPath != nullptr) ? this->lineEditServerPath->text() : QString();
 }
 
 void DeviceDialog::accept()
@@ -245,4 +301,27 @@ void DeviceDialog::lockedChannelChanged(int state)
     this->spinBoxLockedChannel->setEnabled(state == Qt::Checked);
     if (state == Qt::Unchecked)
         this->spinBoxLockedChannel->setValue(1);
+}
+
+void DeviceDialog::browseTemplatePath()
+{
+    QString path = QFileDialog::getExistingDirectory(this, "Select Template Folder", this->lineEditTemplatePath->text());
+    if (!path.isEmpty())
+        this->lineEditTemplatePath->setText(path);
+}
+
+void DeviceDialog::browseMediaPath()
+{
+    QString path = QFileDialog::getExistingDirectory(this, "Select Media Folder", this->lineEditMediaPath->text());
+    if (!path.isEmpty())
+        this->lineEditMediaPath->setText(path);
+}
+
+void DeviceDialog::browseServerPath()
+{
+    QString path = QFileDialog::getOpenFileName(this, "Select CasparCG Server Executable",
+                                                this->lineEditServerPath->text(),
+                                                "Executables (*.exe);;All Files (*)");
+    if (!path.isEmpty())
+        this->lineEditServerPath->setText(path);
 }

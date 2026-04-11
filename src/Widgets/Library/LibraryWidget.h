@@ -20,6 +20,9 @@
 
 #include <QtGui/QAction>
 #include <QtWidgets/QMenu>
+#include <QtWidgets/QTabWidget>
+#include <QtWidgets/QToolButton>
+#include <QtWidgets/QSpinBox>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
@@ -29,9 +32,17 @@ class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
     public:
         explicit LibraryWidget(QWidget* parent = 0);
 
+        static int dropChannel();
+        static int dropVideolayer();
+
     private:
         bool lock = false;
         bool useDropFrameNotation = false;
+        bool collapsed = false;
+        QTabWidget* tabWidgetLibrary;
+        QToolButton* menuButton = nullptr;
+        QMenu* dropdownMenu = nullptr;
+        QAction* expandCollapseAction = nullptr;
 
         QMenu* contextMenu;
         QMenu* contextMenuImage;
@@ -63,4 +74,5 @@ class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
         Q_SLOT void importPreset(const ImportPresetEvent&);
         Q_SLOT void exportPreset(const ExportPresetEvent&);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
+        Q_SLOT void toggleExpandCollapse();
 };

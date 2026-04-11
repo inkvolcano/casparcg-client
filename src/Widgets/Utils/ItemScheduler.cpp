@@ -1,6 +1,7 @@
 #include "ItemScheduler.h"
 
 #include "Global.h"
+#include "DatabaseManager.h"
 
 #include <QtCore/QObject>
 #include <QtCore/QTimer>
@@ -27,30 +28,36 @@ int ItemScheduler::getMilliseconds(int frames, double framesPerSecond)
     return static_cast<int>(frames * (1000.0 / framesPerSecond));
 }
 
-void ItemScheduler::schedulePlayAndStop(int delay, int duration, const QString& delayType, int framesPerSecond)
+void ItemScheduler::schedulePlayAndStop(int delay, int duration, const QString& /*delayType*/, int framesPerSecond)
 {
     // Stop all timers.
     this->cancel();
 
+    // Read units from DB for independent delay/duration unit support.
+    QString delayUnit = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
+    QString durationUnit = DatabaseManager::getInstance().getConfigurationByName("DurationUnit").getValue();
+
     int delayInMilliseconds = 0;
-    int durationInMilliseconds = 0;
-    if (delayType == Output::DEFAULT_DELAY_IN_FRAMES)
+    if (delayUnit == Output::DEFAULT_DELAY_IN_FRAMES)
     {
         if (framesPerSecond > 0)
-        {
             delayInMilliseconds = getMilliseconds(delay, framesPerSecond);
-            durationInMilliseconds = getMilliseconds(duration, framesPerSecond);
-        }
         else
             qCritical("When delay type is frames, fps must be specified");
     }
-    else if (delayType == Output::DEFAULT_DELAY_IN_MILLISECONDS)
-    {
+    else
         delayInMilliseconds = delay;
-        durationInMilliseconds = duration;
+
+    int durationInMilliseconds = 0;
+    if (durationUnit == Output::DEFAULT_DELAY_IN_FRAMES)
+    {
+        if (framesPerSecond > 0)
+            durationInMilliseconds = getMilliseconds(duration, framesPerSecond);
+        else
+            qCritical("When duration unit is frames, fps must be specified");
     }
     else
-        qCritical("Unsupported delay type %s", qPrintable(delayType));
+        durationInMilliseconds = duration;
 
     this->playTimer.setInterval(delayInMilliseconds);
     this->playTimer.start();
@@ -62,22 +69,22 @@ void ItemScheduler::schedulePlayAndStop(int delay, int duration, const QString& 
     }
 }
 
-void ItemScheduler::scheduleUpdate(int delay, const QString& delayType, int framesPerSecond)
+void ItemScheduler::scheduleUpdate(int delay, const QString& /*delayType*/, int framesPerSecond)
 {
     this->updateTimer.stop();
 
+    QString delayUnit = DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue();
+
     int delayInMilliseconds = 0;
-    if (delayType == Output::DEFAULT_DELAY_IN_FRAMES)
+    if (delayUnit == Output::DEFAULT_DELAY_IN_FRAMES)
     {
         if (framesPerSecond > 0)
             delayInMilliseconds = getMilliseconds(delay, framesPerSecond);
         else
             qCritical("When delay type is frames, fps must be specified");
     }
-    else if (delayType == Output::DEFAULT_DELAY_IN_MILLISECONDS)
-        delayInMilliseconds = delay;
     else
-        qCritical("Unsupported delay type %s", qPrintable(delayType));
+        delayInMilliseconds = delay;
 
     this->updateTimer.setInterval(delayInMilliseconds);
     this->updateTimer.start();

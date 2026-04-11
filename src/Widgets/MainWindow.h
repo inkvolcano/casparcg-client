@@ -3,9 +3,10 @@
 #include "Shared.h"
 #include "ui_MainWindow.h"
 
+#include "Playout.h"
+
 #include "Events/ExportPresetMenuEvent.h"
 #include "Events/SaveAsPresetMenuEvent.h"
-#include "Events/StatusbarEvent.h"
 #include "Events/Rundown/EmptyRundownEvent.h"
 #include "Events/Rundown/ActiveRundownChangedEvent.h"
 #include "Events/Rundown/AllowRemoteTriggeringEvent.h"
@@ -19,14 +20,23 @@
 #include "Events/Rundown/OpenRundownMenuEvent.h"
 #include "Events/Rundown/ReloadRundownMenuEvent.h"
 
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QEvent>
+#include <QtCore/QMap>
 #include <QtCore/QObject>
 
 #include <QtGui/QAction>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
+#include <QtWidgets/QFrame>
 #include <QtWidgets/QWidget>
+
+class ClockWidget;
+class HttpResponsePanelWidget;
+class NdiPanelWidget;
+class PerformancePanelWidget;
+class StatusBarWidget;
 
 class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
 {
@@ -37,9 +47,18 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
 
     protected:
         virtual void closeEvent(QCloseEvent* event);
+        bool eventFilter(QObject* obj, QEvent* event) override;
+#if defined(Q_OS_WIN)
+        bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result) override;
+#endif
 
     private:
         QString applicationTitle;
+        StatusBarWidget* widgetStatusBar;
+        ClockWidget* widgetClock;
+        NdiPanelWidget* widgetNdi;
+        PerformancePanelWidget* widgetPerformance;
+        HttpResponsePanelWidget* widgetHttpLog;
 
         QMenu* fileMenu;
         QMenu* editMenu;
@@ -48,6 +67,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QMenu* rundownMenu;
         QMenu* markMenu;
         QMenu* playoutMenu;
+        QMenu* otherMenu;
         QMenu* helpMenu;
         QMenu* openRecentMenu;
         QMenuBar* menuBar;
@@ -62,10 +82,21 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QAction* saveAsAction;
         QAction* compactViewAction;
         QAction* allowRemoteTriggeringAction;
+        QAction* lockRundownAction;
         QAction* insertRepositoryChangesAction;
         QAction* reloadRundownAction;
+        QAction* disableCommandAction;
+
+        QMap<Playout::PlayoutType, QAction*> playoutActions;
+        QMap<int, QAction*> bankActions;
+        QAction* togglePreviewAction;
+        QAction* toggleAutostepAction;
 
         void setupMenu();
+        void loadHotkeys();
+        void rebuildLayout();
+        void constrainToScreen();
+        QWidget* widgetById(const QString& id);
 
         Q_SLOT void openRecentMenuActionTriggered(QAction*);
         Q_SLOT void openRecentMenuHovered();
@@ -88,6 +119,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void executeClearVideolayer();
         Q_SLOT void executeClearChannel();
         Q_SLOT void showAboutDialog();
+        Q_SLOT void showWhatsNewDialog();
         Q_SLOT void showHelpDialog();
         Q_SLOT void showSettingsDialog();
         Q_SLOT void toggleFullscreen();
@@ -106,16 +138,36 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void insertRepositoryChanges();
         Q_SLOT void compactView(bool);
         Q_SLOT void allowRemoteTriggering(bool);
+        Q_SLOT void lockRundown(bool);
+        Q_SLOT void hotkeyChanged();
         Q_SLOT void emptyRundown(const EmptyRundownEvent&);
-        Q_SLOT void statusbar(const StatusbarEvent&);
         Q_SLOT void activeRundownChanged(const ActiveRundownChangedEvent&);
         Q_SLOT void newRundownMenu(const NewRundownMenuEvent&);
         Q_SLOT void openRundownMenu(const OpenRundownMenuEvent&);
         Q_SLOT void openRundownFromUrlMenu(const OpenRundownFromUrlMenuEvent&);
         Q_SLOT void compactView(const CompactViewEvent&);
         Q_SLOT void allowRemoteTriggering(const AllowRemoteTriggeringEvent&);
+        Q_SLOT void lockRundown(const LockRundownEvent&);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
         Q_SLOT void exportPresetMenu(const ExportPresetMenuEvent&);
         Q_SLOT void saveAsPresetMenu(const SaveAsPresetMenuEvent&);
         Q_SLOT void reloadRundownMenu(const ReloadRundownMenuEvent&);
+        Q_SLOT void disableCommandToggled(bool);
+        Q_SLOT void panicClearAll();
+        Q_SLOT void togglePreviewMode();
+        Q_SLOT void toggleAutostepMode();
+        Q_SLOT void previewModeActivated(bool active);
+        Q_SLOT void previewModifierActivated(bool held);
+        void updatePreviewBorder();
+        bool showPreviewBorder;
+        bool previewModeActive;
+        bool previewModifierHeld;
+        QString previewModifierKey;
+        QFrame* previewBorderOverlay = nullptr;
+
+        QElapsedTimer m_panicTimer;
+        bool m_panicArmed = false;
+
+        QMap<QString, QWidget*> panelContainers;
+        QWidget* mainWindowContainer;
 };

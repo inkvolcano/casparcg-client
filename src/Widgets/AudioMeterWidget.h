@@ -10,8 +10,6 @@
 #include "Events/Rundown/RundownItemSelectedEvent.h"
 #include "Models/LibraryModel.h"
 
-#include <QtGui/QImage>
-
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
@@ -22,11 +20,18 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
         explicit AudioMeterWidget(QWidget* parent = 0);
 
         void configureAudioMeter(int channel);
+        void configureForDevice(int audioChannel, const QString& deviceName, int serverChannel);
+
+    protected:
+        void paintEvent(QPaintEvent* event) override;
 
     private:
         int channel;
+        double currentLevel;
         LibraryModel* model;
         AbstractCommand* command;
+
+        bool directMode = false;
 
         OscSubscription* audioSubscription;
 

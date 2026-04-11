@@ -24,12 +24,13 @@ class WIDGETS_EXPORT LiveWidget : public QWidget, Ui::LiveWidget
         explicit LiveWidget(QWidget* parent = 0);
 
     private:
-        bool collapsed;
-        bool windowMode;
+        bool collapsed = false;
+        bool windowMode = false;
         QString deviceName;
         QString deviceChannel;
-        bool useKey;
-        int streamPort;
+        bool useKey = false;
+        int streamPort = 0;
+        bool muted = false;
 
         LiveDialog* liveDialog = nullptr;
 

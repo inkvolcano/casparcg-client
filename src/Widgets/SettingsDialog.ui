@@ -12,14 +12,14 @@
   </property>
   <property name="minimumSize">
    <size>
-    <width>700</width>
-    <height>740</height>
+    <width>500</width>
+    <height>400</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>700</width>
-    <height>740</height>
+    <width>16777215</width>
+    <height>16777215</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -44,693 +44,6 @@
     <attribute name="title">
      <string>General</string>
     </attribute>
-    <widget class="QLabel" name="labelLibrary">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>164</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Library</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="Line" name="lineLibrary">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>172</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelInterval">
-     <property name="geometry">
-      <rect>
-       <x>113</x>
-       <y>230</y>
-       <width>61</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Interval:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QSpinBox" name="spinBoxRefreshInterval">
-     <property name="geometry">
-      <rect>
-       <x>183</x>
-       <y>228</y>
-       <width>81</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="minimum">
-      <number>5</number>
-     </property>
-     <property name="value">
-      <number>30</number>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelSeconds">
-     <property name="geometry">
-      <rect>
-       <x>273</x>
-       <y>232</y>
-       <width>62</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>seconds</string>
-     </property>
-    </widget>
-    <widget class="QSpinBox" name="spinBoxFontSize">
-     <property name="geometry">
-      <rect>
-       <x>180</x>
-       <y>129</y>
-       <width>112</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="value">
-      <number>11</number>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelAppearance">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>68</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Appearance</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="Line" name="lineAppearance">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>76</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelFontSize">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>133</y>
-       <width>71</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Font size:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelPixels">
-     <property name="geometry">
-      <rect>
-       <x>300</x>
-       <y>133</y>
-       <width>62</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>pixels</string>
-     </property>
-    </widget>
-    <widget class="Line" name="lineStartup">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>20</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelStartup">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>12</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Startup</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxFullscreen">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>40</y>
-       <width>141</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Start in fullscreen</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxAutoRefresh">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>192</y>
-       <width>211</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Refresh library automatically</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelRundown">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>265</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Rundown</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="Line" name="lineRundown">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>273</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxShowThumbnailTooltip">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>293</y>
-       <width>171</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Show thumbnail tooltip</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxReverseOscTime">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>319</y>
-       <width>201</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Count video progress down</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxDisableInAndOutPoints">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>345</y>
-       <width>291</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Disable in and out points in video progress</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelInspector">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>418</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Inspector</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="Line" name="lineInspector">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>426</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QComboBox" name="comboBoxDelayType">
-     <property name="geometry">
-      <rect>
-       <x>513</x>
-       <y>521</y>
-       <width>120</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <item>
-      <property name="text">
-       <string>Frames</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Milliseconds</string>
-      </property>
-     </item>
-    </widget>
-    <widget class="QLabel" name="labelDelayAndDuration">
-     <property name="geometry">
-      <rect>
-       <x>363</x>
-       <y>522</y>
-       <width>141</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Delay and Duration:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelTheme">
-     <property name="geometry">
-      <rect>
-       <x>90</x>
-       <y>95</y>
-       <width>81</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Theme:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QComboBox" name="comboBoxTheme">
-     <property name="geometry">
-      <rect>
-       <x>180</x>
-       <y>94</y>
-       <width>112</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <item>
-      <property name="text">
-       <string>Curve</string>
-      </property>
-     </item>
-     <item>
-      <property name="text">
-       <string>Flat</string>
-      </property>
-     </item>
-    </widget>
-    <widget class="QLineEdit" name="lineEditRundownRepository">
-     <property name="geometry">
-      <rect>
-       <x>178</x>
-       <y>381</y>
-       <width>176</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::ClickFocus</enum>
-     </property>
-     <property name="toolTip">
-      <string>http://&lt;host&gt;:&lt;port&gt;/urllist/&lt;profile&gt;</string>
-     </property>
-     <property name="placeholderText">
-      <string>URL</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelRepository">
-     <property name="geometry">
-      <rect>
-       <x>88</x>
-       <y>383</y>
-       <width>81</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Repository:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxPreviewOnAutoStep">
-     <property name="geometry">
-      <rect>
-       <x>380</x>
-       <y>293</y>
-       <width>271</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Preview next item on AutoStep</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxClearDelayedCommandsOnAutoStep">
-     <property name="geometry">
-      <rect>
-       <x>380</x>
-       <y>319</y>
-       <width>271</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Clear delayed commands on AutoStep</string>
-     </property>
-    </widget>
-    <widget class="Line" name="lineDatabase">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>559</y>
-       <width>555</width>
-       <height>1</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelDeleteThumbnail">
-     <property name="geometry">
-      <rect>
-       <x>67</x>
-       <y>616</y>
-       <width>141</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Delete thumbnails:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelDatabase">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>551</y>
-       <width>81</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Database</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="pushButtonDeleteThumbnails">
-     <property name="geometry">
-      <rect>
-       <x>217</x>
-       <y>615</y>
-       <width>112</width>
-       <height>22</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>&amp;Delete Now!</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxStoreThumbnailsInDatabase">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>579</y>
-       <width>291</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Store thumbnails in database</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxMarkUsedItems">
-     <property name="geometry">
-      <rect>
-       <x>380</x>
-       <y>345</y>
-       <width>271</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Mark used items (Windows and Linux only)</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxShowAudioLevels">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>498</y>
-       <width>171</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Show audio levels panel</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxShowPreview">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>446</y>
-       <width>171</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Show preview panel</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxShowLive">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>472</y>
-       <width>171</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Show live panel</string>
-     </property>
-    </widget>
-    <widget class="QLineEdit" name="lineEditRepositoryPort">
-     <property name="geometry">
-      <rect>
-       <x>414</x>
-       <y>381</y>
-       <width>120</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::ClickFocus</enum>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="placeholderText">
-      <string>8250</string>
-     </property>
-    </widget>
-    <widget class="QLabel" name="labelRepositoryPort">
-     <property name="geometry">
-      <rect>
-       <x>354</x>
-       <y>383</y>
-       <width>51</width>
-       <height>20</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Port:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxDuration">
-     <property name="geometry">
-      <rect>
-       <x>110</x>
-       <y>524</y>
-       <width>331</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Show duration panel (iNews backend only)</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxUseFreezeOnLoad">
-     <property name="geometry">
-      <rect>
-       <x>380</x>
-       <y>446</y>
-       <width>281</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Use freeze on load for video items</string>
-     </property>
-    </widget>
-    <widget class="QCheckBox" name="checkBoxUseDropFrameNotation">
-     <property name="geometry">
-      <rect>
-       <x>380</x>
-       <y>96</y>
-       <width>211</width>
-       <height>17</height>
-      </rect>
-     </property>
-     <property name="focusPolicy">
-      <enum>Qt::NoFocus</enum>
-     </property>
-     <property name="text">
-      <string>Use drop frame notation</string>
-     </property>
-    </widget>
    </widget>
    <widget class="QWidget" name="tabLiveStream">
     <attribute name="title">
@@ -3389,8 +2702,6 @@
   <tabstop>spinBoxPulseLength8</tabstop>
   <tabstop>toolButtonAddDevice</tabstop>
   <tabstop>toolButtonRemoveDevice</tabstop>
-  <tabstop>spinBoxFontSize</tabstop>
-  <tabstop>spinBoxRefreshInterval</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -3474,38 +2785,8 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>pushButtonDeleteThumbnails</sender>
-   <signal>clicked()</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>deleteThumbnails()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>232</x>
-     <y>678</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>665</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxUseDropFrameNotation</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>useDropFrameNotationChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>488</x>
-     <y>151</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>697</x>
-     <y>25</y>
-    </hint>
-   </hints>
-  </connection>
+
+
   <connection>
    <sender>comboBoxAction5</sender>
    <signal>currentIndexChanged(int)</signal>
@@ -3570,22 +2851,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>comboBoxDelayType</sender>
-   <signal>currentTextChanged(QString)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>delayTypeChanged(QString)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>528</x>
-     <y>582</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>694</x>
-     <y>512</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>comboBoxGpiVoltageChange7</sender>
    <signal>currentIndexChanged(int)</signal>
@@ -3602,54 +2868,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxUseFreezeOnLoad</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>useFreezeOnLoadChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>565</x>
-     <y>504</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>696</x>
-     <y>208</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxDuration</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>showDurationChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>217</x>
-     <y>582</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>4</x>
-     <y>558</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxPreviewOnAutoStep</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>previewOnAutoStepChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>500</x>
-     <y>341</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>698</x>
-     <y>454</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>toolButtonImportDevice</sender>
    <signal>clicked()</signal>
@@ -3663,22 +2882,6 @@
     <hint type="destinationlabel">
      <x>691</x>
      <y>689</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxShowPreview</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>showPreviewChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>182</x>
-     <y>494</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>698</x>
-     <y>576</y>
     </hint>
    </hints>
   </connection>
@@ -3714,70 +2917,10 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxReverseOscTime</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>reverseOscTimeChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>166</x>
-     <y>367</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>418</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>comboBoxTheme</sender>
-   <signal>currentTextChanged(QString)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>themeChanged(QString)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>274</x>
-     <y>145</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>141</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>lineEditRepositoryPort</sender>
-   <signal>editingFinished()</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>repositoryPortChanged()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>499</x>
-     <y>423</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>701</x>
-     <y>700</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxStoreThumbnailsInDatabase</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>storeThumbnailsInDatabaseChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>125</x>
-     <y>637</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>697</x>
-     <y>646</y>
-    </hint>
-   </hints>
-  </connection>
+
+
+
+
   <connection>
    <sender>checkBoxDisableAudioInStream</sender>
    <signal>stateChanged(int)</signal>
@@ -3794,22 +2937,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxShowThumbnailTooltip</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>showThumbnailTooltipChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>272</x>
-     <y>341</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>335</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>comboBoxGpiVoltageChange2</sender>
    <signal>currentIndexChanged(int)</signal>
@@ -4083,22 +3211,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>checkBoxClearDelayedCommandsOnAutoStep</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>clearDelayedCommandsOnAutoStepChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>535</x>
-     <y>367</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>695</x>
-     <y>545</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>spinBoxQuality</sender>
    <signal>valueChanged(int)</signal>
    <receiver>SettingsDialog</receiver>
@@ -4114,22 +3226,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>spinBoxRefreshInterval</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>synchronizeIntervalChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>203</x>
-     <y>281</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>6</x>
-     <y>107</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>spinBoxPulseLength2</sender>
    <signal>editingFinished()</signal>
@@ -4162,22 +3259,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxMarkUsedItems</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>markUsedItemsChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>459</x>
-     <y>393</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>372</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>comboBoxGpiBaudRate</sender>
    <signal>currentTextChanged(QString)</signal>
@@ -4258,22 +3340,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxDisableInAndOutPoints</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>disableInAndOutPointsChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>140</x>
-     <y>393</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>0</x>
-     <y>428</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>comboBoxGpoVoltageChange2</sender>
    <signal>currentIndexChanged(int)</signal>
@@ -4322,22 +3389,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxFullscreen</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>startFullscreenChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>163</x>
-     <y>98</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>3</x>
-     <y>81</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>spinBoxPulseLength3</sender>
    <signal>editingFinished()</signal>
@@ -4351,22 +3403,6 @@
     <hint type="destinationlabel">
      <x>0</x>
      <y>346</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxShowAudioLevels</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>showAudioLevelsChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>197</x>
-     <y>546</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>600</y>
     </hint>
    </hints>
   </connection>
@@ -4386,54 +3422,8 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>checkBoxShowLive</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>showLiveChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>213</x>
-     <y>520</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>700</x>
-     <y>627</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>spinBoxFontSize</sender>
-   <signal>valueChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>fontSizeChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>195</x>
-     <y>182</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>437</x>
-     <y>574</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBoxAutoRefresh</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>autoSynchronizeChanged(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>133</x>
-     <y>240</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>0</x>
-     <y>216</y>
-    </hint>
-   </hints>
-  </connection>
+
+
   <connection>
    <sender>toolButtonRemoveDevice</sender>
    <signal>clicked()</signal>
@@ -4530,22 +3520,7 @@
     </hint>
    </hints>
   </connection>
-  <connection>
-   <sender>lineEditRundownRepository</sender>
-   <signal>editingFinished()</signal>
-   <receiver>SettingsDialog</receiver>
-   <slot>rundownRepositoryChanged()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>311</x>
-     <y>442</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>699</x>
-     <y>464</y>
-    </hint>
-   </hints>
-  </connection>
+
   <connection>
    <sender>spinBoxPulseLength7</sender>
    <signal>editingFinished()</signal>
@@ -4598,11 +3573,7 @@
  <slots>
   <slot>showAddDeviceDialog()</slot>
   <slot>removeDevice()</slot>
-  <slot>fontSizeChanged(int)</slot>
   <slot>deviceItemDoubleClicked(QTreeWidgetItem*,int)</slot>
-  <slot>synchronizeIntervalChanged(int)</slot>
-  <slot>startFullscreenChanged(int)</slot>
-  <slot>autoSynchronizeChanged(int)</slot>
   <slot>gpi1Changed()</slot>
   <slot>gpi2Changed()</slot>
   <slot>gpi3Changed()</slot>
@@ -4621,37 +3592,17 @@
   <slot>gpo7Changed()</slot>
   <slot>gpo8Changed()</slot>
   <slot>baudRateChanged(QString)</slot>
-  <slot>autoStepChanged(int)</slot>
-  <slot>showThumbnailTooltipChanged(int)</slot>
-  <slot>reverseOscTimeChanged(int)</slot>
-  <slot>disableInAndOutPointsChanged(int)</slot>
   <slot>oscMonitorPortChanged()</slot>
   <slot>showImportDeviceDialog()</slot>
   <slot>oscOutputItemDoubleClicked(QTreeWidgetItem*,int)</slot>
   <slot>showAddOscOutputDialog()</slot>
   <slot>removeOscOutput()</slot>
-  <slot>delayTypeChanged(QString)</slot>
   <slot>enableOscInputControlChanged(int)</slot>
-  <slot>themeChanged(QString)</slot>
-  <slot>rundownRepositoryChanged()</slot>
-  <slot>previewOnAutoStepChanged(int)</slot>
-  <slot>clearDelayedCommandsOnAutoStepChanged(int)</slot>
-  <slot>deleteThumbnails()</slot>
-  <slot>storeThumbnailsInDatabaseChanged(int)</slot>
-  <slot>markUsedItemsChanged(int)</slot>
-  <slot>showAudioLevelsChanged(int)</slot>
-  <slot>showPreviewChanged(int)</slot>
-  <slot>showLiveChanged(int)</slot>
   <slot>disableAudioInStreamChanged(int)</slot>
   <slot>networkCacheChanged(int)</slot>
   <slot>streamQualityChanged(int)</slot>
-  <slot>autoUpdateChanged(int)</slot>
-  <slot>repositoryPortChanged()</slot>
-  <slot>showDurationChanged(int)</slot>
-  <slot>useFreezeOnLoadChanged(int)</slot>
   <slot>streamPortChanged()</slot>
   <slot>logLevelChanged(int)</slot>
-  <slot>useDropFrameNotationChanged(int)</slot>
   <slot>oscWebSocketPortChanged()</slot>
   <slot>enableOscInputMonitorChanged(int)</slot>
   <slot>enableOscInputWebSocketChanged(int)</slot>

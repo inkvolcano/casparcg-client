@@ -1,7 +1,9 @@
 #include "SettingsDialog.h"
 #include "DeviceDialog.h"
+#include "LayoutEditorWidget.h"
 #include "OscOutputDialog.h"
 #include "ImportDeviceDialog.h"
+#include "Rundown/RundownWidgetHelper.h"
 
 #include "DatabaseManager.h"
 #include "GpiManager.h"
@@ -13,23 +15,131 @@
 #include "Models/ConfigurationModel.h"
 #include "Models/DeviceModel.h"
 #include "Models/GpiModel.h"
-#include "Models/DeviceModel.h"
+
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QGroupBox>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QScrollArea>
+#include <QtWidgets/QVBoxLayout>
 #include "Models/OscOutputModel.h"
 
+#include <QtCore/QTimeZone>
 #include <QtCore/QTimer>
 
 #include <QtGui/QIcon>
 
+#include <QtWidgets/QColorDialog>
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QSlider>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
     setupUi(this);
 
+    setupGeneralTab();
+
+    // Remove fixed size constraints to allow resizing on low-resolution screens.
+    this->setMinimumSize(500, 400);
+    this->setMaximumSize(16777215, 16777215);
+
+    // Create a main vertical layout for the dialog.
+    QVBoxLayout* mainLayout = new QVBoxLayout();
+    mainLayout->setContentsMargins(11, 11, 11, 11);
+    mainLayout->setSpacing(6);
+
+    // Create top bar with OK button on the right.
+    QHBoxLayout* topBar = new QHBoxLayout();
+    topBar->addStretch();
+    this->pushButtonOk->setParent(this);
+    topBar->addWidget(this->pushButtonOk);
+    mainLayout->addLayout(topBar);
+
+    // Make each tab's content scrollable for low-resolution screens.
+    for (int i = 0; i < this->tabWidgetSettings->count(); i++)
+    {
+        QWidget* tab = this->tabWidgetSettings->widget(i);
+
+        // Skip tabs that already have a layout (e.g. General tab built by setupGeneralTab).
+        if (tab->layout())
+            continue;
+
+        // Create a scroll area for this tab's content.
+        QScrollArea* scrollArea = new QScrollArea();
+        scrollArea->setWidgetResizable(true);
+        scrollArea->setFrameShape(QFrame::NoFrame);
+
+        // Create a container widget to hold the original tab content.
+        QWidget* container = new QWidget();
+
+        // Move all children from the tab to the container.
+        QList<QObject*> children = tab->children();
+        int maxRight = 0;
+        int maxBottom = 0;
+        for (QObject* child : children)
+        {
+            QWidget* widget = qobject_cast<QWidget*>(child);
+            if (widget != nullptr)
+            {
+                QRect geom = widget->geometry();
+                maxRight = qMax(maxRight, geom.right() + 1);
+                maxBottom = qMax(maxBottom, geom.bottom() + 1);
+                widget->setParent(container);
+            }
+        }
+        container->setMinimumSize(maxRight, maxBottom + 10);
+
+        scrollArea->setWidget(container);
+
+        // Set scroll area as the tab's new content.
+        QVBoxLayout* tabLayout = new QVBoxLayout(tab);
+        tabLayout->setContentsMargins(0, 0, 0, 0);
+        tabLayout->addWidget(scrollArea);
+    }
+
+    // Add the tab widget to the main layout.
+    this->tabWidgetSettings->setParent(this);
+    mainLayout->addWidget(this->tabWidgetSettings, 1);
+
+    // Move the information label to the bottom.
+    this->labelSettingsInformation->setParent(this);
+    mainLayout->addWidget(this->labelSettingsInformation);
+
+    // Replace the dialog's layout.
+    delete this->layout();
+    this->setLayout(mainLayout);
+
     this->stylesheet = qApp->styleSheet();
+
+    // Debounce timer for font-size spinner: coalesce rapid spinbox ticks into
+    // a single stylesheet application + DB write.
+    this->fontSizeDebounceTimer = new QTimer(this);
+    this->fontSizeDebounceTimer->setSingleShot(true);
+    this->fontSizeDebounceTimer->setInterval(150);
+    QObject::connect(this->fontSizeDebounceTimer, &QTimer::timeout, this, [this]() {
+        qApp->setStyleSheet(this->stylesheet + WidgetHeaderCSS::generate() +
+                            QString(" QWidget { font-size: %1px; }").arg(this->pendingFontSize));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "FontSize", QString::number(this->pendingFontSize)));
+    });
+
+    // Debounce timer for channel color slider DB writes: visual feedback stays
+    // instant via in-memory setters, only the DB write is deferred.
+    this->sliderDbWriteTimer = new QTimer(this);
+    this->sliderDbWriteTimer->setSingleShot(true);
+    this->sliderDbWriteTimer->setInterval(200);
+    QObject::connect(this->sliderDbWriteTimer, &QTimer::timeout, this, [this]() {
+        for (auto it = this->pendingSliderDbWrites.constBegin();
+             it != this->pendingSliderDbWrites.constEnd(); ++it)
+        {
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, it.key(), it.value()));
+        }
+        this->pendingSliderDbWrites.clear();
+    });
 
     blockAllSignals(true);
     this->comboBoxLogLevel->clear();
@@ -39,28 +149,6 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->comboBoxLogLevel->addItem("Warning", "2");
     this->comboBoxLogLevel->addItem("Debug", "3");
     blockAllSignals(false);
-
-    bool startFullscreen = (DatabaseManager::getInstance().getConfigurationByName("StartFullscreen").getValue() == "true") ? true : false;
-    this->checkBoxFullscreen->setChecked(startFullscreen);
-
-    this->comboBoxTheme->setCurrentIndex(this->comboBoxTheme->findText(DatabaseManager::getInstance().getConfigurationByName("Theme").getValue()));
-    this->spinBoxFontSize->setValue(DatabaseManager::getInstance().getConfigurationByName("FontSize").getValue().toInt());
-    bool useDropFrameNotation = (DatabaseManager::getInstance().getConfigurationByName("UseDropFrameNotation").getValue() == "true") ? true : false;
-    this->checkBoxUseDropFrameNotation->setChecked(useDropFrameNotation);
-
-    bool autoRefreshLibrary = (DatabaseManager::getInstance().getConfigurationByName("AutoRefreshLibrary").getValue() == "true") ? true : false;
-    this->checkBoxAutoRefresh->setChecked(autoRefreshLibrary);
-    this->labelInterval->setEnabled(autoRefreshLibrary);
-    this->spinBoxRefreshInterval->setEnabled(autoRefreshLibrary);
-    this->labelSeconds->setEnabled(autoRefreshLibrary);
-
-    this->spinBoxRefreshInterval->setValue(DatabaseManager::getInstance().getConfigurationByName("RefreshLibraryInterval").getValue().toInt());
-
-    bool showThumbnailTooltip = (DatabaseManager::getInstance().getConfigurationByName("ShowThumbnailTooltip").getValue() == "true") ? true : false;
-    this->checkBoxShowThumbnailTooltip->setChecked(showThumbnailTooltip);
-
-    bool reverseOscTime = (DatabaseManager::getInstance().getConfigurationByName("ReverseOscTime").getValue() == "true") ? true : false;
-    this->checkBoxReverseOscTime->setChecked(reverseOscTime);
 
     bool enableOscInputMonitor = (DatabaseManager::getInstance().getConfigurationByName("EnableOscInputMonitor").getValue() == "true") ? true : false;
     this->checkBoxEnableOscInputMonitor->setChecked(enableOscInputMonitor);
@@ -77,34 +165,6 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->labelOscInputWebSocketPort->setEnabled(enableOscInputWebSocket);
     this->lineEditOscInputWebSocketPort->setEnabled(enableOscInputWebSocket);
 
-    bool disableInAndOutPoints = (DatabaseManager::getInstance().getConfigurationByName("DisableInAndOutPoints").getValue() == "true") ? true : false;
-    this->checkBoxDisableInAndOutPoints->setChecked(disableInAndOutPoints);
-
-    this->lineEditRundownRepository->setText(DatabaseManager::getInstance().getConfigurationByName("RundownRepository").getValue());
-    this->lineEditRepositoryPort->setPlaceholderText(QString("%1").arg(Repository::DEFAULT_PORT));
-    QString repositoryPort = DatabaseManager::getInstance().getConfigurationByName("RepositoryPort").getValue();
-    if (!repositoryPort.isEmpty())
-        this->lineEditRepositoryPort->setText(repositoryPort);
-
-    bool previewOnAutoStep = (DatabaseManager::getInstance().getConfigurationByName("PreviewOnAutoStep").getValue() == "true") ? true : false;
-    this->checkBoxPreviewOnAutoStep->setChecked(previewOnAutoStep);
-    bool clearDelayedCommandsOnAutoStep = (DatabaseManager::getInstance().getConfigurationByName("ClearDelayedCommandsOnAutoStep").getValue() == "true") ? true : false;
-    this->checkBoxClearDelayedCommandsOnAutoStep->setChecked(clearDelayedCommandsOnAutoStep);
-    bool markUsedItems = (DatabaseManager::getInstance().getConfigurationByName("MarkUsedItems").getValue() == "true") ? true : false;
-    this->checkBoxMarkUsedItems->setChecked(markUsedItems);
-
-    bool showPreviewPanel = (DatabaseManager::getInstance().getConfigurationByName("ShowPreviewPanel").getValue() == "true") ? true : false;
-    this->checkBoxShowPreview->setChecked(showPreviewPanel);
-    bool showLivePanel = (DatabaseManager::getInstance().getConfigurationByName("ShowLivePanel").getValue() == "true") ? true : false;
-    this->checkBoxShowLive->setChecked(showLivePanel);
-    bool showAudioLevelsPanel = (DatabaseManager::getInstance().getConfigurationByName("ShowAudioLevelsPanel").getValue() == "true") ? true : false;
-    this->checkBoxShowAudioLevels->setChecked(showAudioLevelsPanel);
-    bool showDurationPanel = (DatabaseManager::getInstance().getConfigurationByName("ShowDurationPanel").getValue() == "true") ? true : false;
-    this->checkBoxDuration->setChecked(showDurationPanel);
-    bool useFreezeOnLoad = (DatabaseManager::getInstance().getConfigurationByName("UseFreezeOnLoad").getValue() == "true") ? true : false;
-    this->checkBoxUseFreezeOnLoad->setChecked(useFreezeOnLoad);
-    this->comboBoxDelayType->setCurrentIndex(this->comboBoxDelayType->findText(DatabaseManager::getInstance().getConfigurationByName("DelayType").getValue()));
-
     bool disableAudioInStream = (DatabaseManager::getInstance().getConfigurationByName("DisableAudioInStream").getValue() == "true") ? true : false;
     this->checkBoxDisableAudioInStream->setChecked(disableAudioInStream);
     this->spinBoxQuality->setValue(100 - DatabaseManager::getInstance().getConfigurationByName("StreamQuality").getValue().toInt());
@@ -114,9 +174,6 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QString streamPort = DatabaseManager::getInstance().getConfigurationByName("StreamPort").getValue();
     if (!streamPort.isEmpty())
         this->lineEditStreamPort->setText(streamPort);
-
-    bool storeThumbnailsInDatabase = (DatabaseManager::getInstance().getConfigurationByName("StoreThumbnailsInDatabase").getValue() == "true") ? true : false;
-    this->checkBoxStoreThumbnailsInDatabase->setChecked(storeThumbnailsInDatabase);
 
     this->lineEditOscInputMonitorPort->setPlaceholderText(QString("%1").arg(Osc::DEFAULT_MONITOR_PORT));
     QString oscMonitorPort = DatabaseManager::getInstance().getConfigurationByName("OscMonitorPort").getValue();
@@ -136,7 +193,951 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     loadDevice();
     loadGpi();
     loadOscOutput();
+    setupHotkeyTab();
 
+    // Layout editor tab.
+    QWidget* tabLayout = new QWidget();
+    QVBoxLayout* tabLayoutVBox = new QVBoxLayout(tabLayout);
+    this->layoutEditor = new LayoutEditorWidget(tabLayout);
+    tabLayoutVBox->addWidget(this->layoutEditor);
+
+    // Panel Sizing group box.
+    QGroupBox* panelSizingGroup = new QGroupBox("Panel Sizing", tabLayout);
+    QGridLayout* psGrid = new QGridLayout(panelSizingGroup);
+    psGrid->setSpacing(4);
+
+    struct PanelDef { QString id; QString label; QString defaultMode; };
+    QList<PanelDef> panels = {
+        {"AudioLevels", "Audio Levels", "fixed"},
+        {"Preview", "Preview", "resizable"},
+        {"Library", "Library", "expanding"},
+        {"Inspector", "Inspector", "expanding"},
+        {"ServerStatus", "Server Status", "fixed"},
+        {"Activity", "Activity", "expanding"},
+        {"TriggerBanks", "Trigger Banks", "fixed"},
+        {"Live", "Live", "resizable"},
+        {"NDI", "NDI", "resizable"},
+        {"Performance", "Performance", "fixed"},
+        {"Clock", "Clock", "fixed"},
+        {"StatusBar", "Status Bar", "fixed"},
+    };
+
+    // Column headers.
+    psGrid->addWidget(new QLabel("Panel", panelSizingGroup), 0, 0);
+    psGrid->addWidget(new QLabel("Size Mode", panelSizingGroup), 0, 1);
+
+    int psRow = 1;
+    for (const auto& p : panels)
+    {
+        psGrid->addWidget(new QLabel(p.label, panelSizingGroup), psRow, 0);
+
+        QComboBox* combo = new QComboBox(panelSizingGroup);
+        combo->addItem("Fixed", "fixed");
+        combo->addItem("Resizable", "resizable");
+        combo->addItem("Expanding", "expanding");
+
+        QString currentMode = DatabaseManager::getInstance()
+            .getConfigurationByName("PanelSizeMode_" + p.id).getValue();
+        if (currentMode.isEmpty()) currentMode = p.defaultMode;
+
+        for (int i = 0; i < combo->count(); i++)
+        {
+            if (combo->itemData(i).toString() == currentMode)
+            {
+                combo->setCurrentIndex(i);
+                break;
+            }
+        }
+        psGrid->addWidget(combo, psRow, 1);
+
+        this->panelSizingEntries.append({p.id, p.label, combo});
+        psRow++;
+    }
+
+    tabLayoutVBox->addWidget(panelSizingGroup);
+
+    // Show empty panels checkbox.
+    this->checkBoxShowEmptyPanels = new QCheckBox("Show empty panel columns", tabLayout);
+    QString showEmptyVal = DatabaseManager::getInstance()
+        .getConfigurationByName("ShowEmptyPanels").getValue();
+    this->checkBoxShowEmptyPanels->setChecked(showEmptyVal == "true");
+    tabLayoutVBox->addWidget(this->checkBoxShowEmptyPanels);
+
+    this->tabWidgetSettings->addTab(tabLayout, "Layout");
+
+    // Flush any pending debounced writes before the dialog closes.
+    QObject::connect(this, &QDialog::accepted, this, &SettingsDialog::flushPendingWrites);
+
+    // Save layout configuration when the dialog is accepted.
+    QObject::connect(this, &QDialog::accepted, this->layoutEditor, &LayoutEditorWidget::saveToConfig);
+
+    // Save panel sizing and layout options when the dialog is accepted.
+    QObject::connect(this, &QDialog::accepted, this, [this]() {
+        for (const auto& entry : this->panelSizingEntries)
+        {
+            QString mode = entry.combo->currentData().toString();
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, "PanelSizeMode_" + entry.panelId, mode));
+        }
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ShowEmptyPanels",
+                this->checkBoxShowEmptyPanels->isChecked() ? "true" : "false"));
+        EventManager::getInstance().fireRebuildLayout();
+    });
+}
+
+void SettingsDialog::setupGeneralTab()
+{
+    // Build the entire General tab with a single QGridLayout inside a scroll area.
+    QWidget* content = new QWidget();
+    QGridLayout* grid = new QGridLayout(content);
+    grid->setContentsMargins(10, 10, 10, 10);
+    grid->setVerticalSpacing(4);
+    grid->setHorizontalSpacing(8);
+    grid->setColumnMinimumWidth(0, 170);
+    grid->setColumnStretch(1, 1);
+    grid->setColumnStretch(2, 1);
+    grid->setColumnStretch(3, 1);
+
+    int row = 0;
+
+    // Helper: add a section header with blue underline.
+    auto addSection = [&](const QString& title) {
+        if (row > 0)
+        {
+            grid->setRowMinimumHeight(row, 12);
+            row++;
+        }
+        QLabel* label = new QLabel(title);
+        label->setStyleSheet("font-weight: bold; color: rgba(200, 200, 200, 255); padding-bottom: 2px;");
+        label->setAlignment(Qt::AlignLeft | Qt::AlignBottom);
+        grid->addWidget(label, row, 0, 1, 4);
+        row++;
+        QFrame* line = new QFrame();
+        line->setFixedHeight(1);
+        line->setStyleSheet("background-color: rgba(70, 115, 195, 255);");
+        grid->addWidget(line, row, 0, 1, 4);
+        row++;
+    };
+
+    // Helper: add a right-aligned label at column 0.
+    auto addLabel = [&](const QString& text) -> QLabel* {
+        QLabel* label = new QLabel(text);
+        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        grid->addWidget(label, row, 0);
+        return label;
+    };
+
+    // Helper: add a color swatch + picker button row.
+    auto addColorRow = [&](const QString& text, QLabel*& swatch) -> QPushButton* {
+        addLabel(text);
+        swatch = new QLabel();
+        swatch->setFixedSize(60, 22);
+        swatch->setAutoFillBackground(true);
+        grid->addWidget(swatch, row, 1);
+        QPushButton* btn = new QPushButton("...");
+        btn->setFixedSize(30, 22);
+        btn->setFocusPolicy(Qt::NoFocus);
+        grid->addWidget(btn, row, 2);
+        row++;
+        return btn;
+    };
+
+    // ── Startup ──────────────────────────────────────────────
+    addSection("Startup");
+    this->checkBoxFullscreen = new QCheckBox("Start in fullscreen");
+    this->checkBoxFullscreen->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxFullscreen, row, 1, 1, 3);
+    row++;
+
+    addLabel("Theme:");
+    this->comboBoxTheme = new QComboBox();
+    this->comboBoxTheme->addItems({"Curve", "Flat", "Light"});
+    this->comboBoxTheme->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    grid->addWidget(this->comboBoxTheme, row, 1);
+    row++;
+
+    addLabel("Font size:");
+    this->spinBoxFontSize = new QSpinBox();
+    this->spinBoxFontSize->setValue(11);
+    grid->addWidget(this->spinBoxFontSize, row, 1);
+    grid->addWidget(new QLabel("pixels"), row, 2);
+    row++;
+
+    this->checkBoxUseDropFrameNotation = new QCheckBox("Use drop frame notation");
+    this->checkBoxUseDropFrameNotation->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxUseDropFrameNotation, row, 1, 1, 3);
+    row++;
+
+    // ── Library ──────────────────────────────────────────────
+    addSection("Library");
+    this->checkBoxAutoRefresh = new QCheckBox("Refresh library automatically");
+    this->checkBoxAutoRefresh->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxAutoRefresh, row, 1, 1, 3);
+    row++;
+
+    this->labelInterval = new QLabel("Interval:");
+    this->labelInterval->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    grid->addWidget(this->labelInterval, row, 0);
+    this->spinBoxRefreshInterval = new QSpinBox();
+    this->spinBoxRefreshInterval->setMinimum(5);
+    this->spinBoxRefreshInterval->setValue(30);
+    grid->addWidget(this->spinBoxRefreshInterval, row, 1);
+    this->labelSeconds = new QLabel("seconds");
+    grid->addWidget(this->labelSeconds, row, 2);
+    row++;
+
+    this->checkBoxShowThumbnailTooltip = new QCheckBox("Show thumbnail tooltip");
+    this->checkBoxShowThumbnailTooltip->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowThumbnailTooltip, row, 1, 1, 3);
+    row++;
+
+    // ── Playback ─────────────────────────────────────────────
+    addSection("Playback");
+    this->checkBoxReverseOscTime = new QCheckBox("Count video progress down");
+    this->checkBoxReverseOscTime->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxReverseOscTime, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxDisableInAndOutPoints = new QCheckBox("Disable in and out points in video progress");
+    this->checkBoxDisableInAndOutPoints->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxDisableInAndOutPoints, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxMarkUsedItems = new QCheckBox("Mark used items (Windows and Linux only)");
+    this->checkBoxMarkUsedItems->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxMarkUsedItems, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxUseFreezeOnLoad = new QCheckBox("Use freeze on load for video items");
+    this->checkBoxUseFreezeOnLoad->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxUseFreezeOnLoad, row, 1, 1, 3);
+    row++;
+
+    addLabel("Duration format:");
+    this->comboBoxDurationFormat = new QComboBox();
+    this->comboBoxDurationFormat->addItem("Human Readable", "HumanReadable");
+    this->comboBoxDurationFormat->addItem("Timecode (HH:MM:SS)", "Timecode");
+    this->comboBoxDurationFormat->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    grid->addWidget(this->comboBoxDurationFormat, row, 1);
+    row++;
+
+    addLabel("Audio polling rate:");
+    this->spinBoxOscRefreshRate = new QSpinBox();
+    this->spinBoxOscRefreshRate->setMinimum(50);
+    this->spinBoxOscRefreshRate->setMaximum(1000);
+    this->spinBoxOscRefreshRate->setSingleStep(10);
+    this->spinBoxOscRefreshRate->setValue(200);
+    this->spinBoxOscRefreshRate->setSuffix(" ms");
+    this->spinBoxOscRefreshRate->setToolTip("Lower values give smoother audio meters and faster progress updates. "
+                                            "Warning: values below 100ms can cause performance issues on low-performance devices.");
+    grid->addWidget(this->spinBoxOscRefreshRate, row, 1);
+    row++;
+
+    addLabel("Undo history limit:");
+    this->spinBoxUndoHistoryLimit = new QSpinBox();
+    this->spinBoxUndoHistoryLimit->setMinimum(10);
+    this->spinBoxUndoHistoryLimit->setMaximum(1000);
+    this->spinBoxUndoHistoryLimit->setSingleStep(10);
+    this->spinBoxUndoHistoryLimit->setValue(50);
+    grid->addWidget(this->spinBoxUndoHistoryLimit, row, 1);
+    row++;
+
+    // ── Repository ───────────────────────────────────────────
+    addSection("Repository");
+    addLabel("Repository URL:");
+    this->lineEditRundownRepository = new QLineEdit();
+    this->lineEditRundownRepository->setFocusPolicy(Qt::ClickFocus);
+    this->lineEditRundownRepository->setPlaceholderText("URL");
+    this->lineEditRundownRepository->setToolTip("http://<host>:<port>/urllist/<profile>");
+    grid->addWidget(this->lineEditRundownRepository, row, 1, 1, 3);
+    row++;
+
+    addLabel("Repository port:");
+    this->lineEditRepositoryPort = new QLineEdit();
+    this->lineEditRepositoryPort->setFocusPolicy(Qt::ClickFocus);
+    this->lineEditRepositoryPort->setPlaceholderText("8250");
+    grid->addWidget(this->lineEditRepositoryPort, row, 1);
+    row++;
+
+    // ── Database ─────────────────────────────────────────────
+    addSection("Database");
+    this->checkBoxStoreThumbnailsInDatabase = new QCheckBox("Store thumbnails in database");
+    this->checkBoxStoreThumbnailsInDatabase->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxStoreThumbnailsInDatabase, row, 1, 1, 3);
+    row++;
+
+    addLabel("Delete thumbnails:");
+    this->pushButtonDeleteThumbnails = new QPushButton("&Delete Now!");
+    this->pushButtonDeleteThumbnails->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->pushButtonDeleteThumbnails, row, 1);
+    row++;
+
+    // ── Preview ──────────────────────────────────────────────
+    addSection("Preview");
+    this->checkBoxShowPreviewBorder = new QCheckBox("Show preview mode border");
+    this->checkBoxShowPreviewBorder->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowPreviewBorder, row, 1, 1, 3);
+    row++;
+
+    this->previewFreezeTemplateCheck = new QCheckBox("Load template without playing on preview (F8)");
+    this->previewFreezeTemplateCheck->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->previewFreezeTemplateCheck, row, 1, 1, 3);
+    row++;
+
+    // ── Panels ───────────────────────────────────────────────
+    addSection("Panels");
+    this->checkBoxShowSTEPButton = new QCheckBox("Show STEP button in Server Status");
+    this->checkBoxShowSTEPButton->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowSTEPButton, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowPVWButton = new QCheckBox("Show PVW button in Server Status");
+    this->checkBoxShowPVWButton->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowPVWButton, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowServers = new QCheckBox("Show Servers in Server Status");
+    this->checkBoxShowServers->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowServers, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowChannelLocks = new QCheckBox("Show Channel Locks in Server Status");
+    this->checkBoxShowChannelLocks->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowChannelLocks, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowChannelHeaders = new QCheckBox("Show Channel Headers in Activity");
+    this->checkBoxShowChannelHeaders->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowChannelHeaders, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowBankIcons = new QCheckBox("Show Bank Icons in Trigger Banks");
+    this->checkBoxShowBankIcons->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowBankIcons, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxHttpLogLastOnly = new QCheckBox("Show only last response in Http Log");
+    this->checkBoxHttpLogLastOnly->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxHttpLogLastOnly, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxShowLastAction = new QCheckBox("Show last action in statusbar");
+    this->checkBoxShowLastAction->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxShowLastAction, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxActiveIndicatorPerChannel = new QCheckBox("Active indicator per channel");
+    this->checkBoxActiveIndicatorPerChannel->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxActiveIndicatorPerChannel, row, 1, 1, 3);
+    row++;
+
+    addLabel("Disconnect mode:");
+    this->comboBoxDisconnectMode = new QComboBox();
+    this->comboBoxDisconnectMode->addItems({"ask", "hidden", "direct"});
+    grid->addWidget(this->comboBoxDisconnectMode, row, 1);
+    row++;
+
+    this->checkBoxActivityGrow = new QCheckBox("Activity panel grows to fill available space");
+    this->checkBoxActivityGrow->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxActivityGrow, row, 1, 1, 3);
+    row++;
+
+    addLabel("NDI Outputs:");
+    this->spinBoxNdiOutputs = new QSpinBox();
+    this->spinBoxNdiOutputs->setMinimum(1);
+    this->spinBoxNdiOutputs->setMaximum(9);
+    this->spinBoxNdiOutputs->setToolTip("Number of NDI viewer outputs in the NDI panel (1-9)");
+    grid->addWidget(this->spinBoxNdiOutputs, row, 1);
+    row++;
+
+    addLabel("NDI Bandwidth:");
+    this->comboBoxNdiBandwidth = new QComboBox();
+    this->comboBoxNdiBandwidth->addItem("High (Full Quality)", "high");
+    this->comboBoxNdiBandwidth->addItem("Low (Reduced Quality)", "low");
+    this->comboBoxNdiBandwidth->setToolTip("Low bandwidth reduces resolution and CPU usage significantly");
+    grid->addWidget(this->comboBoxNdiBandwidth, row, 1);
+    row++;
+
+    addLabel("NDI Frame Rate Limit:");
+    this->comboBoxNdiFpsLimit = new QComboBox();
+    this->comboBoxNdiFpsLimit->addItem("Off (Source Rate)", 0);
+    this->comboBoxNdiFpsLimit->addItem("30 fps", 30);
+    this->comboBoxNdiFpsLimit->addItem("15 fps", 15);
+    this->comboBoxNdiFpsLimit->addItem("10 fps", 10);
+    this->comboBoxNdiFpsLimit->addItem("5 fps", 5);
+    this->comboBoxNdiFpsLimit->setToolTip("Limit received frame rate to reduce CPU usage");
+    grid->addWidget(this->comboBoxNdiFpsLimit, row, 1);
+    row++;
+
+    addLabel("NDI Scaling:");
+    this->comboBoxNdiScaling = new QComboBox();
+    this->comboBoxNdiScaling->addItem("Smooth (High Quality)", "smooth");
+    this->comboBoxNdiScaling->addItem("Fast (Low CPU)", "fast");
+    this->comboBoxNdiScaling->setToolTip("Fast scaling uses less CPU but lower visual quality");
+    grid->addWidget(this->comboBoxNdiScaling, row, 1);
+    row++;
+
+    // ── Clock ────────────────────────────────────────────────
+    addSection("Clock");
+    this->checkBoxDualClock = new QCheckBox("Show second clock");
+    this->checkBoxDualClock->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxDualClock, row, 1, 1, 3);
+    row++;
+
+    addLabel("Clock Timezone 1:");
+    this->comboBoxTimezone1 = new QComboBox();
+    grid->addWidget(this->comboBoxTimezone1, row, 1, 1, 2);
+    row++;
+
+    addLabel("Clock Timezone 2:");
+    this->comboBoxTimezone2 = new QComboBox();
+    grid->addWidget(this->comboBoxTimezone2, row, 1, 1, 2);
+    row++;
+
+    addLabel("Show labels:");
+    this->checkBoxClockShowLabels = new QCheckBox();
+    grid->addWidget(this->checkBoxClockShowLabels, row, 1);
+    row++;
+
+    addLabel("Stack clocks:");
+    this->checkBoxClockStacked = new QCheckBox();
+    grid->addWidget(this->checkBoxClockStacked, row, 1);
+    row++;
+
+    QPushButton* btnClock1 = addColorRow("Clock 1 color:", this->swatchClock1);
+    QPushButton* btnClock2 = addColorRow("Clock 2 color:", this->swatchClock2);
+    QPushButton* btnClockShadow = addColorRow("Shadow color:", this->swatchClockShadow);
+
+    // ── Channel Colors ───────────────────────────────────────
+    addSection("Channel Colors");
+
+    auto addSliderRow = [&](const QString& text, int minVal, int maxVal, int defaultVal) -> QSlider* {
+        addLabel(text);
+        QSlider* slider = new QSlider(Qt::Horizontal);
+        slider->setRange(minVal, maxVal);
+        slider->setValue(defaultVal);
+        slider->setFocusPolicy(Qt::NoFocus);
+        grid->addWidget(slider, row, 1);
+        QLabel* valLabel = new QLabel();
+        valLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        grid->addWidget(valLabel, row, 2);
+        row++;
+        return slider;
+    };
+
+    this->sliderAngle = addSliderRow("Color spacing:", 0, 3600, 1375);
+    this->labelAngleValue = qobject_cast<QLabel*>(grid->itemAtPosition(row - 1, 2)->widget());
+
+    this->sliderOffset = addSliderRow("Color offset:", 0, 360, 120);
+    this->labelOffsetValue = qobject_cast<QLabel*>(grid->itemAtPosition(row - 1, 2)->widget());
+
+    this->sliderSaturation = addSliderRow("Saturation:", 0, 100, 65);
+    this->labelSaturationValue = qobject_cast<QLabel*>(grid->itemAtPosition(row - 1, 2)->widget());
+
+    this->sliderLightness = addSliderRow("Lightness:", 0, 100, 30);
+    this->labelLightnessValue = qobject_cast<QLabel*>(grid->itemAtPosition(row - 1, 2)->widget());
+
+    addLabel("Preview:");
+    QWidget* previewContainer = new QWidget();
+    QHBoxLayout* previewLayout = new QHBoxLayout(previewContainer);
+    previewLayout->setContentsMargins(0, 0, 0, 0);
+    previewLayout->setSpacing(4);
+    for (int i = 0; i < 5; i++)
+    {
+        this->channelPreview[i] = new QLabel(QString::number(i + 1));
+        this->channelPreview[i]->setFixedSize(24, 24);
+        this->channelPreview[i]->setAlignment(Qt::AlignCenter);
+        this->channelPreview[i]->setStyleSheet("color: white; font-size: 10px; font-weight: bold; border-radius: 3px;");
+        previewLayout->addWidget(this->channelPreview[i]);
+    }
+    previewLayout->addStretch();
+    grid->addWidget(previewContainer, row, 1, 1, 3);
+    row++;
+
+    // ── Interface Colors ─────────────────────────────────────
+    addSection("Interface Colors");
+
+    QPushButton* btnPVW = addColorRow("PVW button:", this->swatchPVW);
+    QPushButton* btnSTEP = addColorRow("STEP button:", this->swatchSTEP);
+    QPushButton* btnPreviewBorder = addColorRow("Preview border:", this->swatchPreviewBorder);
+    QPushButton* btnAutostepHL = addColorRow("Autostep highlight:", this->swatchAutostepHighlight);
+    QPushButton* btnActiveInd = addColorRow("Active indicator:", this->swatchActiveIndicator);
+    QPushButton* btnSectionLine = addColorRow("Library section line:", this->swatchLibrarySectionLine);
+
+    // ── Header Colors ───────────────────────────────────────
+    addSection("Header Colors");
+
+    // Column headers for the 3 swatch columns.
+    auto makeColHeader = [](const QString& text) {
+        QLabel* lbl = new QLabel(text);
+        lbl->setAlignment(Qt::AlignCenter | Qt::AlignBottom);
+        lbl->setStyleSheet("color: rgba(160, 160, 160, 255); font-size: 11px;");
+        return lbl;
+    };
+    grid->addWidget(makeColHeader("Line"), row, 1);
+    grid->addWidget(makeColHeader("Block"), row, 2);
+    grid->addWidget(makeColHeader("Text"), row, 3);
+    row++;
+
+    // Helper: clickable swatch (QPushButton styled as color square).
+    auto makeSwatch = [](QLabel*& swatch) {
+        swatch = new QLabel();
+        swatch->setFixedSize(40, 22);
+        swatch->setAutoFillBackground(true);
+        swatch->setCursor(Qt::PointingHandCursor);
+        return swatch;
+    };
+
+    // Helper: add a triple-swatch row (label + 3 color swatches).
+    auto addTripleRow = [&](const QString& text, QLabel*& s1, QLabel*& s2, QLabel*& s3) {
+        addLabel(text);
+        grid->addWidget(makeSwatch(s1), row, 1, Qt::AlignHCenter);
+        grid->addWidget(makeSwatch(s2), row, 2, Qt::AlignHCenter);
+        grid->addWidget(makeSwatch(s3), row, 3, Qt::AlignHCenter);
+        row++;
+    };
+
+    addTripleRow("Master:", this->swatchMasterLine, this->swatchMasterBlock, this->swatchMasterText);
+    addTripleRow("Active Rundown:", this->swatchRundownLine, this->swatchRundownBlock, this->swatchRundownText);
+
+    this->checkBoxCustomizeHeaders = new QCheckBox("Customize individually");
+    this->checkBoxCustomizeHeaders->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxCustomizeHeaders, row, 1, 1, 3);
+    row++;
+
+    // Per-widget color pickers (hidden when customize is unchecked).
+    // Rundown is always visible above; these are the remaining 9 panels.
+    static const char* panelLabels[] = {
+        "Library:", "Inspector:", "Audio Levels:", "Preview:",
+        "Live:", "Clock:", "Server Status:", "Activity:", "Trigger Banks:",
+        "NDI:", "Performance:"
+    };
+    for (int i = 0; i < HEADER_PANEL_COUNT; i++)
+    {
+        addTripleRow(QString("  %1").arg(panelLabels[i]),
+                     this->swatchLine[i], this->swatchBlock[i], this->swatchText[i]);
+        this->panelRowWidgets[i] = grid->itemAtPosition(row - 1, 0)->widget();
+    }
+
+    // Trailing stretch so content doesn't spread vertically.
+    grid->setRowStretch(row, 1);
+
+    // Wrap in scroll area and assign to tabGeneral.
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setWidget(content);
+
+    QVBoxLayout* tabLayout = new QVBoxLayout(this->tabGeneral);
+    tabLayout->setContentsMargins(0, 0, 0, 0);
+    tabLayout->addWidget(scrollArea);
+
+    // ── Load saved values from DB ────────────────────────────
+
+    bool startFullscreen = (DatabaseManager::getInstance().getConfigurationByName("StartFullscreen").getValue() == "true");
+    this->checkBoxFullscreen->setChecked(startFullscreen);
+
+    this->comboBoxTheme->setCurrentIndex(this->comboBoxTheme->findText(DatabaseManager::getInstance().getConfigurationByName("Theme").getValue()));
+    this->spinBoxFontSize->setValue(DatabaseManager::getInstance().getConfigurationByName("FontSize").getValue().toInt());
+
+    bool useDropFrameNotation = (DatabaseManager::getInstance().getConfigurationByName("UseDropFrameNotation").getValue() == "true");
+    this->checkBoxUseDropFrameNotation->setChecked(useDropFrameNotation);
+
+    bool autoRefreshLibrary = (DatabaseManager::getInstance().getConfigurationByName("AutoRefreshLibrary").getValue() == "true");
+    this->checkBoxAutoRefresh->setChecked(autoRefreshLibrary);
+    this->labelInterval->setEnabled(autoRefreshLibrary);
+    this->spinBoxRefreshInterval->setEnabled(autoRefreshLibrary);
+    this->labelSeconds->setEnabled(autoRefreshLibrary);
+    this->spinBoxRefreshInterval->setValue(DatabaseManager::getInstance().getConfigurationByName("RefreshLibraryInterval").getValue().toInt());
+
+    bool showThumbnailTooltip = (DatabaseManager::getInstance().getConfigurationByName("ShowThumbnailTooltip").getValue() == "true");
+    this->checkBoxShowThumbnailTooltip->setChecked(showThumbnailTooltip);
+
+    bool reverseOscTime = (DatabaseManager::getInstance().getConfigurationByName("ReverseOscTime").getValue() == "true");
+    this->checkBoxReverseOscTime->setChecked(reverseOscTime);
+
+    bool disableInAndOutPoints = (DatabaseManager::getInstance().getConfigurationByName("DisableInAndOutPoints").getValue() == "true");
+    this->checkBoxDisableInAndOutPoints->setChecked(disableInAndOutPoints);
+
+    QString oscRefreshStr = DatabaseManager::getInstance().getConfigurationByName("OscRefreshRate").getValue();
+    this->spinBoxOscRefreshRate->setValue(oscRefreshStr.isEmpty() ? Osc::DEFAULT_REFRESH_RATE : oscRefreshStr.toInt());
+
+    QString undoLimitStr = DatabaseManager::getInstance().getConfigurationByName("UndoHistoryLimit").getValue();
+    this->spinBoxUndoHistoryLimit->setValue(undoLimitStr.isEmpty() ? 50 : undoLimitStr.toInt());
+
+    bool markUsedItems = (DatabaseManager::getInstance().getConfigurationByName("MarkUsedItems").getValue() == "true");
+    this->checkBoxMarkUsedItems->setChecked(markUsedItems);
+
+    this->lineEditRundownRepository->setText(DatabaseManager::getInstance().getConfigurationByName("RundownRepository").getValue());
+    this->lineEditRepositoryPort->setPlaceholderText(QString("%1").arg(Repository::DEFAULT_PORT));
+    QString repositoryPort = DatabaseManager::getInstance().getConfigurationByName("RepositoryPort").getValue();
+    if (!repositoryPort.isEmpty())
+        this->lineEditRepositoryPort->setText(repositoryPort);
+
+    bool useFreezeOnLoad = (DatabaseManager::getInstance().getConfigurationByName("UseFreezeOnLoad").getValue() == "true");
+    this->checkBoxUseFreezeOnLoad->setChecked(useFreezeOnLoad);
+    QString durationFormat = DatabaseManager::getInstance().getConfigurationByName("DurationFormat").getValue();
+    int formatIndex = this->comboBoxDurationFormat->findData(durationFormat);
+    if (formatIndex >= 0)
+        this->comboBoxDurationFormat->setCurrentIndex(formatIndex);
+
+    bool storeThumbnailsInDatabase = (DatabaseManager::getInstance().getConfigurationByName("StoreThumbnailsInDatabase").getValue() == "true");
+    this->checkBoxStoreThumbnailsInDatabase->setChecked(storeThumbnailsInDatabase);
+
+    // Wire up programmatic General-tab checkboxes.
+    auto wireCheckBox = [](QCheckBox* cb, const QString& key) {
+        QString val = DatabaseManager::getInstance().getConfigurationByName(key).getValue();
+        cb->setChecked(val.isEmpty() || val == "true");
+        QObject::connect(cb, &QCheckBox::stateChanged, [key](int state) {
+            QString value = (state == Qt::Checked) ? "true" : "false";
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, value));
+        });
+    };
+
+    wireCheckBox(this->checkBoxShowPreviewBorder, "ShowPreviewBorder");
+    wireCheckBox(this->checkBoxShowSTEPButton, "ShowSTEPButton");
+    wireCheckBox(this->checkBoxShowPVWButton, "ShowPVWButton");
+    wireCheckBox(this->checkBoxShowServers, "ShowServers");
+    wireCheckBox(this->checkBoxShowChannelLocks, "ShowChannelLocks");
+    wireCheckBox(this->checkBoxShowChannelHeaders, "ShowChannelHeaders");
+    wireCheckBox(this->checkBoxShowBankIcons, "ShowBankIcons");
+    wireCheckBox(this->checkBoxHttpLogLastOnly, "HttpLogLastOnly");
+    wireCheckBox(this->checkBoxShowLastAction, "ShowLastAction");
+    wireCheckBox(this->checkBoxActiveIndicatorPerChannel, "ActiveIndicatorPerChannel");
+
+    // Disconnect mode dropdown.
+    QString disconnectMode = DatabaseManager::getInstance().getConfigurationByName("DisconnectMode").getValue();
+    int dmIdx = this->comboBoxDisconnectMode->findText(disconnectMode.isEmpty() ? "ask" : disconnectMode);
+    if (dmIdx >= 0) this->comboBoxDisconnectMode->setCurrentIndex(dmIdx);
+    QObject::connect(this->comboBoxDisconnectMode, &QComboBox::currentTextChanged, [](const QString& text) {
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DisconnectMode", text));
+    });
+
+    // Template preview freeze.
+    QString freezeVal = DatabaseManager::getInstance().getConfigurationByName("PreviewFreezeTemplate").getValue();
+    this->previewFreezeTemplateCheck->setChecked(freezeVal == "true");
+    QObject::connect(this->previewFreezeTemplateCheck, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "PreviewFreezeTemplate", checked ? "true" : "false"));
+    });
+
+    // Activity grow mode.
+    QString activityMode = DatabaseManager::getInstance().getConfigurationByName("ActivityGrowMode").getValue();
+    this->checkBoxActivityGrow->setChecked(activityMode != "fit");
+    QObject::connect(this->checkBoxActivityGrow, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ActivityGrowMode", checked ? "grow" : "fit"));
+    });
+
+    // NDI outputs.
+    QString ndiCountStr = DatabaseManager::getInstance().getConfigurationByName("NdiOutputCount").getValue();
+    this->spinBoxNdiOutputs->setValue(ndiCountStr.isEmpty() ? 1 : qBound(1, ndiCountStr.toInt(), 9));
+    QObject::connect(this->spinBoxNdiOutputs, &QSpinBox::valueChanged, [](int value) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "NdiOutputCount", QString::number(value)));
+    });
+
+    // NDI Bandwidth.
+    QString bwStr = DatabaseManager::getInstance().getConfigurationByName("NdiBandwidth").getValue();
+    if (bwStr.isEmpty()) bwStr = "high";
+    int bwIdx = this->comboBoxNdiBandwidth->findData(bwStr);
+    if (bwIdx >= 0) this->comboBoxNdiBandwidth->setCurrentIndex(bwIdx);
+    QObject::connect(this->comboBoxNdiBandwidth, &QComboBox::currentIndexChanged, [this](int index) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "NdiBandwidth", this->comboBoxNdiBandwidth->itemData(index).toString()));
+    });
+
+    // NDI FPS Limit.
+    QString fpsStr = DatabaseManager::getInstance().getConfigurationByName("NdiFpsLimit").getValue();
+    int fpsVal = fpsStr.isEmpty() ? 0 : fpsStr.toInt();
+    int fpsIdx = this->comboBoxNdiFpsLimit->findData(fpsVal);
+    if (fpsIdx >= 0) this->comboBoxNdiFpsLimit->setCurrentIndex(fpsIdx);
+    QObject::connect(this->comboBoxNdiFpsLimit, &QComboBox::currentIndexChanged, [this](int index) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "NdiFpsLimit", QString::number(this->comboBoxNdiFpsLimit->itemData(index).toInt())));
+    });
+
+    // NDI Scaling.
+    QString scaleStr = DatabaseManager::getInstance().getConfigurationByName("NdiScalingQuality").getValue();
+    if (scaleStr.isEmpty()) scaleStr = "smooth";
+    int scIdx = this->comboBoxNdiScaling->findData(scaleStr);
+    if (scIdx >= 0) this->comboBoxNdiScaling->setCurrentIndex(scIdx);
+    QObject::connect(this->comboBoxNdiScaling, &QComboBox::currentIndexChanged, [this](int index) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "NdiScalingQuality", this->comboBoxNdiScaling->itemData(index).toString()));
+    });
+
+    // Clock settings.
+    QString dualMode = DatabaseManager::getInstance().getConfigurationByName("ClockDualMode").getValue();
+    this->checkBoxDualClock->setChecked(dualMode.isEmpty() || dualMode == "true");
+    QObject::connect(this->checkBoxDualClock, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ClockDualMode", checked ? "true" : "false"));
+    });
+
+    // Timezone combos.
+    QList<QByteArray> tzIds = QTimeZone::availableTimeZoneIds();
+    std::sort(tzIds.begin(), tzIds.end());
+    QDateTime tzNow = QDateTime::currentDateTimeUtc();
+
+    auto populateTzCombo = [&](QComboBox* combo, const QStringList& specials) {
+        for (const QString& s : specials)
+            combo->addItem(s, s);
+        for (const QByteArray& id : tzIds)
+        {
+            QTimeZone tz(id);
+            int off = tz.offsetFromUtc(tzNow);
+            QString sign = (off >= 0) ? "+" : "-";
+            int h = qAbs(off) / 3600;
+            int m = (qAbs(off) % 3600) / 60;
+            QString offStr = (m > 0)
+                ? QString("GMT%1%2:%3").arg(sign).arg(h).arg(m, 2, 10, QChar('0'))
+                : QString("GMT%1%2").arg(sign).arg(h);
+            combo->addItem(QString("%1 (%2)").arg(QString::fromUtf8(id), offStr),
+                           QString::fromUtf8(id));
+        }
+    };
+
+    populateTzCombo(this->comboBoxTimezone1, {"Local"});
+    QString curTz1 = DatabaseManager::getInstance().getConfigurationByName("ClockTimezone1").getValue();
+    int tz1Idx = this->comboBoxTimezone1->findData(curTz1.isEmpty() ? "Local" : curTz1);
+    if (tz1Idx >= 0) this->comboBoxTimezone1->setCurrentIndex(tz1Idx);
+    QObject::connect(this->comboBoxTimezone1, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ClockTimezone1", this->comboBoxTimezone1->currentData().toString()));
+    });
+
+    populateTzCombo(this->comboBoxTimezone2, {"UTC", "Local"});
+    QString curTz2 = DatabaseManager::getInstance().getConfigurationByName("ClockTimezone2").getValue();
+    int tz2Idx = this->comboBoxTimezone2->findData(curTz2.isEmpty() ? "UTC" : curTz2);
+    if (tz2Idx >= 0) this->comboBoxTimezone2->setCurrentIndex(tz2Idx);
+    QObject::connect(this->comboBoxTimezone2, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ClockTimezone2", this->comboBoxTimezone2->currentData().toString()));
+    });
+
+    auto updateTz2 = [this](bool dual) {
+        this->comboBoxTimezone2->setEnabled(dual);
+    };
+    updateTz2(this->checkBoxDualClock->isChecked());
+    QObject::connect(this->checkBoxDualClock, &QCheckBox::toggled, updateTz2);
+
+    // ── Channel color sliders ────────────────────────────────
+    auto loadSlider = [](QSlider* slider, QLabel* valLabel, const QString& dbKey, int defaultVal, double divisor) {
+        QString dbVal = DatabaseManager::getInstance().getConfigurationByName(dbKey).getValue();
+        int v = dbVal.isEmpty() ? defaultVal : static_cast<int>(dbVal.toDouble() * divisor + 0.5);
+        slider->setValue(v);
+        if (divisor > 1.0)
+            valLabel->setText(QString::number(v / divisor, 'f', 1));
+        else
+            valLabel->setText(QString::number(v));
+    };
+
+    loadSlider(this->sliderAngle, this->labelAngleValue, "ChannelColorAngle", 1375, 10.0);
+    loadSlider(this->sliderOffset, this->labelOffsetValue, "ChannelColorOffset", 120, 1.0);
+    loadSlider(this->sliderSaturation, this->labelSaturationValue, "ChannelColorSaturation", 65, 100.0);
+    loadSlider(this->sliderLightness, this->labelLightnessValue, "ChannelColorLightness", 30, 100.0);
+
+    ChannelColor::setAngle(this->sliderAngle->value() / 10.0);
+    ChannelColor::setOffset(this->sliderOffset->value());
+    ChannelColor::setSaturation(this->sliderSaturation->value() / 100.0);
+    ChannelColor::setLightness(this->sliderLightness->value() / 100.0);
+    updateChannelPreview();
+
+    auto wireSlider = [this](QSlider* slider, QLabel* valLabel, const QString& dbKey, double divisor, auto setter) {
+        QObject::connect(slider, &QSlider::valueChanged, [this, valLabel, dbKey, divisor, setter](int v) {
+            double real = v / divisor;
+            if (divisor > 1.0)
+                valLabel->setText(QString::number(real, 'f', 1));
+            else
+                valLabel->setText(QString::number(v));
+            setter(real);
+            updateChannelPreview();
+            this->pendingSliderDbWrites[dbKey] = QString::number(real);
+            this->sliderDbWriteTimer->start();
+        });
+    };
+
+    wireSlider(this->sliderAngle, this->labelAngleValue, "ChannelColorAngle", 10.0, [](double v) { ChannelColor::setAngle(v); });
+    wireSlider(this->sliderOffset, this->labelOffsetValue, "ChannelColorOffset", 1.0, [](double v) { ChannelColor::setOffset(v); });
+    wireSlider(this->sliderSaturation, this->labelSaturationValue, "ChannelColorSaturation", 100.0, [](double v) { ChannelColor::setSaturation(v); });
+    wireSlider(this->sliderLightness, this->labelLightnessValue, "ChannelColorLightness", 100.0, [](double v) { ChannelColor::setLightness(v); });
+
+    // ── Interface color pickers ──────────────────────────────
+    auto loadSwatch = [](QLabel* swatch, const QString& dbKey, const QColor& defaultColor) {
+        QString dbVal = DatabaseManager::getInstance().getConfigurationByName(dbKey).getValue();
+        QColor color = dbVal.isEmpty() ? defaultColor : QColor(dbVal);
+        if (!color.isValid()) color = defaultColor;
+        swatch->setStyleSheet(QString("background-color: %1; border: 1px solid rgba(80,80,80,200); border-radius: 3px;").arg(color.name(QColor::HexArgb)));
+        swatch->setProperty("currentColor", color);
+    };
+
+    loadSwatch(this->swatchPVW, "PVWButtonColor", QColor(200, 150, 0));
+    loadSwatch(this->swatchSTEP, "STEPButtonColor", QColor(100, 60, 160));
+    loadSwatch(this->swatchPreviewBorder, "PreviewBorderColor", QColor(230, 200, 40, 220));
+    loadSwatch(this->swatchAutostepHighlight, "AutostepHighlightColor", QColor(100, 60, 160, 40));
+    loadSwatch(this->swatchActiveIndicator, "ActiveIndicatorColor", QColor(0, 0, 0, 0));
+    loadSwatch(this->swatchLibrarySectionLine, "LibrarySectionLineColor", QColor(76, 175, 80));
+
+    // ── Header color pickers (Line / Block / Text) ─────────
+    QColor defaultLine(70, 115, 195);
+    QColor defaultBlock(70, 115, 195);
+    QColor defaultText(255, 255, 255);
+
+    loadSwatch(this->swatchMasterLine,  "HeaderLineMaster",  defaultLine);
+    loadSwatch(this->swatchMasterBlock, "HeaderBlockMaster", defaultBlock);
+    loadSwatch(this->swatchMasterText,  "HeaderTextMaster",  defaultText);
+    loadSwatch(this->swatchRundownLine,  "HeaderLineRundown",  defaultLine);
+    loadSwatch(this->swatchRundownBlock, "HeaderBlockRundown", defaultBlock);
+    loadSwatch(this->swatchRundownText,  "HeaderTextRundown",  defaultText);
+
+    static const char* panelDbKeys[] = {
+        "Library", "Inspector", "AudioLevels", "Preview",
+        "Live", "Clock", "ServerStatus", "Activity", "TriggerBanks",
+        "Ndi", "Performance"
+    };
+    for (int i = 0; i < HEADER_PANEL_COUNT; i++)
+    {
+        loadSwatch(this->swatchLine[i],  QString("HeaderLine_%1").arg(panelDbKeys[i]),  defaultLine);
+        loadSwatch(this->swatchBlock[i], QString("HeaderBlock_%1").arg(panelDbKeys[i]), defaultBlock);
+        loadSwatch(this->swatchText[i],  QString("HeaderText_%1").arg(panelDbKeys[i]),  defaultText);
+    }
+
+    // Show/hide per-widget rows based on customize checkbox.
+    bool customizeHeaders = DatabaseManager::getInstance().getConfigurationByName("CustomizeWidgetHeaders").getValue() == "true";
+    this->checkBoxCustomizeHeaders->setChecked(customizeHeaders);
+    auto setHeaderRowsVisible = [this](bool visible) {
+        for (int i = 0; i < HEADER_PANEL_COUNT; i++)
+        {
+            this->swatchLine[i]->setVisible(visible);
+            this->swatchBlock[i]->setVisible(visible);
+            this->swatchText[i]->setVisible(visible);
+            if (this->panelRowWidgets[i])
+                this->panelRowWidgets[i]->setVisible(visible);
+        }
+    };
+    setHeaderRowsVisible(customizeHeaders);
+    QObject::connect(this->checkBoxCustomizeHeaders, &QCheckBox::toggled, [this, setHeaderRowsVisible](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "CustomizeWidgetHeaders", checked ? "true" : "false"));
+        ColorCache::setCustomizeHeaders(checked);
+        setHeaderRowsVisible(checked);
+        qApp->setStyleSheet(this->stylesheet + WidgetHeaderCSS::generate());
+    });
+
+    // Populate ColorCache from DB.
+    ColorCache::setPvwButton(DatabaseManager::getInstance().getConfigurationByName("PVWButtonColor").getValue());
+    ColorCache::setStepButton(DatabaseManager::getInstance().getConfigurationByName("STEPButtonColor").getValue());
+    ColorCache::setPreviewBorder(DatabaseManager::getInstance().getConfigurationByName("PreviewBorderColor").getValue());
+    ColorCache::setAutostepHighlight(DatabaseManager::getInstance().getConfigurationByName("AutostepHighlightColor").getValue());
+    ColorCache::setActiveIndicator(DatabaseManager::getInstance().getConfigurationByName("ActiveIndicatorColor").getValue());
+    ColorCache::setLibrarySectionLine(DatabaseManager::getInstance().getConfigurationByName("LibrarySectionLineColor").getValue());
+    ColorCache::setCustomizeHeaders(customizeHeaders);
+
+    ColorCache::setHeaderLineMaster(DatabaseManager::getInstance().getConfigurationByName("HeaderLineMaster").getValue());
+    ColorCache::setHeaderBlockMaster(DatabaseManager::getInstance().getConfigurationByName("HeaderBlockMaster").getValue());
+    ColorCache::setHeaderTextMaster(DatabaseManager::getInstance().getConfigurationByName("HeaderTextMaster").getValue());
+    ColorCache::setHeaderLineRundown(DatabaseManager::getInstance().getConfigurationByName("HeaderLineRundown").getValue());
+    ColorCache::setHeaderBlockRundown(DatabaseManager::getInstance().getConfigurationByName("HeaderBlockRundown").getValue());
+    ColorCache::setHeaderTextRundown(DatabaseManager::getInstance().getConfigurationByName("HeaderTextRundown").getValue());
+
+    for (int i = 0; i < HEADER_PANEL_COUNT; i++)
+    {
+        QString lineVal  = DatabaseManager::getInstance().getConfigurationByName(QString("HeaderLine_%1").arg(panelDbKeys[i])).getValue();
+        QString blockVal = DatabaseManager::getInstance().getConfigurationByName(QString("HeaderBlock_%1").arg(panelDbKeys[i])).getValue();
+        QString textVal  = DatabaseManager::getInstance().getConfigurationByName(QString("HeaderText_%1").arg(panelDbKeys[i])).getValue();
+        if (!lineVal.isEmpty())  ColorCache::setLineOverride(panelDbKeys[i], lineVal);
+        if (!blockVal.isEmpty()) ColorCache::setBlockOverride(panelDbKeys[i], blockVal);
+        if (!textVal.isEmpty())  ColorCache::setTextOverride(panelDbKeys[i], textVal);
+    }
+
+    ColorCache::setClockColor1(DatabaseManager::getInstance().getConfigurationByName("ClockColor1").getValue());
+    ColorCache::setClockColor2(DatabaseManager::getInstance().getConfigurationByName("ClockColor2").getValue());
+    ColorCache::setClockShadow(DatabaseManager::getInstance().getConfigurationByName("ClockShadowColor").getValue());
+
+    // Wire interface color buttons.
+    auto wireColorBtn = [this](QPushButton* btn, QLabel* swatch, const QString& dbKey, bool alpha) {
+        QObject::connect(btn, &QPushButton::clicked, [this, swatch, dbKey, alpha]() {
+            openColorPicker(swatch, dbKey, alpha);
+        });
+    };
+
+    wireColorBtn(btnPVW, this->swatchPVW, "PVWButtonColor", false);
+    wireColorBtn(btnSTEP, this->swatchSTEP, "STEPButtonColor", false);
+    wireColorBtn(btnPreviewBorder, this->swatchPreviewBorder, "PreviewBorderColor", true);
+    wireColorBtn(btnAutostepHL, this->swatchAutostepHighlight, "AutostepHighlightColor", true);
+    wireColorBtn(btnActiveInd, this->swatchActiveIndicator, "ActiveIndicatorColor", true);
+    wireColorBtn(btnSectionLine, this->swatchLibrarySectionLine, "LibrarySectionLineColor", false);
+
+    // Wire header color swatches (clickable swatches — click opens color picker).
+    auto wireSwatchClick = [this](QLabel* swatch, const QString& dbKey, bool alpha) {
+        swatch->installEventFilter(this);
+        swatch->setProperty("dbKey", dbKey);
+        swatch->setProperty("alpha", alpha);
+    };
+
+    wireSwatchClick(this->swatchMasterLine,  "HeaderLineMaster",  false);
+    wireSwatchClick(this->swatchMasterBlock, "HeaderBlockMaster", false);
+    wireSwatchClick(this->swatchMasterText,  "HeaderTextMaster",  false);
+    wireSwatchClick(this->swatchRundownLine,  "HeaderLineRundown",  false);
+    wireSwatchClick(this->swatchRundownBlock, "HeaderBlockRundown", false);
+    wireSwatchClick(this->swatchRundownText,  "HeaderTextRundown",  false);
+
+    for (int i = 0; i < HEADER_PANEL_COUNT; i++)
+    {
+        wireSwatchClick(this->swatchLine[i],  QString("HeaderLine_%1").arg(panelDbKeys[i]),  false);
+        wireSwatchClick(this->swatchBlock[i], QString("HeaderBlock_%1").arg(panelDbKeys[i]), false);
+        wireSwatchClick(this->swatchText[i],  QString("HeaderText_%1").arg(panelDbKeys[i]),  false);
+    }
+
+    // ── Clock color pickers ──────────────────────────────────
+    loadSwatch(this->swatchClock1, "ClockColor1", QColor(220, 220, 220, 230));
+    loadSwatch(this->swatchClock2, "ClockColor2", QColor(80, 200, 200, 220));
+    loadSwatch(this->swatchClockShadow, "ClockShadowColor", QColor(55, 55, 55, 255));
+
+    wireColorBtn(btnClock1, this->swatchClock1, "ClockColor1", true);
+    wireColorBtn(btnClock2, this->swatchClock2, "ClockColor2", true);
+    wireColorBtn(btnClockShadow, this->swatchClockShadow, "ClockShadowColor", false);
+
+    QString showLabels = DatabaseManager::getInstance().getConfigurationByName("ClockShowLabels").getValue();
+    this->checkBoxClockShowLabels->setChecked(showLabels.isEmpty() || showLabels == "true");
+    QObject::connect(this->checkBoxClockShowLabels, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ClockShowLabels", checked ? "true" : "false"));
+    });
+
+    QString clockStacked = DatabaseManager::getInstance().getConfigurationByName("ClockStacked").getValue();
+    this->checkBoxClockStacked->setChecked(clockStacked == "true");
+    QObject::connect(this->checkBoxClockStacked, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ClockStacked", checked ? "true" : "false"));
+    });
+
+    // ── Signal/slot wiring for ex-.ui widgets ────────────────
+    QObject::connect(this->checkBoxFullscreen, SIGNAL(stateChanged(int)), this, SLOT(startFullscreenChanged(int)));
+    QObject::connect(this->comboBoxTheme, SIGNAL(currentTextChanged(QString)), this, SLOT(themeChanged(QString)));
+    QObject::connect(this->spinBoxFontSize, SIGNAL(valueChanged(int)), this, SLOT(fontSizeChanged(int)));
+    QObject::connect(this->checkBoxUseDropFrameNotation, SIGNAL(stateChanged(int)), this, SLOT(useDropFrameNotationChanged(int)));
+    QObject::connect(this->checkBoxAutoRefresh, SIGNAL(stateChanged(int)), this, SLOT(autoSynchronizeChanged(int)));
+    QObject::connect(this->spinBoxRefreshInterval, SIGNAL(valueChanged(int)), this, SLOT(synchronizeIntervalChanged(int)));
+    QObject::connect(this->checkBoxShowThumbnailTooltip, SIGNAL(stateChanged(int)), this, SLOT(showThumbnailTooltipChanged(int)));
+    QObject::connect(this->checkBoxReverseOscTime, SIGNAL(stateChanged(int)), this, SLOT(reverseOscTimeChanged(int)));
+    QObject::connect(this->checkBoxDisableInAndOutPoints, SIGNAL(stateChanged(int)), this, SLOT(disableInAndOutPointsChanged(int)));
+    QObject::connect(this->checkBoxMarkUsedItems, SIGNAL(stateChanged(int)), this, SLOT(markUsedItemsChanged(int)));
+    QObject::connect(this->lineEditRundownRepository, SIGNAL(editingFinished()), this, SLOT(rundownRepositoryChanged()));
+    QObject::connect(this->lineEditRepositoryPort, SIGNAL(editingFinished()), this, SLOT(repositoryPortChanged()));
+    QObject::connect(this->checkBoxUseFreezeOnLoad, SIGNAL(stateChanged(int)), this, SLOT(useFreezeOnLoadChanged(int)));
+    QObject::connect(this->comboBoxDurationFormat, SIGNAL(currentTextChanged(QString)), this, SLOT(durationFormatChanged(QString)));
+    QObject::connect(this->checkBoxStoreThumbnailsInDatabase, SIGNAL(stateChanged(int)), this, SLOT(storeThumbnailsInDatabaseChanged(int)));
+    QObject::connect(this->pushButtonDeleteThumbnails, SIGNAL(clicked()), this, SLOT(deleteThumbnails()));
+    QObject::connect(this->spinBoxOscRefreshRate, QOverload<int>::of(&QSpinBox::valueChanged), [](int value) {
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "OscRefreshRate", QString::number(value)));
+    });
+    QObject::connect(this->spinBoxUndoHistoryLimit, QOverload<int>::of(&QSpinBox::valueChanged), [](int value) {
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "UndoHistoryLimit", QString::number(value)));
+        EventManager::getInstance().fireUndoLimitChangedEvent(value);
+    });
 }
 
 void SettingsDialog::blockAllSignals(bool block)
@@ -314,11 +1315,18 @@ void SettingsDialog::showAddDeviceDialog()
     DeviceDialog* dialog = new DeviceDialog(this);
     if (dialog->exec() == QDialog::Accepted)
     {
-        DatabaseManager::getInstance().insertDevice(DeviceModel(0, dialog->getName(), dialog->getAddress(),
+        QString error = DatabaseManager::getInstance().insertDevice(DeviceModel(0, dialog->getName(), dialog->getAddress(),
                                                                 dialog->getPort().toInt(), dialog->getUsername(),
                                                                 dialog->getPassword(), dialog->getDescription(),
                                                                 "", dialog->getShadow(), 0, "", dialog->getPreviewChannel(),
-                                                                dialog->getLockedChannel()));
+                                                                dialog->getLockedChannel(), dialog->getTemplatePath(),
+                                                                dialog->getMediaPath(), dialog->getServerPath()));
+        if (!error.isEmpty())
+        {
+            QMessageBox::warning(this, "Add Device",
+                QString("Failed to add device to database.\n\n%1").arg(error));
+            return;
+        }
 
         loadDevice();
 
@@ -381,7 +1389,9 @@ void SettingsDialog::deviceItemDoubleClicked(QTreeWidgetItem* current, int index
                                                                 dialog->getPassword(), dialog->getDescription(),
                                                                 model.getVersion(), dialog->getShadow(),
                                                                 model.getChannels(), model.getChannelFormats(),
-                                                                dialog->getPreviewChannel(), dialog->getLockedChannel()));
+                                                                dialog->getPreviewChannel(), dialog->getLockedChannel(),
+                                                                dialog->getTemplatePath(), dialog->getMediaPath(),
+                                                                dialog->getServerPath()));
 
         loadDevice();
 
@@ -417,8 +1427,32 @@ void SettingsDialog::startFullscreenChanged(int state)
 
 void SettingsDialog::fontSizeChanged(int size)
 {
-    qApp->setStyleSheet(this->stylesheet + QString("QWidget { font-size: %1px; }").arg(size));
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "FontSize", QString("%1").arg(size)));
+    this->pendingFontSize = size;
+    this->fontSizeDebounceTimer->start();
+}
+
+void SettingsDialog::flushPendingWrites()
+{
+    if (this->fontSizeDebounceTimer->isActive())
+    {
+        this->fontSizeDebounceTimer->stop();
+        qApp->setStyleSheet(this->stylesheet + WidgetHeaderCSS::generate() +
+                            QString(" QWidget { font-size: %1px; }").arg(this->pendingFontSize));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "FontSize", QString::number(this->pendingFontSize)));
+    }
+
+    if (this->sliderDbWriteTimer->isActive())
+    {
+        this->sliderDbWriteTimer->stop();
+        for (auto it = this->pendingSliderDbWrites.constBegin();
+             it != this->pendingSliderDbWrites.constEnd(); ++it)
+        {
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, it.key(), it.value()));
+        }
+        this->pendingSliderDbWrites.clear();
+    }
 }
 
 void SettingsDialog::autoSynchronizeChanged(int state)
@@ -438,12 +1472,14 @@ void SettingsDialog::showThumbnailTooltipChanged(int state)
 {
     QString showThumbnailTooltip = (state == Qt::Checked) ? "true" : "false";
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ShowThumbnailTooltip", showThumbnailTooltip));
+    RundownWidgetHelper::invalidateConfigCache();
 }
 
 void SettingsDialog::reverseOscTimeChanged(int state)
 {
     QString reverseOscTime = (state == Qt::Checked) ? "true" : "false";
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ReverseOscTime", reverseOscTime));
+    RundownWidgetHelper::invalidateConfigCache();
 }
 
 void SettingsDialog::enableOscInputControlChanged(int state)
@@ -672,11 +1708,13 @@ void SettingsDialog::repositoryPortChanged()
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "RepositoryPort", repositoryPort));
 }
 
-void SettingsDialog::delayTypeChanged(QString delayType)
+void SettingsDialog::durationFormatChanged(QString text)
 {
-    Q_UNUSED(delayType);
+    Q_UNUSED(text);
 
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DelayType", this->comboBoxDelayType->currentText()));
+    QString value = this->comboBoxDurationFormat->currentData().toString();
+    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DurationFormat", value));
+    EventManager::getInstance().fireUnitSettingsChangedEvent();
 }
 
 void SettingsDialog::logLevelChanged(int index)
@@ -694,18 +1732,6 @@ void SettingsDialog::themeChanged(QString theme)
 void SettingsDialog::rundownRepositoryChanged()
 {
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "RundownRepository", this->lineEditRundownRepository->text()));
-}
-
-void SettingsDialog::previewOnAutoStepChanged(int state)
-{
-    QString previewOnAutoStep = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "PreviewOnAutoStep", previewOnAutoStep));
-}
-
-void SettingsDialog::clearDelayedCommandsOnAutoStepChanged(int state)
-{
-    QString clearDelayedCommandsOnAutoStep = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ClearDelayedCommandsOnAutoStep", clearDelayedCommandsOnAutoStep));
 }
 
 void SettingsDialog::storeThumbnailsInDatabaseChanged(int state)
@@ -735,25 +1761,9 @@ void SettingsDialog::markUsedItemsChanged(int state)
 {
     QString markUsedItems = (state == Qt::Checked) ? "true" : "false";
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "MarkUsedItems", markUsedItems));
+    RundownWidgetHelper::invalidateConfigCache();
 }
 
-void SettingsDialog::showAudioLevelsChanged(int state)
-{
-    QString showAudioLevelsPanel = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ShowAudioLevelsPanel", showAudioLevelsPanel));
-}
-
-void SettingsDialog::showPreviewChanged(int state)
-{
-    QString showPreviewPanel = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ShowPreviewPanel", showPreviewPanel));
-}
-
-void SettingsDialog::showLiveChanged(int state)
-{
-    QString showLivePanel = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ShowLivePanel", showLivePanel));
-}
 
 void SettingsDialog::disableAudioInStreamChanged(int state)
 {
@@ -771,20 +1781,285 @@ void SettingsDialog::streamQualityChanged(int quality)
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "StreamQuality", QString("%1").arg(100 - quality)));
 }
 
-void SettingsDialog::showDurationChanged(int state)
-{
-    QString showDurationPanel = (state == Qt::Checked) ? "true" : "false";
-    DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ShowDurationPanel", showDurationPanel));
-}
 
 void SettingsDialog::useFreezeOnLoadChanged(int state)
 {
     QString useFreezeOnLoad = (state == Qt::Checked) ? "true" : "false";
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "UseFreezeOnLoad", useFreezeOnLoad));
+    RundownWidgetHelper::invalidateConfigCache();
 }
 
 void SettingsDialog::useDropFrameNotationChanged(int state)
 {
     QString useDropFrameNotation = (state == Qt::Checked) ? "true" : "false";
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "UseDropFrameNotation", useDropFrameNotation));
+}
+
+void SettingsDialog::setupHotkeyTab()
+{
+    QWidget* tabHotkeys = new QWidget();
+    this->tabWidgetSettings->addTab(tabHotkeys, "Hotkeys");
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(tabHotkeys);
+
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    QWidget* scrollContent = new QWidget();
+    QGridLayout* grid = new QGridLayout(scrollContent);
+
+    QLabel* headerAction = new QLabel("Action");
+    QLabel* headerPrimary = new QLabel("Primary Hotkey");
+    QLabel* headerAlt = new QLabel("Alternative Hotkey");
+    headerAction->setStyleSheet("font-weight: bold;");
+    headerPrimary->setStyleSheet("font-weight: bold;");
+    headerAlt->setStyleSheet("font-weight: bold;");
+    grid->addWidget(headerAction, 0, 0);
+    grid->addWidget(headerPrimary, 0, 1);
+    grid->addWidget(headerAlt, 0, 2);
+
+    struct HotkeyRow {
+        QString displayName;
+        QString configSuffix;
+    };
+
+    QList<HotkeyRow> rows = {
+        { "Stop",              "Stop" },
+        { "Play",              "Play" },
+        { "Play Now",          "PlayNow" },
+        { "Load",              "Load" },
+        { "Pause / Resume",    "PauseResume" },
+        { "Next",              "Next" },
+        { "Update",            "Update" },
+        { "Invoke",            "Invoke" },
+        { "Preview",           "Preview" },
+        { "Clear",             "Clear" },
+        { "Clear Video Layer", "ClearVideoLayer" },
+        { "Clear Channel",     "ClearChannel" },
+        { "Trigger Bank 1",    "Bank1" },
+        { "Trigger Bank 2",    "Bank2" },
+        { "Trigger Bank 3",    "Bank3" },
+        { "Trigger Bank 4",    "Bank4" },
+        { "Trigger Bank 5",    "Bank5" },
+        { "Trigger Bank 6",    "Bank6" },
+        { "Trigger Bank 7",    "Bank7" },
+        { "Trigger Bank 8",    "Bank8" },
+        { "Trigger Bank 9",    "Bank9" },
+        { "Toggle Preview Mode", "TogglePreview" },
+        { "Toggle Autostep Mode", "ToggleAutostep" },
+    };
+
+    int row = 1;
+    for (const auto& hr : rows)
+    {
+        QLabel* label = new QLabel(hr.displayName);
+        grid->addWidget(label, row, 0);
+
+        QString primaryKey = QString("Hotkey%1").arg(hr.configSuffix);
+        QKeySequenceEdit* primaryEdit = new QKeySequenceEdit();
+        primaryEdit->setProperty("configKey", primaryKey);
+        grid->addWidget(primaryEdit, row, 1);
+        this->hotkeyEdits[primaryKey] = primaryEdit;
+        QObject::connect(primaryEdit, SIGNAL(keySequenceChanged(const QKeySequence&)),
+                         this, SLOT(hotkeyEditChanged(const QKeySequence&)));
+
+        QString altKey = QString("Hotkey%1Alt").arg(hr.configSuffix);
+        QKeySequenceEdit* altEdit = new QKeySequenceEdit();
+        altEdit->setProperty("configKey", altKey);
+        grid->addWidget(altEdit, row, 2);
+        this->hotkeyEdits[altKey] = altEdit;
+        QObject::connect(altEdit, SIGNAL(keySequenceChanged(const QKeySequence&)),
+                         this, SLOT(hotkeyEditChanged(const QKeySequence&)));
+
+        row++;
+    }
+
+    grid->setRowStretch(row, 1);
+    scrollArea->setWidget(scrollContent);
+    mainLayout->addWidget(scrollArea);
+
+    QPushButton* restoreButton = new QPushButton("Restore Defaults");
+    QObject::connect(restoreButton, SIGNAL(clicked()), this, SLOT(restoreDefaultHotkeysClicked()));
+    mainLayout->addWidget(restoreButton);
+
+    // Preview modifier dropdown.
+    QHBoxLayout* modifierLayout = new QHBoxLayout();
+    QLabel* modifierLabel = new QLabel("Preview Modifier Key (hold):");
+    modifierLabel->setStyleSheet("font-weight: bold;");
+    this->previewModifierCombo = new QComboBox();
+    this->previewModifierCombo->addItems({"Shift", "Ctrl", "Alt", "None"});
+    QString currentModifier = DatabaseManager::getInstance()
+        .getConfigurationByName("PreviewModifier").getValue();
+    int idx = this->previewModifierCombo->findText(currentModifier);
+    if (idx >= 0)
+        this->previewModifierCombo->setCurrentIndex(idx);
+    QObject::connect(this->previewModifierCombo, &QComboBox::currentTextChanged, [this](const QString& text) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "PreviewModifier", text));
+        emit hotkeyChanged();
+    });
+    modifierLayout->addWidget(modifierLabel);
+    modifierLayout->addWidget(this->previewModifierCombo);
+    modifierLayout->addStretch();
+    mainLayout->addLayout(modifierLayout);
+
+    loadHotkeys();
+}
+
+void SettingsDialog::loadHotkeys()
+{
+    QMapIterator<QString, QKeySequenceEdit*> it(this->hotkeyEdits);
+    while (it.hasNext())
+    {
+        it.next();
+        QString value = DatabaseManager::getInstance()
+            .getConfigurationByName(it.key()).getValue();
+        it.value()->blockSignals(true);
+        it.value()->setKeySequence(QKeySequence::fromString(value));
+        it.value()->blockSignals(false);
+    }
+}
+
+void SettingsDialog::hotkeyEditChanged(const QKeySequence& keySequence)
+{
+    QKeySequenceEdit* edit = qobject_cast<QKeySequenceEdit*>(sender());
+    if (!edit)
+        return;
+
+    QString configKey = edit->property("configKey").toString();
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, configKey, keySequence.toString()));
+
+    emit hotkeyChanged();
+}
+
+void SettingsDialog::restoreDefaultHotkeysClicked()
+{
+    QMap<QString, QString> defaults;
+    defaults["HotkeyStop"] = "F1";              defaults["HotkeyStopAlt"] = "";
+    defaults["HotkeyPlay"] = "F2";              defaults["HotkeyPlayAlt"] = "";
+    defaults["HotkeyPlayNow"] = "";              defaults["HotkeyPlayNowAlt"] = "";
+    defaults["HotkeyLoad"] = "F3";              defaults["HotkeyLoadAlt"] = "";
+    defaults["HotkeyPauseResume"] = "F4";        defaults["HotkeyPauseResumeAlt"] = "";
+    defaults["HotkeyNext"] = "F5";              defaults["HotkeyNextAlt"] = "";
+    defaults["HotkeyUpdate"] = "F6";            defaults["HotkeyUpdateAlt"] = "";
+    defaults["HotkeyInvoke"] = "F7";            defaults["HotkeyInvokeAlt"] = "";
+    defaults["HotkeyPreview"] = "F8";           defaults["HotkeyPreviewAlt"] = "";
+    defaults["HotkeyClear"] = "F10";            defaults["HotkeyClearAlt"] = "";
+    defaults["HotkeyClearVideoLayer"] = "F11";   defaults["HotkeyClearVideoLayerAlt"] = "";
+    defaults["HotkeyClearChannel"] = "F12";      defaults["HotkeyClearChannelAlt"] = "";
+    defaults["HotkeyBank1"] = "Ctrl+1";          defaults["HotkeyBank1Alt"] = "";
+    defaults["HotkeyBank2"] = "Ctrl+2";          defaults["HotkeyBank2Alt"] = "";
+    defaults["HotkeyBank3"] = "Ctrl+3";          defaults["HotkeyBank3Alt"] = "";
+    defaults["HotkeyBank4"] = "Ctrl+4";          defaults["HotkeyBank4Alt"] = "";
+    defaults["HotkeyBank5"] = "Ctrl+5";          defaults["HotkeyBank5Alt"] = "";
+    defaults["HotkeyBank6"] = "Ctrl+6";          defaults["HotkeyBank6Alt"] = "";
+    defaults["HotkeyBank7"] = "Ctrl+7";          defaults["HotkeyBank7Alt"] = "";
+    defaults["HotkeyBank8"] = "Ctrl+8";          defaults["HotkeyBank8Alt"] = "";
+    defaults["HotkeyBank9"] = "Ctrl+9";          defaults["HotkeyBank9Alt"] = "";
+    defaults["HotkeyTogglePreview"] = "Ctrl+P";   defaults["HotkeyTogglePreviewAlt"] = "";
+    defaults["HotkeyToggleAutostep"] = "Ctrl+Shift+N"; defaults["HotkeyToggleAutostepAlt"] = "";
+
+    QMapIterator<QString, QString> it(defaults);
+    while (it.hasNext())
+    {
+        it.next();
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, it.key(), it.value()));
+    }
+
+    // Reset preview modifier to default.
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, "PreviewModifier", "Shift"));
+    if (this->previewModifierCombo)
+        this->previewModifierCombo->setCurrentText("Shift");
+
+    // Reset preview freeze template to default.
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, "PreviewFreezeTemplate", "false"));
+    if (this->previewFreezeTemplateCheck)
+        this->previewFreezeTemplateCheck->setChecked(false);
+
+    loadHotkeys();
+    emit hotkeyChanged();
+}
+
+void SettingsDialog::updateChannelPreview()
+{
+    for (int i = 0; i < 5; i++)
+    {
+        int ch = i + 1;
+        QColor color = QColor::fromHslF(ChannelColor::hue(ch) / 360.0, ChannelColor::saturation(), ChannelColor::lightness());
+        this->channelPreview[i]->setStyleSheet(
+            QString("background-color: %1; color: white; font-size: 10px; font-weight: bold; border-radius: 3px;").arg(color.name()));
+    }
+}
+
+void SettingsDialog::openColorPicker(QLabel* swatch, const QString& dbKey, bool alpha)
+{
+    QColorDialog dialog(this);
+    if (alpha)
+        dialog.setOption(QColorDialog::ShowAlphaChannel);
+
+    QColor current = swatch->property("currentColor").value<QColor>();
+    if (current.isValid())
+        dialog.setCurrentColor(current);
+
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        QColor color = dialog.selectedColor();
+        swatch->setStyleSheet(QString("background-color: %1; border: 1px solid rgba(80,80,80,200); border-radius: 3px;").arg(color.name(QColor::HexArgb)));
+        swatch->setProperty("currentColor", color);
+        QString colorStr = color.name(QColor::HexArgb);
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, dbKey, colorStr));
+
+        // Push to ColorCache so hot paths never re-read the DB.
+        static const QHash<QString, void(*)(const QString&)> cacheSetters = {
+            {"PVWButtonColor",          ColorCache::setPvwButton},
+            {"STEPButtonColor",         ColorCache::setStepButton},
+            {"PreviewBorderColor",      ColorCache::setPreviewBorder},
+            {"AutostepHighlightColor",  ColorCache::setAutostepHighlight},
+            {"ActiveIndicatorColor",    ColorCache::setActiveIndicator},
+            {"LibrarySectionLineColor", ColorCache::setLibrarySectionLine},
+            {"ClockColor1",             ColorCache::setClockColor1},
+            {"ClockColor2",             ColorCache::setClockColor2},
+            {"ClockShadowColor",        ColorCache::setClockShadow},
+            {"HeaderLineMaster",        ColorCache::setHeaderLineMaster},
+            {"HeaderBlockMaster",       ColorCache::setHeaderBlockMaster},
+            {"HeaderTextMaster",        ColorCache::setHeaderTextMaster},
+            {"HeaderLineRundown",       ColorCache::setHeaderLineRundown},
+            {"HeaderBlockRundown",      ColorCache::setHeaderBlockRundown},
+            {"HeaderTextRundown",       ColorCache::setHeaderTextRundown},
+        };
+        auto it = cacheSetters.find(dbKey);
+        if (it != cacheSetters.end())
+            (*it)(colorStr);
+
+        // Per-widget header overrides: HeaderLine_<Panel>, HeaderBlock_<Panel>, HeaderText_<Panel>
+        if (dbKey.startsWith("HeaderLine_"))
+            ColorCache::setLineOverride(dbKey.mid(11), colorStr);
+        else if (dbKey.startsWith("HeaderBlock_"))
+            ColorCache::setBlockOverride(dbKey.mid(12), colorStr);
+        else if (dbKey.startsWith("HeaderText_"))
+            ColorCache::setTextOverride(dbKey.mid(11), colorStr);
+
+        // Live-update the CSS for any header-related color change.
+        if (dbKey.startsWith("Header") || dbKey == "LibrarySectionLineColor")
+            qApp->setStyleSheet(this->stylesheet + WidgetHeaderCSS::generate());
+    }
+}
+
+bool SettingsDialog::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::MouseButtonRelease)
+    {
+        QLabel* swatch = qobject_cast<QLabel*>(obj);
+        if (swatch && swatch->property("dbKey").isValid())
+        {
+            QString dbKey = swatch->property("dbKey").toString();
+            bool alpha = swatch->property("alpha").toBool();
+            openColorPicker(swatch, dbKey, alpha);
+            return true;
+        }
+    }
+    return QDialog::eventFilter(obj, event);
 }

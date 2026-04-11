@@ -31,6 +31,9 @@ class WIDGETS_EXPORT DeviceDialog : public QDialog, Ui::DeviceDialog
         const QString getShadow() const;
         int getPreviewChannel() const;
         int getLockedChannel() const;
+        const QString getTemplatePath() const;
+        const QString getMediaPath() const;
+        const QString getServerPath() const;
 
     protected:
         void accept();
@@ -38,6 +41,7 @@ class WIDGETS_EXPORT DeviceDialog : public QDialog, Ui::DeviceDialog
 
     private:
         bool editMode;
+        QLineEdit* lineEditServerPath = nullptr;
 
         QSharedPointer<CasparDevice> device;
 
@@ -50,4 +54,7 @@ class WIDGETS_EXPORT DeviceDialog : public QDialog, Ui::DeviceDialog
         Q_SLOT void connectionStateChanged(CasparDevice&);
         Q_SLOT void previewChannelChanged(int);
         Q_SLOT void lockedChannelChanged(int);
+        Q_SLOT void browseTemplatePath();
+        Q_SLOT void browseMediaPath();
+        Q_SLOT void browseServerPath();
 };
