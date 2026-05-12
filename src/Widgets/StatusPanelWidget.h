@@ -134,6 +134,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         // Channel lock grid
         QWidget* channelLockGrid;
         QMap<QString, QMap<int, QPushButton*>> lockButtons;  // deviceName -> (channel -> button)
+        QMap<QString, QMap<int, QPushButton*>> timerButtons; // deviceName -> (channel -> ⏱ button)
         QMap<int, QPushButton*> globalLockButtons;           // channel -> button
         int maxChannels;
         QPushButton* previewModeButton;
@@ -146,7 +147,8 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         void setupActivityPanel();
         void setupBanksPanel();
         void rebuildChannelLockGrid();
-        void updateLockButtonStyle(QPushButton* button, bool locked);
+        void updateLockButtonStyle(QPushButton* button, bool locked, bool timed = false, int remainingSecs = 0);
+        void updateTimerButtonStyle(QPushButton* button, bool active);
         void reorderActivity();
         void removeActivityEntry(const QString& key);
         void updateNoActivityLabel();
@@ -171,6 +173,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         Q_SLOT void deviceConnectionStateChanged(CasparDevice&);
         Q_SLOT void deviceMediaChanged(const QList<CasparMedia>&, CasparDevice&);
         Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
+        Q_SLOT void timedLockTick(const QString& deviceName, int channel, int remainingSecs);
         Q_SLOT void previewModeChanged(bool active);
         Q_SLOT void previewModifierHeld(bool held);
         Q_SLOT void autostepModeChanged(bool active);

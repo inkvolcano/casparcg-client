@@ -323,9 +323,17 @@ void RundownStillWidget::setUsed(bool used)
 
 bool RundownStillWidget::executeCommand(Playout::PlayoutType type)
 {
+    // Cancel any stale duration/delay timers from a previous playout before
+    // executing a new command.  The Play path restarts them via schedulePlayAndStop.
+    if (type != Playout::PlayoutType::Play)
+    {
+        this->itemScheduler.cancel();
+        this->progressTimer->stop();
+        this->sendAutoPlay = false;
+    }
+
     if (type == Playout::PlayoutType::Stop)
     {
-        this->sendAutoPlay = false; // Manual stop should not trigger auto-play.
         executeStop();
     }
     else if (type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext())

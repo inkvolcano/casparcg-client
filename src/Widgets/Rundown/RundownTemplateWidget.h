@@ -76,7 +76,9 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         ActiveAnimation* animation;
         QString delayType;
         bool markUsedItems;
+        bool sendAutoPlay = false;
         bool selected = false;
+        QLabel* labelAutoPlayIcon = nullptr;
 
         OscSubscription* stopControlSubscription;
         OscSubscription* playControlSubscription;
@@ -114,6 +116,7 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         Q_SLOT void videolayerChanged(int);
         Q_SLOT void delayChanged(int);
         Q_SLOT void durationChanged(int);
+        Q_SLOT void autoPlayChanged(bool);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);

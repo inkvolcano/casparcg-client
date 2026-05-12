@@ -106,7 +106,6 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         QLabel* searchCountLabel = nullptr;
         QPushButton* searchPrevButton = nullptr;
         QPushButton* searchNextButton = nullptr;
-        QPushButton* searchCloseButton = nullptr;
         QList<SearchResult> searchResults;
         int searchCurrentIndex = -1;
 

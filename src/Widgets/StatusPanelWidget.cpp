@@ -19,6 +19,7 @@
 #include <QtCore/QSet>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGridLayout>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QTreeWidget>
 
@@ -106,6 +107,8 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
                      this, SLOT(deviceRemoved()));
     QObject::connect(&DeviceManager::getInstance(), SIGNAL(channelLockChanged(const QString&, int, bool)),
                      this, SLOT(channelLockChanged(const QString&, int, bool)));
+    QObject::connect(&DeviceManager::getInstance(), SIGNAL(timedLockTick(const QString&, int, int)),
+                     this, SLOT(timedLockTick(const QString&, int, int)));
 
     // Connect preview mode changed signal.
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModeChanged(bool)),
@@ -1482,6 +1485,7 @@ void StatusPanelWidget::rebuildChannelLockGrid()
         this->channelLockGrid = nullptr;
     }
     this->lockButtons.clear();
+    this->timerButtons.clear();
     this->globalLockButtons.clear();
 
     if (this->maxChannels <= 0 || this->serverEntries.isEmpty())
@@ -1518,24 +1522,52 @@ void StatusPanelWidget::rebuildChannelLockGrid()
 
         for (int ch = 1; ch <= this->maxChannels; ch++)
         {
-            QPushButton* btn = new QPushButton(this->channelLockGrid);
-            btn->setFixedSize(28, 20);
-            btn->setCheckable(true);
-            bool locked = DeviceManager::getInstance().isChannelLocked(deviceName, ch);
-            btn->setChecked(locked);
-            updateLockButtonStyle(btn, locked);
+            // Container widget with lock button on top, stopwatch button below.
+            QWidget* cellWidget = new QWidget(this->channelLockGrid);
+            QVBoxLayout* cellLayout = new QVBoxLayout(cellWidget);
+            cellLayout->setContentsMargins(0, 0, 0, 0);
+            cellLayout->setSpacing(1);
+            cellLayout->setAlignment(Qt::AlignCenter);
 
-            QObject::connect(btn, &QPushButton::clicked, [deviceName, ch]() {
+            // Lock button (top).
+            QPushButton* lockBtn = new QPushButton(cellWidget);
+            lockBtn->setFixedSize(28, 20);
+            lockBtn->setCheckable(true);
+            bool locked = DeviceManager::getInstance().isChannelLocked(deviceName, ch);
+            bool timed = DeviceManager::getInstance().isTimedLock(deviceName, ch);
+            int remaining = DeviceManager::getInstance().getRemainingLockSeconds(deviceName, ch);
+            lockBtn->setChecked(locked);
+            updateLockButtonStyle(lockBtn, locked, timed, remaining);
+
+            QObject::connect(lockBtn, &QPushButton::clicked, [deviceName, ch]() {
                 DeviceManager::getInstance().toggleChannelLock(deviceName, ch);
             });
 
-            grid->addWidget(btn, row, ch);
-            this->lockButtons[deviceName][ch] = btn;
+            // Stopwatch button (⏱) below.
+            QPushButton* timerBtn = new QPushButton(QString::fromUtf8("\xe2\x8f\xb1"), cellWidget);
+            timerBtn->setFixedSize(28, 16);
+            updateTimerButtonStyle(timerBtn, timed);
+
+            QObject::connect(timerBtn, &QPushButton::clicked, [this, deviceName, ch]() {
+                bool ok;
+                int minutes = QInputDialog::getInt(this, "Timed Channel Lock",
+                    QString("Lock Ch%1 for how many minutes?").arg(ch),
+                    5, 1, 120, 1, &ok);
+                if (ok)
+                    DeviceManager::getInstance().setTimedChannelLock(deviceName, ch, minutes * 60);
+            });
+
+            cellLayout->addWidget(lockBtn, 0, Qt::AlignCenter);
+            cellLayout->addWidget(timerBtn, 0, Qt::AlignCenter);
+
+            grid->addWidget(cellWidget, row, ch, Qt::AlignCenter);
+            this->lockButtons[deviceName][ch] = lockBtn;
+            this->timerButtons[deviceName][ch] = timerBtn;
         }
         row++;
     }
 
-    // "All" row (global locks).
+    // "All" row (global locks) — no timed lock for global row.
     if (deviceNames.size() > 1)
     {
         QLabel* allLabel = new QLabel("All", this->channelLockGrid);
@@ -1564,9 +1596,20 @@ void StatusPanelWidget::rebuildChannelLockGrid()
     this->channelLockGrid->setVisible(this->showChannelLocks);
 }
 
-void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked)
+void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked, bool timed, int remainingSecs)
 {
-    if (locked)
+    if (locked && timed && remainingSecs > 0)
+    {
+        // Timed lock: amber with countdown.
+        int mins = remainingSecs / 60;
+        int secs = remainingSecs % 60;
+        button->setText(QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0')));
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(200, 150, 30, 200); color: white; border-radius: 3px; "
+            "font-size: 8px; font-weight: bold; border: 1px solid rgba(220, 170, 50, 200); }"
+            "QPushButton:hover { background-color: rgba(220, 170, 50, 200); }");
+    }
+    else if (locked)
     {
         button->setStyleSheet(
             "QPushButton { background-color: rgba(198, 40, 40, 200); color: white; border-radius: 3px; "
@@ -1581,6 +1624,24 @@ void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked)
             "font-size: 9px; border: 1px solid rgba(70, 70, 70, 200); }"
             "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
         button->setText(QString::fromUtf8("\xf0\x9f\x94\x93")); // unlock emoji
+    }
+}
+
+void StatusPanelWidget::updateTimerButtonStyle(QPushButton* button, bool active)
+{
+    if (active)
+    {
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(200, 150, 30, 180); color: white; border-radius: 3px; "
+            "font-size: 10px; border: 1px solid rgba(220, 170, 50, 200); }"
+            "QPushButton:hover { background-color: rgba(220, 170, 50, 200); }");
+    }
+    else
+    {
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(50, 50, 50, 180); color: rgba(120, 120, 120, 200); border-radius: 3px; "
+            "font-size: 10px; border: 1px solid rgba(70, 70, 70, 200); }"
+            "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
     }
 }
 
@@ -1602,10 +1663,25 @@ void StatusPanelWidget::channelLockChanged(const QString& deviceName, int channe
         if (this->lockButtons.contains(deviceName) && this->lockButtons[deviceName].contains(channel))
         {
             bool effectiveLocked = DeviceManager::getInstance().isChannelLocked(deviceName, channel);
+            bool timed = DeviceManager::getInstance().isTimedLock(deviceName, channel);
+            int remaining = DeviceManager::getInstance().getRemainingLockSeconds(deviceName, channel);
             QPushButton* btn = this->lockButtons[deviceName][channel];
             btn->setChecked(effectiveLocked);
-            updateLockButtonStyle(btn, effectiveLocked);
+            updateLockButtonStyle(btn, effectiveLocked, timed, remaining);
+
+            // Update stopwatch button style.
+            if (this->timerButtons.contains(deviceName) && this->timerButtons[deviceName].contains(channel))
+                updateTimerButtonStyle(this->timerButtons[deviceName][channel], timed);
         }
+    }
+}
+
+void StatusPanelWidget::timedLockTick(const QString& deviceName, int channel, int remainingSecs)
+{
+    if (this->lockButtons.contains(deviceName) && this->lockButtons[deviceName].contains(channel))
+    {
+        QPushButton* btn = this->lockButtons[deviceName][channel];
+        updateLockButtonStyle(btn, true, true, remainingSecs);
     }
 }
 

@@ -42,7 +42,11 @@ NdiPanelWidget::NdiPanelWidget(QWidget* parent)
     this->gridLayout->setSpacing(2);
     this->gridLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Center the gridContainer within its parent tab layout.
+    // Fixed size policy so the layout uses our setFixedSize() result.
+    // The .ui has "Ignored" which would make the widget greedy and defeat centering.
+    this->gridContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Center the gridContainer horizontally and vertically in its parent tab area.
     this->verticalLayoutTab->setAlignment(this->gridContainer, Qt::AlignCenter);
 
     // Try to initialize NDI.

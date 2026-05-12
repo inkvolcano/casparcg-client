@@ -3,6 +3,7 @@
 #include "Global.h"
 
 #include "DatabaseManager.h"
+#include "EventManager.h"
 #include "OscSubscription.h"
 #include "OscDeviceManager.h"
 #include "CloneGroupRegistry.h"

@@ -19,6 +19,9 @@ Q_GLOBAL_STATIC(DeviceManager, deviceManager)
 
 DeviceManager::DeviceManager()
 {
+    this->tickTimer = new QTimer(this);
+    this->tickTimer->setInterval(1000);
+    QObject::connect(this->tickTimer, &QTimer::timeout, this, &DeviceManager::timedLockTickUpdate);
 }
 
 DeviceManager& DeviceManager::getInstance()
@@ -156,6 +159,9 @@ bool DeviceManager::isChannelLocked(const QString& deviceName, int channel) cons
 
 void DeviceManager::toggleChannelLock(const QString& deviceName, int channel)
 {
+    // Cancel any active timed lock when manually toggling.
+    clearTimedLock(deviceName, channel);
+
     if (this->lockedChannels[deviceName].contains(channel))
         this->lockedChannels[deviceName].remove(channel);
     else
@@ -190,4 +196,89 @@ QSet<int> DeviceManager::getLockedChannels(const QString& deviceName) const
 QSet<int> DeviceManager::getGlobalLockedChannels() const
 {
     return this->globalLockedChannels;
+}
+
+void DeviceManager::setTimedChannelLock(const QString& deviceName, int channel, int durationSecs)
+{
+    // Clear any existing timed lock on this channel.
+    clearTimedLock(deviceName, channel);
+
+    // Lock the channel.
+    this->lockedChannels[deviceName].insert(channel);
+
+    // Record timed lock data.
+    TimedLockEntry entry;
+    entry.elapsed.start();
+    entry.durationSecs = durationSecs;
+    this->timedLocks[deviceName][channel] = entry;
+
+    // Start the master tick timer if not already running.
+    if (!this->tickTimer->isActive())
+        this->tickTimer->start();
+
+    emit channelLockChanged(deviceName, channel, true);
+    emit timedLockTick(deviceName, channel, durationSecs);
+}
+
+bool DeviceManager::isTimedLock(const QString& deviceName, int channel) const
+{
+    return this->timedLocks.contains(deviceName) &&
+           this->timedLocks.value(deviceName).contains(channel);
+}
+
+int DeviceManager::getRemainingLockSeconds(const QString& deviceName, int channel) const
+{
+    if (!isTimedLock(deviceName, channel))
+        return 0;
+
+    const TimedLockEntry& entry = this->timedLocks.value(deviceName).value(channel);
+    int elapsed = static_cast<int>(entry.elapsed.elapsed() / 1000);
+    int remaining = entry.durationSecs - elapsed;
+    return (remaining > 0) ? remaining : 0;
+}
+
+void DeviceManager::clearTimedLock(const QString& deviceName, int channel)
+{
+    if (this->timedLocks.contains(deviceName))
+    {
+        this->timedLocks[deviceName].remove(channel);
+        if (this->timedLocks[deviceName].isEmpty())
+            this->timedLocks.remove(deviceName);
+    }
+
+    // Stop the tick timer if no timed locks remain.
+    if (this->timedLocks.isEmpty() && this->tickTimer->isActive())
+        this->tickTimer->stop();
+}
+
+void DeviceManager::timedLockTickUpdate()
+{
+    // Collect expired entries to process after iteration.
+    QList<QPair<QString, int>> expired;
+
+    for (auto deviceIt = this->timedLocks.begin(); deviceIt != this->timedLocks.end(); ++deviceIt)
+    {
+        const QString& deviceName = deviceIt.key();
+        for (auto channelIt = deviceIt.value().begin(); channelIt != deviceIt.value().end(); ++channelIt)
+        {
+            int channel = channelIt.key();
+            int elapsed = static_cast<int>(channelIt.value().elapsed.elapsed() / 1000);
+            int remaining = channelIt.value().durationSecs - elapsed;
+
+            if (remaining <= 0)
+                expired.append({deviceName, channel});
+            else
+                emit timedLockTick(deviceName, channel, remaining);
+        }
+    }
+
+    // Unlock expired timed locks.
+    for (const auto& pair : expired)
+    {
+        clearTimedLock(pair.first, pair.second);
+        this->lockedChannels[pair.first].remove(pair.second);
+
+        bool locked = isChannelLocked(pair.first, pair.second);
+        emit channelLockChanged(pair.first, pair.second, locked);
+    }
 }

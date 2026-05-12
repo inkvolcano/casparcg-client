@@ -593,11 +593,9 @@ void InspectorOutputWidget::fillTargetCombo(const QString &type, QString deviceN
 
     if (deviceModel)
     {
-        QList<LibraryModel> models;
-        if (this->libraryFilter.isEmpty())
-            models = DatabaseManager::getInstance().getLibraryByDeviceId(deviceModel->getId());
-        else
-            models = DatabaseManager::getInstance().getLibraryByDeviceIdAndFilter(deviceModel->getId(), this->libraryFilter);
+        // Always use the unfiltered library list for the Inspector target combo.
+        // The library filter is for the Library panel display, not for the Inspector.
+        QList<LibraryModel> models = DatabaseManager::getInstance().getLibraryByDeviceId(deviceModel->getId());
 
         if (models.count() > 0)
         {

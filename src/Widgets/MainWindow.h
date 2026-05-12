@@ -30,6 +30,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QFrame>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QWidget>
 
 class ClockWidget;
@@ -158,12 +159,16 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void toggleAutostepMode();
         Q_SLOT void previewModeActivated(bool active);
         Q_SLOT void previewModifierActivated(bool held);
+        Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
         void updatePreviewBorder();
+        void updateLockBorder();
         bool showPreviewBorder;
         bool previewModeActive;
         bool previewModifierHeld;
         QString previewModifierKey;
         QFrame* previewBorderOverlay = nullptr;
+        QFrame* lockBorderOverlay = nullptr;
+        QLabel* lockBorderLabel = nullptr;
 
         QElapsedTimer m_panicTimer;
         bool m_panicArmed = false;

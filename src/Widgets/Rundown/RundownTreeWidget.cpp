@@ -81,6 +81,8 @@
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QSet>
 
+#include <functional>
+
 #include <QtGui/QClipboard>
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
@@ -715,6 +717,8 @@ void RundownTreeWidget::autoPlayChanged(const AutoPlayChangedEvent& event)
             dynamic_cast<MovieCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
         else if (dynamic_cast<StillCommand*>(childRundownWidget->getCommand()))
             dynamic_cast<StillCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
+        else if (dynamic_cast<TemplateCommand*>(childRundownWidget->getCommand()))
+            dynamic_cast<TemplateCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
 
         // Also sync inner group children.
         if (childRundownWidget->isGroup())
@@ -729,6 +733,8 @@ void RundownTreeWidget::autoPlayChanged(const AutoPlayChangedEvent& event)
                     mc->setAutoPlay(event.getAutoPlay());
                 else if (StillCommand* sc = dynamic_cast<StillCommand*>(gcRundown->getCommand()))
                     sc->setAutoPlay(event.getAutoPlay());
+                else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcRundown->getCommand()))
+                    tc->setAutoPlay(event.getAutoPlay());
             }
         }
     }
@@ -830,6 +836,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                             gcShouldQueue = mc->getAutoPlay();
                                         else if (StillCommand* sc = dynamic_cast<StillCommand*>(gc->getCommand()))
                                             gcShouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+                                        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gc->getCommand()))
+                                            gcShouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
                                         if (gcShouldQueue) { peekNextWidget = gc; break; }
                                     }
                                 }
@@ -846,6 +854,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 childShouldQueue = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(child->getCommand()))
                                 childShouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(child->getCommand()))
+                                childShouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
                             if (childShouldQueue)
                                 peekNextWidget = child;
                         }
@@ -884,6 +894,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 nextHasAutoPlay = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(nextRundown->getCommand()))
                                 nextHasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(nextRundown->getCommand()))
+                                nextHasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
 
                             if (nextHasAutoPlay)
                             {
@@ -995,6 +1007,10 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                     {
                         if (sc->getAutoPlay() && sc->getDuration() > 0) { hasPlayable = true; break; }
                     }
+                    else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(crw->getCommand()))
+                    {
+                        if (tc->getAutoPlay() && tc->getDuration() > 0) { hasPlayable = true; break; }
+                    }
                 }
                 if (!hasPlayable)
                 {
@@ -1025,6 +1041,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 gsq = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(gcrw->getCommand()))
                                 gsq = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcrw->getCommand()))
+                                gsq = tc->getAutoPlay() && tc->getDuration() > 0;
                             else if (gcrw->getLibraryModel()->getType() == Rundown::AUTOPLAYGATEWAY)
                                 gsq = true;
                             if (gsq)
@@ -1044,6 +1062,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                     sq = mc->getAutoPlay();
                 else if (StillCommand* sc = dynamic_cast<StillCommand*>(crw->getCommand()))
                     sq = sc->getAutoPlay() && sc->getDuration() > 0;
+                else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(crw->getCommand()))
+                    sq = tc->getAutoPlay() && tc->getDuration() > 0;
                 else if (crw->getLibraryModel()->getType() == Rundown::AUTOPLAYGATEWAY)
                     sq = true;
                 if (sq)
@@ -1184,6 +1204,11 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                             if (sc->getAutoPlay() && sc->getDuration() > 0)
                                                 triggerChild = gcRundown;
                                         }
+                                        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcRundown->getCommand()))
+                                        {
+                                            if (tc->getAutoPlay() && tc->getDuration() > 0)
+                                                triggerChild = gcRundown;
+                                        }
                                     }
                                 }
 
@@ -1303,9 +1328,8 @@ void RundownTreeWidget::setActive(bool active)
     {
         EventManager::getInstance().fireAllowRemoteTriggeringEvent(AllowRemoteTriggeringEvent(this->allowRemoteRundownTriggering));
         EventManager::getInstance().fireRepositoryRundownEvent(RepositoryRundownEvent(this->repositoryRundown));
+        EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
     }
-
-    EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
 
     QTreeWidgetItem* currentItem = this->treeWidgetRundown->currentItem();
     QWidget* currentItemWidget = this->treeWidgetRundown->itemWidget(currentItem, 0);
@@ -2237,19 +2261,34 @@ void RundownTreeWidget::itemSelectionChanged()
 {
     QList<QTreeWidgetItem*> selected = this->treeWidgetRundown->selectedItems();
 
-    // Clear selected flag on items no longer in the selection.
-    // Validate pointers first — undo/redo can invalidate previousSelectedItems.
+    // Build a set of all currently-live items in the tree.  Undo/redo destroys
+    // and rebuilds items, leaving previousSelectedItems holding dangling
+    // pointers.  Calling indexFromItem() on those would crash inside Qt
+    // (QTreeWidgetItem::icon access violation).
+    QSet<QTreeWidgetItem*> liveItems;
+    std::function<void(QTreeWidgetItem*)> collectLive = [&](QTreeWidgetItem* parent) {
+        for (int i = 0; i < parent->childCount(); i++)
+        {
+            QTreeWidgetItem* item = parent->child(i);
+            liveItems.insert(item);
+            if (item->childCount() > 0)
+                collectLive(item);
+        }
+    };
+    collectLive(this->treeWidgetRundown->invisibleRootItem());
+
+    // Clear selected flag on items no longer in the selection, but only if
+    // they still exist in the tree.
     for (QTreeWidgetItem* prev : this->previousSelectedItems)
     {
+        if (!liveItems.contains(prev))
+            continue; // Dangling pointer; skip silently.
+
         if (!selected.contains(prev))
         {
-            // Verify the item is still in the tree before accessing it.
-            if (this->treeWidgetRundown->indexFromItem(prev).isValid())
-            {
-                QWidget* w = this->treeWidgetRundown->itemWidget(prev, 0);
-                if (w != NULL)
-                    dynamic_cast<AbstractRundownWidget*>(w)->setSelected(false);
-            }
+            QWidget* w = this->treeWidgetRundown->itemWidget(prev, 0);
+            if (w != NULL)
+                dynamic_cast<AbstractRundownWidget*>(w)->setSelected(false);
         }
     }
 
@@ -3176,6 +3215,8 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
             hasAutoPlay = mc->getAutoPlay();
         else if (StillCommand* sc = dynamic_cast<StillCommand*>(rundownWidget->getCommand()))
             hasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
+        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(rundownWidget->getCommand()))
+            hasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
 
         if (hasAutoPlay)
         {
@@ -4424,6 +4465,10 @@ void RundownTreeWidget::chainToNextTopLevelItem(int queueIndex, AbstractRundownW
     {
         hasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
     }
+    else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(nextRundown->getCommand()))
+    {
+        hasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
+    }
 
     if (!hasAutoPlay)
         return;
@@ -4649,6 +4694,8 @@ bool RundownTreeWidget::startAutoPlayFromGatewayExit(const QString& gatewayId, c
                 shouldQueue = mc->getAutoPlay();
             else if (StillCommand* sc = dynamic_cast<StillCommand*>(rw->getCommand()))
                 shouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(rw->getCommand()))
+                shouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
 
             if (shouldQueue)
             {

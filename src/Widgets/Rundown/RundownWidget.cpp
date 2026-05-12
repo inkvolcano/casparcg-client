@@ -41,7 +41,7 @@ RundownWidget::RundownWidget(QWidget* parent)
     this->splitterRundown = new QSplitter(Qt::Horizontal, this);
     this->verticalLayout->removeWidget(this->tabWidgetRundown);
     this->splitterRundown->addWidget(this->tabWidgetRundown);
-    this->verticalLayout->addWidget(this->splitterRundown);
+    this->verticalLayout->addWidget(this->splitterRundown, 1); // stretch=1: splitter takes all remaining space
 
     this->focusedTabWidget = this->tabWidgetRundown;
     this->tabWidgetRundown->setProperty("focused", true);
@@ -1172,7 +1172,8 @@ void RundownWidget::handleCrossTabFocusGateway(const QString& gatewayId, bool fr
 void RundownWidget::setupSearchBar()
 {
     this->searchBar = new QWidget(this);
-    this->searchBar->setVisible(false);
+    this->searchBar->setFixedHeight(26);
+    this->searchBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QHBoxLayout* layout = new QHBoxLayout(this->searchBar);
     layout->setContentsMargins(4, 2, 4, 2);
@@ -1181,35 +1182,33 @@ void RundownWidget::setupSearchBar()
     this->searchLineEdit = new QLineEdit(this->searchBar);
     this->searchLineEdit->setPlaceholderText("Find in all rundowns...");
     this->searchLineEdit->setClearButtonEnabled(true);
+    this->searchLineEdit->setFixedHeight(20);
 
     this->searchPrevButton = new QPushButton(QString::fromUtf8("\xe2\x96\xb2"), this->searchBar);
-    this->searchPrevButton->setFixedSize(28, 22);
+    this->searchPrevButton->setFixedSize(28, 20);
     this->searchNextButton = new QPushButton(QString::fromUtf8("\xe2\x96\xbc"), this->searchBar);
-    this->searchNextButton->setFixedSize(28, 22);
+    this->searchNextButton->setFixedSize(28, 20);
 
     this->searchCountLabel = new QLabel("", this->searchBar);
-    this->searchCountLabel->setFixedWidth(70);
+    this->searchCountLabel->setFixedSize(70, 20);
     this->searchCountLabel->setAlignment(Qt::AlignCenter);
-
-    this->searchCloseButton = new QPushButton(QString::fromUtf8("\xe2\x9c\x95"), this->searchBar);
-    this->searchCloseButton->setFixedSize(22, 22);
 
     layout->addWidget(this->searchLineEdit, 1);
     layout->addWidget(this->searchPrevButton);
     layout->addWidget(this->searchNextButton);
     layout->addWidget(this->searchCountLabel);
-    layout->addWidget(this->searchCloseButton);
 
-    // Insert at top of vertical layout (before splitter).
-    this->verticalLayout->insertWidget(0, this->searchBar);
+    // Insert at top of vertical layout (before splitter) with zero stretch.
+    this->verticalLayout->insertWidget(0, this->searchBar, 0);
 
+    // Ctrl+F focuses the search field.
     QShortcut* findShortcut = new QShortcut(QKeySequence::Find, this);
     QObject::connect(findShortcut, &QShortcut::activated, this, &RundownWidget::showSearch);
 
+    // Escape returns focus to the rundown tree.
     QShortcut* escShortcut = new QShortcut(Qt::Key_Escape, this->searchLineEdit);
     QObject::connect(escShortcut, &QShortcut::activated, this, &RundownWidget::hideSearch);
 
-    QObject::connect(this->searchCloseButton, &QPushButton::clicked, this, &RundownWidget::hideSearch);
     QObject::connect(this->searchLineEdit, &QLineEdit::textChanged, this, &RundownWidget::searchTextChanged);
     QObject::connect(this->searchLineEdit, &QLineEdit::returnPressed, this, &RundownWidget::searchNext);
     QObject::connect(this->searchNextButton, &QPushButton::clicked, this, &RundownWidget::searchNext);
@@ -1218,14 +1217,13 @@ void RundownWidget::setupSearchBar()
 
 void RundownWidget::showSearch()
 {
-    this->searchBar->setVisible(true);
     this->searchLineEdit->setFocus();
     this->searchLineEdit->selectAll();
 }
 
 void RundownWidget::hideSearch()
 {
-    this->searchBar->setVisible(false);
+    this->searchLineEdit->clear();
     this->searchResults.clear();
     this->searchCurrentIndex = -1;
     this->searchCountLabel->setText("");

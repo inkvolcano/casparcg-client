@@ -20,108 +20,88 @@ InspectorTransformWidget::InspectorTransformWidget(QWidget* parent)
 
     // ── Fill ──
     checkFill = new QCheckBox("Fill", this);
-    spinFillX = createNormSpin(0.0, -2.0, 2.0);
-    spinFillY = createNormSpin(0.0, -2.0, 2.0);
-    spinFillScaleX = createNormSpin(1.0, 0.0, 20.0);
-    spinFillScaleY = createNormSpin(1.0, 0.0, 20.0);
-
     grid->addWidget(checkFill, row, 0);
     grid->addWidget(new QLabel("X", this), row, 1);
-    grid->addWidget(spinFillX, row, 2);
+    grid->addWidget(createSliderSpin(spinFillX, 0.0, -2.0, 2.0), row, 2);
     grid->addWidget(new QLabel("Y", this), row, 3);
-    grid->addWidget(spinFillY, row, 4);
+    grid->addWidget(createSliderSpin(spinFillY, 0.0, -2.0, 2.0), row, 4);
     row++;
     grid->addWidget(new QLabel("W", this), row, 1);
-    grid->addWidget(spinFillScaleX, row, 2);
+    grid->addWidget(createSliderSpin(spinFillScaleX, 1.0, 0.0, 20.0), row, 2);
     grid->addWidget(new QLabel("H", this), row, 3);
-    grid->addWidget(spinFillScaleY, row, 4);
+    grid->addWidget(createSliderSpin(spinFillScaleY, 1.0, 0.0, 20.0), row, 4);
     row++;
 
     // ── Opacity ──
     checkOpacity = new QCheckBox("Opacity", this);
-    spinOpacity = createNormSpin(1.0, 0.0, 1.0);
     grid->addWidget(checkOpacity, row, 0);
-    grid->addWidget(spinOpacity, row, 2);
+    grid->addWidget(createSliderSpin(spinOpacity, 1.0, 0.0, 1.0), row, 2, 1, 3);
     row++;
 
     // ── Rotation ──
     checkRotation = new QCheckBox("Rotation", this);
-    spinRotation = createNormSpin(0.0, -720.0, 720.0);
+    QWidget* rotWidget = createSliderSpin(spinRotation, 0.0, -720.0, 720.0);
     spinRotation->setSuffix(QString::fromUtf8("\xc2\xb0")); // °
     grid->addWidget(checkRotation, row, 0);
-    grid->addWidget(spinRotation, row, 2);
+    grid->addWidget(rotWidget, row, 2, 1, 3);
     row++;
 
     // ── Anchor ──
     checkAnchor = new QCheckBox("Anchor", this);
-    spinAnchorX = createNormSpin(0.5, 0.0, 1.0);
-    spinAnchorY = createNormSpin(0.5, 0.0, 1.0);
     grid->addWidget(checkAnchor, row, 0);
     grid->addWidget(new QLabel("X", this), row, 1);
-    grid->addWidget(spinAnchorX, row, 2);
+    grid->addWidget(createSliderSpin(spinAnchorX, 0.5, 0.0, 1.0), row, 2);
     grid->addWidget(new QLabel("Y", this), row, 3);
-    grid->addWidget(spinAnchorY, row, 4);
+    grid->addWidget(createSliderSpin(spinAnchorY, 0.5, 0.0, 1.0), row, 4);
     row++;
 
     // ── Crop ──
     checkCrop = new QCheckBox("Crop", this);
-    spinCropLeft = createNormSpin(0.0, 0.0, 1.0);
-    spinCropTop = createNormSpin(0.0, 0.0, 1.0);
-    spinCropRight = createNormSpin(1.0, 0.0, 1.0);
-    spinCropBottom = createNormSpin(1.0, 0.0, 1.0);
     grid->addWidget(checkCrop, row, 0);
     grid->addWidget(new QLabel("L", this), row, 1);
-    grid->addWidget(spinCropLeft, row, 2);
+    grid->addWidget(createSliderSpin(spinCropLeft, 0.0, 0.0, 1.0), row, 2);
     grid->addWidget(new QLabel("T", this), row, 3);
-    grid->addWidget(spinCropTop, row, 4);
+    grid->addWidget(createSliderSpin(spinCropTop, 0.0, 0.0, 1.0), row, 4);
     row++;
     grid->addWidget(new QLabel("R", this), row, 1);
-    grid->addWidget(spinCropRight, row, 2);
+    grid->addWidget(createSliderSpin(spinCropRight, 1.0, 0.0, 1.0), row, 2);
     grid->addWidget(new QLabel("B", this), row, 3);
-    grid->addWidget(spinCropBottom, row, 4);
+    grid->addWidget(createSliderSpin(spinCropBottom, 1.0, 0.0, 1.0), row, 4);
     row++;
 
     // ── Clip ──
     checkClip = new QCheckBox("Clip", this);
-    spinClipX = createNormSpin(0.0, -2.0, 2.0);
-    spinClipY = createNormSpin(0.0, -2.0, 2.0);
-    spinClipW = createNormSpin(1.0, 0.0, 2.0);
-    spinClipH = createNormSpin(1.0, 0.0, 2.0);
     grid->addWidget(checkClip, row, 0);
     grid->addWidget(new QLabel("X", this), row, 1);
-    grid->addWidget(spinClipX, row, 2);
+    grid->addWidget(createSliderSpin(spinClipX, 0.0, -2.0, 2.0), row, 2);
     grid->addWidget(new QLabel("Y", this), row, 3);
-    grid->addWidget(spinClipY, row, 4);
+    grid->addWidget(createSliderSpin(spinClipY, 0.0, -2.0, 2.0), row, 4);
     row++;
     grid->addWidget(new QLabel("W", this), row, 1);
-    grid->addWidget(spinClipW, row, 2);
+    grid->addWidget(createSliderSpin(spinClipW, 1.0, 0.0, 2.0), row, 2);
     grid->addWidget(new QLabel("H", this), row, 3);
-    grid->addWidget(spinClipH, row, 4);
+    grid->addWidget(createSliderSpin(spinClipH, 1.0, 0.0, 2.0), row, 4);
     row++;
 
     // ── Brightness / Contrast / Saturation / Volume ──
     checkBrightness = new QCheckBox("Bright", this);
-    spinBrightness = createNormSpin(1.0, 0.0, 4.0);
     grid->addWidget(checkBrightness, row, 0);
-    grid->addWidget(spinBrightness, row, 2);
+    grid->addWidget(createSliderSpin(spinBrightness, 1.0, 0.0, 4.0), row, 2, 1, 3);
     row++;
 
     checkContrast = new QCheckBox("Contrast", this);
-    spinContrast = createNormSpin(1.0, 0.0, 4.0);
     grid->addWidget(checkContrast, row, 0);
-    grid->addWidget(spinContrast, row, 2);
+    grid->addWidget(createSliderSpin(spinContrast, 1.0, 0.0, 4.0), row, 2, 1, 3);
     row++;
 
     checkSaturation = new QCheckBox("Saturat.", this);
-    spinSaturation = createNormSpin(1.0, 0.0, 4.0);
     grid->addWidget(checkSaturation, row, 0);
-    grid->addWidget(spinSaturation, row, 2);
+    grid->addWidget(createSliderSpin(spinSaturation, 1.0, 0.0, 4.0), row, 2, 1, 3);
     row++;
 
     checkVolume = new QCheckBox("Volume", this);
-    spinVolume = createNormSpin(1.0, 0.0, 4.0);
     grid->addWidget(checkVolume, row, 0);
-    grid->addWidget(spinVolume, row, 2);
+    grid->addWidget(createSliderSpin(spinVolume, 1.0, 0.0, 4.0), row, 2, 1, 3);
     row++;
 
     // ── Entrance Animation ──
@@ -210,6 +190,48 @@ QDoubleSpinBox* InspectorTransformWidget::createNormSpin(double value, double mi
     spin->setValue(value);
     spin->setFixedHeight(22);
     return spin;
+}
+
+QWidget* InspectorTransformWidget::createSliderSpin(QDoubleSpinBox*& spinOut, double value, double min, double max)
+{
+    const int SLIDER_STEPS = 1000;
+
+    QWidget* container = new QWidget(this);
+    QHBoxLayout* layout = new QHBoxLayout(container);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
+
+    QSlider* slider = new QSlider(Qt::Horizontal, container);
+    slider->setRange(0, SLIDER_STEPS);
+    slider->setFixedHeight(18);
+    slider->setValue(static_cast<int>((value - min) / (max - min) * SLIDER_STEPS));
+
+    QDoubleSpinBox* spin = createNormSpin(value, min, max);
+    spin->setFixedWidth(58);
+
+    layout->addWidget(slider, 1);
+    layout->addWidget(spin);
+
+    // Slider → Spinbox sync.
+    QObject::connect(slider, &QSlider::valueChanged, [spin, slider, min, max, SLIDER_STEPS]() {
+        double val = min + (max - min) * slider->value() / SLIDER_STEPS;
+        spin->blockSignals(true);
+        spin->setValue(val);
+        spin->blockSignals(false);
+        // Emit manually so syncToData fires exactly once.
+        emit spin->valueChanged(val);
+    });
+
+    // Spinbox → Slider sync.
+    QObject::connect(spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+                     [slider, min, max, SLIDER_STEPS](double val) {
+        slider->blockSignals(true);
+        slider->setValue(static_cast<int>((val - min) / (max - min) * SLIDER_STEPS));
+        slider->blockSignals(false);
+    });
+
+    spinOut = spin;
+    return container;
 }
 
 void InspectorTransformWidget::rundownItemSelected(const RundownItemSelectedEvent& event)

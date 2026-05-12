@@ -10,6 +10,7 @@
 #include <QtWidgets/QDoubleSpinBox>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QSlider>
 #include <QtWidgets/QSpinBox>
 #include <QtWidgets/QWidget>
 
@@ -77,6 +78,7 @@ class WIDGETS_EXPORT InspectorTransformWidget : public QWidget
         QComboBox* comboEntranceTween;
 
         QDoubleSpinBox* createNormSpin(double value = 0.0, double min = -2.0, double max = 2.0);
+        QWidget* createSliderSpin(QDoubleSpinBox*& spinOut, double value, double min, double max);
         void loadFromData();
         void syncToData();
 

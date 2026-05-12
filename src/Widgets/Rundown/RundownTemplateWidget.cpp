@@ -8,6 +8,7 @@
 #include "EventManager.h"
 #include "Animations/ActiveAnimation.h"
 #include "Events/ConnectionStateChangedEvent.h"
+#include "Events/Rundown/AutoPlayRundownItemEvent.h"
 #include "Events/Inspector/AddTemplateDataEvent.h"
 #include "Utils/ItemScheduler.h"
 
@@ -70,7 +71,18 @@ RundownTemplateWidget::RundownTemplateWidget(const LibraryModel& model, QWidget*
     QObject::connect(&this->command, SIGNAL(videolayerChanged(int)), this, SLOT(videolayerChanged(int)));
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(durationChanged(int)), this, SLOT(durationChanged(int)));
+    QObject::connect(&this->command, SIGNAL(autoPlayChanged(bool)), this, SLOT(autoPlayChanged(bool)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+
+    // Create auto-play indicator icon (not in .ui file for templates).
+    this->labelAutoPlayIcon = new QLabel(this->frameStatus);
+    this->labelAutoPlayIcon->setGeometry(33, 2, 32, 32);
+    this->labelAutoPlayIcon->setMinimumSize(32, 32);
+    this->labelAutoPlayIcon->setMaximumSize(32, 32);
+    this->labelAutoPlayIcon->setPixmap(QPixmap(":/Graphics/Images/AutoPlayItem.png"));
+    this->labelAutoPlayIcon->setScaledContents(true);
+    this->labelAutoPlayIcon->setVisible(this->command.getAutoPlay() && this->command.getDuration() > 0);
+    this->labelAutoPlayIcon->raise();
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(targetChanged(const TargetChangedEvent&)), this, SLOT(targetChanged(const TargetChangedEvent&)));
@@ -313,8 +325,19 @@ void RundownTemplateWidget::setUsed(bool used)
 
 bool RundownTemplateWidget::executeCommand(Playout::PlayoutType type)
 {
+    // Cancel any stale duration/delay timers from a previous playout before
+    // executing a new command.  The Play/Update paths restart them via the scheduler.
+    if (type != Playout::PlayoutType::Play && type != Playout::PlayoutType::Update)
+    {
+        this->itemScheduler.cancel();
+        this->itemSchedulerPreview.cancel();
+    }
+
     if (type == Playout::PlayoutType::Stop)
+    {
+        this->sendAutoPlay = false; // Manual stop should not trigger auto-play.
         executeStop();
+    }
     else if (type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext())
     {
         if (this->command.getDelay() < 0)
@@ -325,6 +348,10 @@ bool RundownTemplateWidget::executeCommand(Playout::PlayoutType type)
             const QStringList& channelFormats = DatabaseManager::getInstance().getDeviceByName(this->model.getDeviceName()).getChannelFormats().split(",");
             if (this->command.getChannel() > channelFormats.count())
                 return true;
+
+            // If duration is set and autoPlay is enabled, trigger auto-play when it expires.
+            if (this->command.getDuration() > 0 && this->command.getAutoPlay())
+                this->sendAutoPlay = true;
 
             this->itemScheduler.schedulePlayAndStop(
                 this->command.getDelay(),
@@ -407,6 +434,7 @@ void RundownTemplateWidget::executeStop()
     this->itemScheduler.cancel();
     this->itemSchedulerPreview.cancel();
 
+    // Always send CG STOP so the template's stop animation plays.
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
     if (device != NULL && device->isConnected())
     {
@@ -421,6 +449,14 @@ void RundownTemplateWidget::executeStop()
         const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
         if (deviceShadow != NULL && deviceShadow->isConnected())
             deviceShadow->stopTemplate(this->command.getChannel(), this->command.getVideolayer(), this->command.getFlashlayer());
+    }
+
+    // Fire AutoPlay event after CG STOP so the next item plays immediately,
+    // overlapping with the stop animation to avoid going through black.
+    if (this->sendAutoPlay)
+    {
+        EventManager::getInstance().fireAutoPlayRundownItemEvent(AutoPlayRundownItemEvent(this));
+        this->sendAutoPlay = false;
     }
 
     this->loaded = false;
@@ -786,6 +822,16 @@ void RundownTemplateWidget::durationChanged(int duration)
 {
     Q_UNUSED(duration);
     updateDurationLabel();
+    // Auto-play icon is only shown when both autoPlay is enabled AND duration > 0.
+    if (this->labelAutoPlayIcon != nullptr)
+        this->labelAutoPlayIcon->setVisible(this->command.getAutoPlay() && this->command.getDuration() > 0);
+}
+
+void RundownTemplateWidget::autoPlayChanged(bool autoPlay)
+{
+    Q_UNUSED(autoPlay);
+    if (this->labelAutoPlayIcon != nullptr)
+        this->labelAutoPlayIcon->setVisible(this->command.getAutoPlay() && this->command.getDuration() > 0);
 }
 
 void RundownTemplateWidget::updateDurationLabel()

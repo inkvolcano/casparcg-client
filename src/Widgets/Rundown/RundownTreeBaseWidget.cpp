@@ -241,6 +241,9 @@ void RundownTreeBaseWidget::setLocked(bool locked)
 void RundownTreeBaseWidget::writeProperties(QTreeWidgetItem* item, QXmlStreamWriter& writer) const
 {
     AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+    if (widget == nullptr || widget->getLibraryModel() == nullptr)
+        return;
+
     if (widget->getLibraryModel()->getType() == "GROUP")
     {
         QString label = widget->getLibraryModel()->getLabel();
@@ -787,27 +790,37 @@ void RundownTreeBaseWidget::removeAllItems()
     {
         QTreeWidgetItem* item = QTreeWidget::invisibleRootItem()->child(i);
         AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
-        if (widget->isGroup())
+
+        if (widget != nullptr && widget->isGroup())
         {
             for (int j = item->childCount() - 1; j >= 0; j--)
             {
-                QWidget* childWidget = QTreeWidget::itemWidget(item->child(j), 0);
+                QTreeWidgetItem* childItem = item->child(j);
+                QWidget* childWidget = QTreeWidget::itemWidget(childItem, 0);
 
-                // Remove our items from the auto play queue if it exists.
-                EventManager::getInstance().fireRemoveItemFromAutoPlayQueueEvent(RemoveItemFromAutoPlayQueueEvent(item->child(j)));
+                // Handle inner groups (depth 2): clean up grandchildren first.
+                AbstractRundownWidget* childRundown = dynamic_cast<AbstractRundownWidget*>(childWidget);
+                if (childRundown != nullptr && childRundown->isGroup())
+                {
+                    for (int k = childItem->childCount() - 1; k >= 0; k--)
+                    {
+                        QWidget* gcWidget = QTreeWidget::itemWidget(childItem->child(k), 0);
+                        EventManager::getInstance().fireRemoveItemFromAutoPlayQueueEvent(RemoveItemFromAutoPlayQueueEvent(childItem->child(k)));
+                        EventManager::getInstance().fireClearCurrentPlayingItemEvent(ClearCurrentPlayingItemEvent(childItem->child(k)));
+                        delete gcWidget;
+                        delete childItem->child(k);
+                    }
+                }
 
-                // Clear current playing item.
-                EventManager::getInstance().fireClearCurrentPlayingItemEvent(ClearCurrentPlayingItemEvent(item->child(j)));
+                EventManager::getInstance().fireRemoveItemFromAutoPlayQueueEvent(RemoveItemFromAutoPlayQueueEvent(childItem));
+                EventManager::getInstance().fireClearCurrentPlayingItemEvent(ClearCurrentPlayingItemEvent(childItem));
 
                 delete childWidget;
-                delete item->child(j);
+                delete childItem;
             }
         }
 
-        // Remove our items from the auto play queue if it exists.
         EventManager::getInstance().fireRemoveItemFromAutoPlayQueueEvent(RemoveItemFromAutoPlayQueueEvent(item));
-
-        // Clear current playing item.
         EventManager::getInstance().fireClearCurrentPlayingItemEvent(ClearCurrentPlayingItemEvent(item));
 
         delete widget;

@@ -50,6 +50,7 @@
 #include <QtGui/QMouseEvent>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
 #include <QtGui/QShortcut>
 #include <QtWidgets/QToolButton>
@@ -109,6 +110,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->previewBorderOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
     this->previewBorderOverlay->setFrameShape(QFrame::NoFrame);
     this->previewBorderOverlay->hide();
+
+    // Channel lock border overlay (red border + label showing locked channels).
+    this->lockBorderOverlay = new QFrame(Ui::MainWindow::centralWidget);
+    this->lockBorderOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
+    this->lockBorderOverlay->setFrameShape(QFrame::NoFrame);
+    this->lockBorderOverlay->hide();
+
+    this->lockBorderLabel = new QLabel(this->lockBorderOverlay);
+    this->lockBorderLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    this->lockBorderLabel->setStyleSheet(
+        "QLabel { background-color: rgba(198, 40, 40, 230); color: white; "
+        "padding: 3px 10px; font-size: 11px; font-weight: bold; "
+        "border: 0px; border-radius: 0px 0px 6px 6px; }");
+    this->lockBorderLabel->setAlignment(Qt::AlignCenter);
+    this->lockBorderLabel->hide();
+
+    QObject::connect(&DeviceManager::getInstance(),
+                     SIGNAL(channelLockChanged(const QString&, int, bool)),
+                     this, SLOT(channelLockChanged(const QString&, int, bool)));
 
     qApp->installEventFilter(this);
 
@@ -181,7 +201,7 @@ void MainWindow::setupMenu()
     this->viewMenu->addAction("Split Horizontal", this->widgetRundown, SLOT(splitHorizontal()), QKeySequence::fromString("Ctrl+\\"));
     this->viewMenu->addAction("Split Vertical", this->widgetRundown, SLOT(splitVertical()), QKeySequence::fromString("Ctrl+Shift+\\"));
     this->viewMenu->addSeparator();
-    this->viewMenu->addAction("Toggle Fullscreen", this, SLOT(toggleFullscreen()), QKeySequence::fromString("Ctrl+F"));
+    this->viewMenu->addAction("Toggle Fullscreen", this, SLOT(toggleFullscreen()));
 
     this->libraryMenu = new QMenu(this);
     this->libraryMenu->addAction("Refresh Library", this, SLOT(refreshLibrary()), QKeySequence::fromString("Ctrl+R"));
@@ -838,13 +858,80 @@ void MainWindow::updatePreviewBorder()
     }
 }
 
+void MainWindow::channelLockChanged(const QString& deviceName, int channel, bool locked)
+{
+    Q_UNUSED(deviceName);
+    Q_UNUSED(channel);
+    Q_UNUSED(locked);
+    updateLockBorder();
+}
+
+void MainWindow::updateLockBorder()
+{
+    if (this->lockBorderOverlay == nullptr)
+        return;
+
+    // Collect all locked channels across devices and globals (deduped per channel).
+    QMap<int, QStringList> lockedByChannel; // channel -> list of device names ("All" for global)
+    foreach (const DeviceModel& dm, DeviceManager::getInstance().getDeviceModels())
+    {
+        QSet<int> chs = DeviceManager::getInstance().getLockedChannels(dm.getName());
+        foreach (int ch, chs)
+            lockedByChannel[ch].append(dm.getName());
+    }
+    foreach (int ch, DeviceManager::getInstance().getGlobalLockedChannels())
+    {
+        if (!lockedByChannel[ch].contains("All"))
+            lockedByChannel[ch].prepend("All");
+    }
+
+    if (lockedByChannel.isEmpty())
+    {
+        this->lockBorderOverlay->hide();
+        return;
+    }
+
+    // Build label text: "Locked: Ch1, Ch3, Ch5".
+    QStringList parts;
+    QList<int> channels = lockedByChannel.keys();
+    std::sort(channels.begin(), channels.end());
+    for (int ch : channels)
+        parts.append(QString("Ch%1").arg(ch));
+    QString labelText = QString::fromUtf8("\xf0\x9f\x94\x92 Locked: %1").arg(parts.join(", "));
+
+    this->lockBorderOverlay->setStyleSheet(
+        "background: transparent; border: 3px solid rgba(198, 40, 40, 230);");
+    this->lockBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+
+    this->lockBorderLabel->setText(labelText);
+    this->lockBorderLabel->adjustSize();
+    int labelW = this->lockBorderLabel->width();
+    int labelH = this->lockBorderLabel->height();
+    int borderW = this->lockBorderOverlay->width();
+    // Position at top-center, just below the top border line.
+    this->lockBorderLabel->setGeometry((borderW - labelW) / 2, 3, labelW, labelH);
+    this->lockBorderLabel->show();
+
+    this->lockBorderOverlay->raise();
+    this->lockBorderOverlay->show();
+}
+
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-    // Keep the preview border overlay sized to centralWidget.
+    // Keep the preview/lock border overlays sized to centralWidget.
     if (obj == Ui::MainWindow::centralWidget && event->type() == QEvent::Resize)
     {
         if (this->previewBorderOverlay && this->previewBorderOverlay->isVisible())
             this->previewBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+        if (this->lockBorderOverlay && this->lockBorderOverlay->isVisible())
+        {
+            this->lockBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+            // Re-center the label.
+            int labelW = this->lockBorderLabel->width();
+            int labelH = this->lockBorderLabel->height();
+            int borderW = this->lockBorderOverlay->width();
+            this->lockBorderLabel->setGeometry((borderW - labelW) / 2, 3, labelW, labelH);
+        }
     }
 
     if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)

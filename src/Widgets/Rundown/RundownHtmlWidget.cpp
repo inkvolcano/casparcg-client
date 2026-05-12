@@ -257,6 +257,11 @@ void RundownHtmlWidget::setUsed(bool used)
 
 bool RundownHtmlWidget::executeCommand(Playout::PlayoutType type)
 {
+    // Cancel any stale duration/delay timers from a previous playout before
+    // executing a new command.  The Play/Update path restarts them via the scheduler.
+    if (type != Playout::PlayoutType::Play && type != Playout::PlayoutType::Update)
+        this->itemScheduler.cancel();
+
     if (type == Playout::PlayoutType::Stop)
         executeStop();
     else if ((type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext()) || type == Playout::PlayoutType::Update)

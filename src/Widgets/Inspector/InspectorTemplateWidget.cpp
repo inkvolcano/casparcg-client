@@ -22,7 +22,11 @@
 #include <QtGui/QResizeEvent>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QSpacerItem>
 
 InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
     : QWidget(parent),
@@ -32,6 +36,28 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
 
     this->labelFlashlayerField->hide();
     this->spinBoxFlashlayer->hide();
+
+    // Add Auto-play checkbox to the grid layout (below newline behavior, above template data).
+    if (QGridLayout* grid = qobject_cast<QGridLayout*>(this->layout()))
+    {
+        QLabel* labelAutoPlay = new QLabel("Auto-play", this);
+        labelAutoPlay->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
+
+        this->checkBoxAutoPlay = new QCheckBox(this);
+        this->checkBoxAutoPlay->setLayoutDirection(Qt::RightToLeft);
+
+        QHBoxLayout* apLayout = new QHBoxLayout();
+        apLayout->addWidget(this->checkBoxAutoPlay);
+        apLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+
+        // Find the row of verticalLayoutData and insert before it by shifting rows.
+        // Simpler: append at row 99 (effectively last).  Qt allows sparse rows.
+        int newRow = 99;
+        grid->addWidget(labelAutoPlay, newRow, 0);
+        grid->addLayout(apLayout, newRow, 1);
+
+        QObject::connect(this->checkBoxAutoPlay, SIGNAL(stateChanged(int)), this, SLOT(autoPlayChanged(int)));
+    }
 
     this->comboBoxNewlineBehavior->addItem("Ignore");
     this->comboBoxNewlineBehavior->addItem("innerText");
@@ -155,6 +181,8 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
         this->checkBoxUseStoredData->setChecked(this->command->getUseStoredData());
         this->checkBoxUseUppercaseData->setChecked(this->command->getUseUppercaseData());
         this->checkBoxTriggerOnNext->setChecked(this->command->getTriggerOnNext());
+        if (this->checkBoxAutoPlay != nullptr)
+            this->checkBoxAutoPlay->setChecked(this->command->getAutoPlay());
         this->checkBoxSendAsJson->setChecked(this->command->getSendAsJson());
         this->comboBoxNewlineBehavior->setCurrentIndex(this->command->getNewlineBehavior());
 
@@ -185,6 +213,8 @@ void InspectorTemplateWidget::blockAllSignals(bool block)
     this->checkBoxUseStoredData->blockSignals(block);
     this->checkBoxUseUppercaseData->blockSignals(block);
     this->checkBoxTriggerOnNext->blockSignals(block);
+    if (this->checkBoxAutoPlay != nullptr)
+        this->checkBoxAutoPlay->blockSignals(block);
     this->checkBoxSendAsJson->blockSignals(block);
     this->comboBoxNewlineBehavior->blockSignals(block);
     this->treeWidgetTemplateData->blockSignals(block);
@@ -351,6 +381,13 @@ void InspectorTemplateWidget::useUppercaseDataChanged(int state)
 void InspectorTemplateWidget::triggerOnNextChanged(int state)
 {
     this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+}
+
+void InspectorTemplateWidget::autoPlayChanged(int state)
+{
+    if (this->command == NULL)
+        return;
+    this->command->setAutoPlay((state == Qt::Checked) ? true : false);
 }
 
 void InspectorTemplateWidget::newlineBehaviorChanged(int index)

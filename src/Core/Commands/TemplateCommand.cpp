@@ -227,6 +227,18 @@ void TemplateCommand::setTriggerOnNext(bool triggerOnNext)
     emit propertyChanged();
 }
 
+bool TemplateCommand::getAutoPlay() const
+{
+    return this->autoPlay;
+}
+
+void TemplateCommand::setAutoPlay(bool autoPlay)
+{
+    this->autoPlay = autoPlay;
+    emit autoPlayChanged(this->autoPlay);
+    emit propertyChanged();
+}
+
 int TemplateCommand::getNewlineBehavior() const
 {
     return this->newlineBehavior;
@@ -264,6 +276,7 @@ void TemplateCommand::readProperties(boost::property_tree::wptree& pt)
     setUseStoredData(pt.get(L"usestoreddata", Template::DEFAULT_USE_STORED_DATA));
     setUseUppercaseData(pt.get(L"useuppercasedata", Template::DEFAULT_USE_UPPERCASE_DATA));
     setTriggerOnNext(pt.get(L"triggeronnext", Template::DEFAULT_TRIGGER_ON_NEXT));
+    this->autoPlay = pt.get(L"autoplay", false);
     setSendAsJson(pt.get(L"sendasjson", Template::DEFAULT_SEND_AS_JSON));
     setNewlineBehavior(pt.get(L"newlinebehavior", Template::DEFAULT_NEWLINE_BEHAVIOR));
 
@@ -298,6 +311,7 @@ void TemplateCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("usestoreddata", (getUseStoredData() == true) ? "true" : "false");
     writer.writeTextElement("useuppercasedata", (getUseUppercaseData() == true) ? "true" : "false");
     writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
+    writer.writeTextElement("autoplay", (this->autoPlay == true) ? "true" : "false");
     writer.writeTextElement("sendasjson", (getSendAsJson() == true) ? "true" : "false");
     writer.writeTextElement("newlinebehavior", QString::number(this->getNewlineBehavior()));
 
