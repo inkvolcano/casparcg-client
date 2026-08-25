@@ -33,4 +33,8 @@ class WIDGETS_EXPORT AbstractRundownWidget : public AbstractProperties
         virtual void clearDelayedCommands() = 0;
         virtual void setUsed(bool used) = 0;
         virtual void setSelected(bool selected) = 0;
+
+        // Apply or remove the visual indicator for disabled state (italic + gray + dim).
+        // Default no-op so widgets that don't care can ignore it.
+        virtual void setRundownDisabled(bool /*disabled*/) {}
 };

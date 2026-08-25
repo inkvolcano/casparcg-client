@@ -239,6 +239,30 @@ void TemplateCommand::setAutoPlay(bool autoPlay)
     emit propertyChanged();
 }
 
+bool TemplateCommand::getAutoLoop() const
+{
+    return this->autoLoop;
+}
+
+int TemplateCommand::getAutoLoopDelay() const
+{
+    return this->autoLoopDelay;
+}
+
+void TemplateCommand::setAutoLoop(bool autoLoop)
+{
+    this->autoLoop = autoLoop;
+    emit autoLoopChanged(this->autoLoop);
+    emit propertyChanged();
+}
+
+void TemplateCommand::setAutoLoopDelay(int autoLoopDelay)
+{
+    this->autoLoopDelay = autoLoopDelay;
+    emit autoLoopDelayChanged(this->autoLoopDelay);
+    emit propertyChanged();
+}
+
 int TemplateCommand::getNewlineBehavior() const
 {
     return this->newlineBehavior;
@@ -279,6 +303,8 @@ void TemplateCommand::readProperties(boost::property_tree::wptree& pt)
     this->autoPlay = pt.get(L"autoplay", false);
     setSendAsJson(pt.get(L"sendasjson", Template::DEFAULT_SEND_AS_JSON));
     setNewlineBehavior(pt.get(L"newlinebehavior", Template::DEFAULT_NEWLINE_BEHAVIOR));
+    setAutoLoopDelay(pt.get(L"autoloopdelay", Template::DEFAULT_AUTO_LOOP_DELAY));
+    setAutoLoop(pt.get(L"autoloop", Template::DEFAULT_AUTO_LOOP));
 
     if (pt.count(L"templatedata") > 0)
     {
@@ -314,6 +340,8 @@ void TemplateCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("autoplay", (this->autoPlay == true) ? "true" : "false");
     writer.writeTextElement("sendasjson", (getSendAsJson() == true) ? "true" : "false");
     writer.writeTextElement("newlinebehavior", QString::number(this->getNewlineBehavior()));
+    writer.writeTextElement("autoloop", (getAutoLoop() == true) ? "true" : "false");
+    writer.writeTextElement("autoloopdelay", QString::number(getAutoLoopDelay()));
 
     if (this->models.count() > 0)
     {

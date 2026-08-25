@@ -480,6 +480,15 @@ void LibraryWidget::setupTools()
     widgetClearOutput->setText(4, Rundown::CLEAROUTPUT);
     widgetClearOutput->setText(5, "0");
 
+    QTreeWidgetItem* widgetStopAutoLoops = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetStopAutoLoops->setIcon(0, QIcon(":/Graphics/Images/ClearSmall.png"));
+    widgetStopAutoLoops->setText(0, "Stop All Auto-Loops");
+    widgetStopAutoLoops->setText(1, "0");
+    widgetStopAutoLoops->setText(2, "Stop All Auto-Loops");
+    widgetStopAutoLoops->setText(3, "");
+    widgetStopAutoLoops->setText(4, Rundown::STOPAUTOLOOPS);
+    widgetStopAutoLoops->setText(5, "0");
+
     QTreeWidgetItem* widgetCustomCommand = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
     widgetCustomCommand->setIcon(0, QIcon(":/Graphics/Images/CustomCommandSmall.png"));
     widgetCustomCommand->setText(0, "Custom Command");

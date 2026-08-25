@@ -63,6 +63,15 @@ RundownTemplateWidget::RundownTemplateWidget(const LibraryModel& model, QWidget*
     QObject::connect(&this->itemScheduler, SIGNAL(executePlay()), this, SLOT(executePlay()));
     QObject::connect(&this->itemScheduler, SIGNAL(executeStop()), this, SLOT(executeStop()));
     QObject::connect(&this->itemScheduler, SIGNAL(executeUpdate()), this, SLOT(executeUpdate()));
+    QObject::connect(&this->autoLoopController, &AutoLoopController::firePlay, this, [this]() {
+        // Final gate: never re-fire if the loop was turned off or the item disabled.
+        if (this->command.getDisabled() || !this->command.getAutoLoop())
+        {
+            this->autoLoopController.stop();
+            return;
+        }
+        executePlay();
+    });
 
     QObject::connect(&this->itemSchedulerPreview, SIGNAL(executePlay()), this, SLOT(executePlayPreview()));
     QObject::connect(&this->itemSchedulerPreview, SIGNAL(executeStop()), this, SLOT(executeStopPreview()));
@@ -72,7 +81,19 @@ RundownTemplateWidget::RundownTemplateWidget(const LibraryModel& model, QWidget*
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(durationChanged(int)), this, SLOT(durationChanged(int)));
     QObject::connect(&this->command, SIGNAL(autoPlayChanged(bool)), this, SLOT(autoPlayChanged(bool)));
+    QObject::connect(&this->command, SIGNAL(autoLoopChanged(bool)), this, SLOT(autoLoopChanged(bool)));
+    QObject::connect(&this->command, SIGNAL(autoLoopDelayChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
+    QObject::connect(&EventManager::getInstance(), &EventManager::channelCleared, this,
+                     [this](const QString& deviceName, int channel, int videolayer) {
+        // A Clear Output on our channel (or our exact layer) is a panic action — kill the loop.
+        if (deviceName == this->model.getDeviceName() && channel == this->command.getChannel()
+            && (videolayer == -1 || videolayer == this->command.getVideolayer()))
+            this->autoLoopController.stop();
+    });
+    QObject::connect(&EventManager::getInstance(), &EventManager::stopAllAutoLoops, this,
+                     [this]() { this->autoLoopController.stop(); });
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
 
     // Create auto-play indicator icon (not in .ui file for templates).
     this->labelAutoPlayIcon = new QLabel(this->frameStatus);
@@ -203,6 +224,8 @@ AbstractRundownWidget* RundownTemplateWidget::clone()
     command->setUseUppercaseData(this->command.getUseUppercaseData());
     command->setTriggerOnNext(this->command.getTriggerOnNext());
     command->setSendAsJson(this->command.getSendAsJson());
+    command->setAutoLoopDelay(this->command.getAutoLoopDelay());
+    command->setAutoLoop(this->command.getAutoLoop());
 
     return widget;
 }
@@ -303,6 +326,7 @@ void RundownTemplateWidget::clearDelayedCommands()
 {
     this->itemScheduler.cancel();
     this->itemSchedulerPreview.cancel();
+    this->autoLoopController.stop();
 
     this->loaded = false;
 }
@@ -325,6 +349,7 @@ void RundownTemplateWidget::setUsed(bool used)
 
 bool RundownTemplateWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     // Cancel any stale duration/delay timers from a previous playout before
     // executing a new command.  The Play/Update paths restart them via the scheduler.
     if (type != Playout::PlayoutType::Play && type != Playout::PlayoutType::Update)
@@ -336,6 +361,9 @@ bool RundownTemplateWidget::executeCommand(Playout::PlayoutType type)
     if (type == Playout::PlayoutType::Stop)
     {
         this->sendAutoPlay = false; // Manual stop should not trigger auto-play.
+        // Manual stop cancels the auto-loop countdown; a duration-scheduled stop
+        // (ItemScheduler -> executeStop) must not, so the loop can re-fire.
+        this->autoLoopController.stop();
         executeStop();
     }
     else if (type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext())
@@ -562,6 +590,14 @@ void RundownTemplateWidget::executePlay()
         setUsed(true);
 
     this->loaded = false;
+
+    if (this->command.getAutoLoop())
+    {
+        this->autoLoopController.setContext(this->command.getChannel(), this->command.getVideolayer(),
+                                            this->model.getLabel(), "TEMPLATE");
+        this->autoLoopController.setDelaySeconds(this->command.getAutoLoopDelay());
+        this->autoLoopController.restartCountdown();
+    }
 }
 
 void RundownTemplateWidget::executePlayPreview()
@@ -729,6 +765,7 @@ void RundownTemplateWidget::executeClear()
 {
     this->itemScheduler.cancel();
     this->itemSchedulerPreview.cancel();
+    this->autoLoopController.stop();
 
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
     if (device != NULL && device->isConnected())
@@ -753,6 +790,7 @@ void RundownTemplateWidget::executeClearVideolayer()
 {
     this->itemScheduler.cancel();
     this->itemSchedulerPreview.cancel();
+    this->autoLoopController.stop();
 
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
     if (device != NULL && device->isConnected())
@@ -777,6 +815,7 @@ void RundownTemplateWidget::executeClearChannel()
 {
     this->itemScheduler.cancel();
     this->itemSchedulerPreview.cancel();
+    this->autoLoopController.stop();
 
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
     if (device != NULL && device->isConnected())
@@ -810,7 +849,7 @@ void RundownTemplateWidget::channelChanged(int channel)
 void RundownTemplateWidget::videolayerChanged(int videolayer)
 {
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
-    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getChannel(), videolayer);
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
 }
 
 void RundownTemplateWidget::delayChanged(int delay)
@@ -832,6 +871,26 @@ void RundownTemplateWidget::autoPlayChanged(bool autoPlay)
     Q_UNUSED(autoPlay);
     if (this->labelAutoPlayIcon != nullptr)
         this->labelAutoPlayIcon->setVisible(this->command.getAutoPlay() && this->command.getDuration() > 0);
+}
+
+void RundownTemplateWidget::autoLoopChanged(bool autoLoop)
+{
+    if (autoLoop)
+    {
+        this->autoLoopController.setContext(this->command.getChannel(), this->command.getVideolayer(),
+                                            this->model.getLabel(), "TEMPLATE");
+        this->autoLoopController.setDelaySeconds(this->command.getAutoLoopDelay());
+        this->autoLoopController.restartCountdown();
+    }
+    else
+    {
+        this->autoLoopController.stop();
+    }
+}
+
+void RundownTemplateWidget::autoLoopDelayChanged(int delay)
+{
+    this->autoLoopController.setDelaySeconds(delay);
 }
 
 void RundownTemplateWidget::updateDurationLabel()
@@ -1156,4 +1215,12 @@ void RundownTemplateWidget::clearChannelControlSubscriptionReceived(const QStrin
         executeCommand(Playout::PlayoutType::ClearChannel);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
     }
+}
+
+void RundownTemplateWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
+
+    if (disabled)
+        this->autoLoopController.stop();
 }

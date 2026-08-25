@@ -134,6 +134,7 @@ qt_add_library(widgets
     Rundown/RundownRouteVideolayerWidget.cpp Rundown/RundownRouteVideolayerWidget.h Rundown/RundownRouteVideolayerWidget.ui
     Rundown/RundownSaturationWidget.cpp Rundown/RundownSaturationWidget.h Rundown/RundownSaturationWidget.ui
     Rundown/RundownSeparatorWidget.cpp Rundown/RundownSeparatorWidget.h Rundown/RundownSeparatorWidget.ui
+    Rundown/RundownStopAutoLoopsWidget.cpp Rundown/RundownStopAutoLoopsWidget.h Rundown/RundownStopAutoLoopsWidget.ui
     Rundown/RundownSolidColorWidget.cpp Rundown/RundownSolidColorWidget.h Rundown/RundownSolidColorWidget.ui
     Rundown/RundownStillWidget.cpp Rundown/RundownStillWidget.h Rundown/RundownStillWidget.ui
     Rundown/RundownTemplateWidget.cpp Rundown/RundownTemplateWidget.h Rundown/RundownTemplateWidget.ui
@@ -148,6 +149,7 @@ qt_add_library(widgets
     WhatsNewDialog.cpp WhatsNewDialog.h
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
+    Utils/AutoLoopController.cpp Utils/AutoLoopController.h
 )
 target_include_directories(widgets PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/../Common

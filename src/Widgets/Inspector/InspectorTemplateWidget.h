@@ -14,6 +14,7 @@
 #include <QtCore/QObject>
 
 #include <QtWidgets/QCheckBox>
+#include <QtWidgets/QSpinBox>
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QWidget>
 
@@ -36,6 +37,8 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         bool lock;
         NumericValueDelegate* numericDelegate;
         QCheckBox* checkBoxAutoPlay = nullptr;
+        QCheckBox* checkBoxAutoLoop = nullptr;
+        QSpinBox* spinBoxAutoLoopDelay = nullptr;
 
         void updateTemplateDataModels();
         void blockAllSignals(bool block);
@@ -58,6 +61,8 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         Q_SLOT void showAddTemplateDataDialog(const ShowAddTemplateDataDialogEvent&);
         Q_SLOT void triggerOnNextChanged(int);
         Q_SLOT void autoPlayChanged(int);
+        Q_SLOT void autoLoopChanged(int);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
         Q_SLOT void loadDebugData();
 };

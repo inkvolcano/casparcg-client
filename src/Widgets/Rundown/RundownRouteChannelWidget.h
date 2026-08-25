@@ -55,6 +55,7 @@ class WIDGETS_EXPORT RundownRouteChannelWidget : public QWidget, Ui::RundownRout
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

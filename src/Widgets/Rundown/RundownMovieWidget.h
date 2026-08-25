@@ -23,6 +23,7 @@
 #include "Models/LibraryModel.h"
 #include "Models/OscFileModel.h"
 #include "Utils/ItemScheduler.h"
+#include "Utils/AutoLoopController.h"
 
 #include <QtCore/QString>
 
@@ -58,6 +59,7 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
         void requestEndOfClipAutoPlay();
 
@@ -103,6 +105,7 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         OscSubscription* clearChannelControlSubscription;
 
         ItemScheduler itemScheduler;
+        AutoLoopController autoLoopController;
 
         void updateOscWidget();
         void setThumbnail();
@@ -136,6 +139,8 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         Q_SLOT void pausedSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void loopSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void autoPlayChanged(bool);
+        Q_SLOT void autoLoopChanged(bool);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void stopControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playNowControlSubscriptionReceived(const QString&, const QList<QVariant>&);

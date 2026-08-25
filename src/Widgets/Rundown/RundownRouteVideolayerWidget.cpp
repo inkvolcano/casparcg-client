@@ -59,6 +59,7 @@ RundownRouteVideolayerWidget::RundownRouteVideolayerWidget(const LibraryModel& m
     QObject::connect(&this->command, SIGNAL(videolayerChanged(int)), this, SLOT(videolayerChanged(int)));
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
@@ -250,6 +251,7 @@ void RundownRouteVideolayerWidget::setUsed(bool used)
 
 bool RundownRouteVideolayerWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (type == Playout::PlayoutType::Stop)
         executeStop();
     else if (type == Playout::PlayoutType::Play)
@@ -463,7 +465,7 @@ void RundownRouteVideolayerWidget::channelChanged(int channel)
 void RundownRouteVideolayerWidget::videolayerChanged(int videolayer)
 {
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
-    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getChannel(), videolayer);
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
 }
 
 void RundownRouteVideolayerWidget::delayChanged(int delay)
@@ -734,4 +736,9 @@ void RundownRouteVideolayerWidget::clearChannelControlSubscriptionReceived(const
         executeCommand(Playout::PlayoutType::ClearChannel);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
     }
+}
+
+void RundownRouteVideolayerWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

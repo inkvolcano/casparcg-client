@@ -51,6 +51,7 @@ class WIDGETS_EXPORT RundownCommandGatewayWidget : public QWidget, Ui::RundownCo
         virtual void setUsed(bool /* used */) {}
         virtual void setExpanded(bool /* expanded */) {}
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
         void updateVisuals();
         void setTreeItem(QTreeWidgetItem* item);

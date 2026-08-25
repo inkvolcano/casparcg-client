@@ -90,6 +90,7 @@
 #include <QtGui/QAction>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QTreeWidgetItem>
@@ -132,6 +133,8 @@ RundownTreeWidget::RundownTreeWidget(QWidget* parent)
     QObject::connect(&TriggerBankRegistry::getInstance(), SIGNAL(bankTriggered(int)), this, SLOT(bankTriggered(int)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(autostepModeChanged(bool)), this, SLOT(autostepModeChanged(bool)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(unitSettingsChanged()), this, SLOT(refreshUnitLabels()));
+    QObject::connect(&EventManager::getInstance(), &EventManager::previewModifierHeld,
+                     this, [this](bool held) { updatePreviewChannelBadgeForSelection(held); });
 
     // Direct signal connections for drag-and-drop from library/preset.
     // These bypass the EventManager so drops work into any pane, not just the focused one.
@@ -205,6 +208,7 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/RouteChannelSmall.png"), "Route Channel", this, SLOT(addRouteChannelItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/RouteVideolayerSmall.png"), "Route Video Layer", this, SLOT(addRouteVideolayerItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/SeparatorSmall.png"), "Separator", this, SLOT(addSeparatorItem()));
+    this->contextMenuOther->addAction(QIcon(":/Graphics/Images/ClearSmall.png"), "Stop All Auto-Loops", this, SLOT(addStopAutoLoopsItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/SolidColorSmall.png"), "Solid Color", this, SLOT(addSolidColorItem()));
 
     this->contextMenuTools = new QMenu(this);
@@ -299,6 +303,31 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuRundown->addSeparator();
     this->contextMenuRundown->addMenu(this->contextMenuColor);
     this->contextMenuRundown->addSeparator();
+
+    // Auto-Loop submenu (visible only for Movie/Still/Template; see customContextMenuRequested).
+    this->contextMenuAutoLoop = new QMenu(tr("Auto-Loop"), this);
+    this->actionAutoLoopEnable = this->contextMenuAutoLoop->addAction(tr("Enable Auto-Loop"));
+    this->actionAutoLoopEnable->setCheckable(true);
+    QObject::connect(this->actionAutoLoopEnable, SIGNAL(triggered()), this, SLOT(autoLoopEnableTriggered()));
+    this->contextMenuAutoLoop->addSeparator();
+    this->actionAutoLoopDelay5 = this->contextMenuAutoLoop->addAction(tr("Every 5 seconds"));
+    this->actionAutoLoopDelay10 = this->contextMenuAutoLoop->addAction(tr("Every 10 seconds"));
+    this->actionAutoLoopDelay30 = this->contextMenuAutoLoop->addAction(tr("Every 30 seconds"));
+    this->actionAutoLoopDelay60 = this->contextMenuAutoLoop->addAction(tr("Every 60 seconds"));
+    this->actionAutoLoopDelay5->setCheckable(true);
+    this->actionAutoLoopDelay10->setCheckable(true);
+    this->actionAutoLoopDelay30->setCheckable(true);
+    this->actionAutoLoopDelay60->setCheckable(true);
+    QObject::connect(this->actionAutoLoopDelay5, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(5); });
+    QObject::connect(this->actionAutoLoopDelay10, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(10); });
+    QObject::connect(this->actionAutoLoopDelay30, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(30); });
+    QObject::connect(this->actionAutoLoopDelay60, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(60); });
+    this->contextMenuAutoLoop->addSeparator();
+    this->actionAutoLoopDelayCustom = this->contextMenuAutoLoop->addAction(tr("Custom Delay..."));
+    QObject::connect(this->actionAutoLoopDelayCustom, SIGNAL(triggered()), this, SLOT(autoLoopDelayCustomTriggered()));
+    this->contextMenuRundown->addMenu(this->contextMenuAutoLoop);
+    this->contextMenuRundown->addSeparator();
+
     this->contextMenuRundown->addAction(/*QIcon(":/Graphics/Images/PresetSmall.png"),*/ "Save as Preset...", this, SLOT(saveAsPreset()));
     this->contextMenuRundown->addSeparator();
     this->contextMenuRundown->addAction(/*QIcon(":/Graphics/Images/Remove.png"),*/ "Remove", this, SLOT(removeSelectedItems()));
@@ -1657,6 +1686,27 @@ void RundownTreeWidget::gpiBindingChanged(int gpiPort, Playout::PlayoutType bind
     gpiBindings[gpiPort] = binding;
 }
 
+namespace
+{
+    // Apply a functor to autoLoop-capable commands of every selected item.
+    template <typename F>
+    void forEachSelectedAutoLoopCommand(QTreeWidget* tree, F fn)
+    {
+        for (QTreeWidgetItem* item : tree->selectedItems())
+        {
+            QWidget* widget = tree->itemWidget(item, 0);
+            AbstractRundownWidget* rw = dynamic_cast<AbstractRundownWidget*>(widget);
+            if (rw == nullptr) continue;
+
+            AbstractCommand* cmd = rw->getCommand();
+            if (auto* mc = dynamic_cast<MovieCommand*>(cmd))          fn(mc);
+            else if (auto* sc = dynamic_cast<StillCommand*>(cmd))     fn(sc);
+            else if (auto* tc = dynamic_cast<TemplateCommand*>(cmd))  fn(tc);
+            else if (auto* gc = dynamic_cast<GroupCommand*>(cmd))     fn(gc);
+        }
+    }
+}
+
 void RundownTreeWidget::customContextMenuRequested(const QPoint& point)
 {
     foreach (QAction* action, this->contextMenuRundown->actions())
@@ -1813,6 +1863,30 @@ void RundownTreeWidget::customContextMenuRequested(const QPoint& point)
             action->setVisible(!isGatewayItem);
     }
 
+    // Auto-Loop submenu: visible only if at least one Movie/Still/Template item is selected.
+    bool hasAutoLoopTarget = false;
+    bool firstAutoLoopEnabled = false;
+    int firstAutoLoopDelay = 5;
+    bool tookFirst = false;
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [&](auto* cmd) {
+        hasAutoLoopTarget = true;
+        if (!tookFirst)
+        {
+            firstAutoLoopEnabled = cmd->getAutoLoop();
+            firstAutoLoopDelay = cmd->getAutoLoopDelay();
+            tookFirst = true;
+        }
+    });
+    this->contextMenuAutoLoop->menuAction()->setVisible(hasAutoLoopTarget);
+    if (hasAutoLoopTarget)
+    {
+        this->actionAutoLoopEnable->setChecked(firstAutoLoopEnabled);
+        this->actionAutoLoopDelay5->setChecked(firstAutoLoopDelay == 5);
+        this->actionAutoLoopDelay10->setChecked(firstAutoLoopDelay == 10);
+        this->actionAutoLoopDelay30->setChecked(firstAutoLoopDelay == 30);
+        this->actionAutoLoopDelay60->setChecked(firstAutoLoopDelay == 60);
+    }
+
     this->contextMenuRundown->exec(this->treeWidgetRundown->mapToGlobal(point));
 }
 
@@ -1918,6 +1992,40 @@ void RundownTreeWidget::contextMenuRundownTriggered(QAction* action)
         this->treeWidgetRundown->groupItems();
     else if (action->text() == "Ungroup")
         this->treeWidgetRundown->ungroupItems();
+}
+
+void RundownTreeWidget::autoLoopEnableTriggered()
+{
+    bool enable = this->actionAutoLoopEnable->isChecked();
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [enable](auto* cmd) {
+        cmd->setAutoLoop(enable);
+    });
+}
+
+void RundownTreeWidget::autoLoopDelayPresetTriggered(int seconds)
+{
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [seconds](auto* cmd) {
+        cmd->setAutoLoopDelay(seconds);
+    });
+}
+
+void RundownTreeWidget::autoLoopDelayCustomTriggered()
+{
+    // Seed with the delay of the first selected supported item.
+    int seed = 5;
+    bool taken = false;
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [&seed, &taken](auto* cmd) {
+        if (!taken) { seed = cmd->getAutoLoopDelay(); taken = true; }
+    });
+
+    bool ok = false;
+    int val = QInputDialog::getInt(this, tr("Auto-Loop Delay"),
+                                   tr("Seconds between fires:"), seed, 1, 3600, 1, &ok);
+    if (!ok) return;
+
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [val](auto* cmd) {
+        cmd->setAutoLoopDelay(val);
+    });
 }
 
 void RundownTreeWidget::createLinkedClone()
@@ -2288,7 +2396,20 @@ void RundownTreeWidget::itemSelectionChanged()
         {
             QWidget* w = this->treeWidgetRundown->itemWidget(prev, 0);
             if (w != NULL)
+            {
                 dynamic_cast<AbstractRundownWidget*>(w)->setSelected(false);
+
+                // If this item was showing preview channel due to held modifier, revert to base.
+                AbstractRundownWidget* rw = dynamic_cast<AbstractRundownWidget*>(w);
+                if (rw != nullptr && rw->getCommand() != nullptr)
+                {
+                    QLabel* labelColor = w->findChild<QLabel*>("labelColor");
+                    if (labelColor != nullptr)
+                        RundownWidgetHelper::updateChannelBadge(labelColor,
+                            rw->getCommand()->getBaseChannel(),
+                            rw->getCommand()->getVideolayer());
+                }
+            }
         }
     }
 
@@ -2299,6 +2420,11 @@ void RundownTreeWidget::itemSelectionChanged()
         if (w != NULL)
             dynamic_cast<AbstractRundownWidget*>(w)->setSelected(true);
     }
+
+    // If the preview modifier is currently held, refresh the new selection's
+    // channel badge to the preview channel.
+    if (shouldPreviewRedirect())
+        updatePreviewChannelBadgeForSelection(true);
 
     this->previousSelectedItems = selected;
 
@@ -2593,6 +2719,20 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
 
     if (source == Action::ActionType::GpiPulse && !rundownWidget->getCommand()->getAllowGpi())
         return true; // Gpi pulses cannot trigger this item.
+
+    // Check disabled — block execution on disabled items or items inside a disabled group.
+    if (rundownWidget->getCommand() != nullptr && rundownWidget->getCommand()->getDisabled())
+        return true;
+    {
+        QTreeWidgetItem* p = currentItem ? currentItem->parent() : nullptr;
+        while (p != nullptr)
+        {
+            AbstractRundownWidget* pw = dynamic_cast<AbstractRundownWidget*>(this->treeWidgetRundown->itemWidget(p, 0));
+            if (pw != nullptr && pw->getCommand() != nullptr && pw->getCommand()->getDisabled())
+                return true;
+            p = p->parent();
+        }
+    }
 
     // Check channel lock — block execution on locked channels.
     // In preview mode, check the preview channel instead of the original.
@@ -3340,6 +3480,11 @@ void RundownTreeWidget::addFileRecorderItem()
 void RundownTreeWidget::addSeparatorItem()
 {
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::SEPARATOR);
+}
+
+void RundownTreeWidget::addStopAutoLoopsItem()
+{
+    EventManager::getInstance().fireAddRudnownItemEvent(Rundown::STOPAUTOLOOPS);
 }
 
 void RundownTreeWidget::addAutoPlayGatewayItem()
@@ -4493,6 +4638,38 @@ bool RundownTreeWidget::shouldPreviewRedirect() const
         (modifier == "Alt" && (mods & Qt::AltModifier));
 
     return modifierHeld;
+}
+
+void RundownTreeWidget::updatePreviewChannelBadgeForSelection(bool showPreview)
+{
+    if (!this->active)
+        return;
+
+    QList<QTreeWidgetItem*> selected = this->treeWidgetRundown->selectedItems();
+    for (QTreeWidgetItem* item : selected)
+    {
+        AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(this->treeWidgetRundown->itemWidget(item, 0));
+        if (widget == nullptr || widget->getCommand() == nullptr || widget->getLibraryModel() == nullptr)
+            continue;
+
+        // Find this item's channel badge label.
+        QLabel* labelColor = dynamic_cast<QWidget*>(widget)->findChild<QLabel*>("labelColor");
+        if (labelColor == nullptr)
+            continue;
+
+        int videolayer = widget->getCommand()->getVideolayer();
+        int channelToShow = widget->getCommand()->getBaseChannel();
+
+        if (showPreview)
+        {
+            QString deviceName = widget->getLibraryModel()->getDeviceName();
+            const QSharedPointer<DeviceModel> dm = DeviceManager::getInstance().getDeviceModelByName(deviceName);
+            if (dm != nullptr && dm->getPreviewChannel() > 0)
+                channelToShow = dm->getPreviewChannel();
+        }
+
+        RundownWidgetHelper::updateChannelBadge(labelColor, channelToShow, videolayer);
+    }
 }
 
 RundownTreeWidget::GatewayExitLocation RundownTreeWidget::findGatewayExitInTree(const QString& gatewayId, const QString& exitLabel) const

@@ -122,6 +122,13 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QMenu* contextMenuOther;
         QMenu* contextMenuLibrary;
         QMenu* contextMenuRundown;
+        QMenu* contextMenuAutoLoop;
+        QAction* actionAutoLoopEnable;
+        QAction* actionAutoLoopDelay5;
+        QAction* actionAutoLoopDelay10;
+        QAction* actionAutoLoopDelay30;
+        QAction* actionAutoLoopDelay60;
+        QAction* actionAutoLoopDelayCustom;
         QAction* addGatewayExitAction;
 
         QMap<int, Playout::PlayoutType> gpiBindings;
@@ -173,12 +180,14 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         void setAutoPlayHighlight(AbstractRundownWidget* widget, bool highlight);
         void setAutostepHighlight(QTreeWidgetItem* item, bool highlight);
         bool shouldPreviewRedirect() const;
+        void updatePreviewChannelBadgeForSelection(bool showPreview);
 
         Q_SLOT void addPlayoutCommandItem();
         Q_SLOT void addCustomCommandItem();
         Q_SLOT void addChromaKeyItem();
         Q_SLOT void addPrintItem();
         Q_SLOT void addSeparatorItem();
+        Q_SLOT void addStopAutoLoopsItem();
         Q_SLOT void addFileRecorderItem();
         Q_SLOT void addImageScrollerItem();
         Q_SLOT void addAudioItem();
@@ -221,6 +230,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addGatewayExit();
         Q_SLOT void contextMenuColorTriggered(QAction*);
         Q_SLOT void contextMenuRundownTriggered(QAction*);
+        Q_SLOT void autoLoopEnableTriggered();
+        Q_SLOT void autoLoopDelayPresetTriggered(int seconds);
+        Q_SLOT void autoLoopDelayCustomTriggered();
         Q_SLOT void customContextMenuRequested(const QPoint&);
         Q_SLOT void gpiPortTriggered(int, GpiDevice*);
         Q_SLOT void currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*);

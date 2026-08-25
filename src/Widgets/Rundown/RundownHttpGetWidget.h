@@ -52,6 +52,7 @@ class WIDGETS_EXPORT RundownHttpGetWidget : public QWidget, Ui::RundownHttpGetWi
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     protected:
         virtual bool eventFilter(QObject* target, QEvent* event);

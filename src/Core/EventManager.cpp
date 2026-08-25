@@ -381,6 +381,21 @@ void EventManager::fireChannelActivityEvent(const ChannelActivityEvent& event)
     emit channelActivity(event);
 }
 
+void EventManager::fireAutoLoopCountdownEvent(const AutoLoopCountdownEvent& event)
+{
+    emit autoLoopCountdown(event);
+}
+
+void EventManager::fireChannelClearedEvent(const QString& deviceName, int channel, int videolayer)
+{
+    emit channelCleared(deviceName, channel, videolayer);
+}
+
+void EventManager::fireStopAllAutoLoopsEvent()
+{
+    emit stopAllAutoLoops();
+}
+
 void EventManager::fireMuteAudioEvent(bool mute)
 {
     emit muteAudio(mute);
@@ -509,6 +524,8 @@ void EventManager::fireAddRudnownItemEvent(const QString& type)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "File Recorder", "", "", Rundown::FILERECORDER, 0, "")));
     else if (type == Rundown::SEPARATOR)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "", "", "", Rundown::SEPARATOR, 0, "")));
+    else if (type == Rundown::STOPAUTOLOOPS)
+        emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Stop All Auto-Loops", "", "", Rundown::STOPAUTOLOOPS, 0, "")));
     else if (type == Rundown::GRID)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Grid", "", "", Rundown::GRID, 0, "")));
     else if (type == Rundown::SOLIDCOLOR)

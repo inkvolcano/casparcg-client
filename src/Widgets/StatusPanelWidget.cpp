@@ -96,6 +96,10 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(channelActivity(const ChannelActivityEvent&)),
                      this, SLOT(channelActivity(const ChannelActivityEvent&)));
 
+    // Connect auto-loop countdown event.
+    QObject::connect(&EventManager::getInstance(), SIGNAL(autoLoopCountdown(const AutoLoopCountdownEvent&)),
+                     this, SLOT(autoLoopCountdown(const AutoLoopCountdownEvent&)));
+
     // Connect bank assignment changed event.
     QObject::connect(&EventManager::getInstance(), SIGNAL(bankAssignmentChanged(const BankAssignmentChangedEvent&)),
                      this, SLOT(bankAssignmentChanged(const BankAssignmentChangedEvent&)));
@@ -551,6 +555,93 @@ void StatusPanelWidget::channelActivity(const ChannelActivityEvent& event)
     rowLayout->addWidget(entry.labelInfo, 1);
 
     // Layer label (badge showing channel-layer)
+    QSize slSz = this->bigBoldMode ? QSize(48, 30) : QSize(36, 24);
+    entry.labelLayer = new QLabel(entry.row);
+    entry.labelLayer->setText(QString("%1-%2").arg(event.getChannel()).arg(event.getVideolayer()));
+    entry.labelLayer->setStyleSheet(channelColorStyle(event.getChannel()));
+    entry.labelLayer->setAlignment(Qt::AlignCenter);
+    entry.labelLayer->setFixedSize(slSz);
+    rowLayout->addWidget(entry.labelLayer, 0);
+
+    this->activityLayout->addWidget(entry.row);
+    this->activityEntries[key] = entry;
+
+    reorderActivity();
+}
+
+void StatusPanelWidget::autoLoopCountdown(const AutoLoopCountdownEvent& event)
+{
+    // Use a distinct key so this row doesn't collide with the regular play activity row
+    // for the same channel/videolayer.
+    QString key = QString("autoloop:%1:%2").arg(event.getChannel()).arg(event.getVideolayer());
+
+    if (!event.getActive())
+    {
+        if (this->activityEntries.contains(key))
+        {
+            removeActivityEntry(key);
+            reorderActivity();
+        }
+        return;
+    }
+
+    int remaining = event.getRemainingSeconds();
+    int total = event.getTotalSeconds();
+    if (total < 1) total = 1;
+
+    if (this->activityEntries.contains(key))
+    {
+        ActivityEntry& e = this->activityEntries[key];
+        e.lastUpdate = QDateTime::currentMSecsSinceEpoch();
+        if (e.progressBar != nullptr)
+        {
+            e.progressBar->setRange(0, total);
+            e.progressBar->setValue(remaining);
+            e.progressBar->setFormat(QString("%1s").arg(remaining));
+        }
+        if (e.labelInfo != nullptr)
+            e.labelInfo->setText(event.getLabel());
+        return;
+    }
+
+    ActivityEntry entry;
+    entry.isStatic = false; // Progress-style entry so cleanup can remove stale rows if events stop.
+    entry.itemType = event.getItemType();
+    entry.channel = event.getChannel();
+    entry.videolayer = event.getVideolayer();
+    entry.label = event.getLabel();
+    entry.lastUpdate = QDateTime::currentMSecsSinceEpoch();
+
+    entry.row = new QWidget(this->widgetActivity);
+    QHBoxLayout* rowLayout = new QHBoxLayout(entry.row);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(4);
+
+    int sbFS = this->bigBoldMode ? 13 : 9;
+    int sbH  = this->bigBoldMode ? 22 : 16;
+    entry.labelTypeBadge = new QLabel(entry.row);
+    entry.labelTypeBadge->setText(tr("LOOP"));
+    // Distinct color for loop badges — dark cyan/teal.
+    entry.labelTypeBadge->setStyleSheet(QString("background-color: #008b8b; color: white; border-radius: 3px; font-size: %1px; font-weight: bold; padding: 1px 4px;").arg(sbFS));
+    entry.labelTypeBadge->setFixedHeight(sbH);
+    rowLayout->addWidget(entry.labelTypeBadge, 0);
+
+    int siFS = this->bigBoldMode ? 14 : 11;
+    entry.labelInfo = new QLabel(entry.row);
+    entry.labelInfo->setText(event.getLabel());
+    entry.labelInfo->setStyleSheet(QString("font-size: %1px; color: white;").arg(siFS));
+    entry.labelInfo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(entry.labelInfo, 1);
+
+    entry.progressBar = new QProgressBar(entry.row);
+    entry.progressBar->setRange(0, total);
+    entry.progressBar->setValue(remaining);
+    entry.progressBar->setFormat(QString("%1s").arg(remaining));
+    entry.progressBar->setTextVisible(true);
+    entry.progressBar->setFixedWidth(this->bigBoldMode ? 90 : 70);
+    entry.progressBar->setFixedHeight(sbH);
+    rowLayout->addWidget(entry.progressBar, 0);
+
     QSize slSz = this->bigBoldMode ? QSize(48, 30) : QSize(36, 24);
     entry.labelLayer = new QLabel(entry.row);
     entry.labelLayer->setText(QString("%1-%2").arg(event.getChannel()).arg(event.getVideolayer()));

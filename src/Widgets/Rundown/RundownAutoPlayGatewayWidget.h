@@ -55,6 +55,7 @@ class WIDGETS_EXPORT RundownAutoPlayGatewayWidget : public QWidget, Ui::RundownA
         virtual void clearDelayedCommands() {}
         virtual void setUsed(bool /* used */) {}
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
         void updateVisuals();
         void setTreeItem(QTreeWidgetItem* item);

@@ -58,6 +58,7 @@ RundownVolumeWidget::RundownVolumeWidget(const LibraryModel& model, QWidget* par
     QObject::connect(&this->command, SIGNAL(videolayerChanged(int)), this, SLOT(videolayerChanged(int)));
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(preview(const PreviewEvent&)), this, SLOT(preview(const PreviewEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
@@ -261,6 +262,7 @@ void RundownVolumeWidget::setUsed(bool used)
 
 bool RundownVolumeWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (type == Playout::PlayoutType::Stop)
         executeStop();
     else if (type == Playout::PlayoutType::Play || type == Playout::PlayoutType::Update)
@@ -393,7 +395,7 @@ void RundownVolumeWidget::channelChanged(int channel)
 void RundownVolumeWidget::videolayerChanged(int videolayer)
 {
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
-    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getChannel(), videolayer);
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
 }
 
 void RundownVolumeWidget::delayChanged(int delay)
@@ -628,4 +630,9 @@ void RundownVolumeWidget::clearChannelControlSubscriptionReceived(const QString&
         executeCommand(Playout::PlayoutType::ClearChannel);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
     }
+}
+
+void RundownVolumeWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

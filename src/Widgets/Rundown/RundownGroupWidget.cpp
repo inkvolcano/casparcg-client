@@ -15,6 +15,8 @@
 #include <QtCore/QObject>
 #include <QtCore/QSet>
 
+#include <functional>
+
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QGraphicsOpacityEffect>
@@ -69,11 +71,32 @@ RundownGroupWidget::RundownGroupWidget(const LibraryModel& model, QWidget* paren
     QObject::connect(&this->command, SIGNAL(durationChanged(int)), this, SLOT(durationChanged(int)));
     QObject::connect(&this->command, SIGNAL(notesChanged(const QString&)), this, SLOT(notesChanged(const QString&)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(autoPlayChanged(bool)), this, SLOT(autoPlayChanged(bool)));
     QObject::connect(&this->command, SIGNAL(loopChanged(bool)), this, SLOT(loopChanged(bool)));
+    QObject::connect(&this->command, SIGNAL(autoLoopChanged(bool)), this, SLOT(autoLoopChanged(bool)));
+    QObject::connect(&this->command, SIGNAL(autoLoopDelayChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
+    QObject::connect(&this->autoLoopController, &AutoLoopController::firePlay, this, [this]() {
+        // Final gate: never re-fire if the loop was turned off or the group disabled.
+        if (this->command.getDisabled() || !this->command.getAutoLoop())
+        {
+            this->autoLoopController.stop();
+            return;
+        }
+        fireGroupPlay();
+    });
     QObject::connect(&this->command, SIGNAL(allowRemoteTriggeringChanged(bool)), this, SLOT(configureOscSubscriptions()));
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
+    QObject::connect(&EventManager::getInstance(), &EventManager::channelCleared, this,
+                     [this](const QString& /*deviceName*/, int channel, int videolayer) {
+        // A Clear Output on our channel is a panic action — kill the group loop.
+        // Groups span devices/layers via their children, so match on channel only.
+        if (channel == this->command.getChannel() && (videolayer == -1 || videolayer == this->command.getVideolayer()))
+            this->autoLoopController.stop();
+    });
+    QObject::connect(&EventManager::getInstance(), &EventManager::stopAllAutoLoops, this,
+                     [this]() { this->autoLoopController.stop(); });
 
     QObject::connect(GpiManager::getInstance().getGpiDevice().data(), SIGNAL(connectionStateChanged(bool, GpiDevice*)), this, SLOT(gpiConnectionStateChanged(bool, GpiDevice*)));
 
@@ -107,9 +130,42 @@ AbstractRundownWidget* RundownGroupWidget::clone()
     command->setNotes(this->command.getNotes());
     command->setAutoPlay(this->command.getAutoPlay());
     command->setLoop(this->command.getLoop());
+    command->setAutoLoopDelay(this->command.getAutoLoopDelay());
+    command->setAutoLoop(this->command.getAutoLoop());
     command->setTriggerBank(this->command.getTriggerBank());
 
     return widget;
+}
+
+void RundownGroupWidget::fireGroupPlay()
+{
+    if (this->parentWidget() == NULL || this->parentWidget()->parentWidget() == NULL)
+        return;
+
+    QTreeWidget* treeWidgetRundown = dynamic_cast<QTreeWidget*>(this->parentWidget()->parentWidget());
+    if (treeWidgetRundown == NULL)
+        return;
+
+    // Groups can live at top level or nested one level deep — search both.
+    for (int i = 0; i < treeWidgetRundown->invisibleRootItem()->childCount(); i++)
+    {
+        QTreeWidgetItem* child = treeWidgetRundown->invisibleRootItem()->child(i);
+        if (treeWidgetRundown->itemWidget(child, 0) == this)
+        {
+            EventManager::getInstance().fireExecuteRundownItemEvent(ExecuteRundownItemEvent(Playout::PlayoutType::Play, child));
+            return;
+        }
+
+        for (int j = 0; j < child->childCount(); j++)
+        {
+            QTreeWidgetItem* inner = child->child(j);
+            if (treeWidgetRundown->itemWidget(inner, 0) == this)
+            {
+                EventManager::getInstance().fireExecuteRundownItemEvent(ExecuteRundownItemEvent(Playout::PlayoutType::Play, inner));
+                return;
+            }
+        }
+    }
 }
 
 void RundownGroupWidget::readProperties(boost::property_tree::wptree& pt)
@@ -222,6 +278,7 @@ void RundownGroupWidget::setUsed(bool used)
 
 bool RundownGroupWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (this->active)
     {
         this->animation->setChannel(this->command.getChannel());
@@ -235,14 +292,26 @@ bool RundownGroupWidget::executeCommand(Playout::PlayoutType type)
 
         if (this->markUsedItems)
             setUsed(true);
+
+        if (this->command.getAutoLoop())
+        {
+            this->autoLoopController.setContext(this->command.getChannel(), this->command.getVideolayer(),
+                                                this->model.getLabel(), "GROUP");
+            this->autoLoopController.setDelaySeconds(this->command.getAutoLoopDelay());
+            this->autoLoopController.restartCountdown();
+        }
     }
     else if (type == Playout::PlayoutType::Stop)
     {
+        this->autoLoopController.stop();
+
         if (this->command.getDuration() > 0)
             EventManager::getInstance().fireDurationChangedEvent(DurationChangedEvent(0));
     }
     else if (type == Playout::PlayoutType::Clear || type == Playout::PlayoutType::ClearVideoLayer || type == Playout::PlayoutType::ClearChannel)
     {
+        this->autoLoopController.stop();
+
         EventManager::getInstance().fireDurationChangedEvent(DurationChangedEvent(0)); // Reset counter.
     }
 
@@ -422,6 +491,26 @@ void RundownGroupWidget::autoPlayChanged(bool autoPlay)
 void RundownGroupWidget::loopChanged(bool loop)
 {
     this->labelLoop->setVisible(loop);
+}
+
+void RundownGroupWidget::autoLoopChanged(bool autoLoop)
+{
+    if (autoLoop)
+    {
+        this->autoLoopController.setContext(this->command.getChannel(), this->command.getVideolayer(),
+                                            this->model.getLabel(), "GROUP");
+        this->autoLoopController.setDelaySeconds(this->command.getAutoLoopDelay());
+        this->autoLoopController.restartCountdown();
+    }
+    else
+    {
+        this->autoLoopController.stop();
+    }
+}
+
+void RundownGroupWidget::autoLoopDelayChanged(int delay)
+{
+    this->autoLoopController.setDelaySeconds(delay);
 }
 
 void RundownGroupWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
@@ -685,4 +774,53 @@ void RundownGroupWidget::updateGroupInfo(QTreeWidgetItem* groupItem)
     // Resize the type list label to fit.
     this->labelTypeList->setGeometry(this->labelTypeList->x(), this->labelTypeList->y(),
                                       this->labelTypeList->width(), typeLineCount * lineHeight);
+}
+
+void RundownGroupWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
+
+    if (disabled)
+        this->autoLoopController.stop();
+
+    // Cascade visual to children: walk the QTreeWidget to find our tree item
+    // and apply the disabled visual to each child (without modifying their own flag).
+    QTreeWidget* tree = nullptr;
+    QWidget* w = this->parentWidget();
+    while (w != nullptr)
+    {
+        if (QTreeWidget* tw = qobject_cast<QTreeWidget*>(w)) { tree = tw; break; }
+        w = w->parentWidget();
+    }
+    if (tree == nullptr) return;
+
+    // Find this widget's tree item.
+    QTreeWidgetItem* myItem = nullptr;
+    std::function<bool(QTreeWidgetItem*)> findMe = [&](QTreeWidgetItem* parent) -> bool {
+        for (int i = 0; i < parent->childCount(); i++)
+        {
+            QTreeWidgetItem* it = parent->child(i);
+            if (tree->itemWidget(it, 0) == this) { myItem = it; return true; }
+            if (it->childCount() > 0 && findMe(it)) return true;
+        }
+        return false;
+    };
+    findMe(tree->invisibleRootItem());
+    if (myItem == nullptr) return;
+
+    // Apply effective state to each descendant: own.disabled OR group-disabled.
+    std::function<void(QTreeWidgetItem*)> cascade = [&](QTreeWidgetItem* parent) {
+        for (int i = 0; i < parent->childCount(); i++)
+        {
+            QTreeWidgetItem* child = parent->child(i);
+            AbstractRundownWidget* cw = dynamic_cast<AbstractRundownWidget*>(tree->itemWidget(child, 0));
+            if (cw != nullptr && cw->getCommand() != nullptr)
+            {
+                bool effective = disabled || cw->getCommand()->getDisabled();
+                cw->setRundownDisabled(effective);
+            }
+            if (child->childCount() > 0) cascade(child);
+        }
+    };
+    cascade(myItem);
 }

@@ -11,6 +11,10 @@
 #include "Models/TransitionModel.h"
 #include "Models/TweenModel.h"
 
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+
 InspectorMovieWidget::InspectorMovieWidget(QWidget* parent)
     : QWidget(parent),
       model(NULL), command(NULL), enableOscInputControl(false)
@@ -24,6 +28,32 @@ InspectorMovieWidget::InspectorMovieWidget(QWidget* parent)
     loadDirection();
     loadTransition();
     loadTween();
+
+    // Programmatically append Auto-Loop row to the grid layout (row 12).
+    QGridLayout* grid = qobject_cast<QGridLayout*>(this->layout());
+    if (grid != nullptr)
+    {
+        QLabel* labelAutoLoop = new QLabel(tr("Auto-Loop"), this);
+        this->checkBoxAutoLoop = new QCheckBox(this);
+        this->checkBoxAutoLoop->setLayoutDirection(Qt::RightToLeft);
+        this->spinBoxAutoLoopDelay = new QSpinBox(this);
+        this->spinBoxAutoLoopDelay->setMinimum(1);
+        this->spinBoxAutoLoopDelay->setMaximum(3600);
+        this->spinBoxAutoLoopDelay->setSuffix(tr(" sec"));
+        this->spinBoxAutoLoopDelay->setValue(Movie::DEFAULT_AUTO_LOOP_DELAY);
+
+        QHBoxLayout* row = new QHBoxLayout();
+        row->setContentsMargins(0, 0, 0, 0);
+        row->addWidget(this->checkBoxAutoLoop);
+        row->addWidget(this->spinBoxAutoLoopDelay, 1);
+
+        int newRow = grid->rowCount();
+        grid->addWidget(labelAutoLoop, newRow, 0);
+        grid->addLayout(row, newRow, 1, 1, 2);
+
+        QObject::connect(this->checkBoxAutoLoop, SIGNAL(stateChanged(int)), this, SLOT(autoLoopChanged(int)));
+        QObject::connect(this->spinBoxAutoLoopDelay, SIGNAL(valueChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
+    }
 }
 
 void InspectorMovieWidget::rundownItemSelected(const RundownItemSelectedEvent& event)
@@ -60,6 +90,11 @@ void InspectorMovieWidget::rundownItemSelected(const RundownItemSelectedEvent& e
             this->checkBoxAutoPlay->setEnabled(false);
             this->checkBoxAutoPlay->setChecked(false);
         }
+
+        if (this->checkBoxAutoLoop != nullptr)
+            this->checkBoxAutoLoop->setChecked(this->command->getAutoLoop());
+        if (this->spinBoxAutoLoopDelay != nullptr)
+            this->spinBoxAutoLoopDelay->setValue(this->command->getAutoLoopDelay());
     }
 
     blockAllSignals(false);
@@ -77,6 +112,10 @@ void InspectorMovieWidget::blockAllSignals(bool block)
     this->checkBoxFreezeOnLoad->blockSignals(block);
     this->checkBoxTriggerOnNext->blockSignals(block);
     this->checkBoxAutoPlay->blockSignals(block);
+    if (this->checkBoxAutoLoop != nullptr)
+        this->checkBoxAutoLoop->blockSignals(block);
+    if (this->spinBoxAutoLoopDelay != nullptr)
+        this->spinBoxAutoLoopDelay->blockSignals(block);
 }
 
 void InspectorMovieWidget::loadDirection()
@@ -166,4 +205,18 @@ void InspectorMovieWidget::lengthChanged(int length)
 void InspectorMovieWidget::autoPlayChanged(int state)
 {
     this->command->setAutoPlay((state == Qt::Checked) ? true : false);
+}
+
+void InspectorMovieWidget::autoLoopChanged(int state)
+{
+    if (this->command == nullptr)
+        return;
+    this->command->setAutoLoop(state == Qt::Checked);
+}
+
+void InspectorMovieWidget::autoLoopDelayChanged(int delay)
+{
+    if (this->command == nullptr)
+        return;
+    this->command->setAutoLoopDelay(delay);
 }

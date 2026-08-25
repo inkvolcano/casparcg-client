@@ -178,6 +178,10 @@ void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
     setUpdatesEnabled(true);
     checkEmptyRundown();
 
+    // Re-apply disabled visual to every item after rebuild.
+    for (int i = 0; i < QTreeWidget::invisibleRootItem()->childCount(); i++)
+        refreshDisabledVisual(QTreeWidget::invisibleRootItem()->child(i));
+
     m_undoRestoring = false;
 }
 
@@ -828,6 +832,93 @@ void RundownTreeBaseWidget::removeAllItems()
     }
 
     checkEmptyRundown();
+}
+
+void RundownTreeBaseWidget::toggleDisableSelectedItems()
+{
+    UndoScope undo(this, "Toggle Disable Items");
+    QList<QTreeWidgetItem*> selected = QTreeWidget::selectedItems();
+    if (selected.isEmpty())
+        return;
+
+    // If any selected item is enabled, disable all; otherwise enable all (toggle by majority).
+    bool anyEnabled = false;
+    for (QTreeWidgetItem* item : selected)
+    {
+        AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+        if (widget != nullptr && widget->getCommand() != nullptr && !widget->getCommand()->getDisabled())
+        {
+            anyEnabled = true;
+            break;
+        }
+    }
+
+    bool newState = anyEnabled; // disable if any enabled, else enable all
+
+    for (QTreeWidgetItem* item : selected)
+    {
+        AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+        if (widget != nullptr && widget->getCommand() != nullptr)
+        {
+            widget->getCommand()->setDisabled(newState);
+            refreshDisabledVisual(item);
+        }
+    }
+}
+
+void RundownTreeBaseWidget::applyDisabledVisual(QTreeWidgetItem* item, bool effectiveDisabled)
+{
+    if (item == nullptr)
+        return;
+    AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+    if (widget == nullptr)
+        return;
+    widget->setRundownDisabled(effectiveDisabled);
+}
+
+void RundownTreeBaseWidget::refreshDisabledVisual(QTreeWidgetItem* item)
+{
+    if (item == nullptr)
+        return;
+
+    AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+    if (widget == nullptr || widget->getCommand() == nullptr)
+        return;
+
+    bool ownDisabled = widget->getCommand()->getDisabled();
+
+    // Check parent group disabled state (only depth-1 cascade — children of disabled group).
+    bool parentDisabled = false;
+    QTreeWidgetItem* parent = item->parent();
+    while (parent != nullptr)
+    {
+        AbstractRundownWidget* parentWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(parent, 0));
+        if (parentWidget != nullptr && parentWidget->getCommand() != nullptr && parentWidget->getCommand()->getDisabled())
+        {
+            parentDisabled = true;
+            break;
+        }
+        parent = parent->parent();
+    }
+
+    bool effective = ownDisabled || parentDisabled;
+    applyDisabledVisual(item, effective);
+
+    // If this item is a group, cascade refresh to all descendants so their visual is up to date.
+    if (widget->isGroup())
+    {
+        for (int i = 0; i < item->childCount(); i++)
+        {
+            QTreeWidgetItem* child = item->child(i);
+            refreshDisabledVisual(child);
+            if (dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(child, 0)) != nullptr &&
+                dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(child, 0))->isGroup())
+            {
+                for (int j = 0; j < child->childCount(); j++)
+                    refreshDisabledVisual(child->child(j));
+            }
+        }
+    }
 }
 
 void RundownTreeBaseWidget::groupItems()
@@ -1585,8 +1676,10 @@ void RundownTreeBaseWidget::keyPressEvent(QKeyEvent* event)
     {
         if (event->key() == Qt::Key_Delete)
             removeSelectedItems();
-        else if (event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)
+        else if (event->key() == Qt::Key_D && event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier))
             duplicateSelectedItems();
+        else if (event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)
+            toggleDisableSelectedItems();
         else if (event->key() == Qt::Key_C && event->modifiers() == Qt::ControlModifier)
             copySelectedItems();
         else if (event->key() == Qt::Key_V && event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier))

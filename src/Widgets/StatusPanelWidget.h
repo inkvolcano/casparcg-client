@@ -7,6 +7,7 @@
 
 #include "Events/Rundown/BankAssignmentChangedEvent.h"
 #include "Events/Rundown/ChannelActivityEvent.h"
+#include "Events/Rundown/AutoLoopCountdownEvent.h"
 #include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/CasparMedia.h"
 
@@ -166,6 +167,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         Q_SLOT void toggleBanksCollapse();
         Q_SLOT void channelActivity(const ChannelActivityEvent&);
         Q_SLOT void playbackProgress(const PlaybackProgressEvent&);
+        Q_SLOT void autoLoopCountdown(const AutoLoopCountdownEvent&);
         Q_SLOT void cleanupStaleEntries();
         Q_SLOT void bankAssignmentChanged(const BankAssignmentChangedEvent&);
         Q_SLOT void deviceAdded(CasparDevice&);

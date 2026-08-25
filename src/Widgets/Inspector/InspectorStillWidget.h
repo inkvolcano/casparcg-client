@@ -11,6 +11,8 @@
 #include <QtCore/QObject>
 #include <QtCore/QString>
 
+#include <QtWidgets/QCheckBox>
+#include <QtWidgets/QSpinBox>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWidget
@@ -25,6 +27,9 @@ class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWi
         StillCommand* command;
         bool enableOscInputControl;
 
+        QCheckBox* checkBoxAutoLoop = nullptr;
+        QSpinBox* spinBoxAutoLoopDelay = nullptr;
+
         void loadDirection();
         void loadTransition();
         void loadTween();
@@ -37,5 +42,7 @@ class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWi
         Q_SLOT void useAutoChanged(int);
         Q_SLOT void triggerOnNextChanged(int);
         Q_SLOT void autoPlayChanged(int);
+        Q_SLOT void autoLoopChanged(int);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
 };

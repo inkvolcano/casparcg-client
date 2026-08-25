@@ -71,6 +71,9 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void groupItems();
         void ungroupItems();
         void removeSelectedItems();
+        void toggleDisableSelectedItems();
+        void applyDisabledVisual(QTreeWidgetItem* item, bool effectiveDisabled);
+        void refreshDisabledVisual(QTreeWidgetItem* item);
         void removeAllItems();
         void selectItemAbove();
         void selectItemBelow();

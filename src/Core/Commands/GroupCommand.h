@@ -26,17 +26,25 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         const QString& getNotes() const;
         bool getAutoPlay() const;
         bool getLoop() const;
+        bool getAutoLoop() const;
+        int getAutoLoopDelay() const;
 
         void setNotes(const QString& notes);
         void setAutoPlay(bool autoPlay);
         void setLoop(bool loop);
+        void setAutoLoop(bool autoLoop);
+        void setAutoLoopDelay(int autoLoopDelay);
 
     private:
         QString notes = Group::DEFAULT_NOTE;
         bool autoPlay = Group::DEFAULT_AUTO_PLAY;
         bool loop = Group::DEFAULT_LOOP;
+        bool autoLoop = Group::DEFAULT_AUTO_LOOP;
+        int autoLoopDelay = Group::DEFAULT_AUTO_LOOP_DELAY;
 
         Q_SIGNAL void notesChanged(const QString&);
         Q_SIGNAL void autoPlayChanged(bool);
         Q_SIGNAL void loopChanged(bool);
+        Q_SIGNAL void autoLoopChanged(bool);
+        Q_SIGNAL void autoLoopDelayChanged(int);
 };

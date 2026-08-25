@@ -33,6 +33,7 @@ RundownSeparatorWidget::RundownSeparatorWidget(const LibraryModel& model, QWidge
     RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, 0);
     QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
     QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
         RundownWidgetHelper::updateBankBadge(bankBadge, bank);
         RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
     });
@@ -148,6 +149,7 @@ void RundownSeparatorWidget::setInGroup(bool inGroup)
 
 bool RundownSeparatorWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     Q_UNUSED(type);
 
     if (this->active)
@@ -157,4 +159,9 @@ bool RundownSeparatorWidget::executeCommand(Playout::PlayoutType type)
     }
 
     return false;
+}
+
+void RundownSeparatorWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

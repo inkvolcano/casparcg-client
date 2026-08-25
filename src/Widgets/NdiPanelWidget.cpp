@@ -494,6 +494,15 @@ void NdiPanelWidget::updateGridSize()
     // Clamp grid width to never exceed available width (prevents pushing column wider).
     gridW = qMin(gridW, availW);
     this->gridContainer->setFixedSize(qMax(gridW, 1), qMax(gridH, 1));
+
+    // Force the parent layout to re-run alignment so the grid recenters
+    // when the panel is resized via the splitter/resize handle. Without
+    // this, the QVBoxLayout caches positions and the grid stays offset
+    // until something invalidates the layout (e.g., collapse/expand).
+    if (this->verticalLayoutTab != nullptr)
+        this->verticalLayoutTab->invalidate();
+    if (parent != nullptr)
+        parent->updateGeometry();
 }
 
 // ---- Collapse / expand ----

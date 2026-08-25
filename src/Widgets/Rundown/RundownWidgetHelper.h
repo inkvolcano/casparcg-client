@@ -21,6 +21,7 @@
 #include <QtGui/QFont>
 #include <QtGui/QPalette>
 #include <QtWidgets/QFrame>
+#include <QtWidgets/QGraphicsOpacityEffect>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 
@@ -397,6 +398,43 @@ namespace RundownWidgetHelper
         if (custom.isValid() && !val.isEmpty() && custom.alpha() > 0)
             return custom;
         return QColor::fromHslF(ChannelColor::hue(channel) / 360.0, ChannelColor::activeSaturation(), ChannelColor::activeLightness());
+    }
+
+    // Apply or remove the "disabled" visual: italic + gray text on the main label,
+    // and a half-opacity dim on the whole row.  Marker property avoids stomping
+    // unrelated graphics effects (e.g., the 0.25-opacity from setUsed).
+    inline void applyDisabledStyle(QWidget* rowWidget, QLabel* labelLabel, bool disabled)
+    {
+        if (labelLabel != nullptr)
+        {
+            QFont font = labelLabel->font();
+            font.setItalic(disabled);
+            labelLabel->setFont(font);
+            labelLabel->setStyleSheet(disabled
+                ? "color: rgba(140, 140, 140, 200); font-style: italic;"
+                : "");
+        }
+
+        if (rowWidget == nullptr)
+            return;
+
+        if (disabled)
+        {
+            QGraphicsOpacityEffect* existing = qobject_cast<QGraphicsOpacityEffect*>(rowWidget->graphicsEffect());
+            if (existing == nullptr || existing->property("disabledEffect").toBool() == false)
+            {
+                QGraphicsOpacityEffect* effect = new QGraphicsOpacityEffect(rowWidget);
+                effect->setOpacity(0.55);
+                effect->setProperty("disabledEffect", true);
+                rowWidget->setGraphicsEffect(effect);
+            }
+        }
+        else
+        {
+            QGraphicsOpacityEffect* existing = qobject_cast<QGraphicsOpacityEffect*>(rowWidget->graphicsEffect());
+            if (existing != nullptr && existing->property("disabledEffect").toBool() == true)
+                rowWidget->setGraphicsEffect(nullptr);
+        }
     }
 
     inline void setActiveColorPalette(QWidget* label, int channel)

@@ -55,6 +55,7 @@ class WIDGETS_EXPORT RundownRouteVideolayerWidget : public QWidget, Ui::RundownR
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

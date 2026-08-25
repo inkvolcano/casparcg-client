@@ -57,6 +57,28 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
         grid->addLayout(apLayout, newRow, 1);
 
         QObject::connect(this->checkBoxAutoPlay, SIGNAL(stateChanged(int)), this, SLOT(autoPlayChanged(int)));
+
+        QLabel* labelAutoLoop = new QLabel("Auto-Loop", this);
+        labelAutoLoop->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
+
+        this->checkBoxAutoLoop = new QCheckBox(this);
+        this->checkBoxAutoLoop->setLayoutDirection(Qt::RightToLeft);
+
+        this->spinBoxAutoLoopDelay = new QSpinBox(this);
+        this->spinBoxAutoLoopDelay->setMinimum(1);
+        this->spinBoxAutoLoopDelay->setMaximum(3600);
+        this->spinBoxAutoLoopDelay->setSuffix(tr(" sec"));
+        this->spinBoxAutoLoopDelay->setValue(Template::DEFAULT_AUTO_LOOP_DELAY);
+
+        QHBoxLayout* alLayout = new QHBoxLayout();
+        alLayout->addWidget(this->checkBoxAutoLoop);
+        alLayout->addWidget(this->spinBoxAutoLoopDelay, 1);
+
+        grid->addWidget(labelAutoLoop, newRow + 1, 0);
+        grid->addLayout(alLayout, newRow + 1, 1);
+
+        QObject::connect(this->checkBoxAutoLoop, SIGNAL(stateChanged(int)), this, SLOT(autoLoopChanged(int)));
+        QObject::connect(this->spinBoxAutoLoopDelay, SIGNAL(valueChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
     }
 
     this->comboBoxNewlineBehavior->addItem("Ignore");
@@ -183,6 +205,10 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
         this->checkBoxTriggerOnNext->setChecked(this->command->getTriggerOnNext());
         if (this->checkBoxAutoPlay != nullptr)
             this->checkBoxAutoPlay->setChecked(this->command->getAutoPlay());
+        if (this->checkBoxAutoLoop != nullptr)
+            this->checkBoxAutoLoop->setChecked(this->command->getAutoLoop());
+        if (this->spinBoxAutoLoopDelay != nullptr)
+            this->spinBoxAutoLoopDelay->setValue(this->command->getAutoLoopDelay());
         this->checkBoxSendAsJson->setChecked(this->command->getSendAsJson());
         this->comboBoxNewlineBehavior->setCurrentIndex(this->command->getNewlineBehavior());
 
@@ -215,6 +241,10 @@ void InspectorTemplateWidget::blockAllSignals(bool block)
     this->checkBoxTriggerOnNext->blockSignals(block);
     if (this->checkBoxAutoPlay != nullptr)
         this->checkBoxAutoPlay->blockSignals(block);
+    if (this->checkBoxAutoLoop != nullptr)
+        this->checkBoxAutoLoop->blockSignals(block);
+    if (this->spinBoxAutoLoopDelay != nullptr)
+        this->spinBoxAutoLoopDelay->blockSignals(block);
     this->checkBoxSendAsJson->blockSignals(block);
     this->comboBoxNewlineBehavior->blockSignals(block);
     this->treeWidgetTemplateData->blockSignals(block);
@@ -388,6 +418,20 @@ void InspectorTemplateWidget::autoPlayChanged(int state)
     if (this->command == NULL)
         return;
     this->command->setAutoPlay((state == Qt::Checked) ? true : false);
+}
+
+void InspectorTemplateWidget::autoLoopChanged(int state)
+{
+    if (this->command == NULL)
+        return;
+    this->command->setAutoLoop(state == Qt::Checked);
+}
+
+void InspectorTemplateWidget::autoLoopDelayChanged(int delay)
+{
+    if (this->command == NULL)
+        return;
+    this->command->setAutoLoopDelay(delay);
 }
 
 void InspectorTemplateWidget::newlineBehaviorChanged(int index)

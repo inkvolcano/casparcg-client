@@ -144,6 +144,18 @@ QString AbstractCommand::getCloneGroupId() const
     return this->cloneGroupId;
 }
 
+bool AbstractCommand::getDisabled() const
+{
+    return this->disabled;
+}
+
+void AbstractCommand::setDisabled(bool disabled)
+{
+    this->disabled = disabled;
+    emit disabledChanged(this->disabled);
+    emit propertyChanged();
+}
+
 void AbstractCommand::setCloneGroupId(const QString& cloneGroupId)
 {
     if (!this->cloneGroupId.isEmpty() && this->cloneGroupId != cloneGroupId)
@@ -169,6 +181,7 @@ void AbstractCommand::readProperties(boost::property_tree::wptree& pt)
     setStoryId(QString::fromStdWString(pt.get(L"storyid", QString("").toStdWString())));
     setTriggerBank(pt.get(L"triggerbank", 0));
     setCloneGroupId(QString::fromStdWString(pt.get(L"clonegroupid", QString("").toStdWString())));
+    setDisabled(pt.get(L"disabled", false));
 }
 
 void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
@@ -184,4 +197,6 @@ void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("triggerbank", QString::number(getTriggerBank()));
     if (!getCloneGroupId().isEmpty())
         writer.writeTextElement("clonegroupid", getCloneGroupId());
+    if (getDisabled())
+        writer.writeTextElement("disabled", "true");
 }

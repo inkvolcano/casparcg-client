@@ -65,6 +65,16 @@ bool MovieCommand::getAutoPlay() const
     return this->autoPlay;
 }
 
+bool MovieCommand::getAutoLoop() const
+{
+    return this->autoLoop;
+}
+
+int MovieCommand::getAutoLoopDelay() const
+{
+    return this->autoLoopDelay;
+}
+
 void MovieCommand::setVideoName(const QString& videoName)
 {
     this->videoName = videoName;
@@ -142,6 +152,20 @@ void MovieCommand::setAutoPlay(bool autoPlay)
     emit propertyChanged();
 }
 
+void MovieCommand::setAutoLoop(bool autoLoop)
+{
+    this->autoLoop = autoLoop;
+    emit autoLoopChanged(this->autoLoop);
+    emit propertyChanged();
+}
+
+void MovieCommand::setAutoLoopDelay(int autoLoopDelay)
+{
+    this->autoLoopDelay = autoLoopDelay;
+    emit autoLoopDelayChanged(this->autoLoopDelay);
+    emit propertyChanged();
+}
+
 void MovieCommand::readProperties(boost::property_tree::wptree& pt)
 {
     AbstractCommand::readProperties(pt);
@@ -156,6 +180,8 @@ void MovieCommand::readProperties(boost::property_tree::wptree& pt)
     setFreezeOnLoad(pt.get(L"freezeonload", Movie::DEFAULT_FREEZE_ON_LOAD));
     setTriggerOnNext(pt.get(L"triggeronnext", Movie::DEFAULT_TRIGGER_ON_NEXT));
     setAutoPlay(pt.get(L"autoplay", Movie::DEFAULT_AUTO_PLAY));
+    setAutoLoopDelay(pt.get(L"autoloopdelay", Movie::DEFAULT_AUTO_LOOP_DELAY));
+    setAutoLoop(pt.get(L"autoloop", Movie::DEFAULT_AUTO_LOOP));
 
     if (pt.count(L"transform") > 0)
         m_transform.readProperties(pt.get_child(L"transform"));
@@ -175,6 +201,8 @@ void MovieCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("freezeonload", (getFreezeOnLoad() == true) ? "true" : "false");
     writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
     writer.writeTextElement("autoplay", (getAutoPlay() == true) ? "true" : "false");
+    writer.writeTextElement("autoloop", (getAutoLoop() == true) ? "true" : "false");
+    writer.writeTextElement("autoloopdelay", QString::number(getAutoLoopDelay()));
 
     m_transform.writeProperties(writer);
 }

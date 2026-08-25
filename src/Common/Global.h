@@ -271,6 +271,8 @@ namespace Movie
     static const bool DEFAULT_FREEZE_ON_LOAD = false;
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_AUTO_PLAY = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace Html
@@ -288,6 +290,8 @@ namespace Still
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_USE_AUTO = false;
     static const bool DEFAULT_AUTO_PLAY = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace ImageScroller
@@ -334,6 +338,8 @@ namespace Template
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_SEND_AS_JSON = false;
     static const int DEFAULT_NEWLINE_BEHAVIOR = 2;  // 0=Ignore, 1=innerText, 2=innerHTML
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace DeckLinkInput
@@ -397,6 +403,8 @@ namespace Group
     static const QString DEFAULT_NOTE = "";
     static const bool DEFAULT_AUTO_PLAY = false;
     static const bool DEFAULT_LOOP = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace TriggerBank
@@ -646,6 +654,7 @@ namespace Rundown
     static const QString AUTOPLAYGATEWAY = "AUTOPLAYGATEWAY";
     static const QString FOCUSGATEWAY = "FOCUSGATEWAY";
     static const QString COMMANDGATEWAY = "COMMANDGATEWAY";
+    static const QString STOPAUTOLOOPS = "STOPAUTOLOOPS";
     static const int MAX_NUMBER_OF_RUNDONWS = 10;
     static const QString DEFAULT_NAME = "New Rundown";
     static const QString DEFAULT_AUDIO_NAME = "Audio";

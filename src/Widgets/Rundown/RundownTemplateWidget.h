@@ -21,6 +21,7 @@
 #include "Models/LibraryModel.h"
 
 #include "Utils/ItemScheduler.h"
+#include "Utils/AutoLoopController.h"
 
 #include <QtCore/QEvent>
 #include <QtCore/QString>
@@ -59,6 +60,7 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     protected:
         virtual bool eventFilter(QObject* target, QEvent* event);
@@ -94,6 +96,7 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
 
         ItemScheduler itemScheduler;
         ItemScheduler itemSchedulerPreview;
+        AutoLoopController autoLoopController;
 
         void checkEmptyDevice();
         void checkGpiConnection();
@@ -117,6 +120,8 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         Q_SLOT void delayChanged(int);
         Q_SLOT void durationChanged(int);
         Q_SLOT void autoPlayChanged(bool);
+        Q_SLOT void autoLoopChanged(bool);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);

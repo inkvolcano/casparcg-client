@@ -42,6 +42,8 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         const QList<KeyValueModel>& getTemplateDataModels() const;
         bool getTriggerOnNext() const;
         bool getAutoPlay() const;
+        bool getAutoLoop() const;
+        int getAutoLoopDelay() const;
         int getNewlineBehavior() const;
 
         void setFlashlayer(int flashlayer);
@@ -55,6 +57,8 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         void setTemplateDataModels(const QList<KeyValueModel>& models);
         void setTriggerOnNext(bool triggerOnNext);
         void setAutoPlay(bool autoPlay);
+        void setAutoLoop(bool autoLoop);
+        void setAutoLoopDelay(int autoLoopDelay);
         void setNewlineBehavior(int newlineBehavior);
 
         void setPendingInvokeOverride(const QString& override);
@@ -76,6 +80,8 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         bool autoPlay = false;
         bool sendAsJson = Template::DEFAULT_SEND_AS_JSON;
         int newlineBehavior = Template::DEFAULT_NEWLINE_BEHAVIOR;
+        bool autoLoop = Template::DEFAULT_AUTO_LOOP;
+        int autoLoopDelay = Template::DEFAULT_AUTO_LOOP_DELAY;
         TransformData m_transform;
 
         Q_SIGNAL void flashlayerChanged(int);
@@ -87,5 +93,7 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         Q_SIGNAL void templateDataChanged(const QList<KeyValueModel>&);
         Q_SIGNAL void triggerOnNextChanged(bool);
         Q_SIGNAL void autoPlayChanged(bool);
+        Q_SIGNAL void autoLoopChanged(bool);
+        Q_SIGNAL void autoLoopDelayChanged(int);
         Q_SIGNAL void newlineBehaviorChanged(int);
 };

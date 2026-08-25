@@ -29,6 +29,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual QString getStoryId() const;
         virtual int getTriggerBank() const;
         virtual QString getCloneGroupId() const;
+        virtual bool getDisabled() const;
 
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
@@ -40,6 +41,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual void setStoryId(const QString& storyId);
         virtual void setTriggerBank(int triggerBank);
         virtual void setCloneGroupId(const QString& cloneGroupId);
+        virtual void setDisabled(bool disabled);
 
         // Temporary channel override for preview mode. Does not emit signals.
         // Use getBaseChannel() when you need the configured channel (e.g. inspector display).
@@ -65,6 +67,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         bool allowRemoteTriggering = Output::DEFAULT_ALLOW_REMOTE_TRIGGERING;
         int triggerBank = 0;
         QString cloneGroupId;
+        bool disabled = false;
 
     signals:
         void channelChanged(int);
@@ -77,5 +80,6 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         void storyIdChanged(const QString&);
         void triggerBankChanged(int);
         void cloneGroupIdChanged(const QString&);
+        void disabledChanged(bool);
         void propertyChanged();
 };

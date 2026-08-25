@@ -81,6 +81,16 @@ Groups have loop and autoplay properties with visual indicators. Loop causes the
 ### Live Loop Toggle
 Toggling loop on a playing movie sends a live CALL LOOP command to CasparCG — no need to stop and restart.
 
+### Per-Item Auto-Loop with Countdown
+Movies, stills, templates, and groups now have a per-item **Auto-Loop** toggle. When enabled, the item fires, then re-fires after a configurable delay (in seconds), and continues looping until the toggle is turned off. Auto-looping a group re-plays the whole group (including its AutoPlay chain) each cycle.
+
+- Set delay and toggle Auto-Loop in the item's inspector, or right-click the item → **Auto-Loop** for quick presets (5s / 10s / 30s / 60s / Custom…).
+- Each item runs its own countdown — multiple items can loop independently.
+- A distinct **LOOP** row appears in the Activity panel per looping item, with a progress bar counting down to the next fire.
+- Delay and enabled state persist with the rundown XML (`<autoloop>`, `<autoloopdelay>`).
+- The loop cancels on any manual Stop or Clear of the item, on disabling the item, and when a Clear Output item wipes its channel — it never re-fires after you've stopped it.
+- New **Stop All Auto-Loops** tool item (Library → Tools, or right-click → Other): fire it to instantly kill every running auto-loop countdown in one go — a panic button for loops. It fires immediately, ignoring any item delay.
+
 ---
 
 ## Gateways

@@ -15,6 +15,7 @@
 #include "Commands/GroupCommand.h"
 #include "Events/Inspector/LabelChangedEvent.h"
 #include "Models/LibraryModel.h"
+#include "Utils/AutoLoopController.h"
 
 #include <stdexcept>
 
@@ -54,6 +55,7 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         virtual void clearDelayedCommands() {}
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
         void updateGroupInfo(QTreeWidgetItem* groupItem);
 
@@ -83,8 +85,11 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         OscSubscription* clearVideolayerControlSubscription;
         OscSubscription* clearChannelControlSubscription;
 
+        AutoLoopController autoLoopController;
+
         void checkGpiConnection();
         bool executeOscCommand(Playout::PlayoutType type);
+        void fireGroupPlay();
 
         Q_SLOT void configureOscSubscriptions();
         Q_SLOT void durationChanged(int);
@@ -93,6 +98,8 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);
         Q_SLOT void autoPlayChanged(bool);
         Q_SLOT void loopChanged(bool);
+        Q_SLOT void autoLoopChanged(bool);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void stopControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playControlSubscriptionReceived(const QString&, const QList<QVariant>&);

@@ -94,6 +94,8 @@ qt_add_library(core
     Events/Rundown/BankAssignmentChangedEvent.cpp Events/Rundown/BankAssignmentChangedEvent.h
     Events/Rundown/PlaybackProgressEvent.cpp Events/Rundown/PlaybackProgressEvent.h
     Events/Rundown/ChannelActivityEvent.cpp Events/Rundown/ChannelActivityEvent.h
+    Events/Rundown/AutoLoopCountdownEvent.cpp Events/Rundown/AutoLoopCountdownEvent.h
+    Commands/StopAutoLoopsCommand.cpp Commands/StopAutoLoopsCommand.h
     Events/Rundown/ActiveRundownChangedEvent.cpp Events/Rundown/ActiveRundownChangedEvent.h
     Events/Rundown/AddRudnownItemEvent.cpp Events/Rundown/AddRudnownItemEvent.h
     Events/Rundown/AllowRemoteTriggeringEvent.cpp Events/Rundown/AllowRemoteTriggeringEvent.h
