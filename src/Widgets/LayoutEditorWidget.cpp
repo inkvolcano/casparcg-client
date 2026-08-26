@@ -10,7 +10,7 @@
 
 const QStringList LayoutEditorWidget::allWidgetIds = {
     "AudioLevels", "Preview", "Library", "Duration", "StatusBar",
-    "Clock", "ServerStatus", "Activity", "TriggerBanks", "Live", "NDI", "Performance", "HttpLog", "Inspector"
+    "Clock", "ServerStatus", "Activity", "TriggerBanks", "Live", "NDI", "Performance", "HttpLog", "Sheets", "Inspector"
 };
 
 QString LayoutEditorWidget::widgetDisplayName(const QString& id)
@@ -21,7 +21,7 @@ QString LayoutEditorWidget::widgetDisplayName(const QString& id)
         {"StatusBar", "Status Bar"}, {"Clock", "Clock"},
         {"ServerStatus", "Server Status"}, {"Activity", "Activity"},
         {"TriggerBanks", "Trigger Banks"}, {"Live", "Live"},
-        {"NDI", "NDI"}, {"Performance", "Performance"}, {"HttpLog", "Http Log"}, {"Inspector", "Inspector"}
+        {"NDI", "NDI"}, {"Performance", "Performance"}, {"HttpLog", "Http Log"}, {"Sheets", "Google Sheets"}, {"Inspector", "Inspector"}
     };
     return names.value(id, id);
 }

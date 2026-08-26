@@ -1,4 +1,5 @@
 #include "InspectorHttpGetWidget.h"
+#include "DialogPosition.h"
 #include "KeyValueDialog.h"
 
 #include "Global.h"
@@ -132,7 +133,7 @@ void InspectorHttpGetWidget::updateHttpDataModels()
 bool InspectorHttpGetWidget::addRow()
 {
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("New HTTP GET Data");
     if (dialog->exec() == QDialog::Accepted)
     {
@@ -153,7 +154,7 @@ bool InspectorHttpGetWidget::editRow()
         return true;
 
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("Edit HTTP GET Data");
     dialog->setKey(this->treeWidgetHttpData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetHttpData->currentItem()->text(1));

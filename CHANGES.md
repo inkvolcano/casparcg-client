@@ -93,6 +93,34 @@ Movies, stills, templates, and groups now have a per-item **Auto-Loop** toggle. 
 
 ---
 
+## Dialog Positioning Fix
+
+The key/value add/edit dialogs (template data, HTTP GET/POST data) position themselves near the cursor — they are now clamped to the visible screen area, so they can no longer open off-screen when the inspector sits near a screen edge.
+
+---
+
+## Google Sheets Panel
+
+A new **Google Sheets** panel (add it via the layout editor) connects to the same spreadsheets your standalone HTML templates use — and turns sheet data into operator buttons.
+
+### Connection
+- Scans every device's template path (and direct subfolders) for `project.js` — the same connection file the templates use (`spreadsheetId` + `apiKey`). Each folder found becomes a selectable project.
+- Lists all tabs of the connected spreadsheet; opening a tab shows its actual rows — the operator sees real data (player names, numbers), not the row ids used to reference it.
+- Manual refresh plus a selectable auto-refresh interval in the toolbar (10s / 30s / 1m / 2m / 5m / Off, persisted); the status label shows the last fetch time.
+
+### Field modes from templates (debugDataModes)
+Import Fields in the template inspector now also reads an optional `window.debugDataModes = { "f0": "integer", "align": "cycle:left|center|right" }` object from the template HTML — imported rows arrive with their edit mode (integer/decimal/boolean/color/cycle) and cycle values already set, so the operator gets the right controls without configuring each row. See `CLIENT_INTEGRATION.md` in the template project folder for the template-side contract.
+
+### Operator buttons (extensions.json)
+- Per-tab button definitions are edited in the panel (hamburger → **Edit Actions...**) and stored in `extensions.json` next to `project.js` — so they travel with the project folder, like everything else.
+- **Row buttons** appear next to every data row. `{COLUMN}` placeholders in the label and data resolve per row — e.g. a 🟨 button per player sending `name={NAME},number={NUMBER},card=yellow`. Rows whose placeholders all resolve empty (set headers, spacers) get no buttons.
+- **Standalone buttons** render once above the table — e.g. a VAR bar with `toggle` action (play on press, stop on second press, lit while on air).
+- Actions: `play`, `stop`, `update`, `toggle`. Buttons fire CG commands directly on the project's device (channel/videolayer per button; templates always use flash layer 1), send data as componentData XML, and report into the Activity panel and playout log.
+- The action editor's Template field is a dropdown of the client's template library (still free-typeable), and the panel's size mode is configurable in Settings → Layout → Panel Sizing (resizable by default).
+- Toggles are exclusive per channel/layer: pressing a different row's toggle while one is on air **stops the current template first** (out animation plays) instead of overwriting it — press again to play the new one. Plain play/stop buttons on the same layer clear any stale lit toggle state.
+
+---
+
 ## Gateways
 
 Three gateway types for routing playback, focus, and commands across the rundown. Each gateway has an **entrance** and one or more **exits**. Place them anywhere in the rundown tree to create jump points.

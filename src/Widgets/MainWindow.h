@@ -37,6 +37,7 @@ class ClockWidget;
 class HttpResponsePanelWidget;
 class NdiPanelWidget;
 class PerformancePanelWidget;
+class SheetsPanelWidget;
 class StatusBarWidget;
 
 class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
@@ -60,6 +61,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         NdiPanelWidget* widgetNdi;
         PerformancePanelWidget* widgetPerformance;
         HttpResponsePanelWidget* widgetHttpLog;
+        SheetsPanelWidget* widgetSheets;
 
         QMenu* fileMenu;
         QMenu* editMenu;

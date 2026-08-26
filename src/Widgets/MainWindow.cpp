@@ -3,6 +3,7 @@
 #include "ClockWidget.h"
 #include "HelpDialog.h"
 #include "HttpResponsePanelWidget.h"
+#include "SheetsPanelWidget.h"
 #include "NdiPanelWidget.h"
 #include "PanelHelper.h"
 #include "PanelResizeHandle.h"
@@ -90,6 +91,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetNdi = new NdiPanelWidget(this);
     this->widgetPerformance = new PerformancePanelWidget(this);
     this->widgetHttpLog = new HttpResponsePanelWidget(this);
+    this->widgetSheets = new SheetsPanelWidget(this);
 
     rebuildLayout();
 
@@ -999,6 +1001,7 @@ static int defaultPanelHeight(const QString& id)
     if (id == "Clock") return Panel::DEFAULT_CLOCK_HEIGHT;
     if (id == "Performance") return Panel::DEFAULT_PERFORMANCE_HEIGHT;
     if (id == "HttpLog") return Panel::DEFAULT_HTTPLOG_HEIGHT;
+    if (id == "Sheets") return Panel::DEFAULT_SHEETS_HEIGHT;
     return 0;
 }
 
@@ -1010,6 +1013,7 @@ static int defaultCompactHeight(const QString& id)
     if (id == "Clock") return Panel::COMPACT_CLOCK_HEIGHT;
     if (id == "Performance") return Panel::COMPACT_PERFORMANCE_HEIGHT;
     if (id == "HttpLog") return Panel::COMPACT_HTTPLOG_HEIGHT;
+    if (id == "Sheets") return Panel::COMPACT_SHEETS_HEIGHT;
     if (id == "Library") return 25;
     if (id == "NDI") return 25;
     return 25; // fallback: just the tab header
@@ -1101,7 +1105,7 @@ void MainWindow::rebuildLayout()
     QList<QWidget*> movable = {
         widgetAudioLevels, widgetPreview, widgetLibrary,
         widgetDuration, serverTab, activityTab, banksTab,
-        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetInspector,
+        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetSheets, widgetInspector,
         widgetStatusBar, widgetClock
     };
     for (auto* w : movable)
@@ -1730,6 +1734,7 @@ QWidget* MainWindow::widgetById(const QString& id)
     if (id == "NDI") return widgetNdi;
     if (id == "Performance") return widgetPerformance;
     if (id == "HttpLog") return widgetHttpLog;
+    if (id == "Sheets") return widgetSheets;
     if (id == "Inspector") return widgetInspector;
     if (id == "StatusBar") return widgetStatusBar;
     if (id == "Clock") return widgetClock;

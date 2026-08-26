@@ -1,4 +1,5 @@
 #include "InspectorTemplateWidget.h"
+#include "DialogPosition.h"
 #include "KeyValueDialog.h"
 #include "NumericValueDelegate.h"
 
@@ -18,8 +19,10 @@
 
 #include <QtGui/QClipboard>
 #include <QtGui/QCursor>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QResizeEvent>
+#include <QtGui/QScreen>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGridLayout>
@@ -267,7 +270,7 @@ void InspectorTemplateWidget::updateTemplateDataModels()
 bool InspectorTemplateWidget::addRow()
 {
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("New Template Data");
     dialog->setKey(QString("f%1").arg(this->fieldCounter));
     if (dialog->exec() == QDialog::Accepted)
@@ -293,7 +296,7 @@ bool InspectorTemplateWidget::editRow()
         return true;
 
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("Edit Template Data");
     dialog->setKey(this->treeWidgetTemplateData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetTemplateData->currentItem()->text(1));
@@ -511,6 +514,30 @@ void InspectorTemplateWidget::loadDebugData()
         QRegularExpression kvRegex("['\"]([^'\"]+)['\"]\\s*:\\s*['\"]([^'\"]*)['\"]");
         QRegularExpressionMatchIterator it = kvRegex.globalMatch(dataBlock);
 
+        // Optional per-field edit modes: window.debugDataModes = { "f0": "integer",
+        // "align": "cycle:left|center|right", ... }. Flat string map, same parse rules.
+        QMap<QString, QString> fieldModes;
+        QRegularExpression modesRegex("window\\.debugDataModes\\s*=\\s*\\{([^}]*)\\}");
+        QRegularExpressionMatch modesMatch = modesRegex.match(content);
+        if (modesMatch.hasMatch())
+        {
+            QRegularExpressionMatchIterator modeIt = kvRegex.globalMatch(modesMatch.captured(1));
+            while (modeIt.hasNext())
+            {
+                QRegularExpressionMatch modeMatch = modeIt.next();
+                fieldModes[modeMatch.captured(1)] = modeMatch.captured(2);
+            }
+        }
+
+        auto modeToInt = [](const QString& mode) -> int {
+            if (mode == "integer") return 1;
+            if (mode == "decimal") return 2;
+            if (mode == "boolean") return 3;
+            if (mode == "color") return 4;
+            if (mode.startsWith("cycle")) return 5;
+            return 0; // text
+        };
+
         for (int i = this->treeWidgetTemplateData->invisibleRootItem()->childCount() - 1; i >= 0; i--)
             delete this->treeWidgetTemplateData->invisibleRootItem()->child(i);
 
@@ -521,6 +548,16 @@ void InspectorTemplateWidget::loadDebugData()
             QTreeWidgetItem* treeItem = new QTreeWidgetItem();
             treeItem->setText(0, kvMatch.captured(1));
             treeItem->setText(1, this->checkBoxImportValues->isChecked() ? kvMatch.captured(2) : QString());
+
+            QString modeSpec = fieldModes.value(kvMatch.captured(1));
+            if (!modeSpec.isEmpty())
+            {
+                treeItem->setData(0, Qt::UserRole, modeToInt(modeSpec));
+                // "cycle:left|center|right" -> cycle values after the colon.
+                if (modeSpec.startsWith("cycle:"))
+                    treeItem->setData(0, Qt::UserRole + 1, modeSpec.mid(6));
+            }
+
             this->treeWidgetTemplateData->invisibleRootItem()->addChild(treeItem);
             this->fieldCounter++;
         }

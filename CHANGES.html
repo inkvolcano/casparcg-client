@@ -241,6 +241,40 @@ hr {
 <hr>
 
 <!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="dialog-positioning">Dialog Positioning Fix</h2>
+
+<p>The key/value add/edit dialogs (template data, HTTP GET/POST data) position themselves near the cursor &mdash; they are now clamped to the visible screen area, so they can no longer open off-screen when the inspector sits near a screen edge.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="sheets-panel">Google Sheets Panel</h2>
+
+<p>A new <b>Google Sheets</b> panel (add it via the layout editor) connects to the same spreadsheets your standalone HTML templates use &mdash; and turns sheet data into operator buttons.</p>
+
+<h3>Connection</h3>
+<ul>
+    <li>Scans every device's template path (and direct subfolders) for <code>project.js</code> &mdash; the same connection file the templates use. Each folder found becomes a selectable project.</li>
+    <li>Lists all tabs of the connected spreadsheet; opening a tab shows its actual rows &mdash; the operator sees real data (player names, numbers), not row ids.</li>
+    <li>Manual refresh plus a selectable auto-refresh interval in the toolbar (10s / 30s / 1m / 2m / 5m / Off, persisted); the status label shows the last fetch time.</li>
+</ul>
+
+<h3>Field Modes from Templates</h3>
+<p>Import Fields in the template inspector now also reads an optional <code>window.debugDataModes = { "f0": "integer", "align": "cycle:left|center|right" }</code> object from the template HTML &mdash; imported rows arrive with their edit mode (integer / decimal / boolean / color / cycle) and cycle values already set, so the operator gets the right controls without configuring each row.</p>
+
+<h3>Operator Buttons</h3>
+<ul>
+    <li>Per-tab buttons are edited in the panel (hamburger &rarr; <b>Edit Actions&hellip;</b>) and stored in <code>extensions.json</code> next to <code>project.js</code> &mdash; they travel with the project folder.</li>
+    <li><b>Row buttons</b> appear next to every data row; <code>{COLUMN}</code> placeholders resolve per row &mdash; e.g. a card button per player sending <code>name={NAME},number={NUMBER},card=yellow</code>.</li>
+    <li><b>Standalone buttons</b> render once above the table &mdash; e.g. a VAR bar with <code>toggle</code> action (lit while on air).</li>
+    <li>Actions: <code>play</code>, <code>stop</code>, <code>update</code>, <code>toggle</code>. Buttons fire CG commands directly on the project's device and report into the Activity panel and playout log.</li>
+    <li>The action editor's Template field is a dropdown of the client's template library (still free-typeable), and the panel's size mode is configurable in Settings &rarr; Layout &rarr; Panel Sizing.</li>
+    <li>Toggles are exclusive per channel/layer: pressing a different row's toggle while one is on air <b>stops the current template first</b> (out animation plays) instead of overwriting it &mdash; press again to play the new one.</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
 <h2 id="gateways">Gateways</h2>
 
 <p>Three gateway types for routing playback, focus, and commands across the rundown. Each gateway has an <b>entrance</b> and one or more <b>exits</b>. Place them anywhere in the rundown tree to create jump points.</p>

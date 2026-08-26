@@ -65,6 +65,7 @@ qt_add_library(widgets
     Inspector/NumericValueDelegate.cpp Inspector/NumericValueDelegate.h
     Inspector/InspectorVolumeWidget.cpp Inspector/InspectorVolumeWidget.h Inspector/InspectorVolumeWidget.ui
     Inspector/InspectorWidget.cpp Inspector/InspectorWidget.h Inspector/InspectorWidget.ui
+    Inspector/DialogPosition.h
     Inspector/KeyValueDialog.cpp Inspector/KeyValueDialog.h Inspector/KeyValueDialog.ui
     Inspector/TargetComboBaseWidget.cpp Inspector/TargetComboBaseWidget.h
     Inspector/TemplateDataTreeBaseWidget.cpp Inspector/TemplateDataTreeBaseWidget.h
@@ -150,6 +151,8 @@ qt_add_library(widgets
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
     Utils/AutoLoopController.cpp Utils/AutoLoopController.h
+    SheetsPanelWidget.cpp SheetsPanelWidget.h SheetsPanelWidget.ui
+    SheetsActionsDialog.cpp SheetsActionsDialog.h
 )
 target_include_directories(widgets PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/../Common

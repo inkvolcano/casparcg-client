@@ -218,6 +218,8 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         {"Live", "Live", "resizable"},
         {"NDI", "NDI", "resizable"},
         {"Performance", "Performance", "fixed"},
+        {"HttpLog", "Http Log", "fixed"},
+        {"Sheets", "Google Sheets", "resizable"},
         {"Clock", "Clock", "fixed"},
         {"StatusBar", "Status Bar", "fixed"},
     };
