@@ -162,6 +162,13 @@ void TemplateCommand::setInvokes(const QStringList& invokes)
         this->invokes.append(Template::DEFAULT_INVOKE);
     if (this->invokeHotkeyIndex >= this->invokes.size())
         this->invokeHotkeyIndex = 0;
+
+    // Keep labels parallel to invokes.
+    while (this->invokeLabels.size() < this->invokes.size())
+        this->invokeLabels.append(QString());
+    while (this->invokeLabels.size() > this->invokes.size())
+        this->invokeLabels.removeLast();
+
     emit invokesChanged(this->invokes);
     emit propertyChanged();
 }
@@ -170,6 +177,30 @@ void TemplateCommand::setInvokeHotkeyIndex(int index)
 {
     if (index >= 0 && index < this->invokes.size())
         this->invokeHotkeyIndex = index;
+    emit propertyChanged();
+}
+
+const QStringList& TemplateCommand::getInvokeLabels() const
+{
+    return this->invokeLabels;
+}
+
+QString TemplateCommand::getInvokeLabelAt(int index) const
+{
+    if (index >= 0 && index < this->invokeLabels.size())
+        return this->invokeLabels[index];
+    return QString();
+}
+
+void TemplateCommand::setInvokeLabels(const QStringList& labels)
+{
+    this->invokeLabels = labels;
+    // Keep parallel to invokes.
+    while (this->invokeLabels.size() < this->invokes.size())
+        this->invokeLabels.append(QString());
+    while (this->invokeLabels.size() > this->invokes.size())
+        this->invokeLabels.removeLast();
+    emit invokeLabelsChanged(this->invokeLabels);
     emit propertyChanged();
 }
 
@@ -297,6 +328,15 @@ void TemplateCommand::readProperties(boost::property_tree::wptree& pt)
         setInvokeHotkeyIndex(0);
     }
 
+    // Optional per-invoke labels (parallel list; older rundowns have none).
+    if (pt.count(L"invokelabels") > 0)
+    {
+        QStringList labelList;
+        for (const auto& value : pt.get_child(L"invokelabels"))
+            labelList.append(QString::fromStdWString(value.second.data()));
+        setInvokeLabels(labelList);
+    }
+
     setUseStoredData(pt.get(L"usestoreddata", Template::DEFAULT_USE_STORED_DATA));
     setUseUppercaseData(pt.get(L"useuppercasedata", Template::DEFAULT_USE_UPPERCASE_DATA));
     setTriggerOnNext(pt.get(L"triggeronnext", Template::DEFAULT_TRIGGER_ON_NEXT));
@@ -334,6 +374,11 @@ void TemplateCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeEndElement();
     writer.writeTextElement("invokehotkeyindex", QString::number(this->invokeHotkeyIndex));
 
+    writer.writeStartElement("invokelabels");
+    for (const QString& label : this->invokeLabels)
+        writer.writeTextElement("invokelabel", label);
+    writer.writeEndElement();
+
     writer.writeTextElement("usestoreddata", (getUseStoredData() == true) ? "true" : "false");
     writer.writeTextElement("useuppercasedata", (getUseUppercaseData() == true) ? "true" : "false");
     writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
@@ -342,6 +387,9 @@ void TemplateCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("newlinebehavior", QString::number(this->getNewlineBehavior()));
     writer.writeTextElement("autoloop", (getAutoLoop() == true) ? "true" : "false");
     writer.writeTextElement("autoloopdelay", QString::number(getAutoLoopDelay()));
+
+    {
+    }
 
     if (this->models.count() > 0)
     {

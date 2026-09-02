@@ -1,4 +1,8 @@
 #include "InspectorTemplateWidget.h"
+
+#include "../SheetDataResolver.h"
+#include "../SheetsProjectRegistry.h"
+#include "../WheelGuard.h"
 #include "DialogPosition.h"
 #include "KeyValueDialog.h"
 #include "NumericValueDelegate.h"
@@ -7,12 +11,15 @@
 
 #include "DatabaseManager.h"
 #include "EventManager.h"
+#include "Playout.h"
 #include "Events/StatusbarEvent.h"
+#include "Events/Rundown/ExecutePlayoutCommandEvent.h"
 #include "Models/DeviceModel.h"
 #include "Models/KeyValueModel.h"
 
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
+#include <QtCore/QDateTime>
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTextStream>
@@ -29,6 +36,7 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QSpacerItem>
 
 InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
@@ -82,6 +90,42 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
 
         QObject::connect(this->checkBoxAutoLoop, SIGNAL(stateChanged(int)), this, SLOT(autoLoopChanged(int)));
         QObject::connect(this->spinBoxAutoLoopDelay, SIGNAL(valueChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
+
+        // Sheet binding. Hidden entirely unless the template declares where its data
+        // comes from, so nothing changes for templates that do not use a sheet.
+        QLabel* labelSheet = new QLabel(tr("Sheet"), this);
+        labelSheet->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
+
+        QObject::connect(&SheetDataResolver::getInstance(), &SheetDataResolver::rowsReady,
+                         this, &InspectorTemplateWidget::sheetRowsReady);
+        QObject::connect(&SheetDataResolver::getInstance(), &SheetDataResolver::rowsFailed,
+                         this, &InspectorTemplateWidget::sheetRowsFailed);
+    }
+
+    // Update button in the Import Fields row — same header position as the
+    // Simple Inspector, so both inspectors share the same look.
+    for (QHBoxLayout* rowLayout : this->findChildren<QHBoxLayout*>())
+    {
+        if (rowLayout->indexOf(this->toolButtonLoadDebugData) < 0)
+            continue;
+
+        QPushButton* updateButton = new QPushButton("Update", this);
+        updateButton->setFixedHeight(20);
+        updateButton->setFocusPolicy(Qt::NoFocus);
+        updateButton->setToolTip("Send the template data below to the on-air template");
+        updateButton->setStyleSheet(
+            "QPushButton { background-color: rgba(50, 80, 120, 220); color: white; border-radius: 3px;"
+            " font-size: 10px; font-weight: bold; border: 1px solid rgba(80, 110, 150, 200); padding: 2px 10px; }"
+            "QPushButton:hover { background-color: rgba(70, 100, 145, 220); }");
+        QObject::connect(updateButton, &QPushButton::clicked, this, [this]() {
+            if (this->command == nullptr)
+                return;
+            updateTemplateDataModels();
+            EventManager::getInstance().fireExecutePlayoutCommandEvent(
+                ExecutePlayoutCommandEvent(Playout::PlayoutType::Update));
+        });
+        rowLayout->insertWidget(0, updateButton);
+        break;
     }
 
     this->comboBoxNewlineBehavior->addItem("Ignore");
@@ -113,6 +157,47 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(repositoryRundown(const RepositoryRundownEvent&)), this, SLOT(repositoryRundown(const RepositoryRundownEvent&)));
 
     this->treeWidgetTemplateData->installEventFilter(this);
+
+    buildExpectedBox();
+
+    // Any change in the number of rows re-sizes the table, wherever it came from:
+    // typed in, imported, resolved from a sheet, or undone.
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsInserted,
+                     this, [this]() { resizeDataTreeToContents(); });
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsRemoved,
+                     this, [this]() { resizeDataTreeToContents(); });
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::modelReset,
+                     this, [this]() { resizeDataTreeToContents(); });
+
+    // The key lives in the table above, so a change there is a change of question.
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::dataChanged,
+                     this, [this]() { renderExpectedRow(); renderExpectedFreshness(); });
+
+    resizeDataTreeToContents();
+}
+
+// Height enough for what is there plus one empty row, so there is always somewhere
+// obvious to add the next key without the table claiming space it is not using.
+void InspectorTemplateWidget::resizeDataTreeToContents()
+{
+    QTreeWidget* tree = this->treeWidgetTemplateData;
+    if (tree == NULL)
+        return;
+
+    int fields = tree->invisibleRootItem()->childCount();
+
+    int rowHeight = (fields > 0) ? tree->sizeHintForRow(0) : 0;
+    if (rowHeight <= 0)
+        rowHeight = tree->fontMetrics().height() + 6;
+
+    // Past a certain point a taller table stops helping and the inspector becomes
+    // one long scroll, so it stops growing and scrolls within itself instead.
+    const int MAXIMUM_VISIBLE_ROWS = 20;
+    int rows = qMin(fields + 1, MAXIMUM_VISIBLE_ROWS);
+
+    int header = tree->header()->isVisible() ? tree->header()->sizeHint().height() : 0;
+
+    tree->setFixedHeight(header + (rows * rowHeight) + (2 * tree->frameWidth()));
 }
 
 bool InspectorTemplateWidget::eventFilter(QObject* target, QEvent* event)
@@ -231,9 +316,13 @@ void InspectorTemplateWidget::rundownItemSelected(const RundownItemSelectedEvent
 
             this->fieldCounter++;
         }
+
+        resizeDataTreeToContents();
     }
 
     blockAllSignals(false);
+
+    refreshExpectedBinding();
 }
 
 void InspectorTemplateWidget::blockAllSignals(bool block)
@@ -253,8 +342,36 @@ void InspectorTemplateWidget::blockAllSignals(bool block)
     this->treeWidgetTemplateData->blockSignals(block);
 }
 
+// Rows arrive here for the expected-result box, which is the only thing that reads
+// the sheet from this inspector.
+void InspectorTemplateWidget::sheetRowsReady(const QString& requestId, const QList<SheetRow>& rows,
+                                             const SheetRowsOrigin& origin)
+{
+    if (requestId != this->expectedRequestId)
+        return;
+
+    this->expectedRows = rows;
+    this->expectedOrigin = origin;
+
+    renderExpectedRow();
+    renderExpectedFreshness();
+}
+
+void InspectorTemplateWidget::sheetRowsFailed(const QString& requestId, const QString& reason)
+{
+    if (requestId != this->expectedRequestId || this->expectedStatus == NULL)
+        return;
+
+    this->expectedStatus->setText(reason);
+}
+
 void InspectorTemplateWidget::updateTemplateDataModels()
 {
+    // The tree can outlive the selected command (item deleted, rundown reloaded,
+    // selection moved to a non-template item) — never touch a gone command.
+    if (this->command.isNull())
+        return;
+
     QList<KeyValueModel> models;
     for (int i = 0; i < this->treeWidgetTemplateData->invisibleRootItem()->childCount(); i++)
     {
@@ -538,18 +655,36 @@ void InspectorTemplateWidget::loadDebugData()
             return 0; // text
         };
 
-        for (int i = this->treeWidgetTemplateData->invisibleRootItem()->childCount() - 1; i >= 0; i--)
-            delete this->treeWidgetTemplateData->invisibleRootItem()->child(i);
+        // Merge, don't wipe: keys already in the table keep their row (and the
+        // operator's current value); keys missing from the table are appended.
+        // Re-importing after deleting a key simply brings that key back.
+        QTreeWidgetItem* root = this->treeWidgetTemplateData->invisibleRootItem();
+        QMap<QString, QTreeWidgetItem*> existingRows;
+        for (int i = 0; i < root->childCount(); i++)
+            existingRows[root->child(i)->text(0)] = root->child(i);
 
-        this->fieldCounter = 0;
+        int parsedCount = 0;
+        int addedCount = 0;
         while (it.hasNext())
         {
             QRegularExpressionMatch kvMatch = it.next();
-            QTreeWidgetItem* treeItem = new QTreeWidgetItem();
-            treeItem->setText(0, kvMatch.captured(1));
-            treeItem->setText(1, this->checkBoxImportValues->isChecked() ? kvMatch.captured(2) : QString());
+            QString key = kvMatch.captured(1);
+            QString modeSpec = fieldModes.value(key);
+            parsedCount++;
 
-            QString modeSpec = fieldModes.value(kvMatch.captured(1));
+            QTreeWidgetItem* treeItem = existingRows.value(key);
+            if (treeItem == nullptr)
+            {
+                treeItem = new QTreeWidgetItem();
+                treeItem->setText(0, key);
+                treeItem->setText(1, this->checkBoxImportValues->isChecked() ? kvMatch.captured(2) : QString());
+                root->addChild(treeItem);
+                existingRows[key] = treeItem;
+                addedCount++;
+            }
+
+            // The template is the source of truth for declared edit modes; rows
+            // without a declared mode keep whatever the operator set manually.
             if (!modeSpec.isEmpty())
             {
                 treeItem->setData(0, Qt::UserRole, modeToInt(modeSpec));
@@ -557,12 +692,11 @@ void InspectorTemplateWidget::loadDebugData()
                 if (modeSpec.startsWith("cycle:"))
                     treeItem->setData(0, Qt::UserRole + 1, modeSpec.mid(6));
             }
-
-            this->treeWidgetTemplateData->invisibleRootItem()->addChild(treeItem);
-            this->fieldCounter++;
         }
 
-        if (this->fieldCounter == 0)
+        this->fieldCounter = root->childCount();
+
+        if (parsedCount == 0)
         {
             EventManager::getInstance().fireStatusbarEvent(
                 StatusbarEvent("window.debugData found but no key-value pairs parsed in: " + filePath));
@@ -572,7 +706,7 @@ void InspectorTemplateWidget::loadDebugData()
         updateTemplateDataModels();
 
         EventManager::getInstance().fireStatusbarEvent(
-            StatusbarEvent(QString("Loaded %1 debug data fields from: %2").arg(this->fieldCounter).arg(filePath)));
+            StatusbarEvent(QString("Imported %1 fields (%2 new) from: %3").arg(parsedCount).arg(addedCount).arg(filePath)));
     }
     catch (...)
     {
@@ -581,3 +715,245 @@ void InspectorTemplateWidget::loadDebugData()
     }
 }
 
+
+
+// ---- expected result ----
+
+// Sits directly under the key/value table because it answers a question about it:
+// the operator types a row and this says what that row is.
+void InspectorTemplateWidget::buildExpectedBox()
+{
+    QWidget* host = this->treeWidgetTemplateData->parentWidget();
+    QVBoxLayout* column = (host != NULL) ? qobject_cast<QVBoxLayout*>(host->layout()) : NULL;
+    if (column == NULL)
+        return;
+
+    this->expectedBox = new QWidget(host);
+    QVBoxLayout* boxLayout = new QVBoxLayout(this->expectedBox);
+    boxLayout->setContentsMargins(0, 4, 0, 0);
+    boxLayout->setSpacing(3);
+
+    QHBoxLayout* headerRow = new QHBoxLayout();
+    headerRow->setSpacing(6);
+
+    this->expectedHeading = new QLabel(this->expectedBox);
+    this->expectedHeading->setStyleSheet("font-size: 10px; color: rgba(150, 180, 215, 220); font-weight: bold;");
+    headerRow->addWidget(this->expectedHeading, 0);
+
+    this->expectedStatus = new QLabel(this->expectedBox);
+    this->expectedStatus->setStyleSheet("font-size: 10px; color: rgba(140, 140, 140, 200);");
+    headerRow->addWidget(this->expectedStatus, 1);
+
+    // Where these rows came from and how old they are. Kept apart from the row count
+    // because it is the part that decides whether to trust the rest.
+    this->expectedFreshness = new QLabel(this->expectedBox);
+    this->expectedFreshness->setStyleSheet("font-size: 10px; color: rgba(140, 140, 140, 200);");
+    headerRow->addWidget(this->expectedFreshness, 0);
+
+    this->buttonRefreshExpected = new QPushButton(tr("Refresh"), this->expectedBox);
+    this->buttonRefreshExpected->setFixedHeight(20);
+    this->buttonRefreshExpected->setFocusPolicy(Qt::NoFocus);
+    this->buttonRefreshExpected->setToolTip("Read the tab again now");
+    this->buttonRefreshExpected->setStyleSheet(
+        "QPushButton { background-color: rgba(50, 50, 50, 200); color: white; border-radius: 3px;"
+        " font-size: 10px; border: 1px solid rgba(70, 70, 70, 200); padding: 2px 10px; }"
+        "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
+    QObject::connect(this->buttonRefreshExpected, &QPushButton::clicked, this, [this]() {
+        requestExpectedRows(true);
+    });
+    headerRow->addWidget(this->buttonRefreshExpected, 0);
+
+    boxLayout->addLayout(headerRow);
+
+    this->treeExpected = new QTreeWidget(this->expectedBox);
+    this->treeExpected->setColumnCount(2);
+    this->treeExpected->setHeaderLabels(QStringList() << "Column" << "Value");
+    this->treeExpected->setRootIsDecorated(false);
+    this->treeExpected->setAlternatingRowColors(true);
+    this->treeExpected->setSelectionMode(QAbstractItemView::NoSelection);
+    this->treeExpected->setFocusPolicy(Qt::NoFocus);
+    this->treeExpected->header()->setStretchLastSection(true);
+    boxLayout->addWidget(this->treeExpected);
+
+    int index = column->indexOf(this->treeWidgetTemplateData);
+    if (index >= 0)
+        column->insertWidget(index + 1, this->expectedBox);
+    else
+        column->addWidget(this->expectedBox);
+
+    this->expectedBox->setVisible(false);
+}
+
+// Only for templates that say they read a sheet. Silence means no box, not an
+// empty one \xe2\x80\x94 a template driven by the connector has no sheet to show.
+void InspectorTemplateWidget::refreshExpectedBinding()
+{
+    if (this->expectedBox == NULL)
+        return;
+
+    this->sheetConnection = TemplateSheetConnection();
+    this->expectedRows.clear();
+
+    if (!this->command.isNull() && this->model != NULL)
+    {
+        this->sheetConnection = SheetDataResolver::getInstance().connectionFor(this->model->getDeviceName(),
+                                                                              this->command->getTemplateName());
+    }
+
+    bool connected = this->sheetConnection.isValid();
+    this->expectedBox->setVisible(connected);
+    if (!connected)
+        return;
+
+    this->expectedHeading->setText(QString("%1 \xe2\x86\x92 %2")
+        .arg(this->sheetConnection.tab, this->sheetConnection.keyField));
+
+    this->treeExpected->clear();
+    this->expectedStatus->setText(tr("reading..."));
+    this->expectedOrigin = SheetRowsOrigin();
+    this->expectedFreshness->clear();
+
+    requestExpectedRows(false);
+}
+
+void InspectorTemplateWidget::requestExpectedRows(bool forceReload)
+{
+    if (this->command.isNull() || this->model == NULL || !this->sheetConnection.isValid())
+        return;
+
+    SheetsProjectRegistry::getInstance().discover();
+    SheetsProject project = SheetsProjectRegistry::getInstance().projectForTemplate(this->command->getTemplateName());
+    if (!project.isValid())
+    {
+        this->expectedStatus->setText(tr("no sheet project for this template"));
+        return;
+    }
+
+    this->expectedRequestId = QString("expected|%1|%2|%3")
+        .arg(this->command->getTemplateName(), this->sheetConnection.tab)
+        .arg(QDateTime::currentMSecsSinceEpoch());
+
+    this->expectedStatus->setText(tr("reading..."));
+    SheetDataResolver::getInstance().fetchRows(project, this->sheetConnection.tab,
+                                               this->expectedRequestId, forceReload);
+}
+
+// The operator sets the row in the table above; this reads it back from there rather
+// than from the command, so an edit that has not been committed still answers.
+QString InspectorTemplateWidget::currentTemplateFieldValue(const QString& key) const
+{
+    QTreeWidgetItem* root = this->treeWidgetTemplateData->invisibleRootItem();
+    for (int i = 0; i < root->childCount(); i++)
+        if (root->child(i)->text(0) == key)
+            return root->child(i)->text(1).trimmed();
+
+    return QString();
+}
+
+// functions.js resolves the key as data[key] \xe2\x80\x94 an index into the rows, not a value
+// to match on \xe2\x80\x94 so this resolves it the same way, or it would answer confidently
+// with the wrong row.
+void InspectorTemplateWidget::renderExpectedRow()
+{
+    if (this->expectedBox == NULL || !this->sheetConnection.isValid() || this->expectedRows.isEmpty())
+        return;
+
+    this->treeExpected->clear();
+
+    QString rawKey = currentTemplateFieldValue(this->sheetConnection.keyField);
+    if (rawKey.isEmpty())
+    {
+        this->expectedStatus->setText(QString("%1 rows \xc2\xb7 no %2 set")
+            .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField));
+        return;
+    }
+
+    bool numeric = false;
+    int index = rawKey.toInt(&numeric);
+
+    if (!numeric || index < 0 || index >= this->expectedRows.count())
+    {
+        this->expectedStatus->setText(QString("%1 rows \xc2\xb7 %2 = %3 is out of range")
+            .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField, rawKey));
+        return;
+    }
+
+    SheetRow row = this->expectedRows.at(index);
+    foreach (const QString& column, row.keys())
+    {
+        QTreeWidgetItem* item = new QTreeWidgetItem();
+        item->setText(0, column);
+        item->setText(1, row.value(column));
+
+        if (row.value(column).isEmpty())
+            item->setForeground(1, QBrush(QColor(140, 140, 140)));
+
+        this->treeExpected->addTopLevelItem(item);
+    }
+
+    this->treeExpected->resizeColumnToContents(0);
+
+    this->expectedStatus->setText(QString("%1 rows \xc2\xb7 %2 = %3")
+        .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField, rawKey));
+
+    // Same rule as the table above: as tall as it needs to be, no taller.
+    int rowHeight = this->treeExpected->sizeHintForRow(0);
+    if (rowHeight <= 0)
+        rowHeight = this->treeExpected->fontMetrics().height() + 6;
+
+    int visible = qMin(row.count(), 12);
+    this->treeExpected->setFixedHeight(this->treeExpected->header()->sizeHint().height()
+                                       + (visible * rowHeight) + (2 * this->treeExpected->frameWidth()));
+}
+
+
+// Cache or live, and how old. A cached copy is the normal case and not a problem in
+// itself \xe2\x80\x94 it only becomes one when nobody has refreshed it for a while, so the
+// colour follows the age rather than the source.
+void InspectorTemplateWidget::renderExpectedFreshness()
+{
+    if (this->expectedFreshness == NULL)
+        return;
+
+    QString source = this->expectedOrigin.describe();
+
+    if (!this->expectedOrigin.cachedAt.isValid())
+    {
+        // A cache that does not say when it wrote what it is serving. The client's own
+        // does; the PHP service does not, and pretending otherwise would be worse.
+        this->expectedFreshness->setText(this->expectedOrigin.isCached()
+            ? QString("%1 \xc2\xb7 age unknown").arg(source) : source);
+        this->expectedFreshness->setStyleSheet("font-size: 10px; color: rgba(140, 140, 140, 200);");
+        this->expectedFreshness->setToolTip(this->expectedOrigin.isCached()
+            ? tr("This cache does not report when it stored these rows")
+            : tr("Read from the sheet just now"));
+        return;
+    }
+
+    qint64 seconds = this->expectedOrigin.cachedAt.secsTo(QDateTime::currentDateTime());
+    if (seconds < 0)
+        seconds = 0;
+
+    QString age;
+    if (seconds < 60)
+        age = tr("just now");
+    else if (seconds < 3600)
+        age = QString("%1m old").arg(seconds / 60);
+    else if (seconds < 86400)
+        age = QString("%1h old").arg(seconds / 3600);
+    else
+        age = QString("%1d old").arg(seconds / 86400);
+
+    // Under five minutes is ordinary, an hour is worth noticing, a day means nothing
+    // has refreshed this and the row on screen may be describing last week's match.
+    QString colour = "rgba(140, 140, 140, 200)";
+    if (seconds >= 86400)
+        colour = "rgba(200, 90, 80, 220)";
+    else if (seconds >= 3600)
+        colour = "rgba(200, 160, 60, 220)";
+
+    this->expectedFreshness->setText(QString("%1 \xc2\xb7 %2").arg(source, age));
+    this->expectedFreshness->setStyleSheet(QString("font-size: 10px; color: %1;").arg(colour));
+    this->expectedFreshness->setToolTip(QString("Stored %1")
+        .arg(this->expectedOrigin.cachedAt.toString("yyyy-MM-dd HH:mm:ss")));
+}

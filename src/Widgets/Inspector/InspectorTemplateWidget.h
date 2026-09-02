@@ -9,11 +9,19 @@
 #include "Events/Rundown/RundownItemSelectedEvent.h"
 #include "Events/Rundown/RepositoryRundownEvent.h"
 #include "Models/LibraryModel.h"
+#include "../SheetDataResolver.h"
 
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
+#include <QtCore/QPointer>
+
+#include <QtCore/QSet>
 
 #include <QtWidgets/QCheckBox>
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QSpinBox>
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QWidget>
@@ -33,14 +41,41 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
     private:
         int fieldCounter;
         LibraryModel* model;
-        TemplateCommand* command;
+        // QPointer: the command dies whenever its rundown item is deleted or
+        // rebuilt (move, undo, reload) — a raw pointer here caused crashes when
+        // the key/value tree was touched afterwards.
+        QPointer<TemplateCommand> command;
         bool lock;
         NumericValueDelegate* numericDelegate;
+        // Expected result: what the row the operator has typed actually contains.
+        // An index is not an answer until you can see who is at that index.
+        QWidget* expectedBox = nullptr;
+        QLabel* expectedHeading = nullptr;
+        QLabel* expectedStatus = nullptr;
+        QTreeWidget* treeExpected = nullptr;
+        QPushButton* buttonRefreshExpected = nullptr;
+        TemplateSheetConnection sheetConnection;
+        QList<SheetRow> expectedRows;   // the tab as last read
+        QString expectedRequestId;
+        SheetRowsOrigin expectedOrigin;   // where the held rows came from, and when
+        QLabel* expectedFreshness = nullptr;
+
         QCheckBox* checkBoxAutoPlay = nullptr;
         QCheckBox* checkBoxAutoLoop = nullptr;
         QSpinBox* spinBoxAutoLoopDelay = nullptr;
 
         void updateTemplateDataModels();
+        // The key/value table is as tall as the keys in it plus one free row, so the
+        // section takes the space it needs and no more.
+        void resizeDataTreeToContents();
+
+        void buildExpectedBox();
+        void refreshExpectedBinding();     // show or hide it for the selected item
+        void requestExpectedRows(bool forceReload);
+        void renderExpectedRow();
+        void renderExpectedFreshness();          // resolve the current key against what we hold
+        QString currentTemplateFieldValue(const QString& key) const;
+
         void blockAllSignals(bool block);
 
         Q_SLOT bool addRow();
@@ -65,4 +100,7 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
         Q_SLOT void loadDebugData();
+        Q_SLOT void sheetRowsReady(const QString& requestId, const QList<SheetRow>& rows,
+                                   const SheetRowsOrigin& origin);
+        Q_SLOT void sheetRowsFailed(const QString& requestId, const QString& reason);
 };

@@ -25,6 +25,7 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
     public:
         explicit TemplateCommand(QObject* parent = 0);
 
+
         virtual void readProperties(boost::property_tree::wptree& pt);
         virtual void writeProperties(QXmlStreamWriter& writer);
 
@@ -34,6 +35,8 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         QString getInvokeAt(int index) const;
         int getInvokeCount() const;
         int getInvokeHotkeyIndex() const;
+        const QStringList& getInvokeLabels() const;
+        QString getInvokeLabelAt(int index) const;
         bool getUseStoredData() const;
         bool getSendAsJson() const;
         bool getUseUppercaseData() const;
@@ -50,6 +53,7 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
         void setInvoke(const QString& invoke);
         void setInvokes(const QStringList& invokes);
         void setInvokeHotkeyIndex(int index);
+        void setInvokeLabels(const QStringList& labels);
         void setUseStoredData(bool useStoredData);
         void setSendAsJson(bool sendAsJson);
         void setUseUppercaseData(bool useUppercaseData);
@@ -70,11 +74,14 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
     private:
         int flashlayer = Template::DEFAULT_FLASHLAYER;
         QStringList invokes = { Template::DEFAULT_INVOKE };
+        QStringList invokeLabels = { QString() };   // parallel to invokes; empty = no label
         int invokeHotkeyIndex = 0;
         QString pendingInvokeOverride;
         bool useStoredData = Template::DEFAULT_USE_STORED_DATA;
         bool useUppercaseData = Template::DEFAULT_USE_UPPERCASE_DATA;
         QString templateName = Template::DEFAULT_TEMPLATENAME;
+        // The tab, the key column and the column mapping all come from the template
+        // itself, so the item only has to remember which row it represents.
         QList<KeyValueModel> models;
         bool triggerOnNext = Template::DEFAULT_TRIGGER_ON_NEXT;
         bool autoPlay = false;
@@ -86,6 +93,7 @@ class CORE_EXPORT TemplateCommand : public AbstractCommand
 
         Q_SIGNAL void flashlayerChanged(int);
         Q_SIGNAL void invokesChanged(const QStringList&);
+        Q_SIGNAL void invokeLabelsChanged(const QStringList&);
         Q_SIGNAL void useStoredDataChanged(bool);
         Q_SIGNAL void sendAsJsonChanged(bool);
         Q_SIGNAL void useUppercaseDataChanged(bool);
