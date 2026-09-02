@@ -7,6 +7,8 @@
 
 #include "DatabaseManager.h"
 #include "GpiManager.h"
+#include "SheetCacheServer.h"
+#include "SheetsProjectRegistry.h"
 #include "EventManager.h"
 #include "Events/OscOutputChangedEvent.h"
 #include "Events/Library/RefreshLibraryEvent.h"
@@ -18,12 +20,16 @@
 
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QGroupBox>
+#include <QtWidgets/QCheckBox>
+#include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QScrollArea>
 #include <QtWidgets/QVBoxLayout>
 #include "Models/OscOutputModel.h"
 
+#include <QtCore/QCoreApplication>
+#include <QtCore/QSignalBlocker>
 #include <QtCore/QTimeZone>
 #include <QtCore/QTimer>
 
@@ -220,6 +226,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         {"Performance", "Performance", "fixed"},
         {"HttpLog", "Http Log", "fixed"},
         {"Sheets", "Google Sheets", "resizable"},
+        {"SimpleInspector", "Simple Inspector", "resizable"},
         {"Clock", "Clock", "fixed"},
         {"StatusBar", "Status Bar", "fixed"},
     };
@@ -267,11 +274,288 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     this->tabWidgetSettings->addTab(tabLayout, "Layout");
 
+    // Simple Mode tab: its own independent layout + grid options.
+    QWidget* tabSimpleMode = new QWidget();
+    QVBoxLayout* smVBox = new QVBoxLayout(tabSimpleMode);
+
+    smVBox->addWidget(new QLabel("Panel layout used while Simple Mode is active (View \xe2\x86\x92 Simple Mode):", tabSimpleMode));
+    this->simpleLayoutEditor = new LayoutEditorWidget(tabSimpleMode, "Simple");
+    smVBox->addWidget(this->simpleLayoutEditor, 1);
+
+    QGroupBox* smButtonsGroup = new QGroupBox("Button Grid", tabSimpleMode);
+    QHBoxLayout* smOptionsRow = new QHBoxLayout(smButtonsGroup);
+    // Grid columns/rows are set directly in the Simple Mode bottom bar.
+    this->checkBoxSimplePlayStop = new QCheckBox("Show play/stop controls on buttons", smButtonsGroup);
+    QString psVal = DatabaseManager::getInstance().getConfigurationByName("SimpleModeShowPlayStop").getValue();
+    this->checkBoxSimplePlayStop->setChecked(psVal.isEmpty() || psVal == "true");
+    smOptionsRow->addWidget(this->checkBoxSimplePlayStop);
+
+    // Preview control: plays the item (or group) on the device's preview channel.
+    this->checkBoxSimplePreview = new QCheckBox("Show preview (PVW) control on buttons", smButtonsGroup);
+    this->checkBoxSimplePreview->setToolTip(
+        "Adds a PVW control to each button that plays the item on the device's preview channel");
+    QString pvVal = DatabaseManager::getInstance().getConfigurationByName("SimpleModeShowPreview").getValue();
+    this->checkBoxSimplePreview->setChecked(pvVal.isEmpty() || pvVal == "true");
+    smOptionsRow->addWidget(this->checkBoxSimplePreview);
+
+    smOptionsRow->addStretch();
+    smVBox->addWidget(smButtonsGroup);
+
+    this->tabWidgetSettings->addTab(tabSimpleMode, "Simple Mode");
+
+    // Sheets tab: the cache service, the budget it is measured against, and the
+    // outward report.
+    QWidget* tabSheets = new QWidget();
+    QVBoxLayout* sheetsVBox = new QVBoxLayout(tabSheets);
+
+    QGroupBox* sheetsCacheGroup = new QGroupBox("Cache Service", tabSheets);
+    QGridLayout* sheetsGrid = new QGridLayout(sheetsCacheGroup);
+    sheetsGrid->setHorizontalSpacing(8);
+    sheetsGrid->setVerticalSpacing(4);
+
+    sheetsGrid->addWidget(new QLabel("Service URL:", sheetsCacheGroup), 0, 0);
+    this->lineEditSheetsCacheUrl = new QLineEdit(sheetsCacheGroup);
+    this->lineEditSheetsCacheUrl->setPlaceholderText("http://localhost:3000/local_server.php");
+    this->lineEditSheetsCacheUrl->setToolTip(
+        "The cache the client reads before it spends a call on the sheet API.\n"
+        "A 404 from here simply means a live read follows, which is what bypass mode does.");
+    this->lineEditSheetsCacheUrl->setText(
+        DatabaseManager::getInstance().getConfigurationByName("SheetsCacheUrl").getValue());
+    sheetsGrid->addWidget(this->lineEditSheetsCacheUrl, 0, 1);
+
+    sheetsGrid->addWidget(new QLabel("Reads per minute:", sheetsCacheGroup), 1, 0);
+    this->spinBoxSheetsQuota = new QSpinBox(sheetsCacheGroup);
+    this->spinBoxSheetsQuota->setRange(1, 6000);
+    this->spinBoxSheetsQuota->setToolTip(
+        "The budget the strain meter is drawn against. Google allows sixty a minute per key.");
+    QString quotaVal = DatabaseManager::getInstance().getConfigurationByName("SheetsQuotaPerMinute").getValue();
+    this->spinBoxSheetsQuota->setValue(quotaVal.toInt() > 0 ? quotaVal.toInt() : 60);
+    sheetsGrid->addWidget(this->spinBoxSheetsQuota, 1, 1, Qt::AlignLeft);
+
+    sheetsVBox->addWidget(sheetsCacheGroup);
+
+    // Hosting the cache here instead of alongside it. The templates already know how
+    // to talk to a cache; this answers on the same parameters, so pointing them at this
+    // port is the whole migration.
+    QGroupBox* sheetsHostGroup = new QGroupBox("Host The Cache In This Client", tabSheets);
+    QGridLayout* hostGrid = new QGridLayout(sheetsHostGroup);
+    hostGrid->setHorizontalSpacing(8);
+    hostGrid->setVerticalSpacing(4);
+
+    this->checkBoxHostSheetCache = new QCheckBox("Serve the sheet cache from this client", sheetsHostGroup);
+    this->checkBoxHostSheetCache->setToolTip(
+        "Answers the same spreadsheetId and sheetNumber parameters the PHP service answers,\n"
+        "so a template pointed at this port needs no change. Takes effect on restart.");
+    this->checkBoxHostSheetCache->setChecked(
+        DatabaseManager::getInstance().getConfigurationByName("SheetsHostCache").getValue() == "true");
+    hostGrid->addWidget(this->checkBoxHostSheetCache, 0, 0, 1, 3);
+
+    hostGrid->addWidget(new QLabel("Port:", sheetsHostGroup), 1, 0);
+    this->spinBoxSheetCachePort = new QSpinBox(sheetsHostGroup);
+    this->spinBoxSheetCachePort->setRange(1, 65535);
+    QString cachePortVal = DatabaseManager::getInstance().getConfigurationByName("SheetsHostCachePort").getValue();
+    this->spinBoxSheetCachePort->setValue(cachePortVal.toInt() > 0 ? cachePortVal.toInt() : 3000);
+    hostGrid->addWidget(this->spinBoxSheetCachePort, 1, 1, Qt::AlignLeft);
+
+    hostGrid->addWidget(new QLabel("Cache folder:", sheetsHostGroup), 2, 0);
+    this->lineEditSheetCacheDir = new QLineEdit(sheetsHostGroup);
+    this->lineEditSheetCacheDir->setPlaceholderText(QCoreApplication::applicationDirPath() + "/sheets_data");
+    this->lineEditSheetCacheDir->setToolTip(
+        "File names match the PHP service, so an existing sheets_data folder can be used as it stands.");
+    this->lineEditSheetCacheDir->setText(
+        DatabaseManager::getInstance().getConfigurationByName("SheetsCacheDirectory").getValue());
+    QObject::connect(this->lineEditSheetCacheDir, &QLineEdit::editingFinished, this, [this]() {
+        refreshSheetCacheSize();
+    });
+    hostGrid->addWidget(this->lineEditSheetCacheDir, 2, 1, 1, 2);
+
+    this->checkBoxSheetCacheBypass = new QCheckBox("Bypass \xe2\x80\x94 answer nothing, keep writing", sheetsHostGroup);
+    this->checkBoxSheetCacheBypass->setToolTip(
+        "Reads answer 404 so graphics go live to the sheet, while writes still land.\n"
+        "The cache stays warm for the moment it is switched back on.\n"
+        "Also reachable at /bypass?on=1 and /bypass?on=0 while the client is hosting.");
+    this->checkBoxSheetCacheBypass->setChecked(
+        DatabaseManager::getInstance().getConfigurationByName("SheetsCacheBypass").getValue() == "true");
+    hostGrid->addWidget(this->checkBoxSheetCacheBypass, 3, 0, 1, 3);
+
+    // Sitting under the folder it empties, and saying how much is in there, so the
+    // button is a fact about the cache rather than a lever with an unknown effect.
+    this->buttonClearSheetCache = new QPushButton(sheetsHostGroup);
+    this->buttonClearSheetCache->setFixedHeight(22);
+    this->buttonClearSheetCache->setFocusPolicy(Qt::NoFocus);
+    this->buttonClearSheetCache->setToolTip(
+        "Deletes the cached sheet files. Nothing is lost that a read will not fetch again \xe2\x80\x94\n"
+        "the next request for each tab goes to the sheet and warms it back up.");
+    QObject::connect(this->buttonClearSheetCache, &QPushButton::clicked, this, [this]() {
+        qint64 bytes = 0;
+        int count = SheetCacheServer::cachedSheetCount(&bytes);
+        if (count == 0)
+        {
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("The sheet cache is already empty"));
+            return;
+        }
+
+        QMessageBox confirm(this);
+        confirm.setWindowTitle("Clear Sheet Cache");
+        confirm.setIcon(QMessageBox::Question);
+        confirm.setText(QString("Delete %1 cached sheet file(s)?").arg(count));
+        confirm.setInformativeText(QString("%1\n\nEach tab is read from the sheet again the next "
+                                           "time something asks for it, so this costs reads rather "
+                                           "than data.").arg(SheetCacheServer::cacheDirectory()));
+        confirm.setStandardButtons(QMessageBox::Cancel | QMessageBox::Yes);
+        confirm.setDefaultButton(QMessageBox::Cancel);
+        if (confirm.exec() != QMessageBox::Yes)
+            return;
+
+        QString error;
+        int removed = SheetCacheServer::clearCache(&error);
+        if (removed < 0)
+        {
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(error, 8000, true));
+            refreshSheetCacheSize();
+            return;
+        }
+
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("Cleared %1 cached sheet file(s)").arg(removed)));
+        refreshSheetCacheSize();
+    });
+    hostGrid->addWidget(this->buttonClearSheetCache, 4, 0, 1, 3, Qt::AlignLeft);
+
+    refreshSheetCacheSize();
+
+
+    sheetsVBox->addWidget(sheetsHostGroup);
+
+    // Warming happens because something asked for a tab, never on a schedule. These
+    // two numbers are the only shaping it gets: how long a copy stays good enough,
+    // and how far apart refreshes are spaced when several are wanted at once.
+    // Where each project's templates look for the cache. The flag lives in the
+    // project's own project.js, which is the file the templates read, so this writes
+    // there rather than keeping a second copy of the answer.
+    QGroupBox* sheetsProjectsGroup = new QGroupBox("Template Projects", tabSheets);
+    QVBoxLayout* projectsVBox = new QVBoxLayout(sheetsProjectsGroup);
+
+    projectsVBox->addWidget(new QLabel(
+        "Ticked, a project's templates read the cache at localhost:3000 (local = true).\n"
+        "Unticked they use a relative path, which fails inside CasparCG and sends them\n"
+        "straight to Google (local = false). Templates pick this up when they next load.",
+        sheetsProjectsGroup));
+
+    this->sheetProjectsBox = new QWidget(sheetsProjectsGroup);
+    new QVBoxLayout(this->sheetProjectsBox);
+    projectsVBox->addWidget(this->sheetProjectsBox);
+
+    QPushButton* rescanProjects = new QPushButton("Rescan", sheetsProjectsGroup);
+    rescanProjects->setFixedHeight(20);
+    rescanProjects->setFocusPolicy(Qt::NoFocus);
+    QObject::connect(rescanProjects, &QPushButton::clicked, this, [this]() {
+        SheetsProjectRegistry::getInstance().discover();
+        buildSheetProjectsGroup();
+    });
+    projectsVBox->addWidget(rescanProjects, 0, Qt::AlignLeft);
+
+    sheetsVBox->addWidget(sheetsProjectsGroup);
+
+    buildSheetProjectsGroup();
+
+    QGroupBox* sheetsWarmGroup = new QGroupBox("Warming", tabSheets);
+    QGridLayout* warmGrid = new QGridLayout(sheetsWarmGroup);
+    warmGrid->setHorizontalSpacing(8);
+    warmGrid->setVerticalSpacing(4);
+
+    warmGrid->addWidget(new QLabel("Treat a tab as stale after:", sheetsWarmGroup), 0, 0);
+    this->spinBoxWarmStale = new QSpinBox(sheetsWarmGroup);
+    this->spinBoxWarmStale->setRange(1, 3600);
+    this->spinBoxWarmStale->setSuffix(" s");
+    this->spinBoxWarmStale->setToolTip(
+        "A tab asked for again within this window is left alone; past it, the next demand refreshes it.");
+    QString staleVal = DatabaseManager::getInstance().getConfigurationByName("SheetsWarmStaleSeconds").getValue();
+    this->spinBoxWarmStale->setValue(staleVal.toInt() > 0 ? staleVal.toInt() : 30);
+    warmGrid->addWidget(this->spinBoxWarmStale, 0, 1, Qt::AlignLeft);
+
+    warmGrid->addWidget(new QLabel("Space refreshes by:", sheetsWarmGroup), 1, 0);
+    this->spinBoxWarmSpacing = new QSpinBox(sheetsWarmGroup);
+    this->spinBoxWarmSpacing->setRange(0, 60000);
+    this->spinBoxWarmSpacing->setSingleStep(100);
+    this->spinBoxWarmSpacing->setSuffix(" ms");
+    this->spinBoxWarmSpacing->setToolTip(
+        "A rundown full of sheet templates should trickle rather than arrive as a burst.");
+    QString spacingVal = DatabaseManager::getInstance().getConfigurationByName("SheetsWarmSpacingMs").getValue();
+    this->spinBoxWarmSpacing->setValue(spacingVal.toInt() > 0 ? spacingVal.toInt() : 1500);
+    warmGrid->addWidget(this->spinBoxWarmSpacing, 1, 1, Qt::AlignLeft);
+
+    warmGrid->addWidget(new QLabel(
+        "Refreshes read through the keyless proxy named in the project's project.js when it\n"
+        "has one, so they cost nothing against the per-minute budget. Without a proxy they\n"
+        "come out of the budget, and are skipped once it is half spent.", sheetsWarmGroup), 2, 0, 1, 2);
+
+    sheetsVBox->addWidget(sheetsWarmGroup);
+
+    QGroupBox* sheetsStrainGroup = new QGroupBox("Strain Reporting", tabSheets);
+    QVBoxLayout* strainVBox = new QVBoxLayout(sheetsStrainGroup);
+
+    strainVBox->addWidget(new QLabel(
+        "This client can only count its own reads exactly; reads made inside graphics are\n"
+        "estimated from the plays it fires. Publishing those figures lets something with a\n"
+        "wider view \xe2\x80\x94 the Salvo connector \xe2\x80\x94 add them to every other source and arrive at a\n"
+        "real total.", sheetsStrainGroup));
+
+    QHBoxLayout* strainRow = new QHBoxLayout();
+    strainRow->addWidget(new QLabel("Report to URL:", sheetsStrainGroup));
+    this->lineEditSheetsStrainUrl = new QLineEdit(sheetsStrainGroup);
+    this->lineEditSheetsStrainUrl->setPlaceholderText("leave empty to publish nothing");
+    this->lineEditSheetsStrainUrl->setToolTip(
+        "A JSON body is POSTed here every ten seconds while sheets are in use.\n"
+        "Nothing is sent when this is empty, or when no sheet has been read in the last minute.");
+    this->lineEditSheetsStrainUrl->setText(
+        DatabaseManager::getInstance().getConfigurationByName("SheetsStrainReportUrl").getValue());
+    strainRow->addWidget(this->lineEditSheetsStrainUrl, 1);
+    strainVBox->addLayout(strainRow);
+
+    sheetsVBox->addWidget(sheetsStrainGroup);
+    sheetsVBox->addStretch();
+
+    this->tabWidgetSettings->addTab(tabSheets, "Sheets");
+
+    QObject::connect(this, &QDialog::accepted, this, [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsCacheUrl", this->lineEditSheetsCacheUrl->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsQuotaPerMinute", QString::number(this->spinBoxSheetsQuota->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsStrainReportUrl", this->lineEditSheetsStrainUrl->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsHostCache", this->checkBoxHostSheetCache->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsHostCachePort", QString::number(this->spinBoxSheetCachePort->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsCacheDirectory", this->lineEditSheetCacheDir->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsCacheBypass", this->checkBoxSheetCacheBypass->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsWarmStaleSeconds", QString::number(this->spinBoxWarmStale->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SheetsWarmSpacingMs", QString::number(this->spinBoxWarmSpacing->value())));
+
+        // Pick up a port or folder change without a restart when we can; a port already
+        // taken simply leaves it stopped, which the log says.
+        SheetCacheServer::getInstance().stop();
+        SheetCacheServer::getInstance().start();
+    });
+
     // Flush any pending debounced writes before the dialog closes.
     QObject::connect(this, &QDialog::accepted, this, &SettingsDialog::flushPendingWrites);
 
     // Save layout configuration when the dialog is accepted.
     QObject::connect(this, &QDialog::accepted, this->layoutEditor, &LayoutEditorWidget::saveToConfig);
+    QObject::connect(this, &QDialog::accepted, this->simpleLayoutEditor, &LayoutEditorWidget::saveToConfig);
+    QObject::connect(this, &QDialog::accepted, this, [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SimpleModeShowPlayStop", this->checkBoxSimplePlayStop->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SimpleModeShowPreview", this->checkBoxSimplePreview->isChecked() ? "true" : "false"));
+    });
 
     // Save panel sizing and layout options when the dialog is accepted.
     QObject::connect(this, &QDialog::accepted, this, [this]() {
@@ -2064,4 +2348,94 @@ bool SettingsDialog::eventFilter(QObject* obj, QEvent* event)
         }
     }
     return QDialog::eventFilter(obj, event);
+}
+
+// Rebuilt rather than updated, because the set of projects changes when devices or
+// template folders do and there is no state here worth preserving across that.
+void SettingsDialog::buildSheetProjectsGroup()
+{
+    if (this->sheetProjectsBox == nullptr)
+        return;
+
+    QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(this->sheetProjectsBox->layout());
+    if (layout == nullptr)
+        return;
+
+    while (QLayoutItem* item = layout->takeAt(0))
+    {
+        if (item->widget() != nullptr)
+            item->widget()->deleteLater();
+
+        delete item;
+    }
+
+    SheetsProjectRegistry::getInstance().discover();
+    const QList<SheetsProject>& projects = SheetsProjectRegistry::getInstance().projects();
+
+    if (projects.isEmpty())
+    {
+        QLabel* none = new QLabel("No project.js found under any device's template path.", this->sheetProjectsBox);
+        none->setStyleSheet("color: rgba(140, 140, 140, 200);");
+        layout->addWidget(none);
+        return;
+    }
+
+    foreach (const SheetsProject& project, projects)
+    {
+        bool found = false;
+        bool useLocal = SheetsProjectRegistry::readLocalFlag(project.folder, &found);
+
+        QCheckBox* checkBox = new QCheckBox(project.name, this->sheetProjectsBox);
+        checkBox->setChecked(useLocal);
+        checkBox->setEnabled(found);
+        checkBox->setToolTip(found
+            ? QString("%1\nlocal = %2").arg(project.folder, useLocal ? "true" : "false")
+            : QString("%1\nNo 'local = true/false' in project.js, so there is nothing to switch.").arg(project.folder));
+
+        QString folder = project.folder;
+        QString name = project.name;
+        QObject::connect(checkBox, &QCheckBox::toggled, this, [this, checkBox, folder, name](bool checked) {
+            QString error;
+            if (SheetsProjectRegistry::getInstance().writeLocalFlag(folder, checked, &error))
+            {
+                checkBox->setToolTip(QString("%1\nlocal = %2").arg(folder, checked ? "true" : "false"));
+                EventManager::getInstance().fireStatusbarEvent(
+                    StatusbarEvent(QString("%1: local = %2").arg(name, checked ? "true" : "false")));
+                return;
+            }
+
+            // The file refused the change, so the box must not claim otherwise.
+            QSignalBlocker blocker(checkBox);
+            checkBox->setChecked(!checked);
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(error, 6000, true));
+        });
+
+        layout->addWidget(checkBox);
+    }
+}
+
+// The button carries the count, so it has to be re-read whenever the folder changes
+// or something is removed from it.
+void SettingsDialog::refreshSheetCacheSize()
+{
+    if (this->buttonClearSheetCache == nullptr)
+        return;
+
+    qint64 bytes = 0;
+    int count = SheetCacheServer::cachedSheetCount(&bytes);
+
+    if (count == 0)
+    {
+        this->buttonClearSheetCache->setText("Clear cache  (empty)");
+        this->buttonClearSheetCache->setEnabled(false);
+        return;
+    }
+
+    QString size = (bytes >= 1024 * 1024)
+        ? QString("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1)
+        : QString("%1 KB").arg(qMax(qint64(1), bytes / 1024));
+
+    this->buttonClearSheetCache->setText(QString("Clear cache  (%1 file%2, %3)")
+        .arg(count).arg(count == 1 ? "" : "s").arg(size));
+    this->buttonClearSheetCache->setEnabled(true);
 }

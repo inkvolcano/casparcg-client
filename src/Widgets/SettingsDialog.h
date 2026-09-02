@@ -86,6 +86,29 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QComboBox* comboBoxTimezone1;
         QComboBox* comboBoxTimezone2;
         LayoutEditorWidget* layoutEditor;
+        LayoutEditorWidget* simpleLayoutEditor = nullptr;
+        QSpinBox* spinBoxSimpleColumns = nullptr;
+        QCheckBox* checkBoxSimplePlayStop = nullptr;
+        QCheckBox* checkBoxSimplePreview = nullptr;
+
+    // Sheets: where the cache lives, what the per-minute budget is, and where the
+    // strain figures are published so something outside can total them up.
+    QLineEdit* lineEditSheetsCacheUrl = nullptr;
+    QSpinBox* spinBoxSheetsQuota = nullptr;
+    QLineEdit* lineEditSheetsStrainUrl = nullptr;
+    QCheckBox* checkBoxHostSheetCache = nullptr;
+    QSpinBox* spinBoxSheetCachePort = nullptr;
+    QLineEdit* lineEditSheetCacheDir = nullptr;
+    QCheckBox* checkBoxSheetCacheBypass = nullptr;
+    QPushButton* buttonClearSheetCache = nullptr;
+    void refreshSheetCacheSize();
+    QSpinBox* spinBoxWarmStale = nullptr;
+    QSpinBox* spinBoxWarmSpacing = nullptr;
+
+    // One checkbox per discovered template project, writing the `local` flag straight
+    // into that project's project.js.
+    QWidget* sheetProjectsBox = nullptr;
+    void buildSheetProjectsGroup();
 
         // Panel sizing combos (Layout tab).
         struct PanelSizingEntry {

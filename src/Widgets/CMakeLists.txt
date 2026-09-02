@@ -62,6 +62,7 @@ qt_add_library(widgets
     Inspector/InspectorStillWidget.cpp Inspector/InspectorStillWidget.h Inspector/InspectorStillWidget.ui
     Inspector/InspectorTemplateWidget.cpp Inspector/InspectorTemplateWidget.h Inspector/InspectorTemplateWidget.ui
     Inspector/InspectorTransformWidget.cpp Inspector/InspectorTransformWidget.h
+    Inspector/InspectorSimpleModeWidget.cpp Inspector/InspectorSimpleModeWidget.h
     Inspector/NumericValueDelegate.cpp Inspector/NumericValueDelegate.h
     Inspector/InspectorVolumeWidget.cpp Inspector/InspectorVolumeWidget.h Inspector/InspectorVolumeWidget.ui
     Inspector/InspectorWidget.cpp Inspector/InspectorWidget.h Inspector/InspectorWidget.ui
@@ -87,13 +88,14 @@ qt_add_library(widgets
     NdiViewerWidget.cpp NdiViewerWidget.h
     PerformancePanelWidget.cpp PerformancePanelWidget.h PerformancePanelWidget.ui
     PanelHelper.h
+    WheelGuard.h
     PanelResizeHandle.cpp PanelResizeHandle.h
     OscOutputDialog.cpp OscOutputDialog.h OscOutputDialog.ui
     OscTimeWidget.cpp OscTimeWidget.h OscTimeWidget.ui
     PresetDialog.cpp PresetDialog.h PresetDialog.ui
     PreviewContentWidget.cpp PreviewContentWidget.h
     PreviewWidget.cpp PreviewWidget.h PreviewWidget.ui
-    Rundown/AbstractRundownWidget.h
+    Rundown/AbstractRundownWidget.cpp Rundown/AbstractRundownWidget.h
     Rundown/OpenRundownFromUrlDialog.cpp Rundown/OpenRundownFromUrlDialog.h Rundown/OpenRundownFromUrlDialog.ui
     Rundown/RundownAnchorWidget.cpp Rundown/RundownAnchorWidget.h Rundown/RundownAnchorWidget.ui
     Rundown/RundownAutoPlayGatewayWidget.cpp Rundown/RundownAutoPlayGatewayWidget.h Rundown/RundownAutoPlayGatewayWidget.ui
@@ -152,7 +154,13 @@ qt_add_library(widgets
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
     Utils/AutoLoopController.cpp Utils/AutoLoopController.h
     SheetsPanelWidget.cpp SheetsPanelWidget.h SheetsPanelWidget.ui
+    SheetsProjectRegistry.cpp SheetsProjectRegistry.h
+    SheetCacheServer.cpp SheetCacheServer.h
+    SheetDataResolver.cpp SheetDataResolver.h
     SheetsActionsDialog.cpp SheetsActionsDialog.h
+    SimpleModeWidget.cpp SimpleModeWidget.h
+    SimpleInspectorWidget.cpp SimpleInspectorWidget.h
+    SimpleIconDialog.cpp SimpleIconDialog.h
 )
 target_include_directories(widgets PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/../Common

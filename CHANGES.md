@@ -93,9 +93,278 @@ Movies, stills, templates, and groups now have a per-item **Auto-Loop** toggle. 
 
 ---
 
+## Simple Mode
+
+A new operator-focused interface, toggled via **View → Simple Mode**, aimed at prebuilt projects where the full rundown UI is more than the operator needs.
+
+### Button grid instead of the rundown
+- The center area becomes a **streamdeck-style grid of buttons** — one per rundown item flagged with the new **"Show as button"** checkbox in the inspector's new **Simple Mode** section (flag persists in the rundown XML).
+- Clicking a button **selects** the item (same semantics as clicking a rundown row) — all playout hotkeys (F1/F2/…) then act on it, exactly like the normal interface.
+- **Square, Companion-style keys** in a fixed slot grid — empty slots render as numbered dashed placeholders so the full grid is always visible. Buttons whose sub-buttons need more room stay grid-aligned by spanning extra slots vertically. Cells size themselves to fill the panel width; labels word-wrap to fill the key face; the selection border wraps the whole key including its controls.
+- Per-item **Next** control on the button face (checkbox under "Show as button") alongside the readable ▶/■ controls. The ▶/■/⏭ controls are **true squares** — each control's height matches its share of the key width, so they read like real hardware keys.
+- **Dropdown groups**: tick **"Treat as dropdown"** on a group (inspector → Simple Mode) and that group becomes a chooser instead of a container. Its Simple Mode key shows the group name, the **armed choice as a sub-label**, and a dropdown of the group's children, and **Play / F2 fires only the selected child** — as do Stop, Next and PVW. Build the list the normal way: make a group, put the items in it, tick the box. The selection is remembered in the rundown XML (`<treatasdropdown>`, `<dropdownindex>`), and picking from the dropdown also selects that key so the hotkeys land on it. The redirect happens in the central playout path, so it applies to hotkeys, buttons and OSC triggers alike.
+- **Preview (PVW) control** on each key, toggled in Settings → Simple Mode. It plays the item — or the whole group — on the device's **preview channel**, leaving program untouched. It sits in the same square control row as ▶/■/⏭ and shrinks them evenly to keep every control square.
+- **Taking a previewed item to program clears its preview layer**: pressing Play (button or hotkey) on an item that is sitting on the preview channel clears **only that item's layer** there — other items parked on other preview layers stay up. The client tracks the preview layers it lit (per device/channel/layer), so nothing else on the preview channel is ever touched.
+- **Arrow-key grid cursor**: the arrow keys walk a cursor over the whole grid, empty slots included (Companion-style). Landing on a button selects it — same as clicking it, so the playout hotkeys immediately act on it; an empty slot under the cursor shows a light border. Clicking anywhere in the grid puts the cursor there too.
+- **Two-step move, Companion-style**: select a button, press **Move**, then click a free slot (free slots highlight blue) — buttons never overwrite or displace each other. **Remove** takes a button off the grid by clearing its flag; the rundown item itself is untouched and keeps its slot for re-flagging. Slots are saved per item in the rundown XML (`<simplemodeslot>`), so arrangements travel between clients.
+- Optional **▶ / ■ controls** on each button face for mouse-only operation (Settings → Simple Mode).
+- **Explicit key size** in the button's right-click menu (**Button Size**): **Width** single or double, **Height** auto / single / double. Auto height grows only as far as the content needs; an explicit height is honoured exactly. Double-width keys occupy two columns and never straddle the grid edge or overlap a neighbour — moving one still refuses any placement that would overwrite. Persists per item in the rundown XML (`<simplemodewidth>`, `<simplemodeheight>`).
+- Keys only span a second slot when their content genuinely needs it: the row calculation mirrors the rendered key exactly — the same widgets, heights and spacing, with the label's wrapped height measured from the real text — instead of a padded estimate. Adding an **icon**, a dropdown or a couple of invoke sub-buttons no longer pushes a key to double height unless it truly doesn't fit.
+- **Grid dimensions (columns × rows)** are set directly in the bottom bar (1–12 each, persisted); cells scale dynamically so the configured grid fills the panel in both directions while staying square.
+- Item colors (Colorize Item) carry over as button colors; the selected button shows a green border.
+- Each key carries a **tally strip** along its top edge that lights while that key is the **last thing fired** on its channel — the same moment and the same per-channel rule the rundown uses for its own active marker, and the same active colour (including a custom one). The strip always occupies its height, so lighting up never moves anything on the key.
+- Each key carries a **channel badge** directly under its control row, showing channel and layer, coloured by the same channel-colour logic the rundown badges use — so a channel reads the same everywhere in the client.
+- **Keys hold their place.** Positions are written down as soon as a key is drawn, so removing a button — or deleting its item from the rundown — leaves every other key exactly where it was instead of sliding up to fill the gap. Changing the grid width translates saved positions through their row and column, so keys stay put there too. A position is written only the first time a key is drawn, so a key temporarily displaced by a neighbour that grew keeps its saved home and returns to it — resizing the window can never permanently rearrange the surface.
+
+- All of these live in one **Simple Mode** section in the inspector — "Show as button", "Show next button", "Show invokes on group button" and "Treat as dropdown" — collapsed by default like Embedded Transform, so it stays out of the way until you need it.
+
+### Labeled invokes as sub-buttons
+- The Invoke section in the normal inspector gains a **Label column** per invoke row (persisted in the rundown XML).
+- New **Discover Functions** button in the Invoke section: scans the template's HTML for its JavaScript function declarations (webcg lifecycle functions — play, stop, next, update, remove, init, data — are skipped) and offers them as **dropdown choices on each Function field** (still free-typeable). The dropdowns also refresh automatically for the selected item's template when switching rundown items. Fill the Label column for the invokes that should appear as Simple Mode sub-buttons.
+- In Simple Mode, template buttons show a sub-button per **labeled** invoke — the label is what the operator sees; unlabeled invokes are hidden there. Each sub-button spans the **full width** of the key, so long labels stay readable; the key grows downward into extra slots to fit them.
+- **Invokes on group buttons**: a template inside a group can publish its labeled invokes onto the *group's* button via **"Show invokes on group button"** (inspector → Simple Mode). The group key then shows those invokes as sub-buttons and firing one hits that child template on its own channel/layer — so an operator can drive a whole group from one key. Persists in the rundown XML (`<simplemodegroupinvokes>`); works for templates nested one group deep.
+- Invoke rows in the inspector have a **drag handle** (grip at the left of each row) — drag a row up or down to reorder the invokes. The order is what Simple Mode's sub-buttons follow and what gets saved to the rundown XML; the F7 default marker stays with its row.
+
+### Own layout
+- Simple Mode has a completely **independent panel layout** (own column order and panel assignments), edited in **Settings → Simple Mode** — same editor as the normal layout, empty by default. Any panel can be placed, including the new **Simple Inspector**.
+
+### Simple Inspector
+- A stripped-down inspector panel showing only: **label, channel/videolayer, and the template's key/values** with an **Update** button that pushes edited values to the on-air template.
+- Header matches the full template inspector: **Update, + and −** sit right-aligned above the data table (same tool-button style); rows are edited — including their mode (text/integer/decimal/boolean/color/cycle) — by **double-clicking**, via the same dialog as the full inspector.
+- The panel carries the **standard panel menu** (hamburger): move between panels, size mode, anchor, collapse.
+
+### Button context menu (right-click)
+- **Label Size** (Small → Huge) and **Set Icon...** per button — the icon picker offers a glyph/emoji grid plus free text, stored as text in the rundown XML so icons travel between clients with no image files. Both persist per item (`<simplemodelabelsize>`, `<simplemodeicon>`).
+- **Remove from Grid** is also available in the menu (clears the flag; the rundown item is untouched).
+
+### Update button in the full inspector
+- The normal template inspector's Import Fields row now also has an **Update** button — both inspectors share the same look, and template data can be pushed to air from either.
+
+
+---
+
 ## Dialog Positioning Fix
 
 The key/value add/edit dialogs (template data, HTTP GET/POST data) position themselves near the cursor — they are now clamped to the visible screen area, so they can no longer open off-screen when the inspector sits near a screen edge.
+
+---
+
+## Sheet-Bound Templates
+
+A template that lives off a Google Sheet row can now say so, and the inspector resolves it — the operator sees real names and numbers instead of the ids used to fetch them.
+
+### What a template declares
+Alongside the two objects that already exist, a template adds three more. Same rules: flat, quoted strings, inline.
+
+```js
+window.debugData      = { "name": "Amine Gouiri", "number": "9" };
+window.debugDataModes = { "number": "integer" };
+
+window.debugDataTab   = "LINEUP";                              // which tab
+window.debugDataKey   = "f0";                                  // column identifying a row
+window.debugDataMap   = { "name": "NAME", "number": "NUMBER" }; // template key <- sheet column
+```
+
+### What the item stores
+Only which row it is. The tab, the key column and the mapping all come from the template, so the same binding never has to be described twice. Persists in the rundown XML (`<sheetrow>`, `<sheetresolvedat>`).
+
+### In the inspector
+- A **Sheet** row appears — and only appears — for templates that declare a source. It shows the tab and key column, a row picker, a **Resolve** button, and when the values were last read.
+- Resolve fills the mapped keys and stamps the time. The picker then lists every row, showing the id alongside the first mapped column so the list reads as names rather than ids.
+- **Bound values are read-only**, tinted and flagged, since the sheet owns them. Clearing the row binding hands them back for editing by hand.
+- A missing row or a renamed column says so rather than sending blanks.
+
+### Sheets strain meter
+The Performance panel gains a **Sheets** row whenever something touches a sheet: a meter showing reads in the last minute against the per-minute budget (60 by default, configurable). It counts this client's own reads exactly and estimates template reads from the plays it fires, since a sheet-driven template reads the sheet every time it renders and that traffic happens inside the graphic where the client cannot see it. Green under half, amber past half, red past three quarters; the tooltip splits the two figures. The row stays hidden on shows that never touch a sheet.
+
+### Publishing strain outward
+One client can never see the whole picture: it counts its own reads exactly, but reads made inside a graphic happen where it cannot look. So it publishes what it does know and lets something with a wider view do the totalling.
+
+Set **Settings → Sheets → Report to URL** and the client POSTs a small JSON body every ten seconds, broken down per spreadsheet because the budget belongs to the API key rather than to the client:
+
+```json
+{
+  "source": "casparcg-client",
+  "host": "GALLERY-PC",
+  "windowSeconds": 60,
+  "limitPerMinute": 60,
+  "at": "2026-09-02T12:00:00Z",
+  "sheets": [
+    { "spreadsheetId": "1AbC...", "clientReads": 3, "templateReadsEstimated": 9 }
+  ],
+  "note": "clientReads are exact; templateReadsEstimated is inferred from plays of sheet-driven templates"
+}
+```
+
+Nothing is sent when the field is empty, or when no sheet has been read in the last minute. The same tab now also exposes the **cache service URL** and the **per-minute budget**, which previously had to be set in the database by hand.
+
+A collector to receive it (`strain_server.php`, sits beside `local_server.php`) accepts these reports, and also accepts a one-line tick from a template each time it reads the sheet:
+
+```
+GET strain_server.php?tick=1&spreadsheetId=<id>&source=<template>
+```
+
+Ticks are counted rather than inferred, so where templates report for themselves their own count **replaces** the client's guess about them instead of being added to it. `GET strain_server.php` then returns the total per spreadsheet, flagged `counted` or `estimated`, with stale sources listed but excluded — one URL for the Salvo connector to poll.
+
+### Hosting the cache in the client
+The client can now be the cache service, so the PHP one beside it becomes optional. **Settings → Sheets → Host the cache in this client**, pick a port (3000 by default) and a folder.
+
+It answers on the parameters rather than on a path — any request carrying `spreadsheetId` and `sheetNumber` is a cache request — so a template still asking for `local_server.php` reaches it untouched. File names match the PHP service too, so an existing `sheets_data` folder can be used as it stands.
+
+| | |
+|---|---|
+| `GET …?spreadsheetId=X&sheetNumber=N` | cached rows, or 404 |
+| `POST …?spreadsheetId=X&sheetNumber=N` | store rows |
+| `GET /strain` | reads in the last minute, totalled |
+| `GET /strain?tick=1&spreadsheetId=X` | a template reporting one read |
+| `GET /bypass?on=1` / `?on=0` | throw the switch from anywhere |
+
+**Bypass** now lives where it is quick to reach: **Other → Sheet Cache Bypass**, the settings tab, or that URL. Reads answer 404 so graphics go live to the sheet; writes still land, so the cache stays warm for the moment it is switched back on.
+
+Because a template warming the cache has already paid Google for that read, a `POST` is counted as a read — which means **strain becomes counted rather than estimated with no change to any template**. The client's own warm writes carry `via=client` and are skipped, since the read behind them was already counted on the way in. Where counted reads exist for a spreadsheet they replace the play-based guess instead of adding to it.
+
+`GET /strain` returns the same body the client POSTs outward, so the Salvo connector can either be pushed to or poll — whichever suits it.
+
+### Warming, driven by demand
+Nothing is warmed on a schedule. A tab is refreshed because something asked for it — a template went to air, the inspector resolved a row, the cache came back empty — and then only if what is held has gone stale (30 s by default). The traffic stays proportional to the show rather than to the clock, and a show that touches nothing generates nothing.
+
+A play is the strongest signal there is, so it refreshes the tab it used: not for the play that just happened, but for the next one.
+
+Refreshes read through the **keyless proxy** named as `mainurl` in the project's `project.js` — the client parses it now — so they cost nothing against the per-minute budget, and the rows come back already in the shape the cache holds. Without a proxy a refresh has to come out of the budget, so it is skipped once the budget is half spent: the show's own reads come first.
+
+Several tabs wanted at once trickle rather than burst, spaced 1.5 s apart. Both numbers live in **Settings → Sheets → Warming**. Proxy reads are reported separately in the strain figures, as traffic that is not budget.
+
+Rows also stay in memory for ten seconds, so walking a list of them is not a request apiece.
+
+### A row picker built for Simple Mode
+The full inspector's version is a data source with a resolve step. This one is a list of names: pick one and the values follow, in a single click. It appears only for bound templates, loads its list on selection without being asked, and shows the sheet and the last resolve time in its tooltip rather than spending a row on them. Values the sheet owns are tinted and not editable by hand, the same rule as the full inspector.
+
+### Duplicated items keep their settings
+`clone()` is written once per item type and only ever knew about that type's own command, so anything shared by every command had to be repeated forty-odd times — and was not. A duplicated item silently lost its Simple Mode button settings, and a template lost its sheet binding.
+
+Duplication now goes through one seam that carries those across, so the fix holds for properties added later too. The one thing deliberately not copied is the button's **slot**: a slot holds one item, so a copy settles into the first free place instead of fighting the original for its own.
+
+### Seeing what the sheet returned
+The inspector shows only the columns a template declares, which is the right amount to work with and the wrong amount to debug with: a blank value could be a renamed column, an empty cell, or a row that resolved somewhere unexpected, and they all look the same.
+
+A **Data** button beside Resolve (and the same button in the Simple inspector) shows the whole row as it came back:
+
+- Mapped columns first, in the order the template declares them, each with the template key it feeds
+- Unmapped columns after, dimmed — what the template *could* read next
+- A declared column the sheet does not have is marked in red as **(no such column)**, and a column that exists but is blank reads **(empty)** — the distinction that is otherwise invisible
+- **Copy** puts the row on the clipboard as JSON
+
+If nothing has been read yet the button reads the row first and opens on the answer, so it means the same thing whether or not you resolved.
+
+### Switching a project between cache and live, from inside the client
+**Settings → Sheets → Template Projects** lists every discovered project with a checkbox. Ticked writes `local = true` into that project's `project.js`, so its templates read the cache at localhost:3000; unticked writes `false`, which is a relative path that fails inside CasparCG and sends them straight to Google.
+
+The flag is written into the project's own `project.js` rather than kept as a second copy here, because that file is what the templates actually read. Only the value is rewritten — comments, spacing, line endings and the keyword in front of it are left exactly as they were. A project without a `local = true/false` line is listed but not switchable; nothing is invented in a file we do not own.
+
+Templates pick the change up the next time they load.
+
+### The key/value table sizes itself
+It is now as tall as the keys in it plus one free row, so there is always somewhere obvious to add the next key and no empty space when there are only two. Applies however the rows arrived — typed, imported, resolved from a sheet, or undone. Past twenty rows it stops growing and scrolls, so a large template does not turn the inspector into one long scroll.
+
+### A light for the cache in the Server Status panel
+The hosted cache now sits with the playout servers, in the same shape as a device row — name, light, button — because it answers the same question: is this thing responding right now, and can I change that from here.
+
+- **Green** — listening and serving. The button reads **Bypass**.
+- **Amber** — listening, bypassing. Deliberately serving nothing while writes still land, so it is amber rather than red: a red light here would read as a fault every time somebody went live on purpose. The button reads **Serve**.
+- **Red** — enabled but not listening, which almost always means the port already belongs to something else. The tooltip says so, and names the port.
+
+The row is hidden entirely when the client is not hosting the cache.
+
+The button is the bypass switch, so throwing it mid-show does not mean going looking for a menu. The light is read back from the server every couple of seconds rather than remembered from the last click, so it stays right when bypass is flipped from the menu, the settings or over HTTP.
+
+### Strain reporting works both ways
+The client already published what it was spending. It now also accepts what other applications are spending, so whichever end does the adding up has the whole picture instead of its own corner of it.
+
+```
+POST /strain          a windowed report from another application
+GET  /strain?tick=1&spreadsheetId=X[&count=N]   one read, or N of them
+GET  /strain          everything, totalled
+```
+
+The body is the same one the client publishes, so a client can report to another client with no translation:
+
+```json
+{ "source": "dataconnector", "host": "SALVO-PC", "windowSeconds": 60,
+  "sheets": [ { "spreadsheetId": "1AbC…", "reads": 12 } ] }
+```
+
+`reads` is the plain way to say it; a report carrying `clientReads` and `templateReads` instead is added up the same way, which is what makes the client's own output valid input.
+
+Reported reads appear as `externalReads` per spreadsheet, counted into the total and kept separate as well, so it stays clear which part of a total was not seen first-hand. They also feed the Performance meter, whose tooltip names them only when somebody is reporting.
+
+A report describes a window, not a running tally, so a reporter that stops fades out after ninety seconds rather than holding a number up forever. `GET /strain` lists every reporter with its age and whether it has gone stale, so a total can be trusted or not on the evidence.
+
+The `?tick=` form now takes an optional `count`, so an application batching its own reads can say so in one request instead of one per read.
+
+Reports are read for numbers and identity and nothing else: no field of one reaches a file path, a URL or a command, source and host are length-capped, and a reporter that keeps renaming itself cannot grow the table without bound.
+
+### Clearing the cache
+**Settings → Sheets → Host the cache** gains a **Clear cache** button, which carries the count and size of what it would remove — so it states a fact about the cache rather than being a lever with an unknown effect. It disables itself and reads *(empty)* when there is nothing to clear, and re-counts when the folder is repointed.
+
+Clearing asks first, naming the folder and how many files. Nothing is lost that a read will not fetch again: each tab goes back to the sheet the next time something asks for it, so this costs reads rather than data — which the confirmation says.
+
+Only files named the way this service names them (`<spreadsheetId>_<sheet>.json`) are touched, because the folder is meant to be shared with the PHP service and with whatever else is kept beside it. A file that will not delete is reported by name rather than passed over quietly.
+
+### The Sheets panel joins the picture
+The panel predates the resolver and was fetching the API directly with its own network stack, which meant two things nobody could see: its reads did not appear in the strain meter, and — because it polls, as often as every ten seconds — it was quietly the most regular reader in the client while showing as nothing at all.
+
+Both of its calls now declare themselves, so the meter counts them like any other read.
+
+More usefully, a poll now **warms the cache**. The call to Google was already paid for, so the rows are reshaped the way the cache holds them and written back on the way past. A panel left open on a tab keeps that tab warm for the templates and the inspector for free, and the warmer stops asking for what the panel is already fetching.
+
+### Expected result, and one declaration instead of two
+A template that reads a sheet says so, in the form the templates already carry:
+
+```js
+window.sheetConnection = { "tab": "LINEUP", "key": "homelineup" };
+```
+
+`tab` is the sheet tab; `key` names the template's own data field whose value picks the row. That value is an **index into the rows**, not a column to match on, because `functions.js` resolves it as `data[key]` — the client resolves it exactly the same way, or it would answer confidently with the wrong row.
+
+Below the key/value table, any template that declares a connection gets an **expected result** box: headed `TAB → key`, showing how many rows came back and the resolved row column by column, with a **Refresh** that re-reads the tab on demand. `row = 4` is not an answer until you can see who row 4 is. It re-resolves as the key is typed — no read, it already holds the tab — and only goes back to the sheet when Refresh is pressed. A template that declares nothing gets no box rather than an empty one, and that silence is meaningful: the connector-driven templates have no sheet at all.
+
+**The earlier declaration is gone.** `debugDataTab` / `debugDataKey` / `debugDataMap` described a different architecture — one where the client resolved a row and filled the template's fields, which is why bound values were read-only — and no template ever carried it. With it go the sheet row picker, the Resolve and Data buttons, the read-only field marking, the row dialog, and the `<sheetrow>` / `<sheetresolvedat>` item properties. One declaration, the one that is actually deployed, shared with what `preview.html` already reads.
+
+### Where the box's rows came from, and how old they are
+The box was already filled from the cache — `fetchRows` reads the cache before it spends anything on the API — but silently, so a copy read a second ago and one left over from last week looked identical. Both facts are now on screen beside the row count:
+
+- **live** — straight from the sheet
+- **cache · 4m old** — served from the cache, with the age of that copy
+- **proxy** — read through the keyless proxy
+- **cache · age unknown** — a cache that does not say when it stored what it served
+
+Grey under an hour, amber past one, red past a day: a cached copy is the normal case and not a problem in itself, so the colour follows the **age** rather than the source. A day-old row may be describing last week's match.
+
+For the client to know the age, the cache has to say. The client's own service now sends both `Last-Modified` and an ISO `X-Sheet-Cached-At` on every cache read, taken from the file it is serving. The PHP service sends neither, and that reads as *age unknown* rather than as a guess.
+
+A memory hit reports the age of the underlying copy rather than the age of our copy of it, so glancing twice does not make stale rows look fresh.
+
+### Simple Mode first in the inspector
+The **Simple Mode** section now sits at the top, above Output. It is the section reached for on every item while building a button surface, where the rest are reached for when something specific needs changing. Still collapsed by default, and the toggle still sticks for the session.
+
+Under the hood the section is still declared last, so the hundred and twenty places in the inspector that name a section by its declared index keep meaning what they say. A single helper resolves declaration order to display order — renumbering them by hand is how one missed line ends up quietly hiding the wrong section.
+
+### Undo works in Simple Mode
+Moving, removing and resizing a button could not be taken back, while the rundown those buttons live in could. Every grid edit now goes on the rundown's own undo stack, reachable with **Ctrl+Z** from Simple Mode:
+
+- Move a button — *Move Simple Mode Button*
+- Remove one, from the move bar or the right-click menu — *Remove From Simple Mode*
+- Change its width or height — *Change Button Size*
+- Change its label size or icon — *Change Label Size*, *Set Button Icon*
+
+A grid edit is an edit to the rundown, so it belongs on the same stack rather than a private one: the snapshot the rundown already takes carries every Simple Mode property, because they are persisted with the item. Undo restores them and the grid redraws itself, which is what the structure-change notification added in build 128 was for.
+
+A move captures the positions of the *other* buttons too. Placing one is what fixes everything else in place, so undoing it has to put those back as well or the surface would come back subtly rearranged.
+
+The dropdown group's current selection is deliberately not undoable — it is an operational choice like selecting an item, not an edit to the surface.
+
+### Where the data comes from
+The resolver reads the **local cache service first** — the same one the templates race against — and falls back to the Sheets API when the cache has nothing, which is exactly what a cache miss means there. Any answer it gets from the API is written back to the cache in the shape the templates expect, so a resolve leaves the cache warmer than it found it. The project (spreadsheet id and key) is inferred from the template's own folder, so there is nothing to configure.
 
 ---
 
@@ -107,6 +376,7 @@ A new **Google Sheets** panel (add it via the layout editor) connects to the sam
 - Scans every device's template path (and direct subfolders) for `project.js` — the same connection file the templates use (`spreadsheetId` + `apiKey`). Each folder found becomes a selectable project.
 - Lists all tabs of the connected spreadsheet; opening a tab shows its actual rows — the operator sees real data (player names, numbers), not the row ids used to reference it.
 - Manual refresh plus a selectable auto-refresh interval in the toolbar (10s / 30s / 1m / 2m / 5m / Off, persisted); the status label shows the last fetch time.
+- **Show/hide columns per tab** (hamburger → **Columns**): tick the columns you want visible for the selected tab. Each project+tab keeps its own selection, so a wide sheet can show just the few columns the operator needs. Hiding is display-only — `{COLUMN}` placeholders in button data still resolve from hidden columns.
 
 ### Field modes from templates (debugDataModes)
 Import Fields in the template inspector now also reads an optional `window.debugDataModes = { "f0": "integer", "align": "cycle:left|center|right" }` object from the template HTML — imported rows arrive with their edit mode (integer/decimal/boolean/color/cycle) and cycle values already set, so the operator gets the right controls without configuring each row. See `CLIENT_INTEGRATION.md` in the template project folder for the template-side contract.
@@ -466,6 +736,8 @@ Each row in the template key-value table has its own **data edit mode**, set via
 
 The interaction column is narrow (20px) and separate from the value text, so clicking never accidentally opens the edit dialog. The mode is saved per-row in the rundown file and is not sent to CasparCG.
 
+**Import Fields merges instead of replacing**: importing from `window.debugData` keeps the rows you already have — existing keys keep their current value and position (declared modes refresh from the template), and only missing keys are appended. Deleting a key and importing again simply brings that key back.
+
 ---
 
 ## Template Newline Behavior
@@ -504,7 +776,7 @@ Each viewer receives and plays audio from its NDI source:
 ### Connection Status
 Visual overlay indicators show the current connection state:
 - "Connecting..." while waiting for the first frame from a source
-- Source name overlay once video is received
+- Source name overlay once video is received — it auto-hides after 5 seconds to keep the picture clean (status/error overlays always stay visible)
 - "Signal Lost" with red background when the NDI source goes offline
 - Automatic recovery when the source comes back — no need to reconnect manually
 
@@ -559,7 +831,7 @@ All values are color-coded independently: green (normal), yellow (moderate), red
 Content items (Template, Movie, Still, Audio, HTML, Image Scroller) can carry their own MIXER transform properties directly on the item — no more separate transform items and visual jumps on-air.
 
 ### How It Works
-- Select any content item and open the **Embedded Transform** section in the inspector
+- Select any content item and open the **Embedded Transform** section in the inspector (it starts collapsed to keep the inspector compact — click its header to expand; the toggle sticks for the session)
 - Check any transform property to enable it: Fill, Opacity, Rotation, Anchor, Crop, Clip, Brightness, Contrast, Saturation, Volume
 - On play, all enabled transforms are sent as `MIXER ... DEFER` commands, then `MIXER COMMIT`, then the content plays — fully atomic, no visual jumps
 - Optional **Entrance Animation**: animate a property (e.g. fade opacity from 0 to 1) after the content appears
@@ -684,6 +956,7 @@ A new Light theme option alongside the existing Flat and Curve themes. Lighter b
 - **Library "Default" label**: Channel/layer selectors at top of library have a "Default" label
 - **Inspector delay/duration minimum**: Clamped to minimum 0 — negative values no longer possible
 - **Solid color fix**: SolidColor command handles both #AARRGGBB and #RRGGBB formats correctly
+- **Wheel-safe inspector inputs**: spin boxes, dropdowns and sliders in the inspector (and the Simple Inspector) only react to the mouse wheel after being clicked — scrolling the inspector page no longer changes values by accident; the wheel scrolls the page instead
 
 ---
 
@@ -709,6 +982,12 @@ A new Light theme option alongside the existing Flat and Curve themes. Lighter b
 - **Fixed device add dialog**: Adding a server no longer fails with "parameter count mismatch" when the ServerPath column is missing.
 - **Fixed preview channel override leak**: Preview override no longer leaks into inspector display, saved files, or OSC-triggered playback.
 - **Fixed OSC trigger channel override**: OSC/bank triggers clear any lingering preview override before executing.
+- **Fixed crash editing template key/values after the item changed**: the template, HTTP GET/POST and Simple inspectors kept a raw pointer to the selected item's command; if that item was deleted or rebuilt (move, undo, reload), the next click in the key/value table dereferenced freed memory and crashed the client. All cached command pointers are now QPointers that auto-null, with guards on every write-back path.
+- **Fixed Activity panel keeping rows after Clear CH / Clear VL**: clearing a channel (F12) or videolayer (F11/F10) now broadcasts the clear, so the Activity panel removes every row on the affected channel/layer — play rows, progress rows and auto-loop countdowns alike. The same broadcast also stops other items' delayed auto-loops on the cleared channel, matching the Clear Output panic item's behavior.
+- **Fixed spanned panels not collapsing correctly**: a spanned panel's height lives on its layout-grid row, which never followed the panel's collapse. Collapse/expand on a spanned panel now rebuilds the layout: collapsed rows shrink to the compact header (resize handle hidden), expand restores the saved span height.
+- **Fixed a crash after deleting rundown items or pressing undo while Simple Mode is open.** The grid held pointers to tree items that had been destroyed — deletion frees them, and an undo rebuilds every item from scratch — so pressing a key could dereference freed memory. Both paths now tell the grid, which drops the stale pointers and rebuilds (or defers the rebuild if it is hidden).
+- **Fixed Simple Mode keys not updating when items are deleted from the rundown.** The removed item's key now disappears, and the remaining keys keep their positions.
+- **Fixed invoke dropdowns showing the previous item's functions**: the Function dropdowns kept the functions discovered for the previously selected template. They now re-scan the selected item's own template on every selection.
 
 ---
 
