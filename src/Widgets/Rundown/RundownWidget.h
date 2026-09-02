@@ -57,6 +57,10 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         bool checkForSaveBeforeQuit();
         QUndoGroup* undoGroup() const { return m_undoGroup; }
 
+        // The tree of the currently focused/active rundown tab (nullptr if none).
+        // Used by Simple Mode to enumerate items and drive selection.
+        RundownTreeWidget* activeTreeWidget() const;
+
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
 

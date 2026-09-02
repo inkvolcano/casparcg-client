@@ -57,6 +57,8 @@
 #include "DatabaseManager.h"
 #include "EventManager.h"
 #include "DeviceManager.h"
+#include "CasparDevice.h"
+#include "../SheetDataResolver.h"
 #include "CloneGroupRegistry.h"
 #include "TriggerBankRegistry.h"
 #include "Events/PresetChangedEvent.h"
@@ -2053,8 +2055,8 @@ void RundownTreeWidget::createLinkedClone()
     if (sourceCommand->getCloneGroupId().isEmpty())
         sourceCommand->setCloneGroupId(QUuid::createUuid().toString(QUuid::WithoutBraces));
 
-    // Clone the item. The clone() method copies all command properties.
-    AbstractRundownWidget* cloneWidget = sourceRundownWidget->clone();
+    // Clone the item. cloneItem() adds the properties every command shares.
+    AbstractRundownWidget* cloneWidget = sourceRundownWidget->cloneItem();
     cloneWidget->getCommand()->setCloneGroupId(sourceCommand->getCloneGroupId());
 
     // Insert the clone after the source item in the tree.
@@ -2717,6 +2719,31 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
         rundownWidgetParent = dynamic_cast<AbstractRundownWidget*>(selectedWidgetParent);
     }
 
+    // Dropdown group: the group is a chooser, not a container to fire as a whole.
+    // Every action aimed at it (Play button, F2, OSC, preview) is redirected to
+    // the child currently selected in its dropdown.
+    if (rundownWidget != nullptr)
+    {
+        if (GroupCommand* dropdownGroup = dynamic_cast<GroupCommand*>(rundownWidget->getCommand()))
+        {
+            if (dropdownGroup->getTreatAsDropdown() && currentItem != nullptr && currentItem->childCount() > 0)
+            {
+                int selected = qBound(0, dropdownGroup->getDropdownIndex(), currentItem->childCount() - 1);
+                QTreeWidgetItem* chosen = currentItem->child(selected);
+                QWidget* chosenWidget = this->treeWidgetRundown->itemWidget(chosen, 0);
+                AbstractRundownWidget* chosenRundown = dynamic_cast<AbstractRundownWidget*>(chosenWidget);
+                if (chosenRundown != nullptr)
+                {
+                    currentItem = chosen;
+                    selectedWidget = chosenWidget;
+                    selectedWidgetParent = this->treeWidgetRundown->itemWidget(chosen->parent(), 0);
+                    rundownWidget = chosenRundown;
+                    rundownWidgetParent = dynamic_cast<AbstractRundownWidget*>(selectedWidgetParent);
+                }
+            }
+        }
+    }
+
     if (source == Action::ActionType::GpiPulse && !rundownWidget->getCommand()->getAllowGpi())
         return true; // Gpi pulses cannot trigger this item.
 
@@ -2895,7 +2922,7 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
     };
 
     // Helper to fire channel activity events for the status panel.
-    auto fireActivityEvent = [&type](AbstractRundownWidget* widget) {
+    auto fireActivityEvent = [this, &type, previewActive](AbstractRundownWidget* widget) {
         if (widget == nullptr || widget->getCommand() == nullptr || widget->isGroup())
             return;
 
@@ -2940,6 +2967,50 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
                     ChannelActivityEvent(deviceModel->getPreviewChannel(), vl, label, itemType, false));
             }
         }
+
+        // A sheet-driven template reads the sheet itself every time it renders, so a
+        // play is API traffic the client cannot see. Count it for the strain meter.
+        if (type == Playout::PlayoutType::Play || type == Playout::PlayoutType::PlayNow)
+        {
+            if (TemplateCommand* sheetTemplate = dynamic_cast<TemplateCommand*>(widget->getCommand()))
+                SheetDataResolver::getInstance().noteTemplatePlayed(widget->getLibraryModel()->getDeviceName(),
+                                                                    sheetTemplate->getTemplateName());
+        }
+
+        // Preview bookkeeping: remember the preview layers we light, and when the
+        // item is taken to program clear ONLY its own preview layer — other items
+        // parked on other layers of the preview channel must stay up.
+        {
+            QString previewDevice = widget->getLibraryModel()->getDeviceName();
+            const QSharedPointer<DeviceModel> previewModel =
+                DeviceManager::getInstance().getDeviceModelByName(previewDevice);
+            if (previewModel != nullptr && previewModel->getPreviewChannel() > 0)
+            {
+                QString key = QString("%1|%2|%3").arg(previewDevice)
+                    .arg(previewModel->getPreviewChannel()).arg(vl);
+
+                if (type == Playout::PlayoutType::Preview || previewActive)
+                {
+                    this->previewedLayers.insert(key);
+                }
+                else if ((type == Playout::PlayoutType::Play || type == Playout::PlayoutType::PlayNow)
+                         && this->previewedLayers.remove(key))
+                {
+                    const QSharedPointer<CasparDevice> previewCasparDevice =
+                        DeviceManager::getInstance().getDeviceByName(previewDevice);
+                    if (previewCasparDevice != nullptr && previewCasparDevice->isConnected())
+                        previewCasparDevice->clearVideolayer(previewModel->getPreviewChannel(), vl);
+                }
+            }
+        }
+
+        // A clear wipes more than the executed item: broadcast it (same event the
+        // Clear Output panic item fires) so other items' auto-loops on the affected
+        // channel/layer stop and the Activity panel sweeps every matching row.
+        if (type == Playout::PlayoutType::ClearChannel)
+            EventManager::getInstance().fireChannelClearedEvent(widget->getLibraryModel()->getDeviceName(), ch, -1);
+        else if (type == Playout::PlayoutType::Clear || type == Playout::PlayoutType::ClearVideoLayer)
+            EventManager::getInstance().fireChannelClearedEvent(widget->getLibraryModel()->getDeviceName(), ch, vl);
     };
 
     if (type == Playout::PlayoutType::Next && rundownWidgetParent != nullptr && rundownWidgetParent->isGroup() && dynamic_cast<GroupCommand*>(rundownWidgetParent->getCommand())->getAutoPlay())
@@ -2980,6 +3051,10 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
         }
 
         dynamic_cast<AbstractRundownWidget*>(selectedWidget)->setActive(true);
+
+        // Same moment the rundown marks its active item — the Simple Mode grid uses
+        // this to light the tally on the matching key.
+        EventManager::getInstance().fireRundownItemFiredEvent(currentItem, channel);
 
         // For top-level movies with autoPlay, use Next (direct PLAY) instead of Play (LOADBG AUTO).
         // LOADBG AUTO on an empty CasparCG layer doesn't start playback.

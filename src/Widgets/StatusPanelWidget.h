@@ -43,6 +43,17 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         bool activityCollapsed;
         bool banksCollapsed;
 
+        // The hosted sheet cache, shown beside the playout servers because it is one
+        // more thing that is either answering or not while a show is on.
+        QWidget* cacheRow = nullptr;
+        QLabel* cacheDot = nullptr;
+        QLabel* cacheLabel = nullptr;
+        QPushButton* cacheBypassButton = nullptr;
+        QTimer cacheStatusTimer;
+
+        void setupCacheRow(QVBoxLayout* serverOuterLayout);
+        Q_SLOT void updateCacheStatus();
+
         QToolButton* serverMenuButton = nullptr;
         QToolButton* activityMenuButton = nullptr;
         QToolButton* banksMenuButton = nullptr;
@@ -168,6 +179,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         Q_SLOT void channelActivity(const ChannelActivityEvent&);
         Q_SLOT void playbackProgress(const PlaybackProgressEvent&);
         Q_SLOT void autoLoopCountdown(const AutoLoopCountdownEvent&);
+        Q_SLOT void channelCleared(const QString& deviceName, int channel, int videolayer);
         Q_SLOT void cleanupStaleEntries();
         Q_SLOT void bankAssignmentChanged(const BankAssignmentChangedEvent&);
         Q_SLOT void deviceAdded(CasparDevice&);

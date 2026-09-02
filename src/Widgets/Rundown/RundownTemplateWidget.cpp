@@ -217,6 +217,7 @@ AbstractRundownWidget* RundownTemplateWidget::clone()
     command->setRemoteTriggerId(this->command.getRemoteTriggerId());
     command->setFlashlayer(this->command.getFlashlayer());
     command->setInvokes(this->command.getInvokes());
+    command->setInvokeLabels(this->command.getInvokeLabels());
     command->setInvokeHotkeyIndex(this->command.getInvokeHotkeyIndex());
     command->setTemplateName(this->command.getTemplateName());
     command->setTemplateDataModels(this->command.getTemplateDataModels());

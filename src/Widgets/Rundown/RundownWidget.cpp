@@ -648,6 +648,17 @@ void RundownWidget::clearOpenRecent()
    DatabaseManager::getInstance().deleteOpenRecent();
 }
 
+RundownTreeWidget* RundownWidget::activeTreeWidget() const
+{
+    QTabWidget* pane = this->focusedTabWidget;
+    if (pane == nullptr)
+        pane = this->tabWidgetRundown;
+    if (pane == nullptr || pane->count() == 0)
+        return nullptr;
+
+    return dynamic_cast<RundownTreeWidget*>(pane->currentWidget());
+}
+
 bool RundownWidget::checkForSaveBeforeQuit()
 {
     // Check both panes.

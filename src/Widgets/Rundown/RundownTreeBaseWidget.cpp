@@ -183,6 +183,9 @@ void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
         refreshDisabledVisual(QTreeWidget::invisibleRootItem()->child(i));
 
     m_undoRestoring = false;
+
+    // Every item was destroyed and recreated — pointers held elsewhere are stale.
+    EventManager::getInstance().fireRundownStructureChangedEvent();
 }
 
 void RundownTreeBaseWidget::beginUndoSnapshot(const QString& description)
@@ -773,6 +776,9 @@ void RundownTreeBaseWidget::removeSelectedItems()
 
     updateAllGroupWidgets();
     checkEmptyRundown();
+
+    // Tell anything holding item pointers (the Simple Mode grid) that they are gone.
+    EventManager::getInstance().fireRundownStructureChangedEvent();
 }
 
 void RundownTreeBaseWidget::removeAllItems()
@@ -1006,7 +1012,7 @@ void RundownTreeBaseWidget::groupItems()
             QTreeWidgetItem* innerGroupItem = new QTreeWidgetItem();
             parentItem->addChild(innerGroupItem);
 
-            AbstractRundownWidget* innerWidget = srcWidget->clone();
+            AbstractRundownWidget* innerWidget = srcWidget->cloneItem();
             innerWidget->setInGroup(true);
             innerWidget->setActive(false);
 
@@ -1027,7 +1033,7 @@ void RundownTreeBaseWidget::groupItems()
                 QTreeWidgetItem* grandchildItem = new QTreeWidgetItem();
                 innerGroupItem->addChild(grandchildItem);
 
-                AbstractRundownWidget* grandchildWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item->child(i), 0))->clone();
+                AbstractRundownWidget* grandchildWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item->child(i), 0))->cloneItem();
                 grandchildWidget->setInGroup(true);
                 grandchildWidget->setActive(false);
 
@@ -1047,7 +1053,7 @@ void RundownTreeBaseWidget::groupItems()
             QTreeWidgetItem* childItem = new QTreeWidgetItem();
             parentItem->addChild(childItem);
 
-            AbstractRundownWidget* childWidget = srcWidget->clone();
+            AbstractRundownWidget* childWidget = srcWidget->cloneItem();
             childWidget->setInGroup(true);
             childWidget->setActive(false);
 
@@ -1097,7 +1103,7 @@ void RundownTreeBaseWidget::ungroupItems()
             newItem = new QTreeWidgetItem();
             insertTarget->insertChild(row + 1, newItem);
 
-            AbstractRundownWidget* newWidget = childWidget->clone();
+            AbstractRundownWidget* newWidget = childWidget->cloneItem();
             newWidget->setInGroup(childrenStayInGroup);
             newWidget->setActive(false);
 
@@ -1121,7 +1127,7 @@ void RundownTreeBaseWidget::ungroupItems()
                     QTreeWidgetItem* newGrandchild = new QTreeWidgetItem();
                     newItem->addChild(newGrandchild);
 
-                    AbstractRundownWidget* gcWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(grandchild, 0))->clone();
+                    AbstractRundownWidget* gcWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(grandchild, 0))->cloneItem();
                     gcWidget->setInGroup(true);
                     gcWidget->setActive(false);
                     QTreeWidget::setItemWidget(newGrandchild, 0, dynamic_cast<QWidget*>(gcWidget));
@@ -1180,7 +1186,7 @@ void RundownTreeBaseWidget::ungroupItems()
             newItem = new QTreeWidgetItem();
             insertTarget->insertChild(insertRow + 1, newItem);
 
-            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->clone();
+            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->cloneItem();
             newWidget->setInGroup(stillInGroup);
             newWidget->setActive(false);
 
@@ -1226,7 +1232,7 @@ void RundownTreeBaseWidget::moveItemUp()
         int rowCount = 0;
         if (currentItem != NULL && row > rowCount)
         {
-            AbstractRundownWidget* parentWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->clone();
+            AbstractRundownWidget* parentWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->cloneItem();
             parentWidget->setInGroup(true);
             parentWidget->setExpanded(true);
 
@@ -1241,7 +1247,7 @@ void RundownTreeBaseWidget::moveItemUp()
             {
                 QTreeWidgetItem* item = QTreeWidget::currentItem()->child(i);
 
-                AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->clone();
+                AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->cloneItem();
                 childWidget->setInGroup(true);
 
                 QTreeWidgetItem* childItem = new QTreeWidgetItem();
@@ -1267,7 +1273,7 @@ void RundownTreeBaseWidget::moveItemUp()
         int rowCount = 0;
         if (currentItem != NULL && row > rowCount)
         {
-            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->clone();
+            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->cloneItem();
 
             if (parentItem == NULL) // Top level item.
             {
@@ -1308,7 +1314,7 @@ void RundownTreeBaseWidget::moveItemDown()
 
         if (currentItem != NULL && row < rowCount)
         {
-            AbstractRundownWidget* parentWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->clone();
+            AbstractRundownWidget* parentWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->cloneItem();
             parentWidget->setInGroup(true);
             parentWidget->setExpanded(true);
 
@@ -1323,7 +1329,7 @@ void RundownTreeBaseWidget::moveItemDown()
             {
                 QTreeWidgetItem* item = QTreeWidget::currentItem()->child(i);
 
-                AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->clone();
+                AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0))->cloneItem();
                 childWidget->setInGroup(true);
 
                 QTreeWidgetItem* childItem = new QTreeWidgetItem();
@@ -1354,7 +1360,7 @@ void RundownTreeBaseWidget::moveItemDown()
 
         if (currentItem != NULL && row < rowCount)
         {
-            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->clone();
+            AbstractRundownWidget* newWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0))->cloneItem();
 
             if (parentItem == NULL) // Top level item.
             {
@@ -1412,7 +1418,7 @@ void RundownTreeBaseWidget::moveItemOutOfGroup()
     }
 
     QTreeWidgetItem* newItem = new QTreeWidgetItem();
-    AbstractRundownWidget* newWidget = currentWidget->clone();
+    AbstractRundownWidget* newWidget = currentWidget->cloneItem();
     newWidget->setInGroup(stillInGroup);
 
     parentItem->takeChild(currentRow);
@@ -1437,7 +1443,7 @@ void RundownTreeBaseWidget::moveItemOutOfGroup()
             QTreeWidgetItem* childItem = new QTreeWidgetItem();
             newItem->addChild(childItem);
 
-            AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem->child(i), 0))->clone();
+            AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem->child(i), 0))->cloneItem();
             childWidget->setInGroup(true);
             childWidget->setActive(false);
             QTreeWidget::setItemWidget(childItem, 0, dynamic_cast<QWidget*>(childWidget));
@@ -1526,7 +1532,7 @@ void RundownTreeBaseWidget::moveItemIntoGroup()
 
     // Clone the widget and add to target group.
     QTreeWidgetItem* newItem = new QTreeWidgetItem();
-    AbstractRundownWidget* cloned = currentWidget->clone();
+    AbstractRundownWidget* cloned = currentWidget->cloneItem();
     cloned->setInGroup(true);
 
     targetGroup->addChild(newItem);
@@ -1549,7 +1555,7 @@ void RundownTreeBaseWidget::moveItemIntoGroup()
             QTreeWidgetItem* childItem = new QTreeWidgetItem();
             newItem->addChild(childItem);
 
-            AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem->child(i), 0))->clone();
+            AbstractRundownWidget* childWidget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem->child(i), 0))->cloneItem();
             childWidget->setInGroup(true);
             childWidget->setActive(false);
             QTreeWidget::setItemWidget(childItem, 0, dynamic_cast<QWidget*>(childWidget));
@@ -1892,7 +1898,7 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
                     if (srcCmd->getCloneGroupId().isEmpty())
                         srcCmd->setCloneGroupId(QUuid::createUuid().toString(QUuid::WithoutBraces));
 
-                    AbstractRundownWidget* cloneWidget = srcWidget->clone();
+                    AbstractRundownWidget* cloneWidget = srcWidget->cloneItem();
                     cloneWidget->getCommand()->setCloneGroupId(srcCmd->getCloneGroupId());
                     cloneWidget->setInGroup(inGroup);
                     cloneWidget->setCompactView(this->compactView);

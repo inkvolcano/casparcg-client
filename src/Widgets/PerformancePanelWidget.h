@@ -7,6 +7,7 @@
 #include <QtCore/QTimer>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QProgressBar>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
@@ -24,6 +25,8 @@ private:
     void discoverServers(quint64 totalSys);
     Q_SLOT void toggleExpandCollapse();
 
+    void updateSheetsStrain();
+
     // Stat labels — individual cells per metric.
     QLabel* clientMemLabel = nullptr;
     QLabel* clientCpuLabel = nullptr;
@@ -31,6 +34,12 @@ private:
     QLabel* serverCpuLabel = nullptr;
     QLabel* systemMemLabel = nullptr;
     QLabel* systemCpuLabel = nullptr;
+
+    // Sheets strain: how much of the sheet API's per-minute budget is being spent,
+    // counting our own reads exactly and template reads by the plays we fire.
+    QLabel* sheetsValueLabel = nullptr;
+    QProgressBar* sheetsMeter = nullptr;
+    QWidget* sheetsRow = nullptr;
 
     QGridLayout* gridLayout = nullptr;
     QTimer* updateTimer = nullptr;

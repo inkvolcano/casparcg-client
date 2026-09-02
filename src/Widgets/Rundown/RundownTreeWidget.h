@@ -35,6 +35,7 @@
 
 #include <QtCore/QEvent>
 #include <QtCore/QMap>
+#include <QtCore/QSet>
 #include <QtCore/QObject>
 #include <QtCore/QPair>
 #include <QtCore/QString>
@@ -138,6 +139,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         QTreeWidgetItem* copyItem;
         QMap<int, QTreeWidgetItem*> currentPlayingItems;  // Per-channel tracking of last fired items
+        // Preview layers this client lit, keyed "device|previewChannel|videolayer".
+        // Taking an item to program clears only its own preview layer.
+        QSet<QString> previewedLayers;
         QTreeWidgetItem* currentPlayingAutoStepItem;
         QTreeWidgetItem* currentAutostepHighlightItem;
         QList<QTreeWidgetItem*> previousSelectedItems;

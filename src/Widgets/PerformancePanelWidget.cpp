@@ -1,10 +1,16 @@
 #include "PerformancePanelWidget.h"
 
+#include "SheetDataResolver.h"
+
 #include "Global.h"
 #include "PanelHelper.h"
 
 #include <QtCore/QScopeGuard>
 #include <QtCore/QSet>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QProgressBar>
 #include <QtWidgets/QToolButton>
 
 #if defined(Q_OS_WIN)
@@ -81,6 +87,31 @@ PerformancePanelWidget::PerformancePanelWidget(QWidget* parent)
     this->systemMemLabel = systemPair.first;
     this->systemCpuLabel = systemPair.second;
 
+    // Sheets strain meter. Hidden until something actually uses a sheet, so the
+    // panel stays as it was for shows that do not.
+    this->sheetsRow = new QWidget(this->contentWidget);
+    QHBoxLayout* sheetsLayout = new QHBoxLayout(this->sheetsRow);
+    sheetsLayout->setContentsMargins(0, 2, 0, 0);
+    sheetsLayout->setSpacing(6);
+
+    QLabel* sheetsName = new QLabel("Sheets", this->sheetsRow);
+    sheetsName->setStyleSheet(rowLabelStyle);
+    sheetsLayout->addWidget(sheetsName, 0);
+
+    this->sheetsMeter = new QProgressBar(this->sheetsRow);
+    this->sheetsMeter->setRange(0, SheetDataResolver::quotaLimit());
+    this->sheetsMeter->setValue(0);
+    this->sheetsMeter->setTextVisible(false);
+    this->sheetsMeter->setFixedHeight(6);
+    sheetsLayout->addWidget(this->sheetsMeter, 1);
+
+    this->sheetsValueLabel = new QLabel("0", this->sheetsRow);
+    this->sheetsValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    sheetsLayout->addWidget(this->sheetsValueLabel, 0);
+
+    this->gridLayout->addWidget(this->sheetsRow, 4, 0, 1, 3);
+    this->sheetsRow->setVisible(false);
+
     // Poll every 2 seconds.
     this->updateTimer = new QTimer(this);
     QObject::connect(this->updateTimer, &QTimer::timeout, this, &PerformancePanelWidget::updateStats);
@@ -124,8 +155,57 @@ static void colorizeLabel(QLabel* label, double percent)
     label->setStyleSheet(QString("color: %1;").arg(thresholdColor(percent)));
 }
 
+void PerformancePanelWidget::updateSheetsStrain()
+{
+    if (this->sheetsMeter == nullptr)
+        return;
+
+    int clientCalls = 0;
+    int templateCalls = 0;
+    int externalCalls = 0;
+    SheetDataResolver::getInstance().quotaUsage(clientCalls, templateCalls, &externalCalls);
+
+    int total = clientCalls + templateCalls + externalCalls;
+    int limit = SheetDataResolver::quotaLimit();
+
+    // Nothing has touched a sheet — keep the panel as it was.
+    if (total == 0 && !this->sheetsRow->isVisible())
+        return;
+
+    this->sheetsRow->setVisible(true);
+
+    if (this->sheetsMeter->maximum() != limit)
+        this->sheetsMeter->setRange(0, limit);
+
+    this->sheetsMeter->setValue(qMin(total, limit));
+
+    double percent = (limit > 0) ? (static_cast<double>(total) / static_cast<double>(limit) * 100.0) : 0.0;
+    QString color = thresholdColor(percent);
+
+    this->sheetsMeter->setStyleSheet(QString(
+        "QProgressBar { background-color: rgba(60, 60, 60, 200); border: none; border-radius: 3px; }"
+        "QProgressBar::chunk { background-color: %1; border-radius: 3px; }").arg(color));
+
+    this->sheetsValueLabel->setText(QString("%1/%2").arg(total).arg(limit));
+    this->sheetsValueLabel->setStyleSheet(QString("color: %1;").arg(color));
+
+    QString tooltip = QString(
+        "Sheet API reads in the last minute\n"
+        "%1 from this client, %2 from templates")
+        .arg(clientCalls).arg(templateCalls);
+
+    // Only mentioned when somebody is actually reporting, so the usual case stays
+    // as short as it was.
+    if (externalCalls > 0)
+        tooltip += QString("\n%1 reported by other applications").arg(externalCalls);
+
+    this->sheetsRow->setToolTip(tooltip);
+}
+
 void PerformancePanelWidget::updateStats()
 {
+    updateSheetsStrain();
+
 #if defined(Q_OS_WIN)
     quint64 totalSys = 0;
 

@@ -4,6 +4,7 @@
 #include "PanelHelper.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
+#include "SheetCacheServer.h"
 #include "TriggerBankRegistry.h"
 #include "Timecode.h"
 #include "Rundown/AbstractRundownWidget.h"
@@ -100,6 +101,10 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(autoLoopCountdown(const AutoLoopCountdownEvent&)),
                      this, SLOT(autoLoopCountdown(const AutoLoopCountdownEvent&)));
 
+    // Clear CH / Clear VL / Clear Output wipe every row on the affected channel(/layer).
+    QObject::connect(&EventManager::getInstance(), &EventManager::channelCleared,
+                     this, &StatusPanelWidget::channelCleared);
+
     // Connect bank assignment changed event.
     QObject::connect(&EventManager::getInstance(), SIGNAL(bankAssignmentChanged(const BankAssignmentChangedEvent&)),
                      this, SLOT(bankAssignmentChanged(const BankAssignmentChangedEvent&)));
@@ -169,7 +174,113 @@ void StatusPanelWidget::setupServerPanel()
     });
     serverOuterLayout->addWidget(this->autostepModeButton);
 
+    setupCacheRow(serverOuterLayout);
+
     serverOuterLayout->addStretch();
+}
+
+// Same shape as a server row \xe2\x80\x94 name, light, button \xe2\x80\x94 because it answers the same
+// question: is this thing responding right now, and can I change that from here.
+void StatusPanelWidget::setupCacheRow(QVBoxLayout* serverOuterLayout)
+{
+    this->cacheRow = new QWidget(this->widgetServer);
+    QHBoxLayout* rowLayout = new QHBoxLayout(this->cacheRow);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(6);
+
+    this->cacheLabel = new QLabel(this->cacheRow);
+    this->cacheLabel->setStyleSheet("font-size: 10px; color: rgba(200, 200, 200, 200);");
+    this->cacheLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(this->cacheLabel, 1);
+
+    this->cacheDot = new QLabel(this->cacheRow);
+    this->cacheDot->setFixedSize(12, 12);
+    rowLayout->addWidget(this->cacheDot, 0);
+
+    // The switch sits where the light is, so throwing it does not mean going
+    // looking for a menu mid-show.
+    this->cacheBypassButton = new QPushButton(this->cacheRow);
+    this->cacheBypassButton->setFixedHeight(20);
+    this->cacheBypassButton->setFocusPolicy(Qt::NoFocus);
+    this->cacheBypassButton->setStyleSheet(
+        "QPushButton { font-size: 9px; padding: 1px 8px; border-radius: 3px; "
+        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
+        "QPushButton:hover { background-color: rgba(80, 80, 80, 200); }");
+    QObject::connect(this->cacheBypassButton, &QPushButton::clicked, this, [this]() {
+        SheetCacheServer::setBypassing(!SheetCacheServer::isBypassing());
+        updateCacheStatus();
+    });
+    rowLayout->addWidget(this->cacheBypassButton, 0);
+
+    serverOuterLayout->addWidget(this->cacheRow);
+    this->cacheRow->setVisible(false);
+
+    // Bypass can be thrown from the menu, the settings or over HTTP, so the light
+    // is read from the server rather than remembered from the last click here.
+    QObject::connect(&this->cacheStatusTimer, &QTimer::timeout, this, &StatusPanelWidget::updateCacheStatus);
+    this->cacheStatusTimer.start(2000);
+
+    updateCacheStatus();
+}
+
+void StatusPanelWidget::updateCacheStatus()
+{
+    if (this->cacheRow == nullptr)
+        return;
+
+    // Nothing to report for a client that is not hosting; the row stays out of the way.
+    if (!SheetCacheServer::isEnabled())
+    {
+        this->cacheRow->setVisible(false);
+        return;
+    }
+
+    this->cacheRow->setVisible(true);
+
+    bool listening = SheetCacheServer::getInstance().isRunning();
+    bool bypassing = SheetCacheServer::isBypassing();
+    int port = SheetCacheServer::configuredPort();
+
+    const QString green = "background-color: rgb(76, 175, 80); border-radius: 6px;";
+    const QString amber = "background-color: rgb(230, 160, 30); border-radius: 6px;";
+    const QString red = "background-color: rgb(198, 40, 40); border-radius: 6px;";
+
+    if (!listening)
+    {
+        // Enabled but not answering: almost always the port already belongs to
+        // something else, which is worth saying rather than leaving as a dark light.
+        this->cacheDot->setStyleSheet(red);
+        this->cacheLabel->setText(QString("Cache %1").arg(port));
+        this->cacheRow->setToolTip(QString(
+            "The sheet cache is enabled but not listening on port %1.\n"
+            "Another service probably has the port \xe2\x80\x94 the PHP server uses 3000 too.").arg(port));
+        this->cacheBypassButton->setText("Off");
+        this->cacheBypassButton->setEnabled(false);
+        return;
+    }
+
+    this->cacheBypassButton->setEnabled(true);
+
+    if (bypassing)
+    {
+        // Amber, not red: it is doing exactly what was asked of it. A red light here
+        // would read as a fault every time somebody deliberately went live.
+        this->cacheDot->setStyleSheet(amber);
+        this->cacheLabel->setText(QString("Cache %1  bypass").arg(port));
+        this->cacheRow->setToolTip(QString(
+            "Serving nothing on purpose: reads answer 404 so graphics go live to the sheet,\n"
+            "while writes still land and keep the cache warm.\n"
+            "Listening on port %1.").arg(port));
+        this->cacheBypassButton->setText("Serve");
+        return;
+    }
+
+    this->cacheDot->setStyleSheet(green);
+    this->cacheLabel->setText(QString("Cache %1").arg(port));
+    this->cacheRow->setToolTip(QString(
+        "Serving cached sheet rows on port %1.\n"
+        "Templates pointed here (local = true) read from the cache first.").arg(port));
+    this->cacheBypassButton->setText("Bypass");
 }
 
 void StatusPanelWidget::setupActivityPanel()
@@ -567,6 +678,26 @@ void StatusPanelWidget::channelActivity(const ChannelActivityEvent& event)
     this->activityEntries[key] = entry;
 
     reorderActivity();
+}
+
+void StatusPanelWidget::channelCleared(const QString& deviceName, int channel, int videolayer)
+{
+    Q_UNUSED(deviceName); // activity entries are keyed by channel/layer only
+
+    // Remove every row on the cleared channel (or the exact layer when given) —
+    // play rows, progress rows and auto-loop countdown rows alike.
+    QStringList clearedKeys;
+    for (auto it = this->activityEntries.constBegin(); it != this->activityEntries.constEnd(); ++it)
+    {
+        if (it.value().channel == channel && (videolayer == -1 || it.value().videolayer == videolayer))
+            clearedKeys.append(it.key());
+    }
+
+    for (const QString& key : clearedKeys)
+        removeActivityEntry(key);
+
+    if (!clearedKeys.isEmpty())
+        reorderActivity();
 }
 
 void StatusPanelWidget::autoLoopCountdown(const AutoLoopCountdownEvent& event)
