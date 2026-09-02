@@ -38,6 +38,8 @@ class HttpResponsePanelWidget;
 class NdiPanelWidget;
 class PerformancePanelWidget;
 class SheetsPanelWidget;
+class SimpleInspectorWidget;
+class SimpleModeWidget;
 class StatusBarWidget;
 
 class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
@@ -62,6 +64,8 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         PerformancePanelWidget* widgetPerformance;
         HttpResponsePanelWidget* widgetHttpLog;
         SheetsPanelWidget* widgetSheets;
+        SimpleModeWidget* widgetSimpleMode;
+        SimpleInspectorWidget* widgetSimpleInspector;
 
         QMenu* fileMenu;
         QMenu* editMenu;
@@ -71,6 +75,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QMenu* markMenu;
         QMenu* playoutMenu;
         QMenu* otherMenu;
+        QAction* sheetCacheBypassAction = nullptr;
         QMenu* helpMenu;
         QMenu* openRecentMenu;
         QMenuBar* menuBar;

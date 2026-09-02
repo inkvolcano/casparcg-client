@@ -10,7 +10,7 @@
 
 const QStringList LayoutEditorWidget::allWidgetIds = {
     "AudioLevels", "Preview", "Library", "Duration", "StatusBar",
-    "Clock", "ServerStatus", "Activity", "TriggerBanks", "Live", "NDI", "Performance", "HttpLog", "Sheets", "Inspector"
+    "Clock", "ServerStatus", "Activity", "TriggerBanks", "Live", "NDI", "Performance", "HttpLog", "Sheets", "Inspector", "SimpleInspector"
 };
 
 QString LayoutEditorWidget::widgetDisplayName(const QString& id)
@@ -21,7 +21,8 @@ QString LayoutEditorWidget::widgetDisplayName(const QString& id)
         {"StatusBar", "Status Bar"}, {"Clock", "Clock"},
         {"ServerStatus", "Server Status"}, {"Activity", "Activity"},
         {"TriggerBanks", "Trigger Banks"}, {"Live", "Live"},
-        {"NDI", "NDI"}, {"Performance", "Performance"}, {"HttpLog", "Http Log"}, {"Sheets", "Google Sheets"}, {"Inspector", "Inspector"}
+        {"NDI", "NDI"}, {"Performance", "Performance"}, {"HttpLog", "Http Log"}, {"Sheets", "Google Sheets"}, {"Inspector", "Inspector"},
+        {"SimpleInspector", "Simple Inspector"}
     };
     return names.value(id, id);
 }
@@ -36,8 +37,8 @@ QString LayoutEditorWidget::columnDisplayName(const QString& id)
     return names.value(id, id);
 }
 
-LayoutEditorWidget::LayoutEditorWidget(QWidget* parent)
-    : QWidget(parent), availableList(nullptr)
+LayoutEditorWidget::LayoutEditorWidget(QWidget* parent, const QString& keyPrefix)
+    : QWidget(parent), keyPrefix(keyPrefix), availableList(nullptr)
 {
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -124,9 +125,9 @@ void LayoutEditorWidget::loadFromConfig()
 {
     // Read column order.
     QString orderStr = DatabaseManager::getInstance()
-        .getConfigurationByName("LayoutColumnOrder").getValue();
+        .getConfigurationByName(this->keyPrefix + "LayoutColumnOrder").getValue();
     if (orderStr.isEmpty())
-        orderStr = "panel1,mainwindow,panel2";
+        orderStr = this->keyPrefix.isEmpty() ? "panel1,mainwindow,panel2" : "mainwindow";
     QStringList columns = orderStr.split(",", Qt::SkipEmptyParts);
 
     // Ensure all 5 entries are always present.
@@ -148,8 +149,8 @@ void LayoutEditorWidget::loadFromConfig()
 
     // Read panel widget assignments for all panels.
     QMap<QString, QString> panelDbKeys = {
-        {"panel1", "LayoutPanel1"}, {"panel2", "LayoutPanel2"},
-        {"panel3", "LayoutPanel3"}, {"panel4", "LayoutPanel4"}
+        {"panel1", this->keyPrefix + "LayoutPanel1"}, {"panel2", this->keyPrefix + "LayoutPanel2"},
+        {"panel3", this->keyPrefix + "LayoutPanel3"}, {"panel4", this->keyPrefix + "LayoutPanel4"}
     };
 
     QMap<QString, QStringList> panelWidgets;
@@ -245,12 +246,12 @@ void LayoutEditorWidget::saveToConfig()
     }
 
     DatabaseManager::getInstance().updateConfiguration(
-        ConfigurationModel(0, "LayoutColumnOrder", filteredColumns.join(",")));
+        ConfigurationModel(0, this->keyPrefix + "LayoutColumnOrder", filteredColumns.join(",")));
 
     // Panel widget assignments (save all panels, including empty ones).
     QMap<QString, QString> panelDbKeys = {
-        {"panel1", "LayoutPanel1"}, {"panel2", "LayoutPanel2"},
-        {"panel3", "LayoutPanel3"}, {"panel4", "LayoutPanel4"}
+        {"panel1", this->keyPrefix + "LayoutPanel1"}, {"panel2", this->keyPrefix + "LayoutPanel2"},
+        {"panel3", this->keyPrefix + "LayoutPanel3"}, {"panel4", this->keyPrefix + "LayoutPanel4"}
     };
 
     for (auto it = panelDbKeys.constBegin(); it != panelDbKeys.constEnd(); ++it)

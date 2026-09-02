@@ -691,6 +691,7 @@ namespace Panel
     static const int COMPACT_HTTPLOG_HEIGHT = 25;
     static const int DEFAULT_SHEETS_HEIGHT = 320;
     static const int COMPACT_SHEETS_HEIGHT = 25;
+    static const int DEFAULT_SIMPLE_INSPECTOR_HEIGHT = 320;
 }
 
 namespace Action

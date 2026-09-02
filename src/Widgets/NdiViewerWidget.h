@@ -6,6 +6,7 @@
 #include "NdiReceiver.h"
 
 #include <QtCore/QThread>
+#include <QtCore/QTimer>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QWidget>
@@ -26,6 +27,10 @@ public:
     void connectToSource(const NdiSourceInfo& source);
     void disconnectSource();
     void setMuted(bool muted);
+
+    // When enabled (multi-viewer grids), the source-name overlay hides itself
+    // 5 seconds after appearing; error states (No Source, Signal Lost) stay.
+    void setLabelAutoHide(bool enabled);
     void setBandwidth(NDIlib_recv_bandwidth_e bw);
     void setFpsLimit(int fps);
     void setScalingQuality(Qt::TransformationMode mode);
@@ -40,6 +45,7 @@ private:
     void startReceiver();
     void stopReceiver();
     void updateOverlayPosition();
+    void restartLabelHide();
 
     Q_SLOT void onVideoFrame(const QImage& image);
     Q_SLOT void onConnectionStateChanged(bool connected);
@@ -49,6 +55,8 @@ private:
 
     QLabel* videoLabel;
     QLabel* overlayLabel;
+    QTimer* labelHideTimer = nullptr;
+    bool labelAutoHide_ = false;
 
     QMenu* contextMenu;
     QMenu* sourceMenu;

@@ -4,6 +4,8 @@
 #include "HelpDialog.h"
 #include "HttpResponsePanelWidget.h"
 #include "SheetsPanelWidget.h"
+#include "SimpleModeWidget.h"
+#include "SimpleInspectorWidget.h"
 #include "NdiPanelWidget.h"
 #include "PanelHelper.h"
 #include "PanelResizeHandle.h"
@@ -17,6 +19,7 @@
 #include "Global.h"
 
 #include "EventManager.h"
+#include "SheetCacheServer.h"
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "Events/ExportPresetEvent.h"
@@ -45,6 +48,8 @@
 #include <QtWidgets/QStyle>
 #include <QtCore/QDebug>
 #include <QtCore/QFileInfo>
+
+#include <QtCore/QSignalBlocker>
 
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
@@ -92,6 +97,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetPerformance = new PerformancePanelWidget(this);
     this->widgetHttpLog = new HttpResponsePanelWidget(this);
     this->widgetSheets = new SheetsPanelWidget(this);
+    this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
+    this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
     rebuildLayout();
 
@@ -200,6 +207,17 @@ void MainWindow::setupMenu()
     this->compactViewAction = this->viewMenu->addAction("Compact View");
     this->compactViewAction->setCheckable(true);
     this->viewMenu->addSeparator();
+
+    // Simple Mode: streamdeck-style operator interface with its own layout.
+    QAction* simpleModeAction = this->viewMenu->addAction("Simple Mode");
+    simpleModeAction->setCheckable(true);
+    simpleModeAction->setChecked(DatabaseManager::getInstance().getConfigurationByName("SimpleMode").getValue() == "true");
+    QObject::connect(simpleModeAction, &QAction::toggled, this, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SimpleMode", checked ? "true" : "false"));
+        EventManager::getInstance().fireRebuildLayout();
+    });
+    this->viewMenu->addSeparator();
     this->viewMenu->addAction("Split Horizontal", this->widgetRundown, SLOT(splitHorizontal()), QKeySequence::fromString("Ctrl+\\"));
     this->viewMenu->addAction("Split Vertical", this->widgetRundown, SLOT(splitVertical()), QKeySequence::fromString("Ctrl+Shift+\\"));
     this->viewMenu->addSeparator();
@@ -262,6 +280,25 @@ void MainWindow::setupMenu()
     this->otherMenu->addSeparator();
     this->otherMenu->addAction("Disconnect Stream", []() {
         EventManager::getInstance().fireDisconnectStreamEvent();
+    });
+
+    // The switch that gets thrown mid-show: reads stop being answered so graphics go
+    // live to the sheet, while writes keep landing so the cache does not go cold.
+    this->otherMenu->addSeparator();
+    this->sheetCacheBypassAction = this->otherMenu->addAction("Sheet Cache Bypass");
+    this->sheetCacheBypassAction->setCheckable(true);
+    this->sheetCacheBypassAction->setChecked(SheetCacheServer::isBypassing());
+    this->sheetCacheBypassAction->setToolTip(
+        "Serve nothing, keep warming. Also reachable at /bypass?on=1 while the client hosts the cache.");
+    QObject::connect(this->sheetCacheBypassAction, &QAction::toggled, this, [](bool bypass) {
+        SheetCacheServer::setBypassing(bypass);
+    });
+
+    // It can be thrown from outside too, so read the real state as the menu opens.
+    QObject::connect(this->otherMenu, &QMenu::aboutToShow, this, [this]() {
+        QSignalBlocker blocker(this->sheetCacheBypassAction);
+        this->sheetCacheBypassAction->setChecked(SheetCacheServer::isBypassing());
+        this->sheetCacheBypassAction->setEnabled(SheetCacheServer::isEnabled());
     });
 
     this->helpMenu = new QMenu(this);
@@ -1002,6 +1039,7 @@ static int defaultPanelHeight(const QString& id)
     if (id == "Performance") return Panel::DEFAULT_PERFORMANCE_HEIGHT;
     if (id == "HttpLog") return Panel::DEFAULT_HTTPLOG_HEIGHT;
     if (id == "Sheets") return Panel::DEFAULT_SHEETS_HEIGHT;
+    if (id == "SimpleInspector") return Panel::DEFAULT_SIMPLE_INSPECTOR_HEIGHT;
     return 0;
 }
 
@@ -1028,6 +1066,11 @@ void MainWindow::rebuildLayout()
     QMap<QString, QString> cfg = DatabaseManager::getInstance().getAllConfigurations();
     auto cfgVal = [&cfg](const QString& key) -> QString { return cfg.value(key, QString()); };
 
+    // Simple Mode swaps the center for the button grid and uses its own
+    // independent column/panel assignment (Simple* config keys).
+    const bool simpleModeActive = cfgVal("SimpleMode") == "true";
+    const QString layoutKeyPrefix = simpleModeActive ? "Simple" : "";
+
     // Local equivalents of PanelHelper functions using the cache.
     auto localPanelMode = [&cfgVal](const QString& id) -> QString {
         QString mode = cfgVal("PanelSizeMode_" + id);
@@ -1051,9 +1094,9 @@ void MainWindow::rebuildLayout()
     };
 
     // Read column order from cache.
-    QString orderStr = cfgVal("LayoutColumnOrder");
+    QString orderStr = cfgVal(layoutKeyPrefix + "LayoutColumnOrder");
     if (orderStr.isEmpty())
-        orderStr = "panel1,mainwindow,panel2";
+        orderStr = simpleModeActive ? "mainwindow" : "panel1,mainwindow,panel2";
     QStringList columns = orderStr.split(",", Qt::SkipEmptyParts);
 
     // Ensure mainwindow is always present.
@@ -1106,7 +1149,7 @@ void MainWindow::rebuildLayout()
         widgetAudioLevels, widgetPreview, widgetLibrary,
         widgetDuration, serverTab, activityTab, banksTab,
         widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetSheets, widgetInspector,
-        widgetStatusBar, widgetClock
+        widgetSimpleInspector, widgetStatusBar, widgetClock
     };
     for (auto* w : movable)
     {
@@ -1120,6 +1163,14 @@ void MainWindow::rebuildLayout()
     if (splitterHorizontal->parentWidget() && splitterHorizontal->parentWidget()->layout())
         splitterHorizontal->parentWidget()->layout()->removeWidget(splitterHorizontal);
     splitterHorizontal->setParent(this);
+    if (simpleModeActive)
+        splitterHorizontal->hide(); // Rundown stays alive (items, hotkey routing) but invisible.
+
+    // Detach the simple-mode grid the same way; it is re-added when active.
+    if (widgetSimpleMode->parentWidget() && widgetSimpleMode->parentWidget()->layout())
+        widgetSimpleMode->parentWidget()->layout()->removeWidget(widgetSimpleMode);
+    widgetSimpleMode->setParent(this);
+    widgetSimpleMode->hide();
 
     // Keep widgetStatusPanel alive — it owns the serverTab/activityTab/banksTab
     // sub-widgets. Without this, deleting layoutWidget3 (its .ui parent) would
@@ -1136,10 +1187,10 @@ void MainWindow::rebuildLayout()
 
     // DB key for each panel.
     QMap<QString, QString> panelDbKeys;
-    panelDbKeys["panel1"] = "LayoutPanel1";
-    panelDbKeys["panel2"] = "LayoutPanel2";
-    panelDbKeys["panel3"] = "LayoutPanel3";
-    panelDbKeys["panel4"] = "LayoutPanel4";
+    panelDbKeys["panel1"] = layoutKeyPrefix + "LayoutPanel1";
+    panelDbKeys["panel2"] = layoutKeyPrefix + "LayoutPanel2";
+    panelDbKeys["panel3"] = layoutKeyPrefix + "LayoutPanel3";
+    panelDbKeys["panel4"] = layoutKeyPrefix + "LayoutPanel4";
 
     QList<int> sizes;
     panelContainers.clear();
@@ -1387,13 +1438,23 @@ void MainWindow::rebuildLayout()
 
         if (col == "mainwindow")
         {
-            // Main window column: contains the rundown / action splitter.
+            // Main window column: the rundown/action splitter — or, in Simple
+            // Mode, the streamdeck-style button grid.
             QWidget* container = new QWidget();
             QVBoxLayout* layout = new QVBoxLayout(container);
             layout->setContentsMargins(0, 0, 0, 0);
             layout->setSpacing(4);
-            layout->addWidget(splitterHorizontal);
-            splitterHorizontal->show();
+            if (simpleModeActive)
+            {
+                layout->addWidget(widgetSimpleMode);
+                widgetSimpleMode->show();
+                widgetSimpleMode->refresh();
+            }
+            else
+            {
+                layout->addWidget(splitterHorizontal);
+                splitterHorizontal->show();
+            }
 
             splitterVertical->addWidget(container);
             this->mainWindowContainer = container;
@@ -1437,21 +1498,31 @@ void MainWindow::rebuildLayout()
 
                 if (isSpanWidget)
                 {
-                    // Span widgets: expanding inside cell + resize handle targets cell.
-                    w->setMinimumHeight(0);
-                    w->setMaximumHeight(QWIDGETSIZE_MAX);
-                    QSizePolicy sp = w->sizePolicy();
-                    sp.setVerticalPolicy(QSizePolicy::Preferred);
-                    w->setSizePolicy(sp);
-                    cellLayout->addWidget(w, 1);
+                    if (PanelHelper::isPanelCollapsed(wid))
+                    {
+                        // Collapsed: the panel manages its own compact height —
+                        // the cell hugs it. No saved span height, no resize handle
+                        // (collapse/expand triggers a rebuild, see setPanelCollapsed).
+                        cellLayout->addWidget(w, 0);
+                    }
+                    else
+                    {
+                        // Span widgets: expanding inside cell + resize handle targets cell.
+                        w->setMinimumHeight(0);
+                        w->setMaximumHeight(QWIDGETSIZE_MAX);
+                        QSizePolicy sp = w->sizePolicy();
+                        sp.setVerticalPolicy(QSizePolicy::Preferred);
+                        w->setSizePolicy(sp);
+                        cellLayout->addWidget(w, 1);
 
-                    auto* handle = new PanelResizeHandle(cell, wid, 300, cell);
-                    cellLayout->addWidget(handle);
+                        auto* handle = new PanelResizeHandle(cell, wid, 300, cell);
+                        cellLayout->addWidget(handle);
 
-                    // Restore saved span height on the cell container.
-                    QString hStr = cfgVal(wid + "PanelHeight");
-                    if (!hStr.isEmpty())
-                        cell->setFixedHeight(hStr.toInt());
+                        // Restore saved span height on the cell container.
+                        QString hStr = cfgVal(wid + "PanelHeight");
+                        if (!hStr.isEmpty())
+                            cell->setFixedHeight(hStr.toInt());
+                    }
                 }
                 else
                 {
@@ -1540,9 +1611,10 @@ void MainWindow::rebuildLayout()
                     if (cell)
                         gridLayout->addWidget(cell, gridRow, startCol, 1, colSpan);
 
-                    // Row stretch: auto-expand if no saved height.
+                    // Row stretch: auto-expand if no saved height — but never for a
+                    // collapsed panel, whose row must shrink to its compact height.
                     QString hStr = cfgVal(foundSpan->widgetId + "PanelHeight");
-                    if (hStr.isEmpty())
+                    if (hStr.isEmpty() && !PanelHelper::isPanelCollapsed(foundSpan->widgetId))
                     {
                         gridLayout->setRowStretch(gridRow, 1);
                         anyRowHasStretch = true;
@@ -1735,6 +1807,7 @@ QWidget* MainWindow::widgetById(const QString& id)
     if (id == "Performance") return widgetPerformance;
     if (id == "HttpLog") return widgetHttpLog;
     if (id == "Sheets") return widgetSheets;
+    if (id == "SimpleInspector") return widgetSimpleInspector;
     if (id == "Inspector") return widgetInspector;
     if (id == "StatusBar") return widgetStatusBar;
     if (id == "Clock") return widgetClock;

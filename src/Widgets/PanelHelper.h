@@ -31,6 +31,14 @@ inline void setPanelCollapsed(const QString& panelId, bool collapsed)
 {
     DatabaseManager::getInstance().updateConfiguration(
         ConfigurationModel(0, "PanelCollapsed_" + panelId, collapsed ? "true" : ""));
+
+    // A spanned panel's height lives on its span cell in the layout grid — only
+    // a rebuild can resize that row, so collapse/expand triggers one. Non-span
+    // panels keep collapsing live without a rebuild.
+    QString span = DatabaseManager::getInstance()
+        .getConfigurationByName("PanelSpan_" + panelId).getValue();
+    if (!span.isEmpty())
+        EventManager::getInstance().fireRebuildLayout();
 }
 
 inline void applyExpandedHeight(QWidget* panel, const QString& panelId, int defaultHeight)

@@ -258,10 +258,12 @@ void NdiPanelWidget::rebuildGrid()
     }
     viewers.clear();
 
-    // Create new viewers.
+    // Create new viewers. Source-name overlays auto-hide after 5 seconds to
+    // keep the video area clean; error states stay visible.
     for (int i = 0; i < outputCount_; i++)
     {
         NdiViewerWidget* viewer = new NdiViewerWidget(this->gridContainer);
+        viewer->setLabelAutoHide(true);
         QObject::connect(viewer, &NdiViewerWidget::sourceChanged, this, &NdiPanelWidget::onViewerSourceChanged);
         viewers.append(viewer);
     }
