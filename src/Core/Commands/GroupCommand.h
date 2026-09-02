@@ -28,12 +28,16 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         bool getLoop() const;
         bool getAutoLoop() const;
         int getAutoLoopDelay() const;
+        bool getTreatAsDropdown() const;
+        int getDropdownIndex() const;
 
         void setNotes(const QString& notes);
         void setAutoPlay(bool autoPlay);
         void setLoop(bool loop);
         void setAutoLoop(bool autoLoop);
         void setAutoLoopDelay(int autoLoopDelay);
+        void setTreatAsDropdown(bool treatAsDropdown);
+        void setDropdownIndex(int index);
 
     private:
         QString notes = Group::DEFAULT_NOTE;
@@ -41,10 +45,16 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         bool loop = Group::DEFAULT_LOOP;
         bool autoLoop = Group::DEFAULT_AUTO_LOOP;
         int autoLoopDelay = Group::DEFAULT_AUTO_LOOP_DELAY;
+        // Dropdown group: the group acts as a chooser over its children — the
+        // selected child is what actually fires, instead of the whole group.
+        bool treatAsDropdown = false;
+        int dropdownIndex = 0;
 
         Q_SIGNAL void notesChanged(const QString&);
         Q_SIGNAL void autoPlayChanged(bool);
         Q_SIGNAL void loopChanged(bool);
         Q_SIGNAL void autoLoopChanged(bool);
         Q_SIGNAL void autoLoopDelayChanged(int);
+        Q_SIGNAL void treatAsDropdownChanged(bool);
+        Q_SIGNAL void dropdownIndexChanged(int);
 };

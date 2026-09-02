@@ -60,6 +60,28 @@ void GroupCommand::setAutoLoopDelay(int autoLoopDelay)
     emit propertyChanged();
 }
 
+bool GroupCommand::getTreatAsDropdown() const
+{
+    return this->treatAsDropdown;
+}
+
+void GroupCommand::setTreatAsDropdown(bool treatAsDropdown)
+{
+    this->treatAsDropdown = treatAsDropdown;
+    emit treatAsDropdownChanged(this->treatAsDropdown);
+}
+
+int GroupCommand::getDropdownIndex() const
+{
+    return this->dropdownIndex;
+}
+
+void GroupCommand::setDropdownIndex(int index)
+{
+    this->dropdownIndex = index;
+    emit dropdownIndexChanged(this->dropdownIndex);
+}
+
 void GroupCommand::setNotes(const QString& notes)
 {
     this->notes = notes;
@@ -76,6 +98,8 @@ void GroupCommand::readProperties(boost::property_tree::wptree& pt)
     setLoop(pt.get(L"loop", Group::DEFAULT_LOOP));
     setAutoLoopDelay(pt.get(L"autoloopdelay", Group::DEFAULT_AUTO_LOOP_DELAY));
     setAutoLoop(pt.get(L"autoloop", Group::DEFAULT_AUTO_LOOP));
+    setTreatAsDropdown(pt.get(L"treatasdropdown", false));
+    setDropdownIndex(pt.get(L"dropdownindex", 0));
 }
 
 void GroupCommand::writeProperties(QXmlStreamWriter& writer)
@@ -87,4 +111,9 @@ void GroupCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("loop", (getLoop() == true) ? "true" : "false");
     writer.writeTextElement("autoloop", (getAutoLoop() == true) ? "true" : "false");
     writer.writeTextElement("autoloopdelay", QString::number(getAutoLoopDelay()));
+    if (getTreatAsDropdown())
+    {
+        writer.writeTextElement("treatasdropdown", "true");
+        writer.writeTextElement("dropdownindex", QString::number(getDropdownIndex()));
+    }
 }

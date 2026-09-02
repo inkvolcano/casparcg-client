@@ -179,6 +179,11 @@ class CORE_EXPORT EventManager : public QObject
         Q_SIGNAL void channelCleared(const QString& deviceName, int channel, int videolayer);
         // Fired by the Stop All Auto-Loops panic item: every running auto-loop countdown must stop.
         Q_SIGNAL void stopAllAutoLoops();
+        // Rundown items were destroyed and/or rebuilt (delete, clear, undo restore).
+        // Anything holding QTreeWidgetItem pointers must drop them and re-read the tree.
+        Q_SIGNAL void rundownStructureChanged();
+        // An item was fired — the rundown's "last fired" marker for that channel.
+        Q_SIGNAL void rundownItemFired(QTreeWidgetItem* item, int channel);
         Q_SIGNAL void previewModeChanged(bool active);
         Q_SIGNAL void previewModifierHeld(bool held);
         Q_SIGNAL void autostepModeChanged(bool active);
@@ -264,6 +269,8 @@ class CORE_EXPORT EventManager : public QObject
         void fireAutoLoopCountdownEvent(const AutoLoopCountdownEvent&);
         void fireChannelClearedEvent(const QString& deviceName, int channel, int videolayer);
         void fireStopAllAutoLoopsEvent();
+        void fireRundownStructureChangedEvent();
+        void fireRundownItemFiredEvent(QTreeWidgetItem* item, int channel);
         void fireMuteAudioEvent(bool mute);
         void fireDisconnectStreamEvent();
         void fireGatewayExitsChangedEvent(const QString& gatewayId);

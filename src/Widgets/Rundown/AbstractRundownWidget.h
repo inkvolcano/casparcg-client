@@ -15,7 +15,13 @@ class WIDGETS_EXPORT AbstractRundownWidget : public AbstractProperties
     public:
         virtual ~AbstractRundownWidget() {}
 
+        // Implemented per item type: builds a new widget and copies the properties
+        // that type knows about.
         virtual AbstractRundownWidget* clone() = 0;
+
+        // How a duplicate is actually made. Calls clone() and then carries across the
+        // properties every command shares, which no single clone() can see.
+        AbstractRundownWidget* cloneItem();
 
         virtual bool isGroup() const = 0;
         virtual bool isInGroup() const = 0;

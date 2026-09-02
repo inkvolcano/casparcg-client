@@ -396,6 +396,16 @@ void EventManager::fireStopAllAutoLoopsEvent()
     emit stopAllAutoLoops();
 }
 
+void EventManager::fireRundownStructureChangedEvent()
+{
+    emit rundownStructureChanged();
+}
+
+void EventManager::fireRundownItemFiredEvent(QTreeWidgetItem* item, int channel)
+{
+    emit rundownItemFired(item, channel);
+}
+
 void EventManager::fireMuteAudioEvent(bool mute)
 {
     emit muteAudio(mute);
