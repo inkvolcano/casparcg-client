@@ -30,6 +30,11 @@ class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
         QMenu* dropdownMenu = nullptr;
         QAction* expandCollapseAction = nullptr;
 
+        // The Simple Mode section is declared last but shown first; every index in the
+        // .cpp is a declaration index and goes through here to reach the right row.
+        static const int SIMPLE_MODE_SECTION = 42;
+        QTreeWidgetItem* sectionItem(int declaredIndex) const;
+
         void setDefaultVisibleWidgets();
 
         Q_SLOT void toggleExpandCollapse();

@@ -143,3 +143,4 @@ void InspectorGroupWidget::autoLoopDelayChanged(int delay)
         return;
     this->command->setAutoLoopDelay(delay);
 }
+

@@ -122,6 +122,10 @@ void InspectorHttpGetWidget::blockAllSignals(bool block)
 
 void InspectorHttpGetWidget::updateHttpDataModels()
 {
+    // The tree can outlive the selected command — never touch a gone command.
+    if (this->command.isNull())
+        return;
+
     QList<KeyValueModel> models;
     for (int i = 0; i < this->treeWidgetHttpData->invisibleRootItem()->childCount(); i++)
         models.push_back(KeyValueModel(this->treeWidgetHttpData->invisibleRootItem()->child(i)->text(0),
@@ -233,6 +237,9 @@ void InspectorHttpGetWidget::itemDoubleClicked(QTreeWidgetItem* current, int ind
 
 void InspectorHttpGetWidget::urlChanged(QString url)
 {
+    if (this->command.isNull())
+        return;
+
     this->command->setUrl(url);
 
     checkEmptyUrl();
@@ -240,6 +247,9 @@ void InspectorHttpGetWidget::urlChanged(QString url)
 
 void InspectorHttpGetWidget::triggerOnNextChanged(int state)
 {
+    if (this->command.isNull())
+        return;
+
     this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
 }
 

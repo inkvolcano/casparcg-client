@@ -10,6 +10,7 @@
 
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
+#include <QtCore/QPointer>
 
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QWidget>
@@ -27,7 +28,9 @@ class WIDGETS_EXPORT InspectorHttpGetWidget : public QWidget, Ui::InspectorHttpG
     private:
         int fieldCounter;
         LibraryModel* model;
-        HttpGetCommand* command;
+        // QPointer: auto-nulls when the command's rundown item is deleted or
+        // rebuilt, so tree edits afterwards can't dereference a dead command.
+        QPointer<HttpGetCommand> command;
 
         void checkEmptyUrl();
         void updateHttpDataModels();

@@ -6,6 +6,7 @@
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
+#include "Commands/TemplateCommand.h"
 #include "Commands/BlendModeCommand.h"
 #include "Commands/GridCommand.h"
 #include "Commands/BrightnessCommand.h"
@@ -50,6 +51,8 @@
 
 #include <QtCore/QtMath>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 
 InspectorOutputWidget::InspectorOutputWidget(QWidget *parent)
@@ -769,6 +772,9 @@ void InspectorOutputWidget::allowGpiChanged(int state)
     for (AbstractCommand* cmd : this->allCommands)
         cmd->setAllowGpi(checked);
 }
+
+
+
 
 void InspectorOutputWidget::allowRemoteTriggeringChanged(int state)
 {
