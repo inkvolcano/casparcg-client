@@ -13,6 +13,7 @@
 #include "../Core/Events/Rundown/OpenRundownEvent.h"
 
 #include "../Widgets/MainWindow.h"
+#include "../Widgets/SheetCacheServer.h"
 
 #ifdef Q_OS_MAC
     #include "Mac/AppNap.h"
@@ -344,12 +345,14 @@ int main(int argc, char* argv[])
     DeviceManager::getInstance().initialize();
     OscDeviceManager::getInstance().initialize();
     OscWebSocketManager::getInstance().initialize();
+    SheetCacheServer::getInstance().start();
 
     int returnValue = application.exec();
 
     EventManager::getInstance().uninitialize();
     DatabaseManager::getInstance().uninitialize();
     GpiManager::getInstance().uninitialize();
+    SheetCacheServer::getInstance().stop();
     OscWebSocketManager::getInstance().uninitialize();
     OscDeviceManager::getInstance().uninitialize();
     DeviceManager::getInstance().uninitialize();

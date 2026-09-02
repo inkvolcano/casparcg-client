@@ -1,4 +1,6 @@
 #include "SheetsPanelWidget.h"
+#include "SheetsProjectRegistry.h"
+#include "SheetDataResolver.h"
 #include "SheetsActionsDialog.h"
 
 #include "Global.h"
@@ -134,6 +136,11 @@ void SheetsPanelWidget::setupMenus()
     this->dropdownMenu->addSeparator();
     this->dropdownMenu->addAction("Refresh Projects", this, [this]() { discoverProjects(); });
     this->dropdownMenu->addAction("Edit Actions...", this, SLOT(editActions()));
+
+    // Per-tab column visibility — rebuilt each time the menu opens because the
+    // column list belongs to whichever sheet tab is currently selected.
+    this->columnsMenu = this->dropdownMenu->addMenu("Columns");
+    QObject::connect(this->dropdownMenu, &QMenu::aboutToShow, this, [this]() { buildColumnsMenu(); });
     this->dropdownMenu->addSeparator();
     this->expandCollapseAction = this->dropdownMenu->addAction("Collapse", this, SLOT(toggleExpandCollapse()));
 
@@ -147,54 +154,14 @@ void SheetsPanelWidget::setupMenus()
 
 void SheetsPanelWidget::discoverProjects()
 {
-    this->projects.clear();
+    // Discovery lives in the registry so the panel and the template data resolver
+    // agree on what a project is and where it came from.
+    SheetsProjectRegistry::getInstance().discover();
+
+    this->projects = SheetsProjectRegistry::getInstance().projects();
+
     this->comboBoxProject->blockSignals(true);
     this->comboBoxProject->clear();
-
-    // Look for project.js in every device's template path and its direct subfolders.
-    foreach (const DeviceModel& deviceModel, DatabaseManager::getInstance().getDevice())
-    {
-        QString templatePath = deviceModel.getTemplatePath();
-        if (templatePath.isEmpty())
-            continue;
-
-        QStringList candidates;
-        candidates.append(templatePath);
-        QDir templateDir(templatePath);
-        foreach (const QString& sub, templateDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot))
-            candidates.append(templateDir.filePath(sub));
-
-        foreach (const QString& folder, candidates)
-        {
-            QFile file(QDir(folder).filePath("project.js"));
-            if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
-                continue;
-
-            QString content = QTextStream(&file).readAll();
-            file.close();
-
-            QRegularExpression idRegex("spreadsheetId\\s*=\\s*[\"']([^\"']+)[\"']");
-            QRegularExpression keyRegex("apiKey\\s*=\\s*[\"']([^\"']+)[\"']");
-            QRegularExpressionMatch idMatch = idRegex.match(content);
-            QRegularExpressionMatch keyMatch = keyRegex.match(content);
-            if (!idMatch.hasMatch() || !keyMatch.hasMatch())
-                continue;
-
-            SheetsProject project;
-            project.name = QDir(folder).dirName();
-            project.folder = folder;
-            project.spreadsheetId = idMatch.captured(1);
-            project.apiKey = keyMatch.captured(1);
-            project.deviceName = deviceModel.getName();
-
-            // Avoid duplicates when multiple devices share a template path.
-            bool known = false;
-            foreach (const SheetsProject& existing, this->projects)
-                if (existing.folder == project.folder) { known = true; break; }
-            if (!known)
-                this->projects.append(project);
-        }
-    }
 
     foreach (const SheetsProject& project, this->projects)
         this->comboBoxProject->addItem(project.name);
@@ -339,6 +306,9 @@ void SheetsPanelWidget::fetchTabs()
 
     setStatus("Fetching tabs...");
 
+    // Straight to the API, so it comes out of the same budget everything else does.
+    SheetDataResolver::getInstance().noteClientRead(project->spreadsheetId);
+
     QString url = QString("https://sheets.googleapis.com/v4/spreadsheets/%1?fields=sheets.properties&key=%2")
         .arg(project->spreadsheetId, project->apiKey);
 
@@ -379,13 +349,20 @@ void SheetsPanelWidget::fetchValues()
     if (project == nullptr || currentTab().isEmpty())
         return;
 
+    SheetDataResolver::getInstance().noteClientRead(project->spreadsheetId);
+
     QString url = QString("https://sheets.googleapis.com/v4/spreadsheets/%1/values/%2?key=%3")
         .arg(project->spreadsheetId, QString(QUrl::toPercentEncoding(currentTab())), project->apiKey);
+
+    // The panel polls, so this is the most regular read the client makes. Keeping it
+    // costs nothing extra: the call to Google is already paid for.
+    SheetsProject warmProject = *project;
+    QString warmTab = currentTab();
 
     QNetworkRequest request((QUrl(url)));
     request.setHeader(QNetworkRequest::UserAgentHeader, "CasparCG-Client");
     QNetworkReply* reply = this->networkManager->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, warmProject, warmTab]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError)
         {
@@ -410,6 +387,22 @@ void SheetsPanelWidget::fetchValues()
             else
                 this->rows.append(row);
         }
+
+        // Shaped the way the cache holds rows, so templates and the inspector get the
+        // benefit of a read the panel was making anyway.
+        QList<SheetRow> cacheRows;
+        foreach (const QStringList& row, this->rows)
+        {
+            SheetRow entry;
+            for (int column = 0; column < this->headers.count(); column++)
+                entry.insert(this->headers.at(column), (column < row.count()) ? row.at(column) : QString());
+
+            if (!entry.isEmpty())
+                cacheRows.append(entry);
+        }
+
+        if (!cacheRows.isEmpty())
+            SheetDataResolver::getInstance().warmCache(warmProject, warmTab, cacheRows);
 
         renderData();
         renderStandaloneButtons();
@@ -460,6 +453,76 @@ void SheetsPanelWidget::applyPollInterval()
     }
 }
 
+/* ---------------- column visibility ---------------- */
+
+// Hidden columns are stored per project + tab, by column NAME rather than index,
+// so inserting a column in the sheet doesn't hide the wrong one.
+QString SheetsPanelWidget::hiddenColumnsKey() const
+{
+    return QString("SheetsHiddenCols_%1|%2").arg(this->comboBoxProject->currentText(), currentTab());
+}
+
+QSet<QString> SheetsPanelWidget::hiddenColumns() const
+{
+    if (currentTab().isEmpty())
+        return QSet<QString>();
+
+    QString value = DatabaseManager::getInstance().getConfigurationByName(hiddenColumnsKey()).getValue();
+    QStringList names = value.split("\t", Qt::SkipEmptyParts);
+    return QSet<QString>(names.begin(), names.end());
+}
+
+void SheetsPanelWidget::setColumnHiddenState(const QString& columnName, bool hidden)
+{
+    QSet<QString> current = hiddenColumns();
+    if (hidden)
+        current.insert(columnName);
+    else
+        current.remove(columnName);
+
+    QStringList names(current.begin(), current.end());
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, hiddenColumnsKey(), names.join("\t")));
+
+    renderData();
+}
+
+void SheetsPanelWidget::buildColumnsMenu()
+{
+    if (this->columnsMenu == nullptr)
+        return;
+
+    this->columnsMenu->clear();
+
+    if (this->headers.isEmpty())
+    {
+        QAction* none = this->columnsMenu->addAction("(No columns loaded)");
+        none->setEnabled(false);
+        return;
+    }
+
+    QSet<QString> hidden = hiddenColumns();
+    for (const QString& header : this->headers)
+    {
+        if (header.trimmed().isEmpty())
+            continue;
+
+        QAction* action = this->columnsMenu->addAction(header);
+        action->setCheckable(true);
+        action->setChecked(!hidden.contains(header));
+        QObject::connect(action, &QAction::triggered, this, [this, header](bool checked) {
+            setColumnHiddenState(header, !checked);
+        });
+    }
+
+    this->columnsMenu->addSeparator();
+    this->columnsMenu->addAction("Show All", this, [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, hiddenColumnsKey(), ""));
+        renderData();
+    });
+}
+
 /* ---------------- rendering ---------------- */
 
 void SheetsPanelWidget::renderData()
@@ -490,8 +553,15 @@ void SheetsPanelWidget::renderData()
         }
     }
 
+    // Apply per-tab column visibility (indices stay aligned with headers, so
+    // placeholder resolution and button data are unaffected by hiding).
+    QSet<QString> hidden = hiddenColumns();
     for (int col = 0; col < this->headers.count(); col++)
-        this->treeWidgetData->resizeColumnToContents(col);
+        this->treeWidgetData->setColumnHidden(col, hidden.contains(this->headers[col]));
+
+    for (int col = 0; col < this->headers.count(); col++)
+        if (!this->treeWidgetData->isColumnHidden(col))
+            this->treeWidgetData->resizeColumnToContents(col);
 }
 
 QWidget* SheetsPanelWidget::buildRowButtons(int rowIndex)
@@ -527,7 +597,7 @@ QWidget* SheetsPanelWidget::buildRowButtons(int rowIndex)
         if (hasPlaceholders && !anyResolved)
             continue;
 
-        QString toggleKey = QString("%1|row%2|%3").arg(currentTab()).arg(rowIndex).arg(buttonIndex);
+        QString toggleKey = QString("%1|%2|row%3|%4").arg(this->comboBoxProject->currentText(), currentTab()).arg(rowIndex).arg(buttonIndex);
 
         QPushButton* button = new QPushButton(resolvePlaceholders(def.label, rowIndex), container);
         button->setFocusPolicy(Qt::NoFocus);
@@ -565,7 +635,7 @@ void SheetsPanelWidget::renderStandaloneButtons()
     for (int buttonIndex = 0; buttonIndex < actions.standalone.count(); buttonIndex++)
     {
         const SheetsActionDef& def = actions.standalone[buttonIndex];
-        QString toggleKey = QString("%1|standalone|%2").arg(currentTab()).arg(buttonIndex);
+        QString toggleKey = QString("%1|%2|standalone|%3").arg(this->comboBoxProject->currentText(), currentTab()).arg(buttonIndex);
 
         QPushButton* button = new QPushButton(def.label, this->widgetStandalone);
         button->setFocusPolicy(Qt::NoFocus);

@@ -2,6 +2,7 @@
 
 #include "Shared.h"
 #include "ui_SheetsPanelWidget.h"
+#include "SheetsProjectRegistry.h"
 
 #include <QtCore/QJsonObject>
 #include <QtCore/QList>
@@ -16,17 +17,6 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidget>
-
-// A project = a template folder containing a project.js (spreadsheetId + apiKey),
-// the same connection file the standalone HTML templates use.
-struct SheetsProject
-{
-    QString name;           // folder name, e.g. "SEVILLE"
-    QString folder;         // absolute path to the project folder
-    QString spreadsheetId;
-    QString apiKey;
-    QString deviceName;     // device whose template path contains this project
-};
 
 // One operator button definition, stored in <project>/extensions.json.
 struct SheetsActionDef
@@ -69,6 +59,7 @@ class WIDGETS_EXPORT SheetsPanelWidget : public QWidget, Ui::SheetsPanelWidget
 
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;
+        QMenu* columnsMenu = nullptr;                 // per-tab column show/hide
         QAction* expandCollapseAction = nullptr;
 
         void setupMenus();
@@ -89,6 +80,11 @@ class WIDGETS_EXPORT SheetsPanelWidget : public QWidget, Ui::SheetsPanelWidget
         QString buildTemplateDataXml(const QString& resolvedData) const;
         void executeAction(const SheetsActionDef& def, int rowIndex, const QString& toggleKey, QPushButton* button);
         void styleActionButton(QPushButton* button, const SheetsActionDef& def, bool lit) const;
+
+        QString hiddenColumnsKey() const;
+        QSet<QString> hiddenColumns() const;
+        void setColumnHiddenState(const QString& columnName, bool hidden);
+        void buildColumnsMenu();
 
         void setStatus(const QString& text);
         void applyPollInterval();
