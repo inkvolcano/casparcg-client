@@ -7,6 +7,7 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QLabel>
+#include <QtCore/QPair>
 #include <QtWidgets/QWidget>
 
 class NdiViewerWidget;
@@ -35,6 +36,13 @@ private:
     void rebuildGrid();
     void applyLayout(int cols, int rows);
     void saveConfig();
+    // What the last session had in each tile. NDI discovery is asynchronous, so a
+    // name saved here usually names a source that has not been found yet; these are
+    // held until it appears and dropped once applied.
+    QList<QPair<QString, bool>> pendingAssignments;
+
+    static bool restoreOutputsEnabled();
+    Q_SLOT void applyPendingAssignments();
     void restoreConfig();
     QPair<int, int> defaultLayoutForCount(int count);
     QList<QPair<int, int>> validLayoutsForCount(int count);

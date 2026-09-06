@@ -149,6 +149,7 @@ INSERT INTO Configuration (Name, Value) VALUES('HotkeyBank9Alt', '');
 INSERT INTO Configuration (Name, Value) VALUES('ShowStatusPanel', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowPreviewBorder', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowPVWButton', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('NdiRestoreOutputs', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');
