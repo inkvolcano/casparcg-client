@@ -442,6 +442,83 @@ GET  /strain                                    everything, totalled</code></pre
 <p>A move captures the positions of the <i>other</i> buttons too. Placing one is what fixes everything else in place, so undoing it has to put those back as well or the surface would come back subtly rearranged.</p>
 <p>The dropdown group&rsquo;s current selection is deliberately not undoable &mdash; it is an operational choice like selecting an item, not an edit to the surface.</p>
 
+<h3>NDI tiles come back on their sources</h3>
+<p>The panel already carried tile assignments across a layout change: it snapshots what each viewer is showing, rebuilds, and puts them back. That snapshot is taken from the live viewers, so at startup there is nothing to take it from &mdash; and although every change was written to <code>NdiOutputConfig</code>, nothing ever read it back. The grid returned in the right shape with every tile empty.</p>
+<p>It is read now, and the saved set stands in for the snapshot when there are no viewers to take one from.</p>
+<p>Discovery is the awkward part: it runs well after the panel is built, so a saved name almost never matches anything on the first attempt. Those names are held and applied as sources appear &mdash; <code>NdiManager::sourcesChanged</code> had no listener until now &mdash; and dropped once satisfied. A tile the operator has already filled by hand is left alone.</p>
+<p><b>Settings &rarr; NDI &rarr; Reconnect NDI sources on startup</b> turns it off. Reconnecting on launch is a decision about the network rather than about this window, so it is a switch rather than an assumption.</p>
+
+<h3>Fixed: the inspector handed every section the wrong widget</h3>
+<p>Moving Simple Mode to the top of the inspector in build 140 introduced a helper that maps a section&rsquo;s declared index onto its display row. The helper assumed Simple Mode already occupied row 0 &mdash; but it was inserted at the <i>end</i> of the constructor, long after all forty-one sections had been built through that helper.</p>
+<p>So during construction every section was handed its neighbour&rsquo;s widget, and the last one was handed nothing at all. On screen the section headers stacked at the top with their contents below them.</p>
+<p>Simple Mode is now inserted before the first use of the helper, which is what makes its assumption true. Present in 140 through 142.</p>
+
+<h3>One budget per API key</h3>
+<p>Each project reads with its own key, and Google&rsquo;s per-minute budget belongs to the key rather than to the spreadsheet &mdash; so two projects on separate keys are two budgets, and adding their reads together said &ldquo;60/60&rdquo; when neither was half spent.</p>
+<p>Strain now groups by key. The meter shows the key <b>closest to its own limit</b> and names the project it belongs to, because &ldquo;48/60&rdquo; is only an answer once you know whose sixty it is. A sheet whose project cannot be resolved is counted on its own rather than folded into somebody else&rsquo;s budget.</p>
+<p>The key itself is never published. <code>GET /strain</code> reports a <code>keyId</code> &mdash; six hex characters of a digest &mdash; which is enough to group sheets that share a budget and useless to anyone who does not already hold the key. Each sheet entry also carries its <code>project</code> name.</p>
+
+<h3>Editing a project&rsquo;s API key</h3>
+<p><b>Settings &rarr; Sheets &rarr; Template Projects</b> now shows each project&rsquo;s key beside its cache checkbox, and writes it into that project&rsquo;s <code>project.js</code> as you type. Only the value between the quotes is replaced; the declaration keyword, spacing and any comment around it are left as they were.</p>
+<p>As you type means as you type: a half-typed key is a half-typed key on disk, and a template loading mid-edit reads what is there. If the file refuses the write the field is outlined and the reason goes to the status bar, rather than the field quietly looking saved.</p>
+
+<h3>A meter per key</h3>
+<p>The Performance panel now draws one Sheets row per API key instead of one overall, since that is what the budget belongs to. Each row carries the project name, its own meter against its own sixty, and its own colour.</p>
+<p>Busiest key first, so the one nearest its limit is the one at the top. A row is created when its key is first seen and kept afterwards &mdash; a project that falls quiet shows zero rather than vanishing, because a panel that reshuffles itself every time something pauses is harder to read at a glance than one with a quiet row in it.</p>
+<p>A spreadsheet no discovered project claims still gets its own row, labelled with the key digest, rather than being folded into somebody else&rsquo;s budget.</p>
+<p><code>GET /strain</code> already carries <code>project</code> and <code>keyId</code> per sheet, so an outside collector can group the same way.</p>
+
+<h3>The expected-result box reads the declaration the templates actually carry</h3>
+<p>The box showed nothing for any template, and the reason was in the parser, not the data. All thirty-eight templates declare their sheet like this:</p>
+<pre><code>window.sheetConnection = { "tab": "LINEUP", "homelineup": "12", "awaylineup": "12" };</code></pre>
+<p><code>tab</code> is the tab; every other property names one of the template&rsquo;s own fields whose value picks a place in the sheet, and the number is <b>how many lines are read from there</b>, header line included. The calendar takes six, a lineup side twelve. The client was looking for a <code>"key"</code> property that none of them has, found nothing, and hid the box &mdash; silently.</p>
+<p>It now reads every field and its line count, accepts the documented <code>"key": "row"</code> form as one line, and shows <b>the whole block</b>, line by line. A block that comes back short is flagged in amber &mdash; <code>homelineup = 1 &middot; 11 of 12 lines</code> &mdash; because eleven names where twelve were asked for is a set the sheet has not finished, and that is worth seeing before air. A field the operator has not set is said so; one out of range is said so in red. The raw <code>f0</code> stands in for a named field, as the doc allows.</p>
+<p>Two things stop it going quiet again. A declaration that exists but has no <code>tab</code> is <b>shown as broken</b> rather than hidden. And <b>Refresh re-reads the declaration</b> as well as the rows, so a template corrected while the client is running does not need a restart to be believed.</p>
+<p>One honest limit, stated in the heading&rsquo;s tooltip: the client cannot run template code, so it never calls a template&rsquo;s <code>getNumberForRow()</code>; it always counts from the field&rsquo;s value as a row index. For a template whose set id is not its row number the block may start elsewhere than the preview stand shows. The stand stays the authority for those.</p>
+
+<h3>The box places a block the way the template does</h3>
+<p>Build 145 read the declaration correctly and then placed every block the same way &mdash; counting from the field&rsquo;s value as a row index &mdash; with a note that this could be wrong for templates that place sets by their own arithmetic. That note has been retired. Every template in both packs places a value one of three ways, and each is chosen from the declaration alone, so nothing has to run:</p>
+<ul>
+<li><b>One line, no <code>sets</code></b> &mdash; the row whose <code>ID</code> column equals the value, else the value as a 1-based position. This is the templates&rsquo; own <code>findRow()</code>, and it is what all fourteen single-line templates do. <code>row = 1</code> is the row with ID 1, not the second row.</li>
+<li><b>Several lines, no <code>sets</code></b> &mdash; base row <code>(value &minus; 1) &times; lines</code>. This is <code>getNumberForRow()</code>: calendar and results at 6, standings at 21. The stride was checked against each template&rsquo;s <code>ROWS_PER_SET</code> in both packs.</li>
+<li><b><code>sets</code> declared</b> &mdash; the value-th run of member rows, the row above the run being its header. This is <code>findTeams()</code>, which the lineups use, and it is the one case a count cannot express: the sets are only as long as their runs, and the lineup tab is found by looking, not by multiplying.</li>
+</ul>
+<p><code>sets</code> is a new declaration keyword naming the member-row test &mdash; <code>"NUMBER:digit"</code> for the lineup rule, <code>"COLUMN"</code> for a filled cell &mdash; and the heading&rsquo;s tooltip now says which rule is in use. The only templates that need it are the two <code>lineups_column.html</code>; the doc on the Desktop carries the exact line. Without it the client falls back to the stride rule for them and says so.</p>
+
+<h3>Fixed: the expected-result box was never built</h3>
+<p>Since build 138 the box under the key/value table had been declared, wired and documented &mdash; and never constructed. Its builder asked the table&rsquo;s parent widget for its layout and cast the result to a <code>QVBoxLayout</code>. The table sits in <code>verticalLayoutData</code>, which <i>is</i> a <code>QVBoxLayout</code>, but nested inside the section&rsquo;s grid; the parent widget&rsquo;s layout is the grid, the cast failed, and the builder returned before creating anything. Every later feature on the box &mdash; blocks, staleness, the placement families &mdash; was correct code attached to a widget that did not exist.</p>
+<p>The nested layout is generated by name, so it is now taken by name. Eight builds of &ldquo;does not give me the values back&rdquo; came down to one cast.</p>
+<p>Also gone: a stray <b>&ldquo;Sheet&rdquo;</b> label left behind when the earlier binding row was removed. It was created with the section as its parent and never placed in a layout, so it painted at the section&rsquo;s origin.</p>
+
+<h3>The expected-result box: sheet order, fallback keys, and where things sit</h3>
+<p>Four changes now that the box exists:</p>
+<ul>
+<li><b>Columns in the sheet&rsquo;s order.</b> <code>SheetRow</code> is a <code>QMap</code>, which sorts its keys, so the box showed ID, QUESTION, REFERENCE where the sheet says ID, REFERENCE, QUESTION. The header order now travels with the rows from wherever they were read &mdash; the API&rsquo;s header row, or the first object&rsquo;s key order read off the cache text, since <code>QJsonObject</code> sorts too.</li>
+<li><b>Fallback keys by position.</b> The doc says the raw <code>f0</code> stands in for the named field, and the box only ever looked at <code>f0</code>. The templates read them by position &mdash; lineups take <code>f0</code> as home and <code>f1</code> as away &mdash; so the <i>n</i>th declared field now falls back to <code>f(n&minus;1)</code>.</li>
+<li><b>Update and Import Fields sit between the table and the result</b>, where they act on the table they follow.</li>
+<li><b>The option rows moved below the result.</b> Use stored data, uppercase, trigger on next, send as JSON and newline behaviour are set once per template and left alone; the table and its result are what an operator works in. Auto-play and Auto-loop stay last.</li>
+</ul>
+
+<h3>The result answers a key the moment it is added</h3>
+<p>Adding a key through the <b>+</b> dialog inserts a finished row, so the table&rsquo;s model reports <code>rowsInserted</code> and never <code>dataChanged</code> &mdash; and the result box was only listening for the latter. A freshly added <code>row</code> key went unanswered until the item was reselected. Insert, remove and reset now re-resolve the box as an edit does, and the tree&rsquo;s own <code>itemChanged</code> is listened to as well, so an inline edit committed through the value delegate is caught even where the model signal is coalesced.</p>
+<p>The per-block header line is now shown only when it says something the status line does not: a set of several lines, a set that came back short, or a failure. A single line that resolved cleanly no longer spends a row repeating <code>row = 1</code>.</p>
+
+<h3>Template Settings, a section of its own</h3>
+<p>The option rows &mdash; use stored data, uppercase, trigger on next, send as JSON, newline behaviour, auto-play, auto-loop &mdash; are set once per template and then left alone. They now live in their own inspector section, <b>Template Settings</b>, directly under Template and <b>collapsed by default</b>, like Embedded Transform and Simple Mode. The Template section keeps what an operator works in: the key/value table, Update and Import Fields, and the expected result.</p>
+<p>Nothing about the controls changed. They are still owned and wired by the Template widget; it lays them out in a panel it hands to the inspector, which mounts the panel as the section. Shown and hidden together with Template, so a non-template item shows neither.</p>
+
+<h3>No more dead space in the Template section</h3>
+<p>The gaps above and below the result box were the section being taller than its content. An inspector row keeps the height it was first given, and the grid inside spreads any excess between its rows &mdash; so as the table shrank to fit its keys and the option rows moved out, the slack showed up as empty bands.</p>
+<p>The Template section now raises <code>contentChanged</code> whenever its height changes &mdash; the table resized, the result box shown, hidden or re-rendered &mdash; and the inspector re-reads its size hint on the next turn of the loop, the same arrangement the Invoke section already had. The result box is pinned to a fixed vertical policy so it cannot absorb slack, and whatever remains lands in an empty stretch row at the very bottom rather than between rows. The Template Settings row is sized from its panel the same way.</p>
+
+<h3>The last of the dead space</h3>
+<p>The Template section&rsquo;s <code>.ui</code> gave it a minimum height of 480&nbsp;px with a <code>MinimumExpanding</code> policy &mdash; fine when the table was a fixed 200&nbsp;px block and every option row lived inside, wrong once the table shrinks to its keys and the options have a section of their own. The section had to be at least 480&nbsp;px tall, and the grid inside had to put the difference somewhere.</p>
+<p>Where it put it was instructive. The result box carried a <code>Fixed</code> vertical policy, which only stops a layout <i>asking</i> a widget to grow; when a cell is forced taller regardless, the widget is still stretched into it, and the slack landed in the box&rsquo;s header row &mdash; a status line and a button centred in eighty pixels. The floor is gone from the <code>.ui</code>, so the section is now exactly as tall as its content and there is nothing to distribute.</p>
+<p>Three belts against it coming back: the box&rsquo;s layout is pinned with <code>SetFixedSize</code>, so the widget itself can never exceed its content; it is top-aligned in its cell; and the result tree&rsquo;s height is counted from the rows actually added, which removes the empty line that appeared under a single-line block once its header became lazy.</p>
+
+<h3>The result box is full width again</h3>
+<p><code>SetFixedSize</code> pins both dimensions to the size hint, so build 152 left the box exactly as wide as its longest value. The constraint is gone; the box expands to the row, and its <b>height</b> is pinned by hand at the same moments its content changes &mdash; shown, hidden, rendered, or a tab-only read &mdash; which is the half of <code>SetFixedSize</code> that was wanted.</p>
+
 <h3>Where the data comes from</h3>
 <p>The resolver reads the <b>local cache service first</b> &mdash; the same one the templates race against &mdash; and falls back to the Sheets API when the cache has nothing, which is exactly what a cache miss means there. Any answer it gets from the API is written back to the cache in the shape the templates expect, so a resolve leaves the cache warmer than it found it. The project is inferred from the template's own folder, so there is nothing to configure.</p>
 

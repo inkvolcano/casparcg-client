@@ -363,6 +363,107 @@ A move captures the positions of the *other* buttons too. Placing one is what fi
 
 The dropdown group's current selection is deliberately not undoable — it is an operational choice like selecting an item, not an edit to the surface.
 
+### NDI tiles come back on their sources
+The panel already carried tile assignments across a layout change: it snapshots what each viewer is showing, rebuilds, and puts them back. That snapshot is taken from the live viewers, so at startup there is nothing to take it from — and although every change was written to `NdiOutputConfig`, nothing ever read it back. The grid returned in the right shape with every tile empty.
+
+It is read now, and the saved set stands in for the snapshot when there are no viewers to take one from.
+
+Discovery is the awkward part: it runs well after the panel is built, so a saved name almost never matches anything on the first attempt. Those names are held and applied as sources appear — `NdiManager::sourcesChanged` had no listener until now — and dropped once satisfied. A tile the operator has already filled by hand is left alone.
+
+**Settings → NDI → Reconnect NDI sources on startup** turns it off. Reconnecting on launch is a decision about the network rather than about this window, so it is a switch rather than an assumption.
+
+### Fixed: the inspector handed every section the wrong widget
+Moving Simple Mode to the top of the inspector in build 140 introduced a helper that maps a section's declared index onto its display row. The helper assumed Simple Mode already occupied row 0 — but it was inserted at the *end* of the constructor, long after all forty-one sections had been built through that helper.
+
+So during construction every section was handed its neighbour's widget, and the last one was handed nothing at all. On screen the section headers stacked at the top with their contents below them.
+
+Simple Mode is now inserted before the first use of the helper, which is what makes its assumption true. Present in 140 through 142.
+
+### One budget per API key
+Each project reads with its own key, and Google's per-minute budget belongs to the key rather than to the spreadsheet — so two projects on separate keys are two budgets, and adding their reads together said "60/60" when neither was half spent.
+
+Strain now groups by key. The meter shows the key **closest to its own limit** and names the project it belongs to, because "48/60" is only an answer once you know whose sixty it is. A sheet whose project cannot be resolved is counted on its own rather than folded into somebody else's budget.
+
+The key itself is never published. `GET /strain` reports a `keyId` — six hex characters of a digest — which is enough to group sheets that share a budget and useless to anyone who does not already hold the key. Each sheet entry also carries its `project` name.
+
+### Editing a project's API key
+**Settings → Sheets → Template Projects** now shows each project's key beside its cache checkbox, and writes it into that project's `project.js` as you type. Only the value between the quotes is replaced; the declaration keyword, spacing and any comment around it are left as they were.
+
+As you type means as you type: a half-typed key is a half-typed key on disk, and a template loading mid-edit reads what is there. If the file refuses the write the field is outlined and the reason goes to the status bar, rather than the field quietly looking saved.
+
+### A meter per key
+The Performance panel now draws one Sheets row per API key instead of one overall, since that is what the budget belongs to. Each row carries the project name, its own meter against its own sixty, and its own colour.
+
+Busiest key first, so the one nearest its limit is the one at the top. A row is created when its key is first seen and kept afterwards — a project that falls quiet shows zero rather than vanishing, because a panel that reshuffles itself every time something pauses is harder to read at a glance than one with a quiet row in it.
+
+A spreadsheet no discovered project claims still gets its own row, labelled with the key digest, rather than being folded into somebody else's budget.
+
+`GET /strain` already carries `project` and `keyId` per sheet, so an outside collector can group the same way.
+
+### The expected-result box reads the declaration the templates actually carry
+The box showed nothing for any template, and the reason was in the parser, not the data. All thirty-eight templates declare their sheet like this:
+
+```js
+window.sheetConnection = { "tab": "LINEUP", "homelineup": "12", "awaylineup": "12" };
+```
+
+`tab` is the tab; every other property names one of the template's own fields whose value picks a place in the sheet, and the number is **how many lines are read from there**, header line included. The calendar takes six, a lineup side twelve. The client was looking for a `"key"` property that none of them has, found nothing, and hid the box — silently.
+
+It now reads every field and its line count, accepts the documented `"key": "row"` form as one line, and shows **the whole block**, line by line. A block that comes back short is flagged in amber — `homelineup = 1 · 11 of 12 lines` — because eleven names where twelve were asked for is a set the sheet has not finished, and that is worth seeing before air. A field the operator has not set is said so; one out of range is said so in red. The raw `f0` stands in for a named field, as the doc allows.
+
+Two things stop it going quiet again. A declaration that exists but has no `tab` is **shown as broken** rather than hidden. And **Refresh re-reads the declaration** as well as the rows, so a template corrected while the client is running does not need a restart to be believed.
+
+One honest limit, stated in the heading's tooltip: the client cannot run template code, so it never calls a template's `getNumberForRow()`; it always counts from the field's value as a row index. For a template whose set id is not its row number the block may start elsewhere than the preview stand shows. The stand stays the authority for those.
+
+### The box places a block the way the template does
+Build 145 read the declaration correctly and then placed every block the same way — counting from the field's value as a row index — with a note that this could be wrong for templates that place sets by their own arithmetic. That note has been retired. Every template in both packs places a value one of three ways, and each is chosen from the declaration alone, so nothing has to run:
+
+- **One line, no `sets`** — the row whose `ID` column equals the value, else the value as a 1-based position. This is the templates' own `findRow()`, and it is what all fourteen single-line templates do. `row = 1` is the row with ID 1, not the second row.
+- **Several lines, no `sets`** — base row `(value − 1) × lines`. This is `getNumberForRow()`: calendar and results at 6, standings at 21. The stride was checked against each template's `ROWS_PER_SET` in both packs.
+- **`sets` declared** — the value-th run of member rows, the row above the run being its header. This is `findTeams()`, which the lineups use, and it is the one case a count cannot express: the sets are only as long as their runs, and the lineup tab is found by looking, not by multiplying.
+
+`sets` is a new declaration keyword naming the member-row test — `"NUMBER:digit"` for the lineup rule, `"COLUMN"` for a filled cell — and the heading's tooltip now says which rule is in use. The only templates that need it are the two `lineups_column.html`; the doc on the Desktop carries the exact line. Without it the client falls back to the stride rule for them and says so.
+
+### Fixed: the expected-result box was never built
+Since build 138 the box under the key/value table had been declared, wired and documented — and never constructed. Its builder asked the table's parent widget for its layout and cast the result to a `QVBoxLayout`. The table sits in `verticalLayoutData`, which *is* a `QVBoxLayout`, but nested inside the section's grid; the parent widget's layout is the grid, the cast failed, and the builder returned before creating anything. Every later feature on the box — blocks, staleness, the placement families — was correct code attached to a widget that did not exist.
+
+The nested layout is generated by name, so it is now taken by name. Eight builds of "does not give me the values back" came down to one cast.
+
+Also gone: a stray **"Sheet"** label left behind when the earlier binding row was removed. It was created with the section as its parent and never placed in a layout, so it painted at the section's origin.
+
+### The expected-result box: sheet order, fallback keys, and where things sit
+Four changes now that the box exists:
+
+- **Columns in the sheet's order.** `SheetRow` is a `QMap`, which sorts its keys, so the box showed ID, QUESTION, REFERENCE where the sheet says ID, REFERENCE, QUESTION. The header order now travels with the rows from wherever they were read — the API's header row, or the first object's key order read off the cache text, since `QJsonObject` sorts too.
+- **Fallback keys by position.** The doc says the raw `f0` stands in for the named field, and the box only ever looked at `f0`. The templates read them by position — lineups take `f0` as home and `f1` as away — so the *n*th declared field now falls back to `f(n−1)`.
+- **Update and Import Fields sit between the table and the result**, where they act on the table they follow.
+- **The option rows moved below the result.** Use stored data, uppercase, trigger on next, send as JSON and newline behaviour are set once per template and left alone; the table and its result are what an operator works in. Auto-play and Auto-loop stay last.
+
+### The result answers a key the moment it is added
+Adding a key through the **+** dialog inserts a finished row, so the table's model reports `rowsInserted` and never `dataChanged` — and the result box was only listening for the latter. A freshly added `row` key went unanswered until the item was reselected. Insert, remove and reset now re-resolve the box as an edit does, and the tree's own `itemChanged` is listened to as well, so an inline edit committed through the value delegate is caught even where the model signal is coalesced.
+
+The per-block header line is now shown only when it says something the status line does not: a set of several lines, a set that came back short, or a failure. A single line that resolved cleanly no longer spends a row repeating `row = 1`.
+
+### Template Settings, a section of its own
+The option rows — use stored data, uppercase, trigger on next, send as JSON, newline behaviour, auto-play, auto-loop — are set once per template and then left alone. They now live in their own inspector section, **Template Settings**, directly under Template and **collapsed by default**, like Embedded Transform and Simple Mode. The Template section keeps what an operator works in: the key/value table, Update and Import Fields, and the expected result.
+
+Nothing about the controls changed. They are still owned and wired by the Template widget; it lays them out in a panel it hands to the inspector, which mounts the panel as the section. Shown and hidden together with Template, so a non-template item shows neither.
+
+### No more dead space in the Template section
+The gaps above and below the result box were the section being taller than its content. An inspector row keeps the height it was first given, and the grid inside spreads any excess between its rows — so as the table shrank to fit its keys and the option rows moved out, the slack showed up as empty bands.
+
+The Template section now raises `contentChanged` whenever its height changes — the table resized, the result box shown, hidden or re-rendered — and the inspector re-reads its size hint on the next turn of the loop, the same arrangement the Invoke section already had. The result box is pinned to a fixed vertical policy so it cannot absorb slack, and whatever remains lands in an empty stretch row at the very bottom rather than between rows. The Template Settings row is sized from its panel the same way.
+
+### The last of the dead space
+The Template section's `.ui` gave it a minimum height of 480 px with a `MinimumExpanding` policy — fine when the table was a fixed 200 px block and every option row lived inside, wrong once the table shrinks to its keys and the options have a section of their own. The section had to be at least 480 px tall, and the grid inside had to put the difference somewhere.
+
+Where it put it was instructive. The result box carried a `Fixed` vertical policy, which only stops a layout *asking* a widget to grow; when a cell is forced taller regardless, the widget is still stretched into it, and the slack landed in the box's header row — a status line and a button centred in eighty pixels. The floor is gone from the `.ui`, so the section is now exactly as tall as its content and there is nothing to distribute.
+
+Three belts against it coming back: the box's layout is pinned with `SetFixedSize`, so the widget itself can never exceed its content; it is top-aligned in its cell; and the result tree's height is counted from the rows actually added, which removes the empty line that appeared under a single-line block once its header became lazy.
+
+### The result box is full width again
+`SetFixedSize` pins both dimensions to the size hint, so build 152 left the box exactly as wide as its longest value. The constraint is gone; the box expands to the row, and its **height** is pinned by hand at the same moments its content changes — shown, hidden, rendered, or a tab-only read — which is the half of `SetFixedSize` that was wanted.
+
 ### Where the data comes from
 The resolver reads the **local cache service first** — the same one the templates race against — and falls back to the Sheets API when the cache has nothing, which is exactly what a cache miss means there. Any answer it gets from the API is written back to the cache in the shape the templates expect, so a resolve leaves the cache warmer than it found it. The project (spreadsheet id and key) is inferred from the template's own folder, so there is nothing to configure.
 
