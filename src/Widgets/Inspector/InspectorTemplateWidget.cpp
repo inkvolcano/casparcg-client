@@ -1,5 +1,7 @@
 #include "InspectorTemplateWidget.h"
 
+#include <algorithm>
+
 #include "../SheetDataResolver.h"
 #include "../SheetsProjectRegistry.h"
 #include "../WheelGuard.h"
@@ -91,10 +93,6 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
         QObject::connect(this->checkBoxAutoLoop, SIGNAL(stateChanged(int)), this, SLOT(autoLoopChanged(int)));
         QObject::connect(this->spinBoxAutoLoopDelay, SIGNAL(valueChanged(int)), this, SLOT(autoLoopDelayChanged(int)));
 
-        // Sheet binding. Hidden entirely unless the template declares where its data
-        // comes from, so nothing changes for templates that do not use a sheet.
-        QLabel* labelSheet = new QLabel(tr("Sheet"), this);
-        labelSheet->setAlignment(Qt::AlignRight | Qt::AlignTrailing | Qt::AlignVCenter);
 
         QObject::connect(&SheetDataResolver::getInstance(), &SheetDataResolver::rowsReady,
                          this, &InspectorTemplateWidget::sheetRowsReady);
@@ -160,14 +158,79 @@ InspectorTemplateWidget::InspectorTemplateWidget(QWidget* parent)
 
     buildExpectedBox();
 
+    // The option rows (stored data, uppercase, trigger on next, send as JSON, newline
+    // behaviour, auto-play, auto-loop) are set once per template and then left alone,
+    // so they go into a panel of their own that the inspector mounts as a separate
+    // "Template Settings" section, collapsed by default. The controls stay owned and
+    // wired here; only where they are laid out changes. Items are taken from the
+    // highest index down so the indices left behind stay valid while this runs.
+    if (this->gridLayout != NULL)
+    {
+        this->settingsPanel = new QWidget();
+        QGridLayout* settingsGrid = new QGridLayout(this->settingsPanel);
+        settingsGrid->setContentsMargins(this->gridLayout->contentsMargins());
+        settingsGrid->setHorizontalSpacing(this->gridLayout->horizontalSpacing());
+        settingsGrid->setVerticalSpacing(this->gridLayout->verticalSpacing());
+
+        QList<QLayoutItem*> moved;
+        QList<int> rows, cols, rowSpans, colSpans;
+        for (int i = this->gridLayout->count() - 1; i >= 0; i--)
+        {
+            int row = 0, col = 0, rowSpan = 1, colSpan = 1;
+            this->gridLayout->getItemPosition(i, &row, &col, &rowSpan, &colSpan);
+            bool option = (row >= 1 && row <= 5) || row == 99 || row == 100;
+            if (!option)
+                continue;
+
+            moved.append(this->gridLayout->takeAt(i));
+            rows.append(row); cols.append(col); rowSpans.append(rowSpan); colSpans.append(colSpan);
+        }
+
+        // Rows keep their order but close up: 1..5, 99, 100 become 0..6.
+        QList<int> distinct = rows;
+        std::sort(distinct.begin(), distinct.end());
+        distinct.erase(std::unique(distinct.begin(), distinct.end()), distinct.end());
+
+        for (int i = 0; i < moved.count(); i++)
+        {
+            QLayoutItem* item = moved.at(i);
+            int row = distinct.indexOf(rows.at(i));
+            if (item->layout() != NULL)
+            {
+                settingsGrid->addLayout(item->layout(), row, cols.at(i), rowSpans.at(i), colSpans.at(i));
+            }
+            else if (item->widget() != NULL)
+            {
+                settingsGrid->addWidget(item->widget(), row, cols.at(i), rowSpans.at(i), colSpans.at(i));
+                delete item;   // addWidget made a fresh QWidgetItem for it
+            }
+            else
+            {
+                settingsGrid->addItem(item, row, cols.at(i), rowSpans.at(i), colSpans.at(i));
+            }
+        }
+
+        settingsGrid->setColumnStretch(1, 1);
+    }
+
     // Any change in the number of rows re-sizes the table, wherever it came from:
     // typed in, imported, resolved from a sheet, or undone.
-    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsInserted,
-                     this, [this]() { resizeDataTreeToContents(); });
-    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsRemoved,
-                     this, [this]() { resizeDataTreeToContents(); });
-    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::modelReset,
-                     this, [this]() { resizeDataTreeToContents(); });
+    // A key added through the + dialog arrives as a finished row, so the model reports
+    // rowsInserted and never dataChanged. The result box has to hear about that too,
+    // or a freshly added "row" key is not answered until the item is reselected.
+    auto tableChanged = [this]() {
+        resizeDataTreeToContents();
+        renderExpectedRow();
+        renderExpectedFreshness();
+    };
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsInserted, this, tableChanged);
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::rowsRemoved, this, tableChanged);
+    QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::modelReset, this, tableChanged);
+
+    // And the widget-level signal, which an inline edit committed through the value
+    // delegate always raises even where the model signal is coalesced.
+    QObject::connect(this->treeWidgetTemplateData, &QTreeWidget::itemChanged,
+                     this, [this](QTreeWidgetItem*, int) { renderExpectedRow(); renderExpectedFreshness(); });
 
     // The key lives in the table above, so a change there is a change of question.
     QObject::connect(this->treeWidgetTemplateData->model(), &QAbstractItemModel::dataChanged,
@@ -198,6 +261,8 @@ void InspectorTemplateWidget::resizeDataTreeToContents()
     int header = tree->header()->isVisible() ? tree->header()->sizeHint().height() : 0;
 
     tree->setFixedHeight(header + (rows * rowHeight) + (2 * tree->frameWidth()));
+
+    emit contentChanged();
 }
 
 bool InspectorTemplateWidget::eventFilter(QObject* target, QEvent* event)
@@ -723,15 +788,22 @@ void InspectorTemplateWidget::loadDebugData()
 // the operator types a row and this says what that row is.
 void InspectorTemplateWidget::buildExpectedBox()
 {
+    // The tree sits in verticalLayoutData, a QVBoxLayout nested inside this widget's
+    // grid. Asking the parent widget for its layout returns the grid, and casting
+    // that to a QVBoxLayout fails — which is how this box went unbuilt for eight
+    // builds. setupUi() names the nested layout, so it is taken by name.
     QWidget* host = this->treeWidgetTemplateData->parentWidget();
-    QVBoxLayout* column = (host != NULL) ? qobject_cast<QVBoxLayout*>(host->layout()) : NULL;
-    if (column == NULL)
+    if (host == NULL || this->gridLayout == NULL)
         return;
 
     this->expectedBox = new QWidget(host);
+    this->expectedBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     QVBoxLayout* boxLayout = new QVBoxLayout(this->expectedBox);
     boxLayout->setContentsMargins(0, 4, 0, 0);
     boxLayout->setSpacing(3);
+    // Height is pinned to the content by pinExpectedBoxHeight() whenever the content
+    // changes; width is left to the row. (SetFixedSize would pin both and leave the
+    // box as wide as its longest value.)
 
     QHBoxLayout* headerRow = new QHBoxLayout();
     headerRow->setSpacing(6);
@@ -759,7 +831,12 @@ void InspectorTemplateWidget::buildExpectedBox()
         " font-size: 10px; border: 1px solid rgba(70, 70, 70, 200); padding: 2px 10px; }"
         "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
     QObject::connect(this->buttonRefreshExpected, &QPushButton::clicked, this, [this]() {
-        requestExpectedRows(true);
+        // Re-read the declaration as well as the rows: a template fixed while the
+        // client is running should not need a restart to be believed.
+        if (!this->command.isNull() && this->model != NULL)
+            SheetDataResolver::getInstance().forgetConnection(this->model->getDeviceName(),
+                                                              this->command->getTemplateName());
+        refreshExpectedBinding(true);
     });
     headerRow->addWidget(this->buttonRefreshExpected, 0);
 
@@ -775,18 +852,17 @@ void InspectorTemplateWidget::buildExpectedBox()
     this->treeExpected->header()->setStretchLastSection(true);
     boxLayout->addWidget(this->treeExpected);
 
-    int index = column->indexOf(this->treeWidgetTemplateData);
-    if (index >= 0)
-        column->insertWidget(index + 1, this->expectedBox);
-    else
-        column->addWidget(this->expectedBox);
+    // Row 8 of the section grid: under the table (row 6) and the Update row (7),
+    // above the option rows moved down in the constructor.
+    this->gridLayout->addWidget(this->expectedBox, 8, 0, 1, 2, Qt::AlignTop);
+    this->gridLayout->setRowStretch(101, 1);
 
     this->expectedBox->setVisible(false);
 }
 
 // Only for templates that say they read a sheet. Silence means no box, not an
 // empty one \xe2\x80\x94 a template driven by the connector has no sheet to show.
-void InspectorTemplateWidget::refreshExpectedBinding()
+void InspectorTemplateWidget::refreshExpectedBinding(bool forceReload)
 {
     if (this->expectedBox == NULL)
         return;
@@ -800,20 +876,44 @@ void InspectorTemplateWidget::refreshExpectedBinding()
                                                                               this->command->getTemplateName());
     }
 
+    // Declared but unusable is shown, not hidden: a silent box is exactly how a
+    // typo in the declaration stays a mystery.
+    if (this->sheetConnection.declared && !this->sheetConnection.isValid())
+    {
+        this->expectedBox->setVisible(true);
+        this->expectedHeading->setText(tr("sheetConnection"));
+        this->treeExpected->clear();
+        this->treeExpected->setVisible(false);
+        this->expectedFreshness->clear();
+        this->expectedStatus->setText(tr("declared without a \"tab\" \xe2\x80\x94 nothing can be read"));
+        pinExpectedBoxHeight();
+        emit contentChanged();
+        return;
+    }
+
     bool connected = this->sheetConnection.isValid();
     this->expectedBox->setVisible(connected);
+    pinExpectedBoxHeight();
+    emit contentChanged();
     if (!connected)
         return;
 
-    this->expectedHeading->setText(QString("%1 \xe2\x86\x92 %2")
-        .arg(this->sheetConnection.tab, this->sheetConnection.keyField));
+    this->treeExpected->setVisible(this->sheetConnection.hasBlocks());
+
+    this->expectedHeading->setText(this->sheetConnection.hasBlocks()
+        ? QString("%1 \xe2\x86\x92 %2").arg(this->sheetConnection.tab, this->sheetConnection.fields().join(", "))
+        : this->sheetConnection.tab);
+    this->expectedHeading->setToolTip(this->sheetConnection.countsSets()
+        ? tr("Sets are found by counting runs of member rows, the way the template's own findTeams() does.")
+        : tr("One line: the row whose ID equals the value, else that position. Several lines: "
+             "base row (value - 1) x lines, the way the template's own getNumberForRow() does."));
 
     this->treeExpected->clear();
     this->expectedStatus->setText(tr("reading..."));
     this->expectedOrigin = SheetRowsOrigin();
     this->expectedFreshness->clear();
 
-    requestExpectedRows(false);
+    requestExpectedRows(forceReload);
 }
 
 void InspectorTemplateWidget::requestExpectedRows(bool forceReload)
@@ -853,6 +953,97 @@ QString InspectorTemplateWidget::currentTemplateFieldValue(const QString& key) c
 // functions.js resolves the key as data[key] \xe2\x80\x94 an index into the rows, not a value
 // to match on \xe2\x80\x94 so this resolves it the same way, or it would answer confidently
 // with the wrong row.
+// A field's value becomes a place in the tab the way the template itself does it,
+// and every template here does one of three things. The rule is chosen from the
+// declaration alone, so nothing has to run.
+int InspectorTemplateWidget::expectedBaseRow(const QString& rawStart, int lines, QString* how) const
+{
+    const QList<SheetRow>& rows = this->expectedRows;
+
+    // Runs of member rows, counted. The value is the run number, 1-based.
+    if (this->sheetConnection.countsSets())
+    {
+        bool numeric = false;
+        int wanted = rawStart.toInt(&numeric);
+        if (!numeric || wanted < 1)
+            return -1;
+
+        auto isMember = [this](const SheetRow& row) {
+            QString cell = row.value(this->sheetConnection.setsColumn).trimmed();
+            if (cell.isEmpty())
+                return false;
+            if (!this->sheetConnection.setsDigit)
+                return true;
+            for (const QChar& c : cell)
+                if (c.isDigit())
+                    return true;
+            return false;
+        };
+
+        int seen = 0;
+        for (int i = 0; i < rows.count(); i++)
+        {
+            if (!isMember(rows.at(i)))
+                continue;
+
+            int first = i;
+            while (i < rows.count() && isMember(rows.at(i)))
+                i++;
+
+            if (++seen == wanted)
+            {
+                // The row above the run is the set's own header, when there is one.
+                int header = (first > 0 && !isMember(rows.at(first - 1))) ? first - 1 : first;
+                if (how != NULL)
+                    *how = QString("set %1 of %2").arg(wanted).arg(seen);
+                return header;
+            }
+        }
+
+        if (how != NULL)
+            *how = QString("only %1 set(s) in the tab").arg(seen);
+        return -1;
+    }
+
+    // Several lines: a stride from a 1-based set number.
+    if (lines > 1)
+    {
+        bool numeric = false;
+        int n = rawStart.toInt(&numeric);
+        if (!numeric || n < 1)
+            return -1;
+
+        if (how != NULL)
+            *how = QString("set %1, stride %2").arg(n).arg(lines);
+        return (n - 1) * lines;
+    }
+
+    // One line: the ID column first, then the value as a 1-based position.
+    QString target = rawStart.trimmed();
+    for (int i = 0; i < rows.count(); i++)
+    {
+        if (rows.at(i).value("ID").trimmed() == target)
+        {
+            if (how != NULL)
+                *how = QString("ID %1").arg(target);
+            return i;
+        }
+    }
+
+    bool numeric = false;
+    int position = target.toInt(&numeric);
+    if (numeric && position >= 1 && position <= rows.count())
+    {
+        if (how != NULL)
+            *how = QString("no ID %1, position %1").arg(target);
+        return position - 1;
+    }
+
+    if (how != NULL)
+        *how = QString("no row with ID %1").arg(target);
+    return -1;
+}
+
 void InspectorTemplateWidget::renderExpectedRow()
 {
     if (this->expectedBox == NULL || !this->sheetConnection.isValid() || this->expectedRows.isEmpty())
@@ -860,56 +1051,170 @@ void InspectorTemplateWidget::renderExpectedRow()
 
     this->treeExpected->clear();
 
-    QString rawKey = currentTemplateFieldValue(this->sheetConnection.keyField);
-    if (rawKey.isEmpty())
+    // A tab with no selecting field: the template reads all of it, so the count is
+    // the whole answer and there is no block to show.
+    if (!this->sheetConnection.hasBlocks())
     {
-        this->expectedStatus->setText(QString("%1 rows \xc2\xb7 no %2 set")
-            .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField));
+        this->expectedStatus->setText(QString("%1 rows").arg(this->expectedRows.count()));
+        pinExpectedBoxHeight();
+        emit contentChanged();
         return;
     }
 
-    bool numeric = false;
-    int index = rawKey.toInt(&numeric);
+    QStringList summary;
+    int shownLines = 0;
+    bool anyShort = false;
 
-    if (!numeric || index < 0 || index >= this->expectedRows.count())
+    int fieldIndex = -1;
+    for (const auto& block : this->sheetConnection.blocks)
     {
-        this->expectedStatus->setText(QString("%1 rows \xc2\xb7 %2 = %3 is out of range")
-            .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField, rawKey));
-        return;
-    }
+        fieldIndex++;
+        const QString& field = block.first;
+        int wanted = block.second;
 
-    SheetRow row = this->expectedRows.at(index);
-    foreach (const QString& column, row.keys())
-    {
-        QTreeWidgetItem* item = new QTreeWidgetItem();
-        item->setText(0, column);
-        item->setText(1, row.value(column));
+        // The named field, or the raw f-key standing in for it. The templates read
+        // these by position \xe2\x80\x94 lineups take f0 as home and f1 as away \xe2\x80\x94 so the
+        // nth declared field falls back to f(n-1), not always to f0.
+        QString rawStart = currentTemplateFieldValue(field);
+        if (rawStart.isEmpty())
+            rawStart = currentTemplateFieldValue(QString("f%1").arg(fieldIndex));
 
-        if (row.value(column).isEmpty())
-            item->setForeground(1, QBrush(QColor(140, 140, 140)));
+        // The block header earns its row only when it carries something the status
+        // line does not: a set of several lines, a short set, or a failure. A single
+        // line that resolved cleanly says "row = 1" in the status already.
+        auto makeHeader = [this](const QString& text, const QColor& colour) {
+            QTreeWidgetItem* header = new QTreeWidgetItem();
+            header->setFirstColumnSpanned(true);
+            header->setBackground(0, QBrush(QColor(45, 45, 45)));
+            header->setForeground(0, QBrush(colour));
+            header->setText(0, text);
+            this->treeExpected->addTopLevelItem(header);
+        };
 
-        this->treeExpected->addTopLevelItem(item);
+        if (rawStart.isEmpty())
+        {
+            makeHeader(QString("%1: not set").arg(field), QColor(150, 180, 215));
+            summary.append(QString("%1 = ?").arg(field));
+            continue;
+        }
+
+        QString how;
+        int start = expectedBaseRow(rawStart, wanted, &how);
+        if (start < 0 || start >= this->expectedRows.count())
+        {
+            makeHeader(QString("%1 = %2: %3").arg(field, rawStart, how), QColor(220, 130, 130));
+            summary.append(QString("%1 = %2!").arg(field, rawStart));
+            continue;
+        }
+
+        // A counted set is as long as its run; a declared block is as long as declared.
+        int length = wanted;
+        if (this->sheetConnection.countsSets())
+        {
+            length = 1;
+            while (start + length < this->expectedRows.count()
+                   && !this->expectedRows.at(start + length).value(this->sheetConnection.setsColumn).trimmed().isEmpty())
+                length++;
+        }
+
+        int available = qMin(length, this->expectedRows.count() - start);
+        bool isShort = available < wanted && !this->sheetConnection.countsSets();
+        if (isShort)
+            anyShort = true;
+
+        // "Eleven names where twelve were asked for is a set the sheet has not
+        // finished, and that is worth seeing before air rather than during it."
+        if (isShort)
+        {
+            makeHeader(QString("%1 = %2 \xc2\xb7 %3 \xc2\xb7 %4 of %5 lines")
+                           .arg(field, rawStart, how).arg(available).arg(wanted),
+                       QColor(230, 180, 80));
+        }
+        else if (available > 1)
+        {
+            makeHeader(QString("%1 = %2 \xc2\xb7 %3 \xc2\xb7 %4 lines")
+                           .arg(field, rawStart, how).arg(available),
+                       QColor(150, 180, 215));
+        }
+        summary.append(isShort ? QString("%1 = %2 (%3/%4)").arg(field, rawStart).arg(available).arg(wanted)
+                               : QString("%1 = %2").arg(field, rawStart));
+
+        for (int line = 0; line < available; line++)
+        {
+            const SheetRow& row = this->expectedRows.at(start + line);
+
+            if (available > 1)
+            {
+                QTreeWidgetItem* lineItem = new QTreeWidgetItem();
+                lineItem->setFirstColumnSpanned(true);
+                lineItem->setText(0, QString("   line %1  (row %2)").arg(line + 1).arg(start + line));
+                lineItem->setForeground(0, QBrush(QColor(140, 140, 140)));
+                this->treeExpected->addTopLevelItem(lineItem);
+                shownLines++;
+            }
+
+            // The sheet's own column order, then anything the row has that the
+            // header did not name.
+            QStringList ordered = this->expectedOrigin.columns;
+            foreach (const QString& column, row.keys())
+                if (!ordered.contains(column))
+                    ordered.append(column);
+
+            foreach (const QString& column, ordered)
+            {
+                if (!row.contains(column))
+                    continue;
+
+                QTreeWidgetItem* item = new QTreeWidgetItem();
+                item->setText(0, "      " + column);
+                item->setText(1, row.value(column));
+                if (row.value(column).isEmpty())
+                    item->setForeground(1, QBrush(QColor(140, 140, 140)));
+                this->treeExpected->addTopLevelItem(item);
+                shownLines++;
+            }
+        }
     }
 
     this->treeExpected->resizeColumnToContents(0);
+    this->expectedStatus->setText(QString("%1 rows \xc2\xb7 %2").arg(this->expectedRows.count()).arg(summary.join("  ")));
+    this->expectedStatus->setStyleSheet(anyShort
+        ? "font-size: 10px; color: rgba(230, 180, 80, 230);"
+        : "font-size: 10px; color: rgba(140, 140, 140, 200);");
 
-    this->expectedStatus->setText(QString("%1 rows \xc2\xb7 %2 = %3")
-        .arg(this->expectedRows.count()).arg(this->sheetConnection.keyField, rawKey));
-
-    // Same rule as the table above: as tall as it needs to be, no taller.
     int rowHeight = this->treeExpected->sizeHintForRow(0);
     if (rowHeight <= 0)
         rowHeight = this->treeExpected->fontMetrics().height() + 6;
 
-    int visible = qMin(row.count(), 12);
+    // Count what was actually added: since the block header became lazy, a clean
+    // single line has no header row, and counting one left an empty line below.
+    int visible = qMin(this->treeExpected->topLevelItemCount(), 18);
     this->treeExpected->setFixedHeight(this->treeExpected->header()->sizeHint().height()
                                        + (visible * rowHeight) + (2 * this->treeExpected->frameWidth()));
+
+    pinExpectedBoxHeight();
+    emit contentChanged();
 }
 
 
 // Cache or live, and how old. A cached copy is the normal case and not a problem in
 // itself \xe2\x80\x94 it only becomes one when nobody has refreshed it for a while, so the
 // colour follows the age rather than the source.
+// The box is exactly as tall as what is in it, whatever the cell around it does. A
+// Fixed size policy only stops a layout asking the box to grow; when a cell is
+// forced taller anyway the box would still be stretched into it and the slack would
+// land in the header row. Pinning the height stops that without touching the width.
+void InspectorTemplateWidget::pinExpectedBoxHeight()
+{
+    if (this->expectedBox == NULL || this->expectedBox->layout() == NULL)
+        return;
+
+    QLayout* layout = this->expectedBox->layout();
+    layout->invalidate();
+    layout->activate();
+    this->expectedBox->setFixedHeight(layout->sizeHint().height());
+}
+
 void InspectorTemplateWidget::renderExpectedFreshness()
 {
     if (this->expectedFreshness == NULL)

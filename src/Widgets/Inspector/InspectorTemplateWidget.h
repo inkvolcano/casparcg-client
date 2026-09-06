@@ -35,6 +35,17 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
     public:
         explicit InspectorTemplateWidget(QWidget* parent = 0);
 
+        // The option rows, laid out on their own so the inspector can mount them as a
+        // separate, collapsed "Template Settings" section. Still owned and wired here.
+        QWidget* templateSettingsPanel() const { return this->settingsPanel; }
+
+        // Raised whenever this widget's height changes: the table grew, the result
+        // box was shown, hidden or re-rendered. The inspector row that holds this
+        // widget re-reads sizeHint() on it, the way the Invoke section already does;
+        // without that the row keeps its first height and the grid spreads the
+        // difference out as dead space.
+        Q_SIGNAL void contentChanged();
+
     protected:
         virtual bool eventFilter(QObject* target, QEvent* event);
 
@@ -49,6 +60,7 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         NumericValueDelegate* numericDelegate;
         // Expected result: what the row the operator has typed actually contains.
         // An index is not an answer until you can see who is at that index.
+        QWidget* settingsPanel = nullptr;
         QWidget* expectedBox = nullptr;
         QLabel* expectedHeading = nullptr;
         QLabel* expectedStatus = nullptr;
@@ -70,10 +82,14 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         void resizeDataTreeToContents();
 
         void buildExpectedBox();
-        void refreshExpectedBinding();     // show or hide it for the selected item
+        void refreshExpectedBinding(bool forceReload = false);   // show or hide it for the selected item
         void requestExpectedRows(bool forceReload);
         void renderExpectedRow();
-        void renderExpectedFreshness();          // resolve the current key against what we hold
+        int expectedBaseRow(const QString& rawStart, int lines, QString* how) const;
+        void renderExpectedFreshness();
+        // Height exactly its content, width the full row. SetFixedSize would give the
+        // first but take the second, so the height is pinned by hand instead.
+        void pinExpectedBoxHeight();          // resolve the current key against what we hold
         QString currentTemplateFieldValue(const QString& key) const;
 
         void blockAllSignals(bool block);

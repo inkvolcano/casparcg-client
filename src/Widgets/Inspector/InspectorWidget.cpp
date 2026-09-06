@@ -136,6 +136,21 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     this->treeWidgetInspector->setRootIsDecorated(false);
     this->treeWidgetInspector->setIndentation(0);
 
+    // Simple Mode is shown first: it is the section an operator building a button
+    // surface reaches for on every item, where the rest are reached for when
+    // something specific needs changing.
+    //
+    // It goes in HERE, before the first sectionItem() call, because sectionItem()
+    // maps a declaration index onto a display row by assuming this item already
+    // occupies row 0. Inserting it later left that assumption false for the whole
+    // of construction, and every section below was handed its neighbour's widget.
+    QTreeWidgetItem* simpleModeTopLevel = new QTreeWidgetItem();
+    simpleModeTopLevel->setText(0, "Simple Mode");
+    simpleModeTopLevel->setBackground(0, QBrush(QColor(45, 45, 45)));
+    simpleModeTopLevel->setForeground(0, QBrush(QColor(255, 255, 255)));
+    this->treeWidgetInspector->insertTopLevelItem(0, simpleModeTopLevel);
+    this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(simpleModeTopLevel), 0,
+                                             new InspectorSimpleModeWidget(this));
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(0)), 0, new InspectorMetadataWidget(this));
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(1)), 0, new InspectorOutputWidget(this));
     InspectorInvokeWidget* invokeWidget = new InspectorInvokeWidget(this);
@@ -147,7 +162,35 @@ InspectorWidget::InspectorWidget(QWidget *parent)
             this->treeWidgetInspector->doItemsLayout();
         });
     });
-    this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(3)), 0, new InspectorTemplateWidget(this));
+    InspectorTemplateWidget* templateWidget = new InspectorTemplateWidget(this);
+    QTreeWidgetItem* templateChildItem = new QTreeWidgetItem(sectionItem(TEMPLATE_SECTION));
+    this->treeWidgetInspector->setItemWidget(templateChildItem, 0, templateWidget);
+
+    // The row must be exactly as tall as the widget, and the widget changes height
+    // as the table grows and the result box comes and goes. Same arrangement as the
+    // Invoke section: re-read sizeHint() on the next turn of the loop, after the
+    // layouts inside have settled.
+    templateChildItem->setSizeHint(0, templateWidget->sizeHint());
+    QObject::connect(templateWidget, &InspectorTemplateWidget::contentChanged, this, [=]() {
+        QTimer::singleShot(0, this, [=]() {
+            templateChildItem->setSizeHint(0, templateWidget->sizeHint());
+            this->treeWidgetInspector->doItemsLayout();
+        });
+    });
+
+    // Template Settings: the option rows the Template widget lays out in a panel of
+    // its own. Inserted here, straight under Template and before the sections
+    // declared after it are built, so sectionItem() is right for all of them.
+    this->templateSettingsTopLevel = new QTreeWidgetItem();
+    this->templateSettingsTopLevel->setText(0, "Template Settings");
+    this->templateSettingsTopLevel->setBackground(0, QBrush(QColor(45, 45, 45)));
+    this->templateSettingsTopLevel->setForeground(0, QBrush(QColor(255, 255, 255)));
+    this->treeWidgetInspector->insertTopLevelItem(
+        this->treeWidgetInspector->indexOfTopLevelItem(sectionItem(TEMPLATE_SECTION)) + 1,
+        this->templateSettingsTopLevel);
+    QTreeWidgetItem* settingsChildItem = new QTreeWidgetItem(this->templateSettingsTopLevel);
+    this->treeWidgetInspector->setItemWidget(settingsChildItem, 0, templateWidget->templateSettingsPanel());
+    settingsChildItem->setSizeHint(0, templateWidget->templateSettingsPanel()->sizeHint());
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(4)), 0, new InspectorMovieWidget(this));
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(5)), 0, new InspectorBlendModeWidget(this));
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(sectionItem(6)), 0, new InspectorBrightnessWidget(this));
@@ -194,25 +237,13 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     this->treeWidgetInspector->addTopLevelItem(transformTopLevel);
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(transformTopLevel), 0, new InspectorTransformWidget(this));
 
-    // Dynamically add "Simple Mode" section (index 42) — everything that controls
-    // how the item appears on the Simple Mode button grid.
-    QTreeWidgetItem* simpleModeTopLevel = new QTreeWidgetItem();
-    simpleModeTopLevel->setText(0, "Simple Mode");
-    simpleModeTopLevel->setBackground(0, QBrush(QColor(45, 45, 45)));
-    simpleModeTopLevel->setForeground(0, QBrush(QColor(255, 255, 255)));
-    // Shown first, because it is the section an operator building a Simple Mode
-    // surface reaches for on every item \xe2\x80\x94 unlike the rest, which are reached for
-    // when something specific needs changing. It is declared last, so every index
-    // below still counts from the declaration order; sectionItem() bridges the two.
-    this->treeWidgetInspector->insertTopLevelItem(0, simpleModeTopLevel);
-    this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(simpleModeTopLevel), 0, new InspectorSimpleModeWidget(this));
-
     this->treeWidgetInspector->expandAll();
 
     // Embedded Transform and Simple Mode are rarely needed — start them collapsed;
     // clicking a header still toggles it, and the toggle sticks for the session.
     transformTopLevel->setExpanded(false);
     simpleModeTopLevel->setExpanded(false);
+    this->templateSettingsTopLevel->setExpanded(false);
 
     setDefaultVisibleWidgets();
 
@@ -235,7 +266,14 @@ QTreeWidgetItem* InspectorWidget::sectionItem(int declaredIndex) const
     if (declaredIndex == SIMPLE_MODE_SECTION)
         return this->treeWidgetInspector->topLevelItem(0);
 
-    return this->treeWidgetInspector->topLevelItem(declaredIndex + 1);
+    // Simple Mode occupies row 0, so everything declared sits one row down. Template
+    // Settings is inserted straight after Template, so once it exists everything
+    // declared after Template sits one further down again.
+    int row = declaredIndex + 1;
+    if (this->templateSettingsTopLevel != NULL && declaredIndex > TEMPLATE_SECTION)
+        row += 1;
+
+    return this->treeWidgetInspector->topLevelItem(row);
 }
 
 void InspectorWidget::repositoryRundown(const RepositoryRundownEvent &event)
@@ -270,6 +308,7 @@ void InspectorWidget::rundownItemSelected(const RundownItemSelectedEvent &event)
     {
         sectionItem(2)->setHidden(false);
         sectionItem(3)->setHidden(false);
+        this->templateSettingsTopLevel->setHidden(false);
     }
     else if (dynamic_cast<AudioCommand *>(event.getCommand()))
         sectionItem(24)->setHidden(false);
@@ -363,6 +402,7 @@ void InspectorWidget::setDefaultVisibleWidgets()
     sectionItem(1)->setHidden(false);
     sectionItem(2)->setHidden(true);
     sectionItem(3)->setHidden(true);
+    this->templateSettingsTopLevel->setHidden(true);
     sectionItem(4)->setHidden(true);
     sectionItem(5)->setHidden(true);
     sectionItem(6)->setHidden(true);
