@@ -87,30 +87,16 @@ PerformancePanelWidget::PerformancePanelWidget(QWidget* parent)
     this->systemMemLabel = systemPair.first;
     this->systemCpuLabel = systemPair.second;
 
-    // Sheets strain meter. Hidden until something actually uses a sheet, so the
-    // panel stays as it was for shows that do not.
-    this->sheetsRow = new QWidget(this->contentWidget);
-    QHBoxLayout* sheetsLayout = new QHBoxLayout(this->sheetsRow);
-    sheetsLayout->setContentsMargins(0, 2, 0, 0);
-    sheetsLayout->setSpacing(6);
+    // Sheets strain. One meter per API key rather than one overall, because the
+    // per-minute budget belongs to the key: two projects on separate keys each half
+    // spent is not one budget fully spent. Hidden entirely until a sheet is touched.
+    this->sheetsBox = new QWidget(this->contentWidget);
+    this->sheetsBoxLayout = new QVBoxLayout(this->sheetsBox);
+    this->sheetsBoxLayout->setContentsMargins(0, 2, 0, 0);
+    this->sheetsBoxLayout->setSpacing(2);
 
-    QLabel* sheetsName = new QLabel("Sheets", this->sheetsRow);
-    sheetsName->setStyleSheet(rowLabelStyle);
-    sheetsLayout->addWidget(sheetsName, 0);
-
-    this->sheetsMeter = new QProgressBar(this->sheetsRow);
-    this->sheetsMeter->setRange(0, SheetDataResolver::quotaLimit());
-    this->sheetsMeter->setValue(0);
-    this->sheetsMeter->setTextVisible(false);
-    this->sheetsMeter->setFixedHeight(6);
-    sheetsLayout->addWidget(this->sheetsMeter, 1);
-
-    this->sheetsValueLabel = new QLabel("0", this->sheetsRow);
-    this->sheetsValueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    sheetsLayout->addWidget(this->sheetsValueLabel, 0);
-
-    this->gridLayout->addWidget(this->sheetsRow, 4, 0, 1, 3);
-    this->sheetsRow->setVisible(false);
+    this->gridLayout->addWidget(this->sheetsBox, 4, 0, 1, 3);
+    this->sheetsBox->setVisible(false);
 
     // Poll every 2 seconds.
     this->updateTimer = new QTimer(this);
@@ -155,52 +141,110 @@ static void colorizeLabel(QLabel* label, double percent)
     label->setStyleSheet(QString("color: %1;").arg(thresholdColor(percent)));
 }
 
+// Rows are created once per key and reused. Building them on the fly every couple
+// of seconds would make the panel flicker and lose whatever the mouse was over.
+PerformancePanelWidget::SheetsKeyRow& PerformancePanelWidget::sheetsRowFor(const QString& keyId)
+{
+    if (this->sheetsKeyRows.contains(keyId))
+        return this->sheetsKeyRows[keyId];
+
+    SheetsKeyRow entry;
+    entry.row = new QWidget(this->sheetsBox);
+
+    QHBoxLayout* rowLayout = new QHBoxLayout(entry.row);
+    rowLayout->setContentsMargins(0, 0, 0, 0);
+    rowLayout->setSpacing(6);
+
+    entry.nameLabel = new QLabel(entry.row);
+    entry.nameLabel->setStyleSheet("font-size: 10px; color: rgba(160, 160, 160, 200);");
+    entry.nameLabel->setMinimumWidth(52);
+    rowLayout->addWidget(entry.nameLabel, 0);
+
+    entry.meter = new QProgressBar(entry.row);
+    entry.meter->setRange(0, SheetDataResolver::quotaLimit());
+    entry.meter->setValue(0);
+    entry.meter->setTextVisible(false);
+    entry.meter->setFixedHeight(6);
+    rowLayout->addWidget(entry.meter, 1);
+
+    entry.valueLabel = new QLabel(entry.row);
+    entry.valueLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    rowLayout->addWidget(entry.valueLabel, 0);
+
+    this->sheetsBoxLayout->addWidget(entry.row);
+    this->sheetsKeyRows.insert(keyId, entry);
+
+    return this->sheetsKeyRows[keyId];
+}
+
 void PerformancePanelWidget::updateSheetsStrain()
 {
-    if (this->sheetsMeter == nullptr)
+    if (this->sheetsBox == nullptr)
         return;
 
-    int clientCalls = 0;
-    int templateCalls = 0;
-    int externalCalls = 0;
-    SheetDataResolver::getInstance().quotaUsage(clientCalls, templateCalls, &externalCalls);
-
-    int total = clientCalls + templateCalls + externalCalls;
+    QList<SheetsKeyUsage> perKey = SheetDataResolver::getInstance().quotaUsageByKey();
     int limit = SheetDataResolver::quotaLimit();
 
-    // Nothing has touched a sheet — keep the panel as it was.
-    if (total == 0 && !this->sheetsRow->isVisible())
+    // Nothing has touched a sheet and nothing ever has \xe2\x80\x94 keep the panel as it was.
+    if (perKey.isEmpty() && this->sheetsKeyRows.isEmpty())
         return;
 
-    this->sheetsRow->setVisible(true);
+    this->sheetsBox->setVisible(true);
 
-    if (this->sheetsMeter->maximum() != limit)
-        this->sheetsMeter->setRange(0, limit);
+    QSet<QString> seen;
+    foreach (const SheetsKeyUsage& usage, perKey)
+    {
+        seen.insert(usage.keyId);
 
-    this->sheetsMeter->setValue(qMin(total, limit));
+        SheetsKeyRow& entry = sheetsRowFor(usage.keyId);
+        int total = usage.total();
 
-    double percent = (limit > 0) ? (static_cast<double>(total) / static_cast<double>(limit) * 100.0) : 0.0;
-    QString color = thresholdColor(percent);
+        // The project name is what an operator recognises; the digest is only a
+        // fallback for a spreadsheet no discovered project claims.
+        entry.nameLabel->setText(usage.project.isEmpty() ? usage.keyId.left(10) : usage.project);
 
-    this->sheetsMeter->setStyleSheet(QString(
-        "QProgressBar { background-color: rgba(60, 60, 60, 200); border: none; border-radius: 3px; }"
-        "QProgressBar::chunk { background-color: %1; border-radius: 3px; }").arg(color));
+        if (entry.meter->maximum() != limit)
+            entry.meter->setRange(0, limit);
+        entry.meter->setValue(qMin(total, limit));
 
-    this->sheetsValueLabel->setText(QString("%1/%2").arg(total).arg(limit));
-    this->sheetsValueLabel->setStyleSheet(QString("color: %1;").arg(color));
+        double percent = (limit > 0) ? (static_cast<double>(total) / static_cast<double>(limit) * 100.0) : 0.0;
+        QString color = thresholdColor(percent);
 
-    QString tooltip = QString(
-        "Sheet API reads in the last minute\n"
-        "%1 from this client, %2 from templates")
-        .arg(clientCalls).arg(templateCalls);
+        entry.meter->setStyleSheet(QString(
+            "QProgressBar { background-color: rgba(60, 60, 60, 200); border: none; border-radius: 3px; }"
+            "QProgressBar::chunk { background-color: %1; border-radius: 3px; }").arg(color));
 
-    // Only mentioned when somebody is actually reporting, so the usual case stays
-    // as short as it was.
-    if (externalCalls > 0)
-        tooltip += QString("\n%1 reported by other applications").arg(externalCalls);
+        entry.valueLabel->setText(QString("%1/%2").arg(total).arg(limit));
+        entry.valueLabel->setStyleSheet(QString("color: %1;").arg(color));
 
-    this->sheetsRow->setToolTip(tooltip);
+        QString tooltip = usage.project.isEmpty()
+            ? QString("Sheet API reads in the last minute, for one key")
+            : QString("Sheet API reads in the last minute \xe2\x80\x94 %1").arg(usage.project);
+
+        tooltip += QString("\n%1 from this client, %2 from templates")
+            .arg(usage.clientReads).arg(usage.templateReads);
+
+        if (usage.externalReads > 0)
+            tooltip += QString("\n%1 reported by other applications").arg(usage.externalReads);
+
+        entry.row->setToolTip(tooltip);
+        entry.row->setVisible(true);
+    }
+
+    // A key that has gone quiet keeps its row, showing zero. Removing it would make
+    // the panel jump every time a project paused, and the row is the useful part.
+    foreach (const QString& keyId, this->sheetsKeyRows.keys())
+    {
+        if (seen.contains(keyId))
+            continue;
+
+        SheetsKeyRow& entry = this->sheetsKeyRows[keyId];
+        entry.meter->setValue(0);
+        entry.valueLabel->setText(QString("0/%1").arg(limit));
+        entry.valueLabel->setStyleSheet(QString("color: %1;").arg(thresholdColor(0.0)));
+    }
 }
+
 
 void PerformancePanelWidget::updateStats()
 {

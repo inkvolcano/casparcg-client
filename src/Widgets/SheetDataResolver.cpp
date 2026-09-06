@@ -1,5 +1,7 @@
 #include "SheetDataResolver.h"
 
+#include <algorithm>
+
 #include "DatabaseManager.h"
 #include "Models/ConfigurationModel.h"
 
@@ -74,13 +76,30 @@ QString SheetDataResolver::templateFilePath(const QString& deviceName, const QSt
     return QFile::exists(path) ? path : QString();
 }
 
-QList<SheetRow> SheetDataResolver::rowsFromCacheJson(const QByteArray& body)
+QList<SheetRow> SheetDataResolver::rowsFromCacheJson(const QByteArray& body, QStringList* columns)
 {
     QList<SheetRow> rows;
 
     QJsonDocument document = QJsonDocument::fromJson(body);
     if (!document.isArray())
         return rows;   // an error object, or something we did not write
+
+    // QJsonObject hands keys back sorted, so the order the sheet has them in has to
+    // be read off the text: the first object's keys, in the order they were written.
+    // Whoever wrote the cache built each object from the header row, in order.
+    if (columns != nullptr)
+    {
+        columns->clear();
+        int open = body.indexOf('{');
+        int close = (open >= 0) ? body.indexOf('}', open) : -1;
+        if (open >= 0 && close > open)
+        {
+            QRegularExpression keyRegex("\"([^\"]+)\"\\s*:");
+            QRegularExpressionMatchIterator it = keyRegex.globalMatch(QString::fromUtf8(body.mid(open, close - open)));
+            while (it.hasNext())
+                columns->append(it.next().captured(1));
+        }
+    }
 
     foreach (const QJsonValue& value, document.array())
     {
@@ -98,7 +117,7 @@ QList<SheetRow> SheetDataResolver::rowsFromCacheJson(const QByteArray& body)
     return rows;
 }
 
-QList<SheetRow> SheetDataResolver::rowsFromApiJson(const QByteArray& body)
+QList<SheetRow> SheetDataResolver::rowsFromApiJson(const QByteArray& body, QStringList* columns)
 {
     QList<SheetRow> rows;
 
@@ -110,6 +129,14 @@ QList<SheetRow> SheetDataResolver::rowsFromApiJson(const QByteArray& body)
     QStringList headers;
     foreach (const QJsonValue& header, values.at(0).toArray())
         headers.append(header.toVariant().toString());
+
+    if (columns != nullptr)
+    {
+        columns->clear();
+        foreach (const QString& header, headers)
+            if (!header.isEmpty())
+                columns->append(header);
+    }
 
     for (int i = 1; i < values.count(); i++)
     {
@@ -169,14 +196,16 @@ void SheetDataResolver::fetchRows(const SheetsProject& project, const QString& t
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         QList<SheetRow> rows;
+        QStringList columns;
         if (reply->error() == QNetworkReply::NoError && status == 200)
-            rows = rowsFromCacheJson(reply->readAll());
+            rows = rowsFromCacheJson(reply->readAll(), &columns);
 
         if (!rows.isEmpty())
         {
             SheetRowsOrigin origin;
             origin.source = SheetRowsOrigin::Cache;
             origin.cachedAt = cachedAtOf(reply);
+            origin.columns = columns;
 
             CachedRows held;
             held.takenAt = QDateTime::currentMSecsSinceEpoch();
@@ -217,7 +246,8 @@ void SheetDataResolver::requestFromApi(const SheetsProject& project, const QStri
             return;
         }
 
-        QList<SheetRow> rows = rowsFromApiJson(reply->readAll());
+        QStringList columns;
+        QList<SheetRow> rows = rowsFromApiJson(reply->readAll(), &columns);
         if (rows.isEmpty())
         {
             emit rowsFailed(requestId, QString("Tab '%1' returned no rows").arg(capturedTab));
@@ -232,6 +262,7 @@ void SheetDataResolver::requestFromApi(const SheetsProject& project, const QStri
         SheetRowsOrigin origin;
         origin.source = SheetRowsOrigin::Sheet;
         origin.cachedAt = QDateTime::currentDateTime();
+        origin.columns = columns;
 
         CachedRows held;
         held.takenAt = QDateTime::currentMSecsSinceEpoch();
@@ -371,28 +402,85 @@ QStringList SheetDataResolver::knownSpreadsheetIds() const
     return ids;
 }
 
-void SheetDataResolver::quotaUsage(int& clientCalls, int& templateCalls, int* externalCalls) const
+QString SheetDataResolver::budgetGroupFor(const QString& spreadsheetId, QString* projectName)
+{
+    SheetsProject project = SheetsProjectRegistry::getInstance().projectBySpreadsheetId(spreadsheetId);
+
+    if (projectName != nullptr)
+        *projectName = project.name;
+
+    QString fingerprint = project.keyFingerprint();
+
+    // No project, or a project with no key: keep it separate under its own id so it
+    // is never added to a budget it does not draw on.
+    return fingerprint.isEmpty() ? ("sheet:" + spreadsheetId) : fingerprint;
+}
+
+QList<SheetsKeyUsage> SheetDataResolver::quotaUsageByKey() const
 {
     qint64 cutoff = QDateTime::currentMSecsSinceEpoch() - 60000;
 
-    clientCalls = 0;
-    templateCalls = 0;
+    QMap<QString, SheetsKeyUsage> perKey;
 
     foreach (const QString& id, knownSpreadsheetIds())
     {
-        clientCalls += countInWindow(this->clientCallStamps, id, cutoff);
+        QString name;
+        QString group = budgetGroupFor(id, &name);
 
+        SheetsKeyUsage& usage = perKey[group];
+        usage.keyId = group;
+        if (usage.project.isEmpty())
+            usage.project = name;
+
+        usage.clientReads += countInWindow(this->clientCallStamps, id, cutoff);
+
+        // A read a template reported for itself is the truth; a play is only a
+        // stand-in for when it has not.
         int counted = countInWindow(this->templateReadStamps, id, cutoff);
-        templateCalls += (counted > 0) ? counted : countInWindow(this->templatePlayStamps, id, cutoff);
+        usage.templateReads += (counted > 0) ? counted
+                                             : countInWindow(this->templatePlayStamps, id, cutoff);
+
+        usage.externalReads += externalReadsFor(id);
     }
 
-    if (externalCalls != nullptr)
-    {
-        *externalCalls = 0;
-        foreach (const QString& id, externalSpreadsheetIds())
-            *externalCalls += externalReadsFor(id);
-    }
+    QList<SheetsKeyUsage> result;
+    foreach (const SheetsKeyUsage& usage, perKey)
+        if (usage.total() > 0)
+            result.append(usage);
+
+    // Busiest first, so whoever draws this puts the key nearest its limit on top.
+    std::sort(result.begin(), result.end(), [](const SheetsKeyUsage& a, const SheetsKeyUsage& b) {
+        return a.total() > b.total();
+    });
+
+    return result;
 }
+
+void SheetDataResolver::quotaUsage(int& clientCalls, int& templateCalls, int* externalCalls,
+                                   QString* busiestProject) const
+{
+    clientCalls = 0;
+    templateCalls = 0;
+    if (externalCalls != nullptr)
+        *externalCalls = 0;
+    if (busiestProject != nullptr)
+        busiestProject->clear();
+
+    QList<SheetsKeyUsage> perKey = quotaUsageByKey();
+    if (perKey.isEmpty())
+        return;
+
+    // Already sorted busiest first.
+    const SheetsKeyUsage& worst = perKey.first();
+    clientCalls = worst.clientReads;
+    templateCalls = worst.templateReads;
+    if (externalCalls != nullptr)
+        *externalCalls = worst.externalReads;
+    if (busiestProject != nullptr)
+        *busiestProject = worst.project;
+}
+
+
 
 // A report is only worth counting while it still describes now. One that stopped
 // arriving fades out instead of holding a number up forever.
@@ -535,7 +623,14 @@ QJsonObject SheetDataResolver::strainReport() const
             continue;
 
         QJsonObject entry;
+        QString projectName;
+        QString group = budgetGroupFor(id, &projectName);
+
         entry.insert("spreadsheetId", id);
+        entry.insert("project", projectName);
+        // Which budget this draws on. A digest of the API key, never the key: enough
+        // to group sheets that share a budget, useless to anyone who lacks it.
+        entry.insert("keyId", group);
         entry.insert("clientReads", clientReads);
         entry.insert("templateReads", templateReads);
         entry.insert("templateReadsAre", (countedReads > 0) ? "counted" : "estimated");
@@ -718,7 +813,8 @@ void SheetDataResolver::warmFromProxy(const SheetsProject& project, const QStrin
         }
 
         QByteArray body = reply->readAll();
-        QList<SheetRow> rows = rowsFromCacheJson(body);
+        QStringList columns;
+        QList<SheetRow> rows = rowsFromCacheJson(body, &columns);
         if (rows.isEmpty())
         {
             this->warmedAt.remove(warmKey(captured.spreadsheetId, capturedTab));
@@ -733,6 +829,7 @@ void SheetDataResolver::warmFromProxy(const SheetsProject& project, const QStrin
         SheetRowsOrigin origin;
         origin.source = SheetRowsOrigin::Proxy;
         origin.cachedAt = QDateTime::currentDateTime();
+        origin.columns = columns;
 
         CachedRows held;
         held.takenAt = QDateTime::currentMSecsSinceEpoch();
@@ -765,22 +862,50 @@ TemplateSheetConnection SheetDataResolver::parseConnection(const QString& templa
     if (!objectMatch.hasMatch())
         return connection;
 
-    QString body = objectMatch.captured(1);
+    connection.declared = true;
 
-    QRegularExpression tabRegex("[\"']tab[\"']\\s*:\\s*[\"']([^\"']*)[\"']");
-    QRegularExpression keyRegex("[\"']key[\"']\\s*:\\s*[\"']([^\"']*)[\"']");
+    // Every "name": "value" pair. `tab` is the tab, `key` is the documented
+    // single-field form, and anything else is a field with its default.
+    QRegularExpression pairRegex("[\"'](\\w+)[\"']\\s*:\\s*[\"']([^\"']*)[\"']");
+    QRegularExpressionMatchIterator it = pairRegex.globalMatch(objectMatch.captured(1));
+    while (it.hasNext())
+    {
+        QRegularExpressionMatch pair = it.next();
+        QString name = pair.captured(1).trimmed();
+        QString value = pair.captured(2).trimmed();
 
-    QRegularExpressionMatch tabMatch = tabRegex.match(body);
-    QRegularExpressionMatch keyMatch = keyRegex.match(body);
-
-    if (tabMatch.hasMatch())
-        connection.tab = tabMatch.captured(1).trimmed();
-    if (keyMatch.hasMatch())
-        connection.keyField = keyMatch.captured(1).trimmed();
+        if (name == "tab")
+        {
+            connection.tab = value;
+        }
+        else if (name == "key")
+        {
+            // The documented single-field form: one line at that field.
+            connection.blocks.append(qMakePair(value, 1));
+        }
+        else if (name == "sets")
+        {
+            // "COLUMN" or "COLUMN:digit" - the test that makes a row a set member.
+            int colon = value.indexOf(':');
+            connection.setsColumn = (colon >= 0) ? value.left(colon).trimmed() : value;
+            connection.setsDigit = (colon >= 0) && value.mid(colon + 1).trimmed().toLower() == "digit";
+        }
+        else
+        {
+            // A line count; anything that is not a positive number reads as one.
+            bool numeric = false;
+            int lines = value.toInt(&numeric);
+            connection.blocks.append(qMakePair(name, (numeric && lines > 0) ? lines : 1));
+        }
+    }
 
     return connection;
 }
 
+void SheetDataResolver::forgetConnection(const QString& deviceName, const QString& templateName)
+{
+    this->connectionCache.remove(deviceName + "|" + templateName);
+}
 TemplateSheetConnection SheetDataResolver::connectionFor(const QString& deviceName, const QString& templateName)
 {
     QString key = deviceName + "|" + templateName;

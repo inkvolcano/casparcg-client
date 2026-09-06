@@ -79,6 +79,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QComboBox* comboBoxDisconnectMode;
         QCheckBox* checkBoxActivityGrow;
         QSpinBox* spinBoxNdiOutputs;
+        QCheckBox* checkBoxNdiRestoreOutputs = nullptr;
         QComboBox* comboBoxNdiBandwidth;
         QComboBox* comboBoxNdiFpsLimit;
         QComboBox* comboBoxNdiScaling;

@@ -835,6 +835,14 @@ void SettingsDialog::setupGeneralTab()
     this->spinBoxNdiOutputs->setMaximum(9);
     this->spinBoxNdiOutputs->setToolTip("Number of NDI viewer outputs in the NDI panel (1-9)");
     grid->addWidget(this->spinBoxNdiOutputs, row, 1);
+
+    row++;
+    this->checkBoxNdiRestoreOutputs = new QCheckBox("Reconnect NDI sources on startup");
+    this->checkBoxNdiRestoreOutputs->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxNdiRestoreOutputs->setToolTip(
+        "Puts each tile back on the source it was showing when the client last closed.\n"
+        "Sources are reconnected as discovery finds them, and a tile filled by hand is left alone.");
+    grid->addWidget(this->checkBoxNdiRestoreOutputs, row, 1, 1, 3);
     row++;
 
     addLabel("NDI Bandwidth:");
@@ -1084,6 +1092,7 @@ void SettingsDialog::setupGeneralTab()
     wireCheckBox(this->checkBoxShowPreviewBorder, "ShowPreviewBorder");
     wireCheckBox(this->checkBoxShowSTEPButton, "ShowSTEPButton");
     wireCheckBox(this->checkBoxShowPVWButton, "ShowPVWButton");
+    wireCheckBox(this->checkBoxNdiRestoreOutputs, "NdiRestoreOutputs");
     wireCheckBox(this->checkBoxShowServers, "ShowServers");
     wireCheckBox(this->checkBoxShowChannelLocks, "ShowChannelLocks");
     wireCheckBox(this->checkBoxShowChannelHeaders, "ShowChannelHeaders");
@@ -2385,32 +2394,65 @@ void SettingsDialog::buildSheetProjectsGroup()
         bool found = false;
         bool useLocal = SheetsProjectRegistry::readLocalFlag(project.folder, &found);
 
-        QCheckBox* checkBox = new QCheckBox(project.name, this->sheetProjectsBox);
-        checkBox->setChecked(useLocal);
-        checkBox->setEnabled(found);
-        checkBox->setToolTip(found
-            ? QString("%1\nlocal = %2").arg(project.folder, useLocal ? "true" : "false")
-            : QString("%1\nNo 'local = true/false' in project.js, so there is nothing to switch.").arg(project.folder));
+        QWidget* row = new QWidget(this->sheetProjectsBox);
+        QHBoxLayout* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(0, 0, 0, 0);
+        rowLayout->setSpacing(6);
+
+        QLabel* nameLabel = new QLabel(project.name, row);
+        nameLabel->setMinimumWidth(90);
+        nameLabel->setToolTip(project.folder);
+        rowLayout->addWidget(nameLabel, 0);
+
+        // Each project reads with its own key, and the per-minute budget belongs to
+        // the key, so this is also what decides which sheets share a budget.
+        QLineEdit* keyEdit = new QLineEdit(SheetsProjectRegistry::readApiKey(project.folder), row);
+        keyEdit->setPlaceholderText("Google API key");
+        keyEdit->setToolTip(QString(
+            "The API key in %1/project.js. Written as you type, so a half-typed key is a "
+            "half-typed key on disk. Templates pick it up the next time they load.").arg(project.folder));
+        rowLayout->addWidget(keyEdit, 1);
 
         QString folder = project.folder;
         QString name = project.name;
+
+        QObject::connect(keyEdit, &QLineEdit::textEdited, this, [this, keyEdit, folder, name](const QString& value) {
+            QString error;
+            if (SheetsProjectRegistry::getInstance().writeApiKey(folder, value.trimmed(), &error))
+            {
+                keyEdit->setStyleSheet(QString());
+                return;
+            }
+
+            // The file would not take it, so the field says so rather than looking saved.
+            keyEdit->setStyleSheet("border: 1px solid rgba(200, 90, 80, 220);");
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(error, 6000, true));
+        });
+
+        QCheckBox* checkBox = new QCheckBox("Use cache", row);
+        checkBox->setChecked(useLocal);
+        checkBox->setEnabled(found);
+        checkBox->setToolTip(found
+            ? QString("local = %1 \xe2\x80\x94 ticked, this project's templates read the cache at localhost").arg(useLocal ? "true" : "false")
+            : QString("No 'local = true/false' in %1/project.js, so there is nothing to switch.").arg(folder));
+
         QObject::connect(checkBox, &QCheckBox::toggled, this, [this, checkBox, folder, name](bool checked) {
             QString error;
             if (SheetsProjectRegistry::getInstance().writeLocalFlag(folder, checked, &error))
             {
-                checkBox->setToolTip(QString("%1\nlocal = %2").arg(folder, checked ? "true" : "false"));
+                checkBox->setToolTip(QString("local = %1").arg(checked ? "true" : "false"));
                 EventManager::getInstance().fireStatusbarEvent(
                     StatusbarEvent(QString("%1: local = %2").arg(name, checked ? "true" : "false")));
                 return;
             }
 
-            // The file refused the change, so the box must not claim otherwise.
             QSignalBlocker blocker(checkBox);
             checkBox->setChecked(!checked);
             EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(error, 6000, true));
         });
 
-        layout->addWidget(checkBox);
+        rowLayout->addWidget(checkBox, 0);
+        layout->addWidget(row);
     }
 }
 

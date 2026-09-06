@@ -29,6 +29,11 @@ struct SheetRowsOrigin
     Source source = Sheet;
     QDateTime cachedAt;   // invalid when the source could not say
 
+    // The columns in the order the sheet has them. SheetRow is a QMap and sorts its
+    // keys, so without this the inspector would show ID, QUESTION, REFERENCE where
+    // the sheet says ID, REFERENCE, QUESTION.
+    QStringList columns;
+
     bool isCached() const { return this->source == Memory || this->source == Cache; }
 
     QString describe() const
@@ -54,12 +59,64 @@ struct SheetRowsOrigin
 // empty one.
 struct TemplateSheetConnection
 {
+    // The shape every template carries:
+    //
+    //   window.sheetConnection = { "tab": "LINEUP", "homelineup": "12", "awaylineup": "12" };
+    //
+    // `tab` is the sheet tab. Every other property names one of the template's own
+    // data fields whose value picks a place in the sheet, and the number is HOW MANY
+    // LINES are read from there, the set's own header line included. One line is the
+    // common case; the calendar takes six, a lineup side twelve. The documented
+    // `"key": "row"` form means one line.
+    //
+    // A declaration with only a tab is valid: the template reads the whole tab. One
+    // that exists but has no tab is `declared` and not `isValid()`, so the inspector
+    // can say the declaration is broken instead of quietly showing nothing.
     QString tab;
-    QString keyField;
+    QList<QPair<QString, int>> blocks;   // (field name, line count), in declared order
+    bool declared = false;
 
-    bool isValid() const { return !this->tab.isEmpty() && !this->keyField.isEmpty(); }
+    // How a field's value is turned into a place in the tab. Read from the templates,
+    // not invented: every one of them does one of three things.
+    //
+    //   one line, no `sets`   -> the row whose ID column equals the value, else the
+    //                            value as a 1-based position          (findRow)
+    //   N lines,  no `sets`   -> base row (value - 1) * N               (getNumberForRow)
+    //   `sets` declared       -> the value-th run of member rows, the row above a
+    //                            run being its header                  (findTeams)
+    //
+    // `sets` names the member-row test: "NUMBER:digit" means the NUMBER cell holds a
+    // digit, "ID" means the ID cell is filled. It is the one thing a template with
+    // variable-length sets has to say, because no count can stand in for it.
+    QString setsColumn;
+    bool setsDigit = false;
+
+    bool countsSets() const { return !this->setsColumn.isEmpty(); }
+
+    bool isValid() const { return !this->tab.isEmpty(); }
+    bool hasBlocks() const { return !this->blocks.isEmpty(); }
+
+    QStringList fields() const
+    {
+        QStringList names;
+        for (const auto& pair : this->blocks)
+            names.append(pair.first);
+        return names;
+    }
 };
 
+// One API key's worth of reads over the last minute. The budget is per key, so
+// this is the unit a meter should be drawn in.
+struct SheetsKeyUsage
+{
+    QString keyId;      // digest of the key, or "sheet:<id>" when no project owns it
+    QString project;    // empty when the spreadsheet belongs to no discovered project
+    int clientReads = 0;
+    int templateReads = 0;
+    int externalReads = 0;
+
+    int total() const { return this->clientReads + this->templateReads + this->externalReads; }
+};
 class WIDGETS_EXPORT SheetDataResolver : public QObject
 {
     Q_OBJECT
@@ -72,6 +129,10 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
         // The declaration the templates actually carry.
         static TemplateSheetConnection parseConnection(const QString& templateFilePath);
         TemplateSheetConnection connectionFor(const QString& deviceName, const QString& templateName);
+
+        // Drop the remembered declaration so the file is read again. Without this a
+        // template corrected while the client runs is not seen until a restart.
+        void forgetConnection(const QString& deviceName, const QString& templateName);
 
         // Absolute path of a template's HTML, or empty when it cannot be located.
         static QString templateFilePath(const QString& deviceName, const QString& templateName);
@@ -112,7 +173,15 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
         // where this arrives it replaces the guess made from plays instead of being
         // added to it — the same read must not appear twice.
         void noteTemplateRead(const QString& spreadsheetId, const QString& source);
-        void quotaUsage(int& clientCalls, int& templateCalls, int* externalCalls = nullptr) const;
+        // Reports the API key closest to its own limit, not the sum across keys:
+        // two projects on separate keys each spending half a budget are not one
+        // budget fully spent. busiestProject names whose key that is, for the
+        // meter to say so.
+        // Every key with reads in the last minute, busiest first.
+        QList<SheetsKeyUsage> quotaUsageByKey() const;
+
+        void quotaUsage(int& clientCalls, int& templateCalls, int* externalCalls = nullptr,
+                        QString* busiestProject = nullptr) const;
         static int quotaLimit();
 
         // Strain seen from outside, in both directions. The client publishes what it
@@ -165,8 +234,8 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
 
         // The cache holds rows already shaped as objects; the API hands back a values
         // grid. Both are normalised here so nothing downstream can tell them apart.
-        static QList<SheetRow> rowsFromCacheJson(const QByteArray& body);
-        static QList<SheetRow> rowsFromApiJson(const QByteArray& body);
+        static QList<SheetRow> rowsFromCacheJson(const QByteArray& body, QStringList* columns = nullptr);
+        static QList<SheetRow> rowsFromApiJson(const QByteArray& body, QStringList* columns = nullptr);
 
         // When the answering cache says it wrote this copy, or an invalid time when it
         // did not say. The PHP service does not; the client's own does.
@@ -177,6 +246,11 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
         static int countInWindow(const QMap<QString, QList<qint64>>& stamps, const QString& spreadsheetId, qint64 cutoff);
         QStringList knownSpreadsheetIds() const;
         QStringList externalSpreadsheetIds() const;
+
+        // spreadsheetId -> the key fingerprint it is read with, and the project name.
+        // A sheet whose project cannot be resolved is its own group, so it is still
+        // counted rather than silently folded in with somebody else's budget.
+        static QString budgetGroupFor(const QString& spreadsheetId, QString* projectName = nullptr);
         int externalReadsFor(const QString& spreadsheetId) const;
         static bool isReportFresh(const ExternalReport& report);
 

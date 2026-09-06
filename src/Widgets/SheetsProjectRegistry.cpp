@@ -3,6 +3,7 @@
 #include "DatabaseManager.h"
 #include "Models/DeviceModel.h"
 
+#include <QtCore/QCryptographicHash>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
@@ -184,6 +185,92 @@ bool SheetsProjectRegistry::writeLocalFlag(const QString& projectFolder, bool us
     for (int i = 0; i < this->discovered.count(); i++)
         if (this->discovered.at(i).folder == projectFolder)
             this->discovered[i].usesLocalCache = useLocalCache;
+
+    return true;
+}
+
+// Short, stable, and not reversible into the key. Six hex characters is plenty to
+// tell two projects apart and far too little to be worth anything on its own.
+QString SheetsProject::keyFingerprint() const
+{
+    if (this->apiKey.isEmpty())
+        return QString();
+
+    QByteArray digest = QCryptographicHash::hash(this->apiKey.toUtf8(), QCryptographicHash::Sha256);
+    return QString::fromLatin1(digest.toHex().left(6));
+}
+
+SheetsProject SheetsProjectRegistry::projectBySpreadsheetId(const QString& spreadsheetId) const
+{
+    foreach (const SheetsProject& project, this->discovered)
+        if (project.spreadsheetId == spreadsheetId)
+            return project;
+
+    return SheetsProject();
+}
+
+static QRegularExpression apiKeyRegex()
+{
+    return QRegularExpression("(\\bapiKey\\s*=\\s*[\"'])([^\"']*)");
+}
+
+QString SheetsProjectRegistry::readApiKey(const QString& projectFolder)
+{
+    QFile file(QDir(projectFolder).filePath("project.js"));
+    if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+
+    QString content = QTextStream(&file).readAll();
+    file.close();
+
+    QRegularExpressionMatch match = apiKeyRegex().match(content);
+    return match.hasMatch() ? match.captured(2) : QString();
+}
+
+// Only the value between the quotes is replaced, so the declaration keyword, the
+// spacing and any comment around it survive untouched.
+bool SheetsProjectRegistry::writeApiKey(const QString& projectFolder, const QString& apiKey, QString* error)
+{
+    QString path = QDir(projectFolder).filePath("project.js");
+
+    QFile file(path);
+    if (!file.exists() || !file.open(QIODevice::ReadOnly))
+    {
+        if (error != nullptr)
+            *error = QString("Cannot read %1").arg(path);
+
+        return false;
+    }
+
+    QString content = QString::fromUtf8(file.readAll());
+    file.close();
+
+    QRegularExpressionMatch match = apiKeyRegex().match(content);
+    if (!match.hasMatch())
+    {
+        if (error != nullptr)
+            *error = QString("No apiKey assignment in %1").arg(path);
+
+        return false;
+    }
+
+    QString updated = content;
+    updated.replace(match.capturedStart(2), match.capturedLength(2), apiKey);
+
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        if (error != nullptr)
+            *error = QString("Cannot write %1").arg(path);
+
+        return false;
+    }
+
+    file.write(updated.toUtf8());
+    file.close();
+
+    for (int i = 0; i < this->discovered.count(); i++)
+        if (this->discovered.at(i).folder == projectFolder)
+            this->discovered[i].apiKey = apiKey;
 
     return true;
 }

@@ -25,6 +25,12 @@ struct SheetsProject
     bool usesLocalCache = false;
 
     bool isValid() const { return !this->spreadsheetId.isEmpty(); }
+
+    // The per-minute budget belongs to the API key, not to the spreadsheet, so
+    // strain has to be grouped by key. The key itself is a secret and is never
+    // published; this short digest is enough to group by and useless to anyone
+    // who does not already hold the key.
+    QString keyFingerprint() const;
 };
 
 // Single place that knows which sheet projects exist. Both the Sheets panel and
@@ -53,6 +59,13 @@ class WIDGETS_EXPORT SheetsProjectRegistry : public QObject
         // the operator's source, not ours.
         static bool readLocalFlag(const QString& projectFolder, bool* found = nullptr);
         bool writeLocalFlag(const QString& projectFolder, bool useLocalCache, QString* error = nullptr);
+
+        // The API key a project reads with, in the project's own project.js. Written
+        // the same way the local flag is: the one value, nothing else disturbed.
+        static QString readApiKey(const QString& projectFolder);
+        bool writeApiKey(const QString& projectFolder, const QString& apiKey, QString* error = nullptr);
+
+        SheetsProject projectBySpreadsheetId(const QString& spreadsheetId) const;
 
     private:
         explicit SheetsProjectRegistry();
