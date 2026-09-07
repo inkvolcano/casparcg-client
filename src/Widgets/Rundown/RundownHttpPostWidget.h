@@ -80,7 +80,6 @@ class WIDGETS_EXPORT RundownHttpPostWidget : public QWidget, Ui::RundownHttpPost
         HttpRequest request;
 
         void checkGpiConnection();
-        void checkDeviceConnection();
         void configureOscSubscriptions();
 
         Q_SLOT void executeStop();

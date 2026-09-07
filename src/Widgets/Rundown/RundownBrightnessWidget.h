@@ -78,7 +78,6 @@ class WIDGETS_EXPORT RundownBrightnessWidget : public QWidget, Ui::RundownBright
 
         ItemScheduler itemScheduler;
 
-        void loadEasing();
         void checkEmptyDevice();
         void checkGpiConnection();
         void checkDeviceConnection();

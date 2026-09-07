@@ -78,7 +78,6 @@ class WIDGETS_EXPORT RundownRotationWidget : public QWidget, Ui::RundownRotation
 
         ItemScheduler itemScheduler;
 
-        void loadEasing();
         void checkEmptyDevice();
         void checkGpiConnection();
         void checkDeviceConnection();
