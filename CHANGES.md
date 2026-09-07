@@ -805,6 +805,13 @@ The Templates tab also says where a GitHub token comes from, under the Token fie
 
 The README also has a Getting started section for a fresh install: what a server is, where its media and template paths come from, and why the client has to be told the same two folders.
 
+### Two panels that had never been written down
+Both have been in the client since the panel system landed, and neither was ever described here. An audit of every commit since the fork against this document found them.
+
+**The Http Log panel** shows what came back. Every HTTP GET and POST item the rundown fires is listed with its method, the address, the status code and the body that came back, and every playout action beside them with its device, channel and layer. When a template does not appear, this is where you find out whether the request went out, what answered, and what it said. It is a panel like any other: add it from the layout settings.
+
+**Timed channel locks.** A locked channel refuses playout, which is what you want while somebody is working on air. A timed lock is the same thing with an end: set a duration and the channel unlocks itself when it runs out, counting down on the button so anyone looking at it can see how long is left. It saves the mistake that matters, which is locking a channel to protect a segment and then leaving it locked into the next one.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

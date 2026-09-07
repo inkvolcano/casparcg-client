@@ -21,6 +21,7 @@ It exits non-zero if anything failed, so it can go in a hook or a task.
 | | |
 |---|---|
 | `check-all.py` | one command that runs everything below |
+| `check-changelog.py` | every feature the fork added is described in CHANGES.md and CHANGES.html |
 | `check-cmake.py` | every .cpp under src/ is named in a CMakeLists, every change script is in Core.qrc, and the version matches. Catches what compiling a file directly cannot |
 | `syntax-check.py` | type-checks changed files with `/Zs`, and finds members declared but never defined. Not a build: no object files, no linking |
 | `test-paths.bat` | path rules, protected files, git digests, the bad-token throttle |

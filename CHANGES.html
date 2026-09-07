@@ -763,6 +763,11 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>Somewhere to start</h3>
 <p><code>tools/php/SETUP.md</code> is a walkthrough from nothing to a template arriving at a venue, for somebody who has not done this before. It picks a route, goes step by step, and every step ends with what you should see, so a step that quietly did not work is found there rather than five steps later. It ends with a table of symptoms and what each usually means.</p>
 <p>The README also has a Getting started section for a fresh install: what a server is, where its media and template paths come from, and why the client has to be told the same two folders.</p>
+
+<h3>Two panels that had never been written down</h3>
+<p>Both have been in the client since the panel system landed, and neither was ever described here. An audit of every commit since the fork against this document found them.</p>
+<p><b>The Http Log panel</b> shows what came back. Every HTTP GET and POST item the rundown fires is listed with its method, the address, the status code and the body that came back, and every playout action beside them with its device, channel and layer. When a template does not appear, this is where you find out whether the request went out, what answered, and what it said. It is a panel like any other: add it from the layout settings.</p>
+<p><b>Timed channel locks.</b> A locked channel refuses playout, which is what you want while somebody is working on air. A timed lock is the same thing with an end: set a duration and the channel unlocks itself when it runs out, counting down on the button so anyone looking at it can see how long is left. It saves the mistake that matters, which is locking a channel to protect a segment and then leaving it locked into the next one.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

@@ -103,6 +103,16 @@ def main():
         if line.strip() and not line.startswith('Sources') and not line.startswith('Database'):
             print('  ' + line.strip())
 
+    # A feature nobody is told about is a feature nobody uses.
+    print()
+    print('Changelog')
+    story = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-changelog.py')],
+                           cwd=ROOT, capture_output=True, text=True)
+    story_ok = story.returncode == 0
+    for line in story.stdout.splitlines():
+        if 'NEITHER' in line or 'md only' in line or 'html only' in line or 'gap(s)' in line or 'every feature' in line:
+            print('  ' + line.strip())
+
     print()
     print('Suites')
 
@@ -143,10 +153,12 @@ def main():
         print('Syntax check failed.')
     if not wiring_ok:
         print('Build wiring has a problem.')
+    if not story_ok:
+        print('A feature is missing from the changelog.')
     if broken:
         print('Failed: ' + ', '.join(broken))
 
-    return 0 if (syntax_ok and wiring_ok and not broken and totalFailed == 0) else 1
+    return 0 if (syntax_ok and wiring_ok and story_ok and not broken and totalFailed == 0) else 1
 
 
 if __name__ == '__main__':
