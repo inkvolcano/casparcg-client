@@ -104,6 +104,11 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         void loadHotkeys();
         void rebuildLayout();
         void constrainToScreen();
+
+
+        // The usable height of the screen this window is on, or 0 when that cannot
+        // be determined, which means "do not clamp".
+        int availableScreenHeight() const;
         QWidget* widgetById(const QString& id);
 
         Q_SLOT void openRecentMenuActionTriggered(QAction*);

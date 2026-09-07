@@ -30,6 +30,7 @@ SUITES = [
     ('test-paths',   False, 'path rules, protected files, git digests, the bad-token throttle'),
     ('test-install', False, 'installFile against a real folder, and where anything landed'),
     ('test-target',  False, 'how the push tool reads an address and builds every URL'),
+    ('test-layout',  False, 'panel heights kept inside the screen so the window can always fit'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

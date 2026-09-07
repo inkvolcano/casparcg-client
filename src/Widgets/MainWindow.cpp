@@ -1,4 +1,8 @@
 #include "MainWindow.h"
+
+#include "../Common/PanelFit.h"
+
+#include <QtGui/QScreen>
 #include "AboutDialog.h"
 #include "ClockWidget.h"
 #include "HelpDialog.h"
@@ -1203,6 +1207,34 @@ void MainWindow::rebuildLayout()
     {
         bool hasExpanding = false;
         bool hasAnchorDown = false;
+
+        // Measure the whole column before handing any of it out. Deciding each panel
+        // as it comes does not work: the first takes what it wants and the rest are
+        // left with a floor each, which still adds up past the screen.
+        int wantedTotal = 0;
+        foreach (const QString& measureId, widgetIds)
+        {
+            QString id = measureId.trimmed();
+            QWidget* w = widgetById(id);
+            if (w == nullptr)
+                continue;
+
+            QString mode = localPanelMode(id);
+            if (mode == "expanding")
+                continue;                       // takes what is left over, not a fixed share
+
+            if (mode == "resizable")
+            {
+                wantedTotal += cfgVal(id + "PanelHeight").toInt();
+                continue;
+            }
+
+            int h = w->property("panelFixedHeight").toInt();
+            wantedTotal += (h > 0) ? h : defaultPanelHeight(id);
+        }
+
+        double columnScale = panelColumnScale(wantedTotal, availableScreenHeight());
+
         for (int i = 0; i < widgetIds.size(); i++)
         {
             QString id = widgetIds[i].trimmed();
@@ -1243,7 +1275,12 @@ void MainWindow::rebuildLayout()
                 {
                     QString hStr = cfgVal(id + "PanelHeight");
                     if (!hStr.isEmpty())
-                        w->setFixedHeight(hStr.toInt());
+                    {
+                        // Reduced by the column's share, so a panel dragged tall on a
+                        // big monitor cannot leave the window impossible to fit on a
+                        // smaller one. Untouched whenever the column already fits.
+                        w->setFixedHeight(fitPanelHeight(hStr.toInt(), columnScale));
+                    }
                     layout->addWidget(w, 0);
 
                     auto* handle = new PanelResizeHandle(w, id, w->height(), container);
@@ -1255,7 +1292,7 @@ void MainWindow::rebuildLayout()
                     if (h <= 0)
                         h = defaultPanelHeight(id);
                     if (h > 0)
-                        w->setFixedHeight(h);
+                        w->setFixedHeight(fitPanelHeight(h, columnScale));
                     layout->addWidget(w, 0);
                 }
 
@@ -1518,10 +1555,15 @@ void MainWindow::rebuildLayout()
                         auto* handle = new PanelResizeHandle(cell, wid, 300, cell);
                         cellLayout->addWidget(handle);
 
-                        // Restore saved span height on the cell container.
+                        // Restore saved span height on the cell container, clamped
+                        // so one spanned row cannot outgrow the screen on its own.
                         QString hStr = cfgVal(wid + "PanelHeight");
                         if (!hStr.isEmpty())
-                            cell->setFixedHeight(hStr.toInt());
+                        {
+                            int wanted = hStr.toInt();
+                            cell->setFixedHeight(fitPanelHeight(
+                                wanted, panelColumnScale(wanted, availableScreenHeight())));
+                        }
                     }
                 }
                 else
@@ -1540,7 +1582,11 @@ void MainWindow::rebuildLayout()
                     {
                         QString hStr = cfgVal(wid + "PanelHeight");
                         if (!hStr.isEmpty())
-                            w->setFixedHeight(hStr.toInt());
+                        {
+                            int wanted = hStr.toInt();
+                            w->setFixedHeight(fitPanelHeight(
+                                wanted, panelColumnScale(wanted, availableScreenHeight())));
+                        }
                         cellLayout->addWidget(w, 0);
 
                         auto* handle = new PanelResizeHandle(w, wid, w->height(), cell);
@@ -1768,6 +1814,12 @@ void MainWindow::rebuildLayout()
     QTimer::singleShot(0, this, [this]() { constrainToScreen(); });
 }
 
+int MainWindow::availableScreenHeight() const
+{
+    QScreen* screen = this->screen();
+    return screen == nullptr ? 0 : screen->availableGeometry().height();
+}
+
 void MainWindow::constrainToScreen()
 {
     QScreen* screen = this->screen();
@@ -1776,7 +1828,11 @@ void MainWindow::constrainToScreen()
 
     QRect available = screen->availableGeometry();
 
-    // Set maximum size so Qt layouts can never push the window beyond the screen.
+    // A maximum alone does not do it. Qt settles a layout minimum against an
+    // explicit maximum by honouring the minimum, so a column of fixed-height panels
+    // taller than the screen would ignore this entirely. What keeps the window on
+    // the display is fitPanelHeight clamping those heights as the layout is built;
+    // this is the belt to that pair of braces.
     this->setMaximumSize(available.size());
 
     // Shrink if currently too large.

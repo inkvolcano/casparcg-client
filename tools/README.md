@@ -26,6 +26,7 @@ It exits non-zero if anything failed, so it can go in a hook or a task.
 | `test-paths.bat` | path rules, protected files, git digests, the bad-token throttle |
 | `test-install.bat` | `installFile` against a real folder, and a sweep for anything that landed outside it |
 | `test-target.bat` | how the push tool reads an address and every URL it builds from one |
+| `test-layout.bat` | panel heights kept inside the screen, so a window can never be taller than the display |
 | `test-server.bat` | the HTTP parser, over real sockets, with malformed requests |
 | `test-push.bat` | a whole push, clicked through the buttons, to a real client |
 | `test-pull.bat` | the pull route end to end against a real PHP relay |
