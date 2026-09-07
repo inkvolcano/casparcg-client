@@ -195,8 +195,25 @@ QJsonObject TemplateInstaller::describePack(const QString& pack, bool* found)
 }
 
 int TemplateInstaller::installFile(const QString& pack, const QString& relativePath,
-                                   const QByteArray& body, QString* error)
+                                   const QByteArray& body, QString* error,
+                                   const QString& expectedSha1)
 {
+    if (!expectedSha1.isEmpty())
+    {
+        QString actual = QString::fromLatin1(
+            QCryptographicHash::hash(body, QCryptographicHash::Sha1).toHex());
+
+        if (actual.compare(expectedSha1.trimmed(), Qt::CaseInsensitive) != 0)
+        {
+            // Checked before anything else, because the cheapest thing to do with
+            // bytes that are not what the sender says they are is nothing at all.
+            if (error != nullptr)
+                *error = "The body does not match the digest the sender claimed";
+
+            return 422;
+        }
+    }
+
     QString root = templatesRoot();
     if (root.isEmpty())
     {

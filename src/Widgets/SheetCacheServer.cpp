@@ -252,6 +252,7 @@ void SheetCacheServer::readFromSocket()
 
     qsizetype contentLength = 0;
     QString pushToken;
+    QString contentSha1;
     for (int i = 1; i < lines.count(); i++)
     {
         QByteArray line = lines.at(i).trimmed();
@@ -259,6 +260,8 @@ void SheetCacheServer::readFromSocket()
             contentLength = line.mid(line.indexOf(':') + 1).trimmed().toLongLong();
         else if (line.toLower().startsWith("x-template-token:"))
             pushToken = QString::fromUtf8(line.mid(line.indexOf(':') + 1).trimmed());
+        else if (line.toLower().startsWith("x-content-sha1:"))
+            contentSha1 = QString::fromUtf8(line.mid(line.indexOf(':') + 1).trimmed());
     }
 
     QByteArray body = buffer.mid(headerEnd + 4);
@@ -267,11 +270,12 @@ void SheetCacheServer::readFromSocket()
 
     body = body.left(contentLength);
 
-    handle(socket, method, target, body, pushToken);
+    handle(socket, method, target, body, pushToken, contentSha1);
 }
 
 void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const QString& target,
-                              const QByteArray& body, const QString& pushToken)
+                              const QByteArray& body, const QString& pushToken,
+                              const QString& contentSha1)
 {
     QUrl url(target);
     QUrlQuery query(url.query());
@@ -436,7 +440,7 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
         }
 
         QString reason;
-        int status = TemplateInstaller::installFile(pack, relativePath, body, &reason);
+        int status = TemplateInstaller::installFile(pack, relativePath, body, &reason, contentSha1);
         if (status == 200)
         {
             QJsonObject ok;

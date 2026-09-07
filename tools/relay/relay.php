@@ -9,6 +9,7 @@
 // Drop it on any PHP host, 7.4 or newer.
 //
 //   POST ?action=upload&pack=SEVILLE&path=calendar.html   body = the file bytes
+//        send X-Content-Sha1 and the body is checked against it before it is stored
 //   POST ?action=remove&pack=SEVILLE&path=calendar.html
 //   GET  ?action=manifest[&pack=SEVILLE]                  what is here, with digests
 //   GET  ?action=fetch&pack=SEVILLE&path=calendar.html    one file
@@ -298,6 +299,16 @@ switch ($action) {
         }
         if (strlen($body) > MAX_FILE_BYTES) {
             reply(413, array('error' => 'Larger than this relay accepts'));
+        }
+
+        // The dev machine says what it sent. If that is not what arrived, the file
+        // is not stored: a template that changed in transit is the last thing to
+        // hand out to every client on their next poll. Optional, so an older pusher
+        // still works, but the current one always sends it.
+        $claimed = isset($_SERVER['HTTP_X_CONTENT_SHA1']) ? strtolower(trim($_SERVER['HTTP_X_CONTENT_SHA1'])) : '';
+        if ($claimed !== '' && $claimed !== sha1($body)) {
+            reply(422, array('error' => 'The body does not match the digest the sender claimed',
+                             'claimed' => $claimed, 'actual' => sha1($body)));
         }
 
         $destination = packDir($pack) . '/' . $path;

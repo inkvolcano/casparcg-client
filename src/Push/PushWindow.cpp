@@ -21,6 +21,7 @@
 
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QGroupBox>
+#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
@@ -202,6 +203,15 @@ void PushWindow::buildUi()
     this->identifyButton->setToolTip("Ask each ticked client who it is, and check the token. Writes nothing.");
     QObject::connect(this->identifyButton, &QPushButton::clicked, this, &PushWindow::identifyTargets);
     reviewHeader->addWidget(this->identifyButton);
+
+    this->removeButton = new QPushButton("Clear", central);
+    this->removeButton->setToolTip(
+        "Take ticked \"only there\" files off a RELAY. Clients are never touched:\n"
+        "removing a template from a machine that may be on air is not a decision\n"
+        "to make from another network.");
+    this->removeButton->setEnabled(false);
+    QObject::connect(this->removeButton, &QPushButton::clicked, this, &PushWindow::removeExtras);
+    reviewHeader->addWidget(this->removeButton);
 
     this->compareButton = new QPushButton("Compare", central);
     this->compareButton->setToolTip("Ask each client what it has and list what differs. Writes nothing.");
@@ -453,6 +463,7 @@ void PushWindow::setBusy(bool value)
     this->compareButton->setEnabled(!value);
     this->pushButton->setEnabled(!value);
     this->identifyButton->setEnabled(!value);
+    this->removeButton->setEnabled(!value && this->hasExtras);
 }
 
 void PushWindow::startCompare()
@@ -474,6 +485,7 @@ void PushWindow::startCompare()
     this->results.clear();
     this->fileTable->setRowCount(0);
     this->pairQueue.clear();
+    this->hasExtras = false;
 
     foreach (const PushTarget& target, targets)
         foreach (const QString& pack, packs)
@@ -516,6 +528,7 @@ void PushWindow::nextPair()
             QString why = (status == 401) ? "wrong or missing token"
                         : (status == 403) ? "template push is switched off on that client"
                         : (status == 429) ? "temporarily refusing this address after repeated wrong tokens"
+                        : (status == 422) ? "the file arrived changed and was not stored"
                         : reply->errorString();
             log(QString("  %1 / %2 \xE2\x80\x94 %3").arg(target.label(), pack, why));
             nextPair();
@@ -557,6 +570,22 @@ void PushWindow::nextPair()
             this->results.append(job);
         }
 
+        // The other direction. Neither a push nor a pull ever deletes, so a file
+        // that was renamed or dropped from the pack stays wherever it landed and
+        // keeps being served. Listing it is how that stops being invisible.
+        foreach (const QString& relative, remote.keys())
+        {
+            if (local.contains(relative) || isProtected(relative))
+                continue;
+
+            PushJob job;
+            job.target = target;
+            job.pack = pack;
+            job.relativePath = relative;
+            job.state = PushJob::Extra;
+            this->results.append(job);
+        }
+
         nextPair();
     });
 }
@@ -568,6 +597,7 @@ void PushWindow::showResults()
     this->fileTable->setRowCount(0);
 
     int toSend = 0;
+    int extras = 0;
     foreach (const PushJob& job, this->results)
     {
         int row = this->fileTable->rowCount();
@@ -576,6 +606,8 @@ void PushWindow::showResults()
         bool wanted = (job.state == PushJob::New || job.state == PushJob::Changed);
         if (wanted)
             toSend++;
+        if (job.state == PushJob::Extra)
+            extras++;
 
         QTableWidgetItem* send = new QTableWidgetItem();
         send->setCheckState(wanted ? Qt::Checked : Qt::Unchecked);
@@ -602,10 +634,27 @@ void PushWindow::showResults()
         {
             this->fileTable->item(row, 4)->setForeground(QBrush(QColor(215, 175, 90)));
         }
+
+        // An extra is dimmed like an unchanged row but says something different, so
+        // its state cell keeps a colour of its own rather than disappearing into the
+        // list of things that are fine.
+        if (job.state == PushJob::Extra)
+            this->fileTable->item(row, 4)->setForeground(QBrush(QColor(130, 160, 210)));
     }
 
+    this->hasExtras = (extras > 0);
+    this->removeButton->setEnabled(this->hasExtras);
+
     log(QString("%1 file(s) listed, %2 ticked to send, %3 already current.")
-        .arg(this->results.count()).arg(toSend).arg(this->results.count() - toSend));
+        .arg(this->results.count()).arg(toSend)
+        .arg(this->results.count() - toSend - extras));
+
+    if (extras > 0)
+    {
+        log(QString("%1 file(s) exist only at the far end \xE2\x80\x94 renamed or dropped from the pack. "
+                    "Nothing deletes them by itself; tick them and press Clear to take them off a relay.")
+            .arg(extras));
+    }
 }
 
 void PushWindow::tickAll()
@@ -635,8 +684,15 @@ void PushWindow::startPush()
 
     this->sendQueue.clear();
     for (int row = 0; row < this->fileTable->rowCount() && row < this->results.count(); row++)
+    {
+        // An extra has no local file behind it, so a tick on one means "clear it off
+        // the relay" and is the Clear button's business, never this one's.
+        if (this->results.at(row).state == PushJob::Extra)
+            continue;
+
         if (this->fileTable->item(row, 0)->checkState() == Qt::Checked)
             this->sendQueue.append(row);
+    }
 
     if (this->sendQueue.isEmpty())
     {
@@ -692,6 +748,11 @@ void PushWindow::sendOne(int index)
     QNetworkRequest request((QUrl(job.target.uploadUrl(job.pack, job.relativePath))));
     request.setRawHeader(job.target.tokenHeader(), job.target.token.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
+
+    // What was read off this disk, so the far end can refuse anything else. Both a
+    // client and a relay check it, and neither stores a file that fails.
+    request.setRawHeader("X-Content-Sha1",
+        QCryptographicHash::hash(payload, QCryptographicHash::Sha1).toHex());
 
     // A client takes a PUT at a path; the relay takes a POST with the path in the
     // query. Same bytes, and the only thing that differs is the far end's taste.
@@ -814,4 +875,138 @@ void PushWindow::identifyTargets()
             log(QString("  %1 \xE2\x80\x94 %2").arg(target.label(), why));
         });
     }
+}
+
+// ---- clearing what only the far end still has ----
+
+// Deliberately narrow. Only rows Compare marked as existing solely at the far
+// end, only ones the operator ticked, and only on a relay. A relay is a staging
+// area and its own remove endpoint touches nothing that a client has already
+// installed, which is what makes this safe to offer at all.
+void PushWindow::removeExtras()
+{
+    if (this->busy)
+        return;
+
+    this->removeQueue.clear();
+    int onClients = 0;
+
+    for (int row = 0; row < this->fileTable->rowCount() && row < this->results.count(); row++)
+    {
+        if (this->results.at(row).state != PushJob::Extra)
+            continue;
+        if (this->fileTable->item(row, 0)->checkState() != Qt::Checked)
+            continue;
+
+        if (!this->results.at(row).target.relay)
+        {
+            onClients++;
+            continue;
+        }
+
+        this->removeQueue.append(row);
+    }
+
+    if (onClients > 0)
+    {
+        log(QString("%1 ticked file(s) are on clients, not on a relay, and were left alone. "
+                    "Remove those on the machine itself.").arg(onClients));
+    }
+
+    if (this->removeQueue.isEmpty())
+    {
+        log("Nothing ticked that this can clear.");
+        return;
+    }
+
+    // Named and counted before it happens. This is the one button here that
+    // destroys something rather than adding to it.
+    QMessageBox::StandardButton answer = QMessageBox::question(this, "Clear from the relay",
+        QString("Take %1 file(s) off the relay?\n\n"
+                "Clients keep whatever they already installed. Only the copy here goes, "
+                "so no client will fetch these again.").arg(this->removeQueue.count()),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+    if (answer != QMessageBox::Yes)
+    {
+        log("Left alone.");
+        this->removeQueue.clear();
+        return;
+    }
+
+    this->sent = 0;
+    this->failed = 0;
+    log(QString("Clearing %1 file(s) from the relay").arg(this->removeQueue.count()));
+
+    setBusy(true);
+    nextRemoval();
+}
+
+void PushWindow::nextRemoval()
+{
+    if (this->removeQueue.isEmpty())
+    {
+        log(QString("Done. %1 cleared, %2 failed.").arg(this->sent).arg(this->failed));
+        setBusy(false);
+        return;
+    }
+
+    int index = this->removeQueue.takeFirst();
+    PushJob job = this->results.at(index);
+
+    QString target = QString("%1&pack=%2&path=%3")
+        .arg(relayQuery(job.target.host, "remove"),
+             encoded(job.pack), encoded(job.relativePath, "/"));
+
+    QNetworkRequest request((QUrl(target)));
+    request.setRawHeader(job.target.tokenHeader(), job.target.token.toUtf8());
+
+    QNetworkReply* reply = this->network->post(request, QByteArray());
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, index, job]() {
+        reply->deleteLater();
+
+        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        // 404 means it is already gone, which is the state that was wanted.
+        bool ok = (status == 200 || status == 404);
+
+        if (ok)
+        {
+            this->sent++;
+        }
+        else
+        {
+            this->failed++;
+            QString reason = QJsonDocument::fromJson(reply->readAll()).object().value("error").toString();
+            log(QString("  could not clear %1 \xE2\x80\x94 %2").arg(job.relativePath,
+                reason.isEmpty() ? reply->errorString() : reason));
+        }
+
+        if (index < this->results.count())
+        {
+            this->results[index].state = ok ? PushJob::Removed : PushJob::Failed;
+            if (index < this->fileTable->rowCount())
+            {
+                this->fileTable->item(index, 4)->setText(this->results.at(index).stateText());
+                this->fileTable->item(index, 4)->setForeground(
+                    QBrush(ok ? QColor(140, 140, 140) : QColor(215, 110, 110)));
+                if (ok)
+                    this->fileTable->item(index, 0)->setCheckState(Qt::Unchecked);
+            }
+        }
+
+        // Once nothing is marked Extra any more there is nothing left to clear, and
+        // the button should say so rather than inviting a second press.
+        this->hasExtras = false;
+        foreach (const PushJob& remaining, this->results)
+        {
+            if (remaining.state == PushJob::Extra)
+            {
+                this->hasExtras = true;
+                break;
+            }
+        }
+
+        nextRemoval();
+    });
 }

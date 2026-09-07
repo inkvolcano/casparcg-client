@@ -50,7 +50,9 @@ struct PushTarget
 // One file, on one client, and what comparing it found.
 struct PushJob
 {
-    enum State { New, Changed, Unchanged, Sent, Failed };
+    // Extra is the far end holding a file this pack no longer has: a rename or a
+    // deletion that never travelled, because neither a push nor a pull deletes.
+    enum State { New, Changed, Unchanged, Extra, Sent, Failed, Removed };
 
     PushTarget target;
     QString pack;
@@ -67,7 +69,9 @@ struct PushJob
             case New:       return "new";
             case Changed:   return "changed";
             case Unchanged: return "unchanged";
+            case Extra:     return "only there";
             case Sent:      return "sent";
+            case Removed:   return "removed";
             default:        return "failed";
         }
     }
@@ -138,12 +142,18 @@ class PushWindow : public QMainWindow
         // before a push is the thing that finds out.
         Q_SLOT void identifyTargets();
 
+        // Clear ticked "only there" rows off a relay. Relays only: a client has no
+        // delete endpoint on purpose, because taking a template off a machine that
+        // may be on air is not a decision to make from another network.
+        Q_SLOT void removeExtras();
+
         QLineEdit* sourceEdit = nullptr;
         QListWidget* packList = nullptr;
         QTableWidget* targetTable = nullptr;
         QTableWidget* fileTable = nullptr;
         QPlainTextEdit* logView = nullptr;
         QPushButton* identifyButton = nullptr;
+        QPushButton* removeButton = nullptr;
         QPushButton* compareButton = nullptr;
         QPushButton* pushButton = nullptr;
 
@@ -155,8 +165,16 @@ class PushWindow : public QMainWindow
 
         QList<QPair<PushTarget, QString>> pairQueue;   // (client, pack) still to compare
         QList<int> sendQueue;                          // indexes into results, still to send
+        QList<int> removeQueue;                        // indexes into results, still to clear off a relay
+
+        void nextRemoval();
 
         bool busy = false;
+
+        // Whether the last Compare found anything that exists only at the far end.
+        // Held rather than read back off the button, because setBusy disables the
+        // button and would otherwise lose the answer the moment a push runs.
+        bool hasExtras = false;
         int sent = 0;
         int failed = 0;
 };

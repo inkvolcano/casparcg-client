@@ -54,8 +54,12 @@ class WIDGETS_EXPORT TemplateInstaller
 
         // Writes one file into a pack. Answers the HTTP status to send back, so the
         // reason a file was refused survives all the way to the pusher's log.
+        // expectedSha1 is optional. When given, the body is checked against it and
+        // nothing is written unless it matches: a template that changed in transit
+        // is the last thing to put where CasparCG will run it.
         static int installFile(const QString& pack, const QString& relativePath,
-                               const QByteArray& body, QString* error);
+                               const QByteArray& body, QString* error,
+                               const QString& expectedSha1 = QString());
 
         // A single path segment, no separators, no dots-only names.
         static bool isSafeSegment(const QString& segment);

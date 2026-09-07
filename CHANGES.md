@@ -536,6 +536,18 @@ Whether templates are arriving was only visible by opening Settings, which is no
 
 Green with how long ago it last checked, amber while it is checking, red if the last check failed, and grey when it has not run yet - grey rather than red on startup, because nothing has gone wrong. The tooltip carries the address and what the last check actually did. A **Check** button polls immediately. The row is hidden entirely on a client that does not pull.
 
+### The upload leg is checked too
+A client already hashed what it fetched from the relay and refused to install anything that was not what the manifest promised. The other leg had no such check: whatever arrived at the relay, or at a client over a direct push, was written.
+
+The pusher now sends the digest of what it read off disk, and **both a relay and a client refuse a body that does not match it**, with a 422 and nothing written. An existing file is left exactly as it was rather than replaced by something that changed on the way. The header is optional, so an older sender still works, but the current one always sends it.
+
+### Files that exist only at the far end are visible now
+Neither a push nor a pull deletes anything, which is the right default when the far end may be on air. The cost is drift: rename `calendar.html` to `schedule.html` and every client keeps the old one forever, and the relay keeps serving it.
+
+Compare now lists the other direction too. A file the far end has that the pack no longer does shows as **only there**, in its own colour, and the log says how many there are and what they mean. It is information first: nothing acts on those rows by itself.
+
+**Clear** takes ticked "only there" files off a **relay**, and asks before it does. Clients are never touched by it - they have no delete endpoint on purpose, and a relay's own remove leaves whatever a client already installed exactly where it is. Ticking an "only there" row never sends anything either: Push skips them entirely, so the one checkbox cannot mean two things at once.
+
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
 
 ### Where the data comes from

@@ -90,17 +90,23 @@ which is what the Packs field is for.
 
 ## What it will not do
 
-- **It never deletes.** A file removed from the relay stays on every client that
-  already has it. Removing a template from a machine that may be on air is not a
-  decision worth making from the other side of the internet.
+- **It never deletes on its own.** A file removed from the relay stays on every
+  client that already has it. Removing a template from a machine that may be on
+  air is not a decision worth making from the other side of the internet.
+
+  Compare shows those leftovers as **only there**, and the push tool's **Clear**
+  button takes ticked ones off the relay after asking. That stops a renamed file
+  being served forever. It still never touches a client.
 - **`project.js` and `extensions.json` never travel.** Each client owns its API
   key, its `local` flag and its Sheets panel buttons. The relay refuses to store
   them and the client refuses to write them, so neither end depends on the other
   being careful.
 - **A path can never leave its pack.** Checked on the way in and on the way out,
   including Windows device names such as `con.html`.
-- **Bytes are checked against the manifest.** A client hashes what it fetched and
-  refuses to install it if that is not what the relay said it would be.
+- **Bytes are checked in both directions.** A client hashes what it fetched and
+  refuses to install anything that is not what the manifest promised. The relay
+  hashes what it receives and refuses to store anything that is not what the
+  sender claimed.
 
 ## Endpoints
 
@@ -110,7 +116,7 @@ which is what the Packs field is for.
 | `GET ?action=manifest` | every pack, every file, every digest |
 | `GET ?action=manifest&pack=X` | one pack |
 | `GET ?action=fetch&pack=X&path=Y` | one file, with `X-Relay-Sha1` |
-| `POST ?action=upload&pack=X&path=Y` | body is the file |
+| `POST ?action=upload&pack=X&path=Y` | body is the file; send `X-Content-Sha1` and it is checked before storing |
 | `POST ?action=remove&pack=X&path=Y` | removes it here only |
 
 All of them want `X-Relay-Token`. Wrong or missing is `401`.

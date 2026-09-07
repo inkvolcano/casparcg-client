@@ -564,6 +564,15 @@ PUT /templates/&lt;PACK&gt;/&lt;path&gt;   install one file</code></pre>
 <h3>The relay has a light in the Server Status panel</h3>
 <p>Whether templates are arriving was only visible by opening Settings, which is not somewhere anyone goes mid-show. The relay now has a row next to the sheet cache, the same shape and the same reason: is this working right now, and can I do something about it from here.</p>
 <p>Green with how long ago it last checked, amber while it is checking, red if the last check failed, and grey when it has not run yet &mdash; grey rather than red on startup, because nothing has gone wrong. The tooltip carries the address and what the last check actually did. A <b>Check</b> button polls immediately. The row is hidden entirely on a client that does not pull.</p>
+
+<h3>The upload leg is checked too</h3>
+<p>A client already hashed what it fetched from the relay and refused to install anything that was not what the manifest promised. The other leg had no such check: whatever arrived at the relay, or at a client over a direct push, was written.</p>
+<p>The pusher now sends the digest of what it read off disk, and <b>both a relay and a client refuse a body that does not match it</b>, with a 422 and nothing written. An existing file is left exactly as it was rather than replaced by something that changed on the way. The header is optional, so an older sender still works, but the current one always sends it.</p>
+
+<h3>Files that exist only at the far end are visible now</h3>
+<p>Neither a push nor a pull deletes anything, which is the right default when the far end may be on air. The cost is drift: rename <code>calendar.html</code> to <code>schedule.html</code> and every client keeps the old one forever, and the relay keeps serving it.</p>
+<p>Compare now lists the other direction too. A file the far end has that the pack no longer does shows as <b>only there</b>, in its own colour, and the log says how many there are and what they mean. It is information first: nothing acts on those rows by itself.</p>
+<p><b>Clear</b> takes ticked &ldquo;only there&rdquo; files off a <b>relay</b>, and asks before it does. Clients are never touched by it &mdash; they have no delete endpoint on purpose, and a relay&rsquo;s own remove leaves whatever a client already installed exactly where it is. Ticking an &ldquo;only there&rdquo; row never sends anything either: Push skips them entirely, so the one checkbox cannot mean two things at once.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 
 <h3>Where the data comes from</h3>
