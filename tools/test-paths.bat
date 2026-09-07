@@ -15,7 +15,7 @@ REM /Gy plus /OPT:REF so the functions that reach the database are discarded
 REM rather than dragging the whole application in behind them.
 cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /Fo"%OUT%\\" /Fe"%OUT%\test-paths.exe" ^
-   "%HERE%test-paths.cpp" "%HERE%test-paths-stubs.cpp" "%HERE%..\src\Widgets\TemplateInstaller.cpp" "%HERE%..\src\Core\Models\ConfigurationModel.cpp" ^
+   "%HERE%test-paths.cpp" "%HERE%test-paths-stubs.cpp" "%HERE%..\src\Widgets\TemplateInstaller.cpp" "%HERE%..\src\Core\Models\ConfigurationModel.cpp" "%HERE%..\src\Core\Models\DeviceModel.cpp" ^
    /I"%HERE%..\src" /I"%HERE%..\src\Widgets" /I"%HERE%..\src\Core" /I"%HERE%..\src\Common" /I"%HERE%..\src\Core\Models" /I"%QT%\include\QtSql" ^
    /I"%QT%\include" /I"%QT%\include\QtCore" ^
    /DWIDGETS_LIBRARY /DCORE_LIBRARY ^

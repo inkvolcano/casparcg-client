@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     QDir().mkpath(root);
     QDir().mkpath(QDir(sandbox.path()).filePath("outside"));
 
-    qputenv("CASPARCG_TEST_TEMPLATES", root.toUtf8());
+    qputenv("CASPARCG_TEST_TemplatePushPath", root.toUtf8());
 
     out << "Installing files\n";
     expectTrue(TemplateInstaller::templatesRoot() == root, "the test root is in use");
@@ -139,9 +139,9 @@ int main(int argc, char** argv)
                "a refused write leaves the existing file alone");
 
     // ---- with nowhere configured, nothing is written anywhere ----
-    qputenv("CASPARCG_TEST_TEMPLATES", QByteArray());
+    qputenv("CASPARCG_TEST_TemplatePushPath", QByteArray());
     expect(install("SEVILLE", "nowhere.html", "x"), 500, "no templates folder configured");
-    qputenv("CASPARCG_TEST_TEMPLATES", root.toUtf8());
+    qputenv("CASPARCG_TEST_TemplatePushPath", root.toUtf8());
 
     // ---- the map every GitHub comparison is made against ----
     out << "\nPack digests\n";

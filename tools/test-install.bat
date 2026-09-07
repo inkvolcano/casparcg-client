@@ -13,7 +13,7 @@ if not exist "%OUT%" mkdir "%OUT%"
 cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /Fo"%OUT%\\" /Fe"%OUT%\test-install.exe" ^
    "%HERE%test-install.cpp" "%HERE%test-paths-stubs.cpp" ^
-   "%HERE%..\src\Widgets\TemplateInstaller.cpp" "%HERE%..\src\Core\Models\ConfigurationModel.cpp" ^
+   "%HERE%..\src\Widgets\TemplateInstaller.cpp" "%HERE%..\src\Core\Models\ConfigurationModel.cpp" "%HERE%..\src\Core\Models\DeviceModel.cpp" ^
    /I"%HERE%..\src" /I"%HERE%..\src\Widgets" /I"%HERE%..\src\Core" /I"%HERE%..\src\Core\Models" ^
    /I"%HERE%..\src\Common" /I"%QT%\include" /I"%QT%\include\QtCore" /I"%QT%\include\QtSql" ^
    /DWIDGETS_LIBRARY /DCORE_LIBRARY ^

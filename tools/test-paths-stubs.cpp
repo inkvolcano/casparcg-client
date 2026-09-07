@@ -18,12 +18,6 @@
 #include <QtCore/QList>
 #include <QtCore/QString>
 
-const QString& DeviceModel::getTemplatePath() const
-{
-    static const QString empty;
-    return empty;
-}
-
 DatabaseManager& DatabaseManager::getInstance()
 {
     // Never constructed and never read from. Every method reached through it is
@@ -34,16 +28,29 @@ DatabaseManager& DatabaseManager::getInstance()
 
 ConfigurationModel DatabaseManager::getConfigurationByName(const QString& name)
 {
-    // The one setting the install tests need to be real: where packs are written.
-    // Taken from the environment so the test can point it at a temporary folder and
-    // then check that nothing landed outside it.
-    if (name == "TemplatePushPath")
-        return ConfigurationModel(0, name, qEnvironmentVariable("CASPARCG_TEST_TEMPLATES"));
-
-    return ConfigurationModel(0, name, QString());
+    // Any setting a test needs, supplied from the environment as
+    // CASPARCG_TEST_<Name>. Nothing is read from a real database, so a test can
+    // point the installer at a temporary folder and run the server on a spare port
+    // without touching anything the application uses.
+    QString value = qEnvironmentVariable(("CASPARCG_TEST_" + name).toUtf8().constData());
+    return ConfigurationModel(0, name, value);
 }
 
 QList<DeviceModel> DatabaseManager::getDevice()
 {
     return QList<DeviceModel>();
+}
+
+void DatabaseManager::updateConfiguration(const ConfigurationModel& configuration)
+{
+    // Settings come from the environment in a test, so a write has nowhere to go
+    // and nothing depends on it having gone there.
+    Q_UNUSED(configuration)
+}
+
+DeviceModel DatabaseManager::getDeviceByName(const QString& name)
+{
+    Q_UNUSED(name)
+    return DeviceModel(0, QString(), QString(), 0, QString(), QString(), QString(),
+                       QString(), QString(), 0, QString(), 0, 0);
 }

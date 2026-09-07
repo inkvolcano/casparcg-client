@@ -673,6 +673,21 @@ Two more things the whole system leans on, neither of which had ever been run.
 
 That is 111 assertions across the two suites now, all passing.
 
+### The HTTP parser is driven over a real socket now
+The sheet cache server is hand-rolled HTTP on a `QTcpServer`, and it is the one part of this that listens. Whatever arrives on that port arrives as bytes off a network, from something that may not be a client at all, and every request is taken apart by code written here rather than by a web server somebody else maintains. It was the last piece with no test at all.
+
+`tools/test-server.cpp` starts the real server on a spare port, points the installer at a temporary folder, and connects real sockets to it. **25 checks.**
+
+The ordinary path first, including a template installed over TCP and verified on disk, which is the whole direct-push route in one assertion. Then the token: wrong, missing, and a header name in the wrong case, because HTTP header names are case-insensitive and a client that sends one in lower case is not wrong.
+
+Then rubbish. An empty request, a request line with no target, one with no HTTP version, a header with no colon, binary noise, a negative content length, a length of 999999999, a length of the word banana, and a repeated token header. Each has to produce an answer or a refusal, and each is followed by a check that **the server is still listening**, because a crash here takes the client with it.
+
+Two behaviours turned out to be worth asserting on their own. A request split across two packets with a real gap between them must be held until the rest arrives rather than acted on half-read. And a body longer than its declared length must be cut to that length, or a sender could append to somebody else's file.
+
+**Both were confirmed by breaking them.** Removing the truncation produced one failure; removing the wait for the rest of a split request produced five, including an ordinary request afterwards.
+
+That is 136 assertions across three suites. Every part of the template route that can be exercised without launching the client now is.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
