@@ -1,4 +1,5 @@
 #include "PushWindow.h"
+#include "AssignmentsDialog.h"
 #include "../Common/GitBlobSha.h"
 
 #include <QtCore/QCryptographicHash>
@@ -322,6 +323,14 @@ void PushWindow::buildUi()
     QObject::connect(this->removeButton, &QPushButton::clicked, this, &PushWindow::removeExtras);
     reviewHeader->addWidget(this->removeButton);
 
+    this->assignButton = new QPushButton("Assignments...", central);
+    this->assignButton->setToolTip(
+        "Which machine takes which packs, decided here instead of on every machine.\n"
+        "Tick one relay or one repository first. A client pushed to directly has no\n"
+        "assignments: it gets what you send it.");
+    QObject::connect(this->assignButton, &QPushButton::clicked, this, &PushWindow::showAssignments);
+    reviewHeader->addWidget(this->assignButton);
+
     this->compareButton = new QPushButton("Compare", central);
     this->compareButton->setToolTip("Ask each client what it has and list what differs. Writes nothing.");
     QObject::connect(this->compareButton, &QPushButton::clicked, this, &PushWindow::startCompare);
@@ -566,6 +575,7 @@ void PushWindow::setBusy(bool value)
     this->pushButton->setEnabled(!value);
     this->identifyButton->setEnabled(!value);
     this->removeButton->setEnabled(!value && this->hasExtras);
+    this->assignButton->setEnabled(!value);
 }
 
 void PushWindow::startCompare()
@@ -1304,4 +1314,55 @@ void PushWindow::describeRelayClients(const PushTarget& target)
                 .arg(state));
         }
     });
+}
+
+// ---- who gets what ----
+
+// Assignments live on a source, so exactly one has to be ticked. Two would be two
+// different answers to the same question and there would be no saying which the
+// operator meant.
+void PushWindow::showAssignments()
+{
+    if (this->busy)
+        return;
+
+    saveSettings();
+
+    QList<PushTarget> sources;
+    foreach (const PushTarget& target, checkedTargets())
+    {
+        if (target.relay || target.github)
+            sources.append(target);
+    }
+
+    if (sources.isEmpty())
+    {
+        log("Tick a relay or a repository first. A client pushed to directly has no "
+            "assignments: it gets what you send it.");
+        return;
+    }
+
+    if (sources.count() > 1)
+    {
+        QStringList names;
+        foreach (const PushTarget& target, sources)
+            names.append(target.label());
+
+        log(QString("Tick just one source. These are all ticked: %1").arg(names.join(", ")));
+        return;
+    }
+
+    AssignmentsDialog dialog(sources.first(), checkedPacks().isEmpty() ? allPacks() : checkedPacks(), this);
+    dialog.exec();
+}
+
+// Every pack in the templates folder, ticked or not: something can be assigned
+// before anybody has decided to send it.
+QStringList PushWindow::allPacks() const
+{
+    QStringList packs;
+    for (int row = 0; row < this->packList->count(); row++)
+        packs.append(this->packList->item(row)->text());
+
+    return packs;
 }

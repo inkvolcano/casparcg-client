@@ -142,6 +142,9 @@ class PushWindow : public QMainWindow
         QList<PushTarget> checkedTargets() const;
         QStringList checkedPacks() const;
 
+        // Every pack in the templates folder, whether ticked or not.
+        QStringList allPacks() const;
+
         // gitStyle asks for Git blob hashes rather than a plain sha1, which is what a
         // GitHub tree listing gives back and therefore what it must be compared to.
         QMap<QString, QString> localFiles(const QString& pack, bool gitStyle) const;
@@ -187,6 +190,10 @@ class PushWindow : public QMainWindow
         // may be on air is not a decision to make from another network.
         Q_SLOT void removeExtras();
 
+        // Which machine takes which packs, for a relay or a repository. A client
+        // pushed to directly has no assignments: it gets what is sent to it.
+        Q_SLOT void showAssignments();
+
         QLineEdit* sourceEdit = nullptr;
         QListWidget* packList = nullptr;
         QTableWidget* targetTable = nullptr;
@@ -194,6 +201,7 @@ class PushWindow : public QMainWindow
         QPlainTextEdit* logView = nullptr;
         QPushButton* identifyButton = nullptr;
         QPushButton* removeButton = nullptr;
+        QPushButton* assignButton = nullptr;
         QPushButton* compareButton = nullptr;
         QPushButton* pushButton = nullptr;
 

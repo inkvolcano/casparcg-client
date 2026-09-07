@@ -12,6 +12,7 @@ set OUT=%TEMP%\casparcg-test-push
 if not exist "%OUT%" mkdir "%OUT%"
 
 "%QT%\bin\moc.exe" "%HERE%..\src\Push\PushWindow.h" -o "%OUT%\moc_PushWindow.cpp"
+"%QT%\bin\moc.exe" "%HERE%..\src\Push\AssignmentsDialog.h" -o "%OUT%\moc_AssignmentsDialog.cpp"
 if errorlevel 1 exit /b 1
 "%QT%\bin\moc.exe" "%HERE%..\src\Widgets\SheetCacheServer.h" -o "%OUT%\moc_SheetCacheServer.cpp"
 if errorlevel 1 exit /b 1
@@ -24,6 +25,7 @@ cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /Fo"%OUT%\\" /Fe"%OUT%\test-push.exe" ^
    "%HERE%test-push.cpp" "%HERE%test-paths-stubs.cpp" ^
    "%HERE%..\src\Push\PushWindow.cpp" "%OUT%\moc_PushWindow.cpp" ^
+   "%HERE%..\src\Push\AssignmentsDialog.cpp" "%OUT%\moc_AssignmentsDialog.cpp" ^
    "%HERE%..\src\Widgets\SheetCacheServer.cpp" "%OUT%\moc_SheetCacheServer.cpp" ^
    "%HERE%..\src\Widgets\SheetDataResolver.cpp" "%OUT%\moc_SheetDataResolver.cpp" ^
    "%HERE%..\src\Widgets\SheetsProjectRegistry.cpp" "%OUT%\moc_SheetsProjectRegistry.cpp" ^

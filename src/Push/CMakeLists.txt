@@ -4,6 +4,8 @@ qt_add_executable(templatepush WIN32
     Main.cpp
     PushWindow.cpp
     PushWindow.h
+    AssignmentsDialog.cpp
+    AssignmentsDialog.h
 )
 
 set_target_properties(templatepush PROPERTIES OUTPUT_NAME "CasparCG Template Push")

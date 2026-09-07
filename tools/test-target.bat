@@ -10,11 +10,13 @@ set OUT=%TEMP%\casparcg-test-target
 if not exist "%OUT%" mkdir "%OUT%"
 
 "%QT%\bin\moc.exe" "%HERE%..\src\Push\PushWindow.h" -o "%OUT%\moc_PushWindow.cpp"
+"%QT%\bin\moc.exe" "%HERE%..\src\Push\AssignmentsDialog.h" -o "%OUT%\moc_AssignmentsDialog.cpp"
 if errorlevel 1 exit /b 1
 
 cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /Fo"%OUT%\\" /Fe"%OUT%\test-target.exe" ^
    "%HERE%test-target.cpp" "%HERE%..\src\Push\PushWindow.cpp" "%OUT%\moc_PushWindow.cpp" ^
+   "%HERE%..\src\Push\AssignmentsDialog.cpp" "%OUT%\moc_AssignmentsDialog.cpp" ^
    /I"%HERE%..\src" /I"%HERE%..\src\Push" ^
    /I"%QT%\include" /I"%QT%\include\QtCore" /I"%QT%\include\QtGui" ^
    /I"%QT%\include\QtWidgets" /I"%QT%\include\QtNetwork" ^

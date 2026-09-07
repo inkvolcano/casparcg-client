@@ -139,6 +139,12 @@ The reply says what it would not take:
   every other check and would otherwise deliver nothing to that venue with no sign
   of why, so it is named here instead.
 
+In the push tool, **Assignments...** opens this as a grid: machines down the side,
+packs across the top, a tick where one takes the other. Tick one relay or one
+repository first, since that is where the answer is stored. Machines that have
+checked in appear on their own; anything else can be added by hand for a venue that
+is not built yet.
+
 A single machine can be taken back out of central control. Tick **Ignore what this
 machine is assigned** in its own Settings, and its own Packs field wins there.
 
