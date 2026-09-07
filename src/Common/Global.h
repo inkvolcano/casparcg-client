@@ -577,7 +577,7 @@ namespace WidgetHeaderCSS
                 {"ServerStatus", {"tabWidgetServer", nullptr}},
                 {"Activity",     {"tabWidgetActivity", nullptr}},
                 {"TriggerBanks", {"tabWidgetBanks", nullptr}},
-                {"Ndi",          {"tabWidgetNdi", nullptr}},
+                {"NDI",          {"tabWidgetNdi", nullptr}},
                 {"Performance",  {"tabWidgetPerformance", nullptr}},
             };
             for (const auto& p : panels)

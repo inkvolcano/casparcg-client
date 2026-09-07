@@ -1480,7 +1480,7 @@ void SettingsDialog::setupGeneralTab()
     static const char* panelDbKeys[] = {
         "Library", "Inspector", "AudioLevels", "Preview",
         "Live", "Clock", "ServerStatus", "Activity", "TriggerBanks",
-        "Ndi", "Performance"
+        "NDI", "Performance"
     };
     for (int i = 0; i < HEADER_PANEL_COUNT; i++)
     {

@@ -93,6 +93,40 @@ int main()
         expectTrue(total < 1160, QString("and beats deciding each panel alone: %1 < 1160").arg(total));
     }
 
+    out << "\nThe two columns from that machine's own layout\n";
+
+    {
+        // LayoutPanel3 is the Inspector on its own, resizable, stored at 962. On a
+        // 1080p screen that one panel plus the window's own chrome already does not
+        // fit, which is the whole bug in a single column.
+        const int inspectorColumn[] = { 962 };
+        int total = columnTotal(inspectorColumn, 1, LAPTOP);
+
+        expectTrue(962 + PanelFit::CHROME > LAPTOP, "the Inspector alone really does not fit");
+        expectTrue(total <= LAPTOP - PanelFit::CHROME,
+                   QString("and is brought inside: %1").arg(total));
+        expectTrue(total > 900, QString("giving up almost nothing: %1 of 962").arg(total));
+    }
+
+    {
+        // LayoutPanel4: Sheets, Clock, Performance, Server Status. 946 px, which also
+        // does not fit once the window's chrome is counted.
+        const int sideColumn[] = { 495, 150, 148, 153 };
+        int total = columnTotal(sideColumn, 4, LAPTOP);
+
+        expectTrue(946 + PanelFit::CHROME > LAPTOP, "that column does not fit either");
+        expectTrue(total <= LAPTOP - PanelFit::CHROME, QString("and is brought inside: %1").arg(total));
+
+        // The readability question. Every panel has a height it was designed for, and
+        // squeezing one below that is how a fix for a layout bug becomes a worse bug.
+        double scale = panelColumnScale(946, LAPTOP);
+        expectTrue(fitPanelHeight(495, scale) >= 320, "Sheets stays above its designed 320");
+        expectTrue(fitPanelHeight(150, scale) >= 58, "the Clock stays above its designed 58");
+        expectTrue(fitPanelHeight(148, scale) >= 110, "Performance stays above its designed 110");
+
+        expectTrue(total > 900, QString("and the column gives up under 5 per cent: %1 of 946").arg(total));
+    }
+
     out << "\nEverything shrinks together\n";
 
     {
