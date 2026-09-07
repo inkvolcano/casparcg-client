@@ -58,6 +58,7 @@ struct PushJob
     QString absolutePath;
     qint64 bytes = 0;
     State state = New;
+    int attempts = 0;
 
     QString stateText() const
     {
@@ -116,6 +117,12 @@ class PushWindow : public QMainWindow
 
         void startPush();
         void nextFile();
+        void sendOne(int index);
+
+        // Whether a failure is worth another go. A dropped connection or a host
+        // having a moment will succeed on the next try; a refusal will not, and
+        // retrying one only wastes the operator's time and hammers the far end.
+        static bool worthRetrying(int httpStatus);
 
         void log(const QString& line);
         void setBusy(bool busy);

@@ -524,6 +524,18 @@ So the direction is turned around. `tools/relay/relay.php` is a single file that
 ### Windows device names are refused as filenames
 `con.html`, `nul`, `lpt1.js` and the rest of the reserved names are device names on Windows with or without an extension, so writing one opens a console or a port instead of a file. Both the relay and the client's installer now refuse them by name, rather than leaving a confusing write failure to be discovered on a playout machine.
 
+### Retrying the failures that are worth retrying
+Over the internet a dropped connection is the ordinary case, not the interesting one. A single blip used to fail a file outright: the pusher moved to the next one, and a client waited out the whole poll interval before trying again.
+
+Both ends now try a file three times, backing off two seconds and then four. **Only failures that could plausibly succeed next time are retried** - a connection that went away, or a 5xx from a host under load. A 401, 403, 409 or a throttle is an answer and will be the same answer next time, so retrying one would only waste the operator's time and hammer the far end. The log says which file is being retried, why, and which attempt it is on.
+
+The client retries its manifest read too, because the next poll may be a quarter of an hour away and a blip there costs the whole interval.
+
+### The relay has a light in the Server Status panel
+Whether templates are arriving was only visible by opening Settings, which is not somewhere anyone goes mid-show. The relay now has a row next to the sheet cache, the same shape and the same reason: is this working right now, and can I do something about it from here.
+
+Green with how long ago it last checked, amber while it is checking, red if the last check failed, and grey when it has not run yet - grey rather than red on startup, because nothing has gone wrong. The tooltip carries the address and what the last check actually did. A **Check** button polls immediately. The row is hidden entirely on a client that does not pull.
+
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
 
 ### Where the data comes from

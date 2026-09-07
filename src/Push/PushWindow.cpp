@@ -9,6 +9,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QSettings>
+#include <QtCore/QTimer>
 #include <QtCore/QUrl>
 
 #include <QtGui/QBrush>
@@ -102,6 +103,13 @@ QString PushTarget::uploadUrl(const QString& pack, const QString& relativePath) 
 QByteArray PushTarget::tokenHeader() const
 {
     return this->relay ? QByteArray("X-Relay-Token") : QByteArray("X-Template-Token");
+}
+
+namespace
+{
+    // Two more goes after the first. Enough to ride out a blip, few enough that a
+    // genuinely unreachable client is reported rather than waited on.
+    const int MAXIMUM_ATTEMPTS = 2;
 }
 
 void PushWindow::buildUi()
@@ -644,6 +652,15 @@ void PushWindow::startPush()
     nextFile();
 }
 
+// A refusal is an answer and will be the same answer next time. A dropped
+// connection, a gateway hiccup or a host under load is none of those, and over the
+// internet it is the common case rather than the interesting one.
+bool PushWindow::worthRetrying(int httpStatus)
+{
+    // 0 is no HTTP answer at all: the connection went away.
+    return httpStatus == 0 || httpStatus >= 500;
+}
+
 void PushWindow::nextFile()
 {
     if (this->sendQueue.isEmpty())
@@ -653,7 +670,11 @@ void PushWindow::nextFile()
         return;
     }
 
-    int index = this->sendQueue.takeFirst();
+    sendOne(this->sendQueue.takeFirst());
+}
+
+void PushWindow::sendOne(int index)
+{
     PushJob job = this->results.at(index);
 
     QFile file(job.absolutePath);
@@ -681,6 +702,23 @@ void PushWindow::nextFile()
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         bool ok = (status == 200);
+
+        if (!ok && worthRetrying(status) && index < this->results.count()
+            && this->results.at(index).attempts < MAXIMUM_ATTEMPTS)
+        {
+            // Backing off rather than hammering: a host that just refused a
+            // connection is not helped by three more in the same second.
+            int attempt = ++this->results[index].attempts;
+            int delay = attempt * 2000;
+
+            log(QString("  %1 / %2 \xE2\x80\x94 %3, trying again in %4s (%5 of %6)")
+                .arg(job.target.label(), job.relativePath,
+                     status == 0 ? reply->errorString() : QString("HTTP %1").arg(status))
+                .arg(delay / 1000).arg(attempt).arg(MAXIMUM_ATTEMPTS));
+
+            QTimer::singleShot(delay, this, [this, index]() { sendOne(index); });
+            return;
+        }
 
         if (ok)
         {

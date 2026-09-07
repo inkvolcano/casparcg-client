@@ -54,6 +54,13 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         void setupCacheRow(QVBoxLayout* serverOuterLayout);
         Q_SLOT void updateCacheStatus();
 
+        QWidget* relayRow = nullptr;
+        QLabel* relayDot = nullptr;
+        QLabel* relayLabel = nullptr;
+        QPushButton* relayCheckButton = nullptr;
+        void setupRelayRow(QVBoxLayout* serverOuterLayout);
+        Q_SLOT void updateRelayStatus();
+
         QToolButton* serverMenuButton = nullptr;
         QToolButton* activityMenuButton = nullptr;
         QToolButton* banksMenuButton = nullptr;

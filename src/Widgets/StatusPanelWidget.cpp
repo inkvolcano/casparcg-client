@@ -4,6 +4,7 @@
 #include "PanelHelper.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
+#include "RelayClient.h"
 #include "SheetCacheServer.h"
 #include "TriggerBankRegistry.h"
 #include "Timecode.h"
@@ -175,6 +176,7 @@ void StatusPanelWidget::setupServerPanel()
     serverOuterLayout->addWidget(this->autostepModeButton);
 
     setupCacheRow(serverOuterLayout);
+    setupRelayRow(serverOuterLayout);
 
     serverOuterLayout->addStretch();
 }
@@ -281,6 +283,104 @@ void StatusPanelWidget::updateCacheStatus()
         "Serving cached sheet rows on port %1.\n"
         "Templates pointed here (local = true) read from the cache first.").arg(port));
     this->cacheBypassButton->setText("Bypass");
+}
+
+
+// The same shape again, for the same reason: an operator at a venue should be able
+// to see whether templates are arriving without opening a settings dialog mid-show.
+void StatusPanelWidget::setupRelayRow(QVBoxLayout* serverOuterLayout)
+{
+    this->relayRow = new QWidget(this->widgetServer);
+    QHBoxLayout* rowLayout = new QHBoxLayout(this->relayRow);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(6);
+
+    this->relayLabel = new QLabel(this->relayRow);
+    this->relayLabel->setStyleSheet("font-size: 10px; color: rgba(200, 200, 200, 200);");
+    this->relayLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(this->relayLabel, 1);
+
+    this->relayDot = new QLabel(this->relayRow);
+    this->relayDot->setFixedSize(12, 12);
+    rowLayout->addWidget(this->relayDot, 0);
+
+    this->relayCheckButton = new QPushButton("Check", this->relayRow);
+    this->relayCheckButton->setFixedHeight(20);
+    this->relayCheckButton->setFocusPolicy(Qt::NoFocus);
+    this->relayCheckButton->setStyleSheet(
+        "QPushButton { font-size: 9px; padding: 1px 8px; border-radius: 3px; "
+        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
+        "QPushButton:hover { background-color: rgba(80, 80, 80, 200); }");
+    QObject::connect(this->relayCheckButton, &QPushButton::clicked, this, []() {
+        RelayClient::getInstance().checkNow();
+    });
+    rowLayout->addWidget(this->relayCheckButton, 0);
+
+    serverOuterLayout->addWidget(this->relayRow);
+    this->relayRow->setVisible(false);
+
+    // Shares the cache row's timer: both answer "is this working right now", and a
+    // second timer for the same question would be a second thing to keep in step.
+    QObject::connect(&this->cacheStatusTimer, &QTimer::timeout, this, &StatusPanelWidget::updateRelayStatus);
+
+    updateRelayStatus();
+}
+
+void StatusPanelWidget::updateRelayStatus()
+{
+    if (this->relayRow == nullptr)
+        return;
+
+    // A client that does not pull has nothing to report; the row stays out of the way.
+    if (!RelayClient::isEnabled())
+    {
+        this->relayRow->setVisible(false);
+        return;
+    }
+
+    this->relayRow->setVisible(true);
+
+    const QString green = "background-color: rgb(76, 175, 80); border-radius: 6px;";
+    const QString amber = "background-color: rgb(230, 160, 30); border-radius: 6px;";
+    const QString red = "background-color: rgb(198, 40, 40); border-radius: 6px;";
+    const QString grey = "background-color: rgb(90, 90, 90); border-radius: 6px;";
+
+    RelayClient& relay = RelayClient::getInstance();
+
+    if (relay.isBusy())
+    {
+        this->relayDot->setStyleSheet(amber);
+        this->relayLabel->setText("Relay checking");
+        this->relayRow->setToolTip("Reading the relay now.");
+        this->relayCheckButton->setEnabled(false);
+        return;
+    }
+
+    this->relayCheckButton->setEnabled(true);
+
+    QDateTime ran = relay.lastRun();
+    if (!ran.isValid())
+    {
+        // Enabled but never run: grey rather than red, because nothing has gone
+        // wrong yet and a red light on startup would be read as a fault.
+        this->relayDot->setStyleSheet(grey);
+        this->relayLabel->setText("Relay not checked yet");
+        this->relayRow->setToolTip(QString("Pulling from %1.\nNothing has been checked since this client started.")
+            .arg(RelayClient::url()));
+        return;
+    }
+
+    // Relative, because "nine minutes ago" answers the question and a timestamp
+    // makes the reader do the subtraction.
+    qint64 seconds = ran.secsTo(QDateTime::currentDateTime());
+    QString ago = (seconds < 60) ? QString("just now")
+                : (seconds < 3600) ? QString("%1m ago").arg(seconds / 60)
+                : QString("%1h ago").arg(seconds / 3600);
+
+    this->relayDot->setStyleSheet(relay.lastCheckOk() ? green : red);
+    this->relayLabel->setText(QString("Relay %1").arg(ago));
+    this->relayRow->setToolTip(QString("Pulling from %1.\nLast check %2: %3.")
+        .arg(RelayClient::url(), ago, relay.lastSummary()));
 }
 
 void StatusPanelWidget::setupActivityPanel()

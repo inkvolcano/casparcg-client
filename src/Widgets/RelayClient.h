@@ -59,6 +59,9 @@ class WIDGETS_EXPORT RelayClient : public QObject
         QDateTime lastRun() const { return this->ranAt; }
         QString lastSummary() const { return this->summary; }
 
+        // Whether the last poll got what it went for. What a status light reads.
+        bool lastCheckOk() const { return this->ok; }
+
         // A poll now, whatever the timer thinks. Returns false when one is already
         // running or the relay is not configured.
         bool checkNow();
@@ -93,7 +96,13 @@ class WIDGETS_EXPORT RelayClient : public QObject
             QString relativePath;
             QString sha1;      // what the manifest promised; the bytes must match it
             qint64 bytes = 0;
+            int attempts = 0;
         };
+
+        void fetchOne(const Wanted& wanted);
+
+        // A dropped connection is worth another go; a refusal is an answer.
+        static bool worthRetrying(int httpStatus);
 
         QNetworkAccessManager* network = nullptr;
         QTimer* timer = nullptr;
@@ -105,4 +114,6 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         QDateTime ranAt;
         QString summary;
+        bool ok = true;
+        int manifestAttempts = 0;
 };

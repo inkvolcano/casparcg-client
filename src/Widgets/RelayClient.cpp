@@ -25,6 +25,18 @@ namespace
     // Long enough for a slow venue link, short enough that a dead relay does not
     // hold the queue open until someone notices.
     const int TIMEOUT_MS = 30000;
+
+    // Two more goes after the first. A venue link that drops a request is the
+    // ordinary case over the internet, not a reason to wait out the whole interval
+    // before trying that file again.
+    const int MAXIMUM_ATTEMPTS = 2;
+}
+
+// A refusal will be the same refusal next time. A connection that went away, or a
+// host having a moment, will not be.
+bool RelayClient::worthRetrying(int httpStatus)
+{
+    return httpStatus == 0 || httpStatus >= 500;
 }
 
 RelayClient& RelayClient::getInstance()
@@ -139,6 +151,7 @@ bool RelayClient::checkNow()
     this->installed = 0;
     this->failed = 0;
     this->queue.clear();
+    this->manifestAttempts = 0;
 
     requestManifest();
     return true;
@@ -186,6 +199,16 @@ void RelayClient::requestManifest()
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status != 200)
         {
+            // The next poll may be a quarter of an hour away, so a blip here is worth
+            // a second look rather than a wasted interval.
+            if (worthRetrying(status) && this->manifestAttempts < MAXIMUM_ATTEMPTS)
+            {
+                int delay = ++this->manifestAttempts * 2000;
+                say(QString("Relay: no answer, trying again in %1s").arg(delay / 1000));
+                QTimer::singleShot(delay, this, [this]() { requestManifest(); });
+                return;
+            }
+
             done(status == 401 ? "wrong or missing token"
                                : QString("could not read the manifest (%1)").arg(reply->errorString()));
             return;
@@ -296,8 +319,11 @@ void RelayClient::fetchNext()
         return;
     }
 
-    Wanted wanted = this->queue.takeFirst();
+    fetchOne(this->queue.takeFirst());
+}
 
+void RelayClient::fetchOne(const Wanted& wanted)
+{
     QString target = QString("%1&pack=%2&path=%3")
         .arg(endpoint("fetch"),
              QString::fromUtf8(QUrl::toPercentEncoding(wanted.pack)),
@@ -313,6 +339,19 @@ void RelayClient::fetchNext()
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status != 200)
         {
+            if (worthRetrying(status) && wanted.attempts < MAXIMUM_ATTEMPTS)
+            {
+                Wanted again = wanted;
+                again.attempts++;
+
+                int delay = again.attempts * 2000;
+                say(QString("  %1 / %2 no answer, trying again in %3s")
+                    .arg(wanted.pack, wanted.relativePath).arg(delay / 1000));
+
+                QTimer::singleShot(delay, this, [this, again]() { fetchOne(again); });
+                return;
+            }
+
             this->failed++;
             say(QString("  %1 / %2 failed: %3").arg(wanted.pack, wanted.relativePath,
                                                     status == 401 ? "wrong or missing token"
@@ -358,6 +397,11 @@ void RelayClient::done(const QString& note)
 {
     this->busy = false;
     this->ranAt = QDateTime::currentDateTime();
+
+    // "Up to date" is a note and still a success. Anything else that came with a
+    // note stopped the poll early, which a status light should show as a fault.
+    this->ok = (this->failed == 0)
+            && (note.isEmpty() || note.startsWith("already up to date"));
 
     if (!note.isEmpty())
         this->summary = note;
