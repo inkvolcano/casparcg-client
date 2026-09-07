@@ -105,6 +105,18 @@ about. The bytes are hashed again on arrival and refused if they do not match.
 - **A path can never leave its pack**, Windows device names included.
 - **Bytes are checked against the digest** before anything is written.
 
+## What the relay has and this does not
+
+**You cannot see which clients have caught up.** A relay knows, because clients
+report to it after each poll. Here they cannot: a client's token is read-only,
+and writing a report back to the repository would mean giving every venue machine
+write access to the templates every other machine installs. That is a bad trade
+for a status line.
+
+If knowing which venues are current matters more to you than read-only client
+tokens, use the relay. Otherwise check a client from its own Server Status panel,
+where the relay row shows when it last checked and what happened.
+
 ## Limits worth knowing
 
 - An authenticated token gets 5000 API requests an hour. A poll costs one request

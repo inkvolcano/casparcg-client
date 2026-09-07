@@ -175,6 +175,11 @@ class PushWindow : public QMainWindow
         // before a push is the thing that finds out.
         Q_SLOT void identifyTargets();
 
+        // Ask a relay which clients have checked in and which are behind. This is
+        // the question a push to a relay cannot answer by itself: the relay took the
+        // file, but did the venue ever come and get it.
+        void describeRelayClients(const PushTarget& target);
+
         // Clear ticked "only there" rows off a relay. Relays only: a client has no
         // delete endpoint on purpose, because taking a template off a machine that
         // may be on air is not a decision to make from another network.

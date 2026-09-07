@@ -10,6 +10,7 @@
 #include <QtCore/QMap>
 #include <QtCore/QPair>
 #include <QtCore/QTimer>
+#include <QtCore/QSysInfo>
 #include <QtCore/QUrl>
 
 #include <QtNetwork/QNetworkAccessManager>
@@ -216,6 +217,8 @@ bool RelayClient::checkNow()
     this->failed = 0;
     this->queue.clear();
     this->manifestAttempts = 0;
+    this->versionByPack.clear();
+    this->packsWithFailures.clear();
 
     requestManifest();
     return true;
@@ -473,6 +476,10 @@ void RelayClient::planFrom(const QByteArray& manifestJson)
             continue;
         }
 
+        // What this poll is working towards. Reported back once it is reached, which
+        // is how the dev machine learns this venue has the newest pack.
+        this->versionByPack.insert(name, pack.value("version").toString());
+
         // What is already here, by digest, so an unchanged file is never fetched.
         QMap<QString, QString> mine;
         foreach (const QJsonValue& entry, TemplateInstaller::describePack(name).value("files").toArray())
@@ -588,6 +595,7 @@ void RelayClient::fetchOne(const Wanted& wanted)
             }
 
             this->failed++;
+            this->packsWithFailures.insert(wanted.pack);
             say(QString("  %1 / %2 failed: %3").arg(wanted.pack, wanted.relativePath,
                                                     status == 401 ? "wrong or missing token"
                                                                   : reply->errorString()));
@@ -607,6 +615,7 @@ void RelayClient::fetchOne(const Wanted& wanted)
         if (actual != wanted.sha1)
         {
             this->failed++;
+            this->packsWithFailures.insert(wanted.pack);
             say(QString("  %1 / %2 refused: the bytes do not match the digest it was listed with")
                 .arg(wanted.pack, wanted.relativePath));
             fetchNext();
@@ -623,6 +632,7 @@ void RelayClient::fetchOne(const Wanted& wanted)
         else
         {
             this->failed++;
+            this->packsWithFailures.insert(wanted.pack);
             say(QString("  %1 / %2 failed: %3").arg(wanted.pack, wanted.relativePath, error));
         }
 
@@ -649,4 +659,48 @@ void RelayClient::done(const QString& note)
 
     say(QString("%1: %2").arg(isGitHub() ? "GitHub" : "Relay", this->summary));
     emit finished(this->installed, this->failed, this->summary);
+
+    sendCheckIn();
+}
+
+// Reports what this machine holds, and nothing else. A relay records it under this
+// machine's name and can tell the dev machine which venues are behind, which is the
+// question worth answering before a show.
+//
+// Nothing here is sent to a GitHub source: a client's token there is read-only by
+// design, and keeping it that way is worth more than the report.
+void RelayClient::sendCheckIn()
+{
+    if (isGitHub() || url().isEmpty() || token().isEmpty())
+        return;
+
+    if (this->versionByPack.isEmpty())
+        return;   // the poll never got as far as a listing; there is nothing to claim
+
+    QJsonObject packs;
+    foreach (const QString& pack, this->versionByPack.keys())
+    {
+        // A pack that had a file fail is left out rather than claimed. Being absent
+        // from the report is honest; being listed as current would not be.
+        if (this->packsWithFailures.contains(pack))
+            continue;
+
+        packs.insert(pack, this->versionByPack.value(pack));
+    }
+
+    QJsonObject body;
+    body.insert("host", QSysInfo::machineHostName());
+    body.insert("os", QSysInfo::prettyProductName());
+    body.insert("packs", packs);
+
+    QNetworkRequest request((QUrl(endpoint("checkin"))));
+    authorise(request);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QNetworkReply* reply = this->network->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
+    QObject::connect(reply, &QNetworkReply::finished, this, [reply]() {
+        // Nothing is retried and nothing is reported on success: this is bookkeeping
+        // for somebody else's benefit, and it must never be why a poll looks failed.
+        reply->deleteLater();
+    });
 }

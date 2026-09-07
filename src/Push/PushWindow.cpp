@@ -1,6 +1,7 @@
 #include "PushWindow.h"
 
 #include <QtCore/QCryptographicHash>
+#include <QtCore/QDateTime>
 #include <QtCore/QDir>
 #include <QtCore/QDirIterator>
 #include <QtCore/QFile>
@@ -1032,11 +1033,15 @@ void PushWindow::identifyTargets()
                 {
                     // A relay that answers but will not take an upload is the mistake
                     // worth naming: it means the download token was pasted here.
+                    bool canUpload = info.value("canUpload").toBool();
                     log(QString("  %1 \xE2\x86\x92 \"%2\", %3 pack(s), upload %4")
                         .arg(target.label(), info.value("relay").toString())
                         .arg(info.value("packs").toInt())
-                        .arg(info.value("canUpload").toBool() ? "allowed"
-                                                              : "REFUSED (this looks like the download token)"));
+                        .arg(canUpload ? "allowed" : "REFUSED (this looks like the download token)"));
+
+                    if (canUpload)
+                        describeRelayClients(target);
+
                     return;
                 }
 
@@ -1207,5 +1212,68 @@ void PushWindow::nextRemoval()
         }
 
         nextRemoval();
+    });
+}
+
+// ---- who has actually picked things up ----
+
+// Pushing to a relay tells you the relay took the file. It does not tell you any
+// venue came and got it, and before a show that is the only part worth knowing.
+// Clients report what they hold after each poll, and this reads that back.
+void PushWindow::describeRelayClients(const PushTarget& target)
+{
+    QNetworkRequest request((QUrl(relayQuery(target.host, "clients"))));
+    target.authorise(request);
+
+    QNetworkReply* reply = this->network->get(request);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, target]() {
+        reply->deleteLater();
+
+        int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (status != 200)
+        {
+            // An older relay has no such action. Not worth making noise about.
+            if (status == 400)
+                log("    (this relay does not track check-ins)");
+
+            return;
+        }
+
+        QJsonArray clients = QJsonDocument::fromJson(reply->readAll()).object().value("clients").toArray();
+        if (clients.isEmpty())
+        {
+            log("    no client has checked in yet");
+            return;
+        }
+
+        foreach (const QJsonValue& value, clients)
+        {
+            QJsonObject client = value.toObject();
+
+            QString ago;
+            QDateTime seen = QDateTime::fromString(client.value("seenAt").toString(), Qt::ISODate);
+            if (seen.isValid())
+            {
+                qint64 seconds = seen.secsTo(QDateTime::currentDateTimeUtc());
+                ago = (seconds < 60) ? QString("just now")
+                    : (seconds < 3600) ? QString("%1m ago").arg(seconds / 60)
+                    : (seconds < 86400) ? QString("%1h ago").arg(seconds / 3600)
+                    : QString("%1d ago").arg(seconds / 86400);
+            }
+
+            // Naming the packs rather than just saying "behind": which pack is
+            // stale decides whether it matters before this particular show.
+            QStringList behind;
+            foreach (const QJsonValue& name, client.value("behind").toArray())
+                behind.append(name.toString());
+
+            // Columns, because this is read as a list of machines rather than
+            // as sentences.
+            log(QString("    %1  %2  %3")
+                .arg(client.value("host").toString(), -22)
+                .arg(ago, -10)
+                .arg(behind.isEmpty() ? QString("current")
+                                      : QString("behind on %1").arg(behind.join(", "))));
+        }
     });
 }

@@ -568,6 +568,16 @@ Uploading to a relay was uploading into a void: you heard that the relay took th
 
 Clients now check in after each poll, reporting their machine name and the version they have of each pack they follow. `?action=clients` answers with the estate, each machine marked current or behind and named per pack. A client's own token cannot ask that question - it reports about itself and nothing more - and a hostile machine name cannot escape the folder it is written into.
 
+That endpoint shipped in build 160 with nothing calling it on either side. Both ends exist now.
+
+**A client reports after every poll**, naming each pack it follows and the version it reached. A pack that had a file fail is left out of the report rather than claimed: being absent is honest, being listed as current would not be. Nothing about the check-in is retried and nothing is said when it works, because bookkeeping for somebody else's benefit must never be the reason a poll looks failed.
+
+**Identify now shows the estate.** Point it at a relay and, under the relay's own line, every machine that has checked in with when it last did and which packs it is behind on. Naming the pack matters: whether a stale MARSEILLE is a problem depends on tonight's show.
+
+It only reads that list when the token can upload, so a dev machine holding the wrong token is told that rather than shown an empty estate.
+
+**The GitHub route deliberately has no equivalent.** A report back would mean giving every venue machine write access to the templates every other machine installs, which is a bad trade for a status line. `tools/relay/GITHUB.md` says so where somebody choosing between the two will read it.
+
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
 
 ### Where the data comes from

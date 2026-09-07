@@ -4,8 +4,10 @@
 
 #include <QtCore/QDateTime>
 #include <QtCore/QList>
+#include <QtCore/QMap>
 #include <QtCore/QObject>
 #include <QtCore/QPair>
+#include <QtCore/QSet>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
@@ -103,6 +105,14 @@ class WIDGETS_EXPORT RelayClient : public QObject
         explicit RelayClient();
 
         void requestManifest();
+
+        // Tell the relay what this machine now holds, so the dev machine can find
+        // out who has caught up without being able to reach any of them.
+        //
+        // Relays only. A GitHub client's token is read-only on purpose, and that is
+        // worth more than the report would be.
+        void sendCheckIn();
+
         void planFrom(const QByteArray& manifestJson);
         void planFromGitHubTree(const QByteArray& treeJson);
 
@@ -138,6 +148,13 @@ class WIDGETS_EXPORT RelayClient : public QObject
         int installed = 0;
         int failed = 0;
         bool busy = false;
+
+        // The version each followed pack had in the last listing, and the packs that
+        // had a file fail. A pack with a failure is not reported as held, because a
+        // half-installed pack is exactly what the dev machine must not be told is
+        // current.
+        QMap<QString, QString> versionByPack;
+        QSet<QString> packsWithFailures;
 
         QDateTime ranAt;
         QString summary;
