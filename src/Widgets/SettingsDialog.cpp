@@ -44,6 +44,34 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QSlider>
 
+namespace
+{
+    // Room under a group box title, and air between rows.
+    //
+    // A layout put straight into a QGroupBox starts at the very top of it, which is
+    // where the title already is, so the first row and the title crowd each other.
+    // The top margin is what buys the title its own line. Four pixels between rows
+    // reads as cramped once a group has more than two or three of them.
+    void spaceOutGroup(QGridLayout* grid)
+    {
+        grid->setContentsMargins(10, 18, 10, 10);
+        grid->setHorizontalSpacing(8);
+        grid->setVerticalSpacing(8);
+    }
+
+    void spaceOutGroup(QHBoxLayout* row)
+    {
+        row->setContentsMargins(10, 18, 10, 10);
+        row->setSpacing(8);
+    }
+
+    void spaceOutGroup(QVBoxLayout* box)
+    {
+        box->setContentsMargins(10, 18, 10, 10);
+        box->setSpacing(8);
+    }
+}
+
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
@@ -213,6 +241,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Panel Sizing group box.
     QGroupBox* panelSizingGroup = new QGroupBox("Panel Sizing", tabLayout);
     QGridLayout* psGrid = new QGridLayout(panelSizingGroup);
+    spaceOutGroup(psGrid);
     psGrid->setSpacing(4);
 
     struct PanelDef { QString id; QString label; QString defaultMode; };
@@ -287,6 +316,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     QGroupBox* smButtonsGroup = new QGroupBox("Button Grid", tabSimpleMode);
     QHBoxLayout* smOptionsRow = new QHBoxLayout(smButtonsGroup);
+    spaceOutGroup(smOptionsRow);
     // Grid columns/rows are set directly in the Simple Mode bottom bar.
     this->checkBoxSimplePlayStop = new QCheckBox("Show play/stop controls on buttons", smButtonsGroup);
     QString psVal = DatabaseManager::getInstance().getConfigurationByName("SimpleModeShowPlayStop").getValue();
@@ -313,8 +343,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     QGroupBox* sheetsCacheGroup = new QGroupBox("Cache Service", tabSheets);
     QGridLayout* sheetsGrid = new QGridLayout(sheetsCacheGroup);
-    sheetsGrid->setHorizontalSpacing(8);
-    sheetsGrid->setVerticalSpacing(4);
+    spaceOutGroup(sheetsGrid);
 
     sheetsGrid->addWidget(new QLabel("Service URL:", sheetsCacheGroup), 0, 0);
     this->lineEditSheetsCacheUrl = new QLineEdit(sheetsCacheGroup);
@@ -342,8 +371,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // port is the whole migration.
     QGroupBox* sheetsHostGroup = new QGroupBox("Host The Cache In This Client", tabSheets);
     QGridLayout* hostGrid = new QGridLayout(sheetsHostGroup);
-    hostGrid->setHorizontalSpacing(8);
-    hostGrid->setVerticalSpacing(4);
+    spaceOutGroup(hostGrid);
 
     this->checkBoxHostSheetCache = new QCheckBox("Serve the sheet cache from this client", sheetsHostGroup);
     this->checkBoxHostSheetCache->setToolTip(
@@ -438,6 +466,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // there rather than keeping a second copy of the answer.
     QGroupBox* sheetsProjectsGroup = new QGroupBox("Template Projects", tabSheets);
     QVBoxLayout* projectsVBox = new QVBoxLayout(sheetsProjectsGroup);
+    spaceOutGroup(projectsVBox);
 
     projectsVBox->addWidget(new QLabel(
         "Ticked, a project's templates read the cache at localhost:3000 (local = true).\n"
@@ -464,8 +493,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     QGroupBox* sheetsWarmGroup = new QGroupBox("Warming", tabSheets);
     QGridLayout* warmGrid = new QGridLayout(sheetsWarmGroup);
-    warmGrid->setHorizontalSpacing(8);
-    warmGrid->setVerticalSpacing(4);
+    spaceOutGroup(warmGrid);
 
     warmGrid->addWidget(new QLabel("Treat a tab as stale after:", sheetsWarmGroup), 0, 0);
     this->spinBoxWarmStale = new QSpinBox(sheetsWarmGroup);
@@ -497,6 +525,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     QGroupBox* sheetsStrainGroup = new QGroupBox("Strain Reporting", tabSheets);
     QVBoxLayout* strainVBox = new QVBoxLayout(sheetsStrainGroup);
+    spaceOutGroup(strainVBox);
 
     strainVBox->addWidget(new QLabel(
         "This client can only count its own reads exactly; reads made inside graphics are\n"
@@ -528,8 +557,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     QGroupBox* pushGroup = new QGroupBox("Accept Template Pushes", tabTemplates);
     QGridLayout* pushGrid = new QGridLayout(pushGroup);
-    pushGrid->setHorizontalSpacing(8);
-    pushGrid->setVerticalSpacing(4);
+    spaceOutGroup(pushGrid);
 
     this->checkBoxTemplatePush = new QCheckBox("Let a dev machine install template packs on this client", pushGroup);
     this->checkBoxTemplatePush->setToolTip(
@@ -576,8 +604,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // relay or a private GitHub repository, told apart by how the address is written.
     QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay Or GitHub", tabTemplates);
     QGridLayout* relayGrid = new QGridLayout(relayGroup);
-    relayGrid->setHorizontalSpacing(8);
-    relayGrid->setVerticalSpacing(4);
+    spaceOutGroup(relayGrid);
 
     this->checkBoxRelayEnabled = new QCheckBox("Check for new template packs", relayGroup);
     this->checkBoxRelayEnabled->setToolTip(
@@ -608,43 +635,55 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "repository's contents. Give it nothing else, and nothing on any other repository.");
     relayGrid->addWidget(this->lineEditRelayToken, 2, 1, 1, 3);
 
-    relayGrid->addWidget(new QLabel("Check every:", relayGroup), 3, 0);
+    // Where a GitHub token comes from. Nobody guesses this menu path, and getting it
+    // wrong quietly gives a token far more reach than the job needs.
+    QLabel* tokenHelp = new QLabel(
+        "GitHub: avatar \xe2\x86\x92 Settings \xe2\x86\x92 Developer settings \xe2\x86\x92 "
+        "Personal access tokens \xe2\x86\x92 Fine-grained tokens \xe2\x86\x92 Generate new token.\n"
+        "Give it only this one repository, with Contents: read-only. The push tool needs\n"
+        "a second token with read and write. A relay uses its own DOWNLOAD token instead.",
+        relayGroup);
+    tokenHelp->setWordWrap(true);
+    tokenHelp->setStyleSheet("color: rgba(150, 150, 150, 220);");
+    relayGrid->addWidget(tokenHelp, 3, 1, 1, 3);
+
+    relayGrid->addWidget(new QLabel("Check every:", relayGroup), 4, 0);
     this->spinBoxRelayPoll = new QSpinBox(relayGroup);
     this->spinBoxRelayPoll->setRange(1, 1440);
     this->spinBoxRelayPoll->setSuffix(" min");
     this->spinBoxRelayPoll->setValue(RelayClient::pollMinutes());
-    relayGrid->addWidget(this->spinBoxRelayPoll, 3, 1);
+    relayGrid->addWidget(this->spinBoxRelayPoll, 4, 1);
 
-    relayGrid->addWidget(new QLabel("Packs:", relayGroup), 4, 0);
+    relayGrid->addWidget(new QLabel("Packs:", relayGroup), 5, 0);
     this->lineEditRelayPacks = new QLineEdit(RelayClient::packFilter().join(", "), relayGroup);
     this->lineEditRelayPacks->setPlaceholderText("leave empty to follow every pack at the source");
     this->lineEditRelayPacks->setToolTip(
         "A comma-separated list, so one relay or one repository can carry every venue\n"
         "while this client takes only the packs that are its own.");
-    relayGrid->addWidget(this->lineEditRelayPacks, 4, 1, 1, 3);
+    relayGrid->addWidget(this->lineEditRelayPacks, 5, 1, 1, 3);
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 5, 0, 1, 2);
+    relayGrid->addWidget(this->labelRelayStatus, 6, 0, 1, 2);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
     relayTest->setFocusPolicy(Qt::NoFocus);
     relayTest->setToolTip("Reach the source and say what it is. Writes nothing.");
-    relayGrid->addWidget(relayTest, 5, 2);
+    relayGrid->addWidget(relayTest, 6, 2);
 
     QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
     relayCheck->setFixedHeight(22);
     relayCheck->setFocusPolicy(Qt::NoFocus);
     relayCheck->setToolTip("Check now and install anything that differs.");
-    relayGrid->addWidget(relayCheck, 5, 3);
+    relayGrid->addWidget(relayCheck, 6, 3);
 
     relayGrid->addWidget(new QLabel(
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
-        "alone here exactly as they are during a push.", relayGroup), 6, 0, 1, 4);
+        "alone here exactly as they are during a push.", relayGroup), 7, 0, 1, 4);
 
     relayGrid->addWidget(new QLabel(
-        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 7, 0, 1, 4);
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 8, 0, 1, 4);
 
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.
