@@ -15,7 +15,7 @@ there.
 Add an entry here whenever a commit gives somebody something they could notice.
 """
 
-import io, os
+import io, os, subprocess
 os.chdir(r"C:\Users\nvanl\casparcg-client")
 
 md = io.open('CHANGES.md', encoding='utf-8').read().lower()
@@ -88,3 +88,93 @@ if missing:
         print('    %-9s %-32s %s' % (commit, what, mark))
 else:
     print('  every feature checked appears in both')
+
+# ---------------------------------------------------------------------------
+# The same question asked a second way.
+#
+# The list above comes from commit subjects, and a subject only names what somebody
+# chose to name. This one comes from the client itself: every panel it offers, every
+# settings tab, every rundown item type the fork added. Two methods that disagree
+# would mean one of them has a hole.
+# ---------------------------------------------------------------------------
+
+print()
+
+
+def upstream_has(name):
+    """Was this in the client before the fork touched it?
+
+    Anything that already existed upstream does not belong in a changelog of what
+    this fork changed, so the question is only ever about the new ones.
+    """
+    r = subprocess.run(['git', 'cat-file', '-e',
+                        'f22a0de5~1:src/Widgets/Rundown/Rundown%sWidget.h' % name],
+                       capture_output=True)
+    return r.returncode == 0
+
+
+print('Panels offered in the layout editor')
+panels = ['Activity', 'Clock', 'Http Log', 'Inspector', 'Live', 'NDI', 'Performance',
+          'ServerStatus', 'Sheets', 'Simple Inspector', 'Trigger Banks', 'AudioLevels',
+          'Preview', 'Library', 'StatusBar']
+gaps = []
+for p in panels:
+    key = p.lower()
+    ok = key in md and key in html
+    if not ok:
+        # try the squashed spelling too
+        alt = key.replace(' ', '')
+        ok = alt in md and alt in html
+    print('  %-20s %s' % (p, 'described' if ok else 'NOT DESCRIBED'))
+    if not ok:
+        gaps.append('panel: ' + p)
+
+print()
+print('Rundown item types the fork added (upstream ones are not this changelog\'s job)')
+items = ['AutoPlayGateway', 'CommandGateway', 'FocusGateway', 'StopAutoLoops', 'Grid',
+         'ImageScroller', 'OscOutput', 'HttpGet', 'HttpPost', 'FileRecorder',
+         'CustomCommand', 'PlayoutCommand', 'Commit', 'Print', 'Separator']
+for name in items:
+    if upstream_has(name):
+        continue
+
+    words = {'AutoPlayGateway': ['autoplay gateway', 'auto-play gateway', 'gateway'],
+             'CommandGateway': ['command gateway', 'gateway'],
+             'FocusGateway': ['focus gateway', 'gateway'],
+             'StopAutoLoops': ['stop all auto'],
+             'Grid': ['grid'],
+             'ImageScroller': ['scroller'],
+             'OscOutput': ['osc'],
+             'HttpGet': ['http get'],
+             'HttpPost': ['http post'],
+             'FileRecorder': ['recorder'],
+             'CustomCommand': ['custom command'],
+             'PlayoutCommand': ['playout command', 'playout action'],
+             'Commit': ['commit item'],
+             'Print': ['print'],
+             'Separator': ['separator']}.get(name, [name.lower()])
+
+    ok = any(w in md for w in words) and any(w in html for w in words)
+    print('  %-20s %s' % (name, 'described' if ok else 'NOT DESCRIBED'))
+    if not ok:
+        gaps.append('item: ' + name)
+
+print()
+print('Settings tabs')
+for tab in ['Layout', 'Simple Mode', 'Sheets', 'Templates', 'Hotkeys', 'Live Stream', 'GPI', 'OSC']:
+    key = tab.lower()
+    ok = key in md and key in html
+    print('  %-20s %s' % (tab, 'described' if ok else 'NOT DESCRIBED'))
+    if not ok:
+        gaps.append('settings: ' + tab)
+
+print()
+if gaps:
+    print('%d thing(s) present in the client and not in the changelog:' % len(gaps))
+    for g in gaps:
+        print('  ' + g)
+else:
+    print('everything enumerated from the code appears in both documents')
+
+import sys
+sys.exit(1 if (missing or gaps) else 0)
