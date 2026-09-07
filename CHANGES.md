@@ -578,6 +578,24 @@ It only reads that list when the token can upload, so a dev machine holding the 
 
 **The GitHub route deliberately has no equivalent.** A report back would mean giving every venue machine write access to the templates every other machine installs, which is a bad trade for a status line. `tools/relay/GITHUB.md` says so where somebody choosing between the two will read it.
 
+### Fixed: the client would not have compiled
+`RelayClient.h` declared a method taking a `QNetworkRequest&` while only forward-declaring `QNetworkAccessManager`. Six errors, and the first thing a build of 154 through 161 would have hit. It is one line, and it had been sitting there since the GitHub work landed.
+
+### A syntax check, so a build break is found before the build
+`tools/syntax-check.py` parses and type-checks changed files without building anything: no object files, nothing written to the build folder, no linking. It is not a build and does not replace one.
+
+```
+python tools/syntax-check.py                 files changed since the last commit
+python tools/syntax-check.py a.cpp b.cpp     just these
+python tools/syntax-check.py --all-mine      everything changed on this branch
+```
+
+It runs uic over the .ui files and moc over every `Q_OBJECT` header the named sources need, and compiles the moc output too, which is where a signal with a type that does not exist shows up. Visual Studio, the Qt kit and the dependencies the build fetches for itself are all found by looking rather than by being told, so a version bump does not turn every check into a complaint about a missing header.
+
+It will not catch anything that only fails at link time, such as a slot declared and never defined.
+
+Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
+
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
 
 ### Where the data comes from

@@ -12,6 +12,7 @@
 #include <QtCore/QStringList>
 
 class QNetworkAccessManager;
+class QNetworkRequest;
 class QTimer;
 
 // Pulling template packs from a relay, or from a private GitHub repository.
