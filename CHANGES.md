@@ -688,6 +688,23 @@ Two behaviours turned out to be worth asserting on their own. A request split ac
 
 That is 136 assertions across three suites. Every part of the template route that can be exercised without launching the client now is.
 
+### The pull route runs end to end
+This is what the whole exercise was for: a client on one network fetching templates from a host on another, with nothing reaching in to it. Every piece of that had been tested except the piece that does it. `RelayClient` reads a manifest, works out what differs, fetches it, checks the bytes, installs them and reports back, and none of that had ever run.
+
+`tools/test-pull.cpp` starts a real PHP relay on a spare port, seeds it with two packs, points the installer at a temporary folder, and pulls. **17 checks.** It needs PHP; without it the test says so and stops rather than pretending to have passed.
+
+- a first pull installs a template and a nested one, with the bytes compared
+- the pack this client does not follow is left where it is, which is what lets one relay carry every venue
+- a second pull fetches nothing and says it is up to date
+- a file changed at the relay is fetched again, and the new bytes replace the old
+- the check-in reached the relay, named only the pack this client holds, and reads as current with nothing failed
+- a wrong token is reported as a token problem rather than as a transport error
+- a relay that has stopped ends the poll instead of hanging, does not claim to be up to date, and leaves everything already installed exactly where it is
+
+**Confirmed by breaking it.** Ignoring the pack filter cost two checks, including the one that says a venue does not take another venue's packs. Never recognising a file as unchanged cost the check that a second poll is quiet, which is the difference between a client that costs one request an hour and one that re-downloads everything forever.
+
+That is 153 assertions across four suites. The route this was all built for now has a test that runs it.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

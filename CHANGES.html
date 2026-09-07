@@ -674,6 +674,21 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p>Two behaviours turned out to be worth asserting on their own. A request split across two packets with a real gap between them must be held until the rest arrives rather than acted on half-read. And a body longer than its declared length must be cut to that length, or a sender could append to somebody else&rsquo;s file.</p>
 <p><b>Both were confirmed by breaking them.</b> Removing the truncation produced one failure; removing the wait for the rest of a split request produced five, including an ordinary request afterwards.</p>
 <p>That is 136 assertions across three suites. Every part of the template route that can be exercised without launching the client now is.</p>
+
+<h3>The pull route runs end to end</h3>
+<p>This is what the whole exercise was for: a client on one network fetching templates from a host on another, with nothing reaching in to it. Every piece of that had been tested except the piece that does it. <code>RelayClient</code> reads a manifest, works out what differs, fetches it, checks the bytes, installs them and reports back, and none of that had ever run.</p>
+<p><code>tools/test-pull.cpp</code> starts a real PHP relay on a spare port, seeds it with two packs, points the installer at a temporary folder, and pulls. <b>17 checks.</b> It needs PHP; without it the test says so and stops rather than pretending to have passed.</p>
+<ul>
+<li>a first pull installs a template and a nested one, with the bytes compared</li>
+<li>the pack this client does not follow is left where it is, which is what lets one relay carry every venue</li>
+<li>a second pull fetches nothing and says it is up to date</li>
+<li>a file changed at the relay is fetched again, and the new bytes replace the old</li>
+<li>the check-in reached the relay, named only the pack this client holds, and reads as current with nothing failed</li>
+<li>a wrong token is reported as a token problem rather than as a transport error</li>
+<li>a relay that has stopped ends the poll instead of hanging, does not claim to be up to date, and leaves everything already installed exactly where it is</li>
+</ul>
+<p><b>Confirmed by breaking it.</b> Ignoring the pack filter cost two checks, including the one that says a venue does not take another venue&rsquo;s packs. Never recognising a file as unchanged cost the check that a second poll is quiet, which is the difference between a client that costs one request an hour and one that re-downloads everything forever.</p>
+<p>That is 153 assertions across four suites. The route this was all built for now has a test that runs it.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 
