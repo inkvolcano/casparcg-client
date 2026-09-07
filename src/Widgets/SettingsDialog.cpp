@@ -242,7 +242,6 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QGroupBox* panelSizingGroup = new QGroupBox("Panel Sizing", tabLayout);
     QGridLayout* psGrid = new QGridLayout(panelSizingGroup);
     spaceOutGroup(psGrid);
-    psGrid->setSpacing(4);
 
     struct PanelDef { QString id; QString label; QString defaultMode; };
     QList<PanelDef> panels = {
@@ -819,7 +818,7 @@ void SettingsDialog::setupGeneralTab()
     QWidget* content = new QWidget();
     QGridLayout* grid = new QGridLayout(content);
     grid->setContentsMargins(10, 10, 10, 10);
-    grid->setVerticalSpacing(4);
+    grid->setVerticalSpacing(8);
     grid->setHorizontalSpacing(8);
     grid->setColumnMinimumWidth(0, 170);
     grid->setColumnStretch(1, 1);
