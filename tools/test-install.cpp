@@ -16,6 +16,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QDirIterator>
 #include <QtCore/QFile>
+#include <QtCore/QMap>
 #include <QtCore/QStringList>
 #include <QtCore/QTemporaryDir>
 #include <QtCore/QTextStream>
@@ -141,6 +142,45 @@ int main(int argc, char** argv)
     qputenv("CASPARCG_TEST_TEMPLATES", QByteArray());
     expect(install("SEVILLE", "nowhere.html", "x"), 500, "no templates folder configured");
     qputenv("CASPARCG_TEST_TEMPLATES", root.toUtf8());
+
+    // ---- the map every GitHub comparison is made against ----
+    out << "\nPack digests\n";
+
+    // This decides what a client fetches. If its keys do not look exactly like the
+    // paths in a GitHub tree, nothing ever compares equal and every client
+    // re-downloads every file on every poll, forever, without any error to show
+    // for it. On Windows that is a plausible way to be wrong.
+    QMap<QString, QString> gitStyle = TemplateInstaller::packDigests("SEVILLE", true);
+
+    expectTrue(gitStyle.contains("calendar.html"), "a top-level file is keyed by its name");
+    expectTrue(gitStyle.contains("css/site.css"), "a nested file is keyed with forward slashes");
+    expectTrue(gitStyle.contains("css/deep/a.css"), "a deeper file too");
+
+    foreach (const QString& key, gitStyle.keys())
+        expectTrue(!key.contains('\\'), "no backslash in the key: " + key);
+
+    // A GitHub tree gives Git blob hashes, so these have to be those and not sha1.
+    expectTrue(gitStyle.value("calendar.html") == TemplateInstaller::gitBlobSha("<h1>two</h1>"),
+               "a git-style digest is the git blob hash of the content");
+
+    QMap<QString, QString> plain = TemplateInstaller::packDigests("SEVILLE", false);
+    expectTrue(plain.value("calendar.html") == QString::fromLatin1(
+                   QCryptographicHash::hash("<h1>two</h1>", QCryptographicHash::Sha1).toHex()),
+               "a plain digest is the sha1 of the content");
+    expectTrue(plain.value("calendar.html") != gitStyle.value("calendar.html"),
+               "the two styles are not the same value");
+
+    expectTrue(TemplateInstaller::packDigests("NOSUCHPACK", true).isEmpty(),
+               "a pack that is not there gives nothing");
+    expectTrue(TemplateInstaller::packDigests("../outside", true).isEmpty(),
+               "a pack name that climbs out gives nothing");
+
+    // The comparison the client actually performs, end to end: unchanged file reads
+    // as unchanged, changed file reads as changed.
+    expectTrue(gitStyle.value("calendar.html") == TemplateInstaller::gitBlobSha("<h1>two</h1>"),
+               "an unchanged file compares equal");
+    expectTrue(gitStyle.value("calendar.html") != TemplateInstaller::gitBlobSha("<h1>three</h1>"),
+               "a changed file compares different");
 
     // ---- the question that actually matters ----
     out << "\nWhere did anything land\n";

@@ -162,6 +162,41 @@ int main()
         out << "  FAIL  same digest for different content of the same length\n";
     }
 
+    out << "\nBad-token throttle\n";
+
+    // The control that stops an install endpoint being guessed at. Two properties
+    // matter, and the second one more: that it blocks after enough wrong tokens,
+    // and that it blocks the address that got them wrong and nobody else. Keyed on
+    // the wrong thing, one probe would lock every venue out of its own updates.
+    const QString prober = "203.0.113.5";
+    const QString venue = "198.51.100.9";
+
+    check(TemplateInstaller::isThrottled(prober), false, "a fresh address is not blocked");
+
+    for (int i = 0; i < 4; i++)
+        TemplateInstaller::noteBadToken(prober);
+
+    check(TemplateInstaller::isThrottled(prober), false, "four wrong tokens is not yet a block");
+
+    TemplateInstaller::noteBadToken(prober);
+    check(TemplateInstaller::isThrottled(prober), true, "the fifth wrong token blocks");
+
+    // The one that matters. A blocked prober must not take anyone else with it.
+    check(TemplateInstaller::isThrottled(venue), false, "another address is untouched by that block");
+
+    // An operator who mistyped it four times and then got it right is not a probe.
+    TemplateInstaller::noteGoodToken(prober);
+    check(TemplateInstaller::isThrottled(prober), false, "a correct token clears the block");
+
+    for (int i = 0; i < 4; i++)
+        TemplateInstaller::noteBadToken(venue);
+    TemplateInstaller::noteGoodToken(venue);
+    for (int i = 0; i < 4; i++)
+        TemplateInstaller::noteBadToken(venue);
+
+    check(TemplateInstaller::isThrottled(venue), false,
+          "the count restarts after a correct token rather than carrying over");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     out.flush();
 

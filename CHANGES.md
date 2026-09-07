@@ -662,6 +662,17 @@ It installs plain, nested and Windows-style paths and reads the bytes back; repl
 
 Then it asks the question that actually matters. It sweeps the whole sandbox and asserts that **nothing landed outside the templates root**, and that the pack holds exactly the files it should and no others. That assertion, not the return codes, is what found the gap above.
 
+### The digest map and the throttle are tested too
+Two more things the whole system leans on, neither of which had ever been run.
+
+**The digest map is what every GitHub comparison is made against.** A client lists the repository, hashes its own files the same way, and fetches what differs. If the keys did not look exactly like the paths in a tree, nothing would ever compare equal and every client would re-download every file on every poll, forever, with no error to show for it. On Windows that is a plausible way to be wrong, so the keys are now asserted to use forward slashes, at every depth, with the git-style and plain digests each checked against the value they claim to be.
+
+**The throttle is what stops an install endpoint being guessed at.** Blocking after five wrong tokens is the obvious property. The one that matters more is that it blocks the address that got them wrong and nobody else: keyed on the wrong thing, a single probe would lock every venue out of its own updates. Both are tested, along with a correct token clearing the count rather than the count carrying over.
+
+**Both were checked by breaking them.** Native separators in the digest keys produced five failures. Pointing the throttle at one shared bucket instead of one per address produced three, the isolation check among them.
+
+That is 111 assertions across the two suites now, all passing.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
