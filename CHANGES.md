@@ -757,6 +757,23 @@ Everything either side of a push had a test and the middle did not. Comparing a 
 
 That is 249 assertions across seven suites. Every part of this now has a test that runs it.
 
+### One command to check the lot
+Seven suites and a syntax checker meant eight commands, each taking about a minute, and knowing which of them needed PHP. That is a thing nobody runs.
+
+```
+python tools/check-all.py           everything, about four minutes
+python tools/check-all.py --fast    no network needed, under a minute
+python tools/check-all.py --list    what it would run, and why
+```
+
+It type-checks what changed, builds and runs every suite, adds up the assertions and exits non-zero if anything failed, so it can sit in a hook or a task. Results print as each finishes rather than in a lump at the end, because a four-minute run that shows nothing looks like a hang. A suite that needs PHP and cannot find it is reported as **skipped**, never as passed.
+
+`tools/README.md` says what each piece is for, and carries the two habits this work earned:
+
+**Break the thing you are testing and watch the test fail.** Twice here a check passed for a reason that had nothing to do with what it claimed to cover. Once a character rule rejected the input before the rule under test saw it; once a filter was quietly keeping a file out. Both looked fine until the code they were meant to guard was switched off and nothing happened.
+
+**Assert on the result, not the return code.** The check that found the worst problem in this work was not "did that call return 400". It was a sweep of the whole sandbox asking whether any file had landed somewhere it should not have.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

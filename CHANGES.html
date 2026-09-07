@@ -730,6 +730,16 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p><b>The tool&rsquo;s saved settings are redirected to a temporary file before the window is built</b>, so running the test never touches the operator&rsquo;s own list of clients.</p>
 <p><b>Three ways of breaking it, three sets of failures.</b> Offering protected files cost the check that <code>project.js</code> stays put. Never recognising a file as unchanged cost three. Sending a wrong digest cost five, and those five are the interesting ones: the file simply never arrives, because the client refuses to write bytes that are not what the sender said they were. The two halves are genuinely checking each other rather than both assuming.</p>
 <p>That is 249 assertions across seven suites. Every part of this now has a test that runs it.</p>
+
+<h3>One command to check the lot</h3>
+<p>Seven suites and a syntax checker meant eight commands, each taking about a minute, and knowing which of them needed PHP. That is a thing nobody runs.</p>
+<pre><code>python tools/check-all.py           everything, about four minutes
+python tools/check-all.py --fast    no network needed, under a minute
+python tools/check-all.py --list    what it would run, and why</code></pre>
+<p>It type-checks what changed, builds and runs every suite, adds up the assertions and exits non-zero if anything failed, so it can sit in a hook or a task. Results print as each finishes rather than in a lump at the end, because a four-minute run that shows nothing looks like a hang. A suite that needs PHP and cannot find it is reported as <b>skipped</b>, never as passed.</p>
+<p><code>tools/README.md</code> says what each piece is for, and carries the two habits this work earned:</p>
+<p><b>Break the thing you are testing and watch the test fail.</b> Twice here a check passed for a reason that had nothing to do with what it claimed to cover. Once a character rule rejected the input before the rule under test saw it; once a filter was quietly keeping a file out. Both looked fine until the code they were meant to guard was switched off and nothing happened.</p>
+<p><b>Assert on the result, not the return code.</b> The check that found the worst problem in this work was not &ldquo;did that call return 400&rdquo;. It was a sweep of the whole sandbox asking whether any file had landed somewhere it should not have.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 
