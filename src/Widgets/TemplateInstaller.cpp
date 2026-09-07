@@ -300,8 +300,17 @@ int TemplateInstaller::installFile(const QString& pack, const QString& relativeP
 
     // The segment checks should already have made this impossible; it is here
     // because "should" is not a guarantee about a path that came off a socket.
+    //
+    // Both prefixes, not just the pack. The pack prefix is derived from the pack
+    // name, so a pack name that climbed out of the templates folder would take the
+    // prefix with it and this check would agree with itself. Measured: with the
+    // pack-name rule disabled, files landed outside the root and only this second
+    // comparison notices.
+    QString clean = QDir::cleanPath(destination);
+    QString rootPrefix = QDir::cleanPath(QDir(root).absolutePath()) + "/";
     QString packPrefix = QDir::cleanPath(packDir.absolutePath()) + "/";
-    if (!QDir::cleanPath(destination).startsWith(packPrefix))
+
+    if (!clean.startsWith(packPrefix) || !clean.startsWith(rootPrefix))
     {
         if (error != nullptr)
             *error = "That path would land outside the pack";

@@ -647,6 +647,17 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 </ul>
 <p><b>It was checked against a regression, not only against success.</b> Removing the device-name rule produced six failures; removing the backslash handling produced two. A suite that only ever passes proves nothing.</p>
 <p>That second one corrected a misunderstanding of my own. The backslash traversal cases had been passing for the wrong reason &mdash; the character allowlist rejects a backslash whatever else happens &mdash; so they were not testing the normalisation at all. The rule is what lets <code>css\site.css</code> install to the right place; it is not what stops <code>..\evil.html</code>. Two cases were added that actually exercise it.</p>
+
+<h3>Hardened: the second line of defence did not cover pack names</h3>
+<p><code>installFile</code> checks the finished path against the folder it must sit under, described in its own comment as being there because the rules &ldquo;should&rdquo; have made an escape impossible and should is not a guarantee. Testing it showed the backstop was narrower than that.</p>
+<p>It compared the destination against the <b>pack</b> folder, and the pack folder is built from the pack name. A pack name that climbed out of the templates folder took the prefix with it, so the check compared an escaped path against an escaped prefix and agreed with itself.</p>
+<p>This was never reachable: the pack-name rule refuses those names, and that rule is tested. But a backstop that only works while the thing it backs up is working is not a backstop. It now compares against the templates root as well.</p>
+<p><b>Measured both ways.</b> With the pack-name rule switched off, the old code let two files land outside the templates root entirely. With the same rule switched off and the new check in place, nothing escapes at all.</p>
+
+<h3>installFile is tested end to end</h3>
+<p><code>tools/test-install.cpp</code> runs the real function against a real folder, because between the rules and the disk sit a path join, a <code>cleanPath</code>, a prefix check and a <code>QSaveFile</code>, and any of those could undo the answer the rules gave. <b>30 checks.</b></p>
+<p>It installs plain, nested and Windows-style paths and reads the bytes back; replaces a file and confirms none of the old content survives; refuses traversal in the path and in the pack name, absolute paths, drive letters, device names and data streams; refuses both protected files in any capitalisation while letting a nested <code>webcg/project.js</code> through as ordinary template code; accepts a matching digest, refuses a wrong one, and confirms a refused write leaves the existing file untouched.</p>
+<p>Then it asks the question that actually matters. It sweeps the whole sandbox and asserts that <b>nothing landed outside the templates root</b>, and that the pack holds exactly the files it should and no others. That assertion, not the return codes, is what found the gap above.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

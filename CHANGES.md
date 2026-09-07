@@ -646,6 +646,22 @@ Everything that reaches a client - a direct push, a relay, a GitHub repository -
 
 That second one corrected a misunderstanding of my own. The backslash traversal cases had been passing for the wrong reason - the character allowlist rejects a backslash whatever else happens - so they were not testing the normalisation at all. The rule is what lets `css\site.css` install to the right place; it is not what stops `..\evil.html`. Two cases were added that actually exercise it.
 
+### Hardened: the second line of defence did not cover pack names
+`installFile` checks the finished path against the folder it must sit under, described in its own comment as being there because the rules "should" have made an escape impossible and should is not a guarantee. Testing it showed the backstop was narrower than that.
+
+It compared the destination against the **pack** folder, and the pack folder is built from the pack name. A pack name that climbed out of the templates folder took the prefix with it, so the check compared an escaped path against an escaped prefix and agreed with itself.
+
+This was never reachable: the pack-name rule refuses those names, and that rule is tested. But a backstop that only works while the thing it backs up is working is not a backstop. It now compares against the templates root as well.
+
+**Measured both ways.** With the pack-name rule switched off, the old code let two files land outside the templates root entirely. With the same rule switched off and the new check in place, nothing escapes at all.
+
+### installFile is tested end to end
+`tools/test-install.cpp` runs the real function against a real folder, because between the rules and the disk sit a path join, a `cleanPath`, a prefix check and a `QSaveFile`, and any of those could undo the answer the rules gave. **30 checks.**
+
+It installs plain, nested and Windows-style paths and reads the bytes back; replaces a file and confirms none of the old content survives; refuses traversal in the path and in the pack name, absolute paths, drive letters, device names and data streams; refuses both protected files in any capitalisation while letting a nested `webcg/project.js` through as ordinary template code; accepts a matching digest, refuses a wrong one, and confirms a refused write leaves the existing file untouched.
+
+Then it asks the question that actually matters. It sweeps the whole sandbox and asserts that **nothing landed outside the templates root**, and that the pack holds exactly the files it should and no others. That assertion, not the return codes, is what found the gap above.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

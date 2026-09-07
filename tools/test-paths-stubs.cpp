@@ -34,8 +34,13 @@ DatabaseManager& DatabaseManager::getInstance()
 
 ConfigurationModel DatabaseManager::getConfigurationByName(const QString& name)
 {
-    Q_UNUSED(name)
-    return ConfigurationModel(0, QString(), QString());
+    // The one setting the install tests need to be real: where packs are written.
+    // Taken from the environment so the test can point it at a temporary folder and
+    // then check that nothing landed outside it.
+    if (name == "TemplatePushPath")
+        return ConfigurationModel(0, name, qEnvironmentVariable("CASPARCG_TEST_TEMPLATES"));
+
+    return ConfigurationModel(0, name, QString());
 }
 
 QList<DeviceModel> DatabaseManager::getDevice()
