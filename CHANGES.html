@@ -631,6 +631,22 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p>Both halves set a transfer timeout, and it mattered whether that is a deadline or a gap. If it were a deadline, a large template on a slow venue link would be killed while it was transferring perfectly well, and every retry would do the same.</p>
 <p>Measured against Qt 6.5.3 rather than assumed, because the documentation does not say. A transfer delivering a byte every two seconds for eighteen seconds completed under a five second timeout. A transfer that stopped delivering was cut at 5.0 seconds.</p>
 <p>So it is a gap, the current values are right, and neither needs raising for a big file. Both are now commented to say so, because raising them would only mean waiting longer to notice a dead connection.</p>
+
+<h3>The path rules are tested now, not argued about</h3>
+<p>Everything that reaches a client &mdash; a direct push, a relay, a GitHub repository &mdash; ends at the same function, and that function writes HTML CasparCG will execute. If a path could escape its pack, anyone who reached any of those routes could write anywhere the client can write. Until now that was a careful reading of the code rather than a fact.</p>
+<p><code>tools/test-paths.cpp</code> builds and runs against the real <code>TemplateInstaller</code>, with the three database calls stubbed because the rules under test never touch it. <b>60 checks, all passing.</b> Among them:</p>
+<ul>
+<li>parent traversal, plain and after a segment, forward slash and backslash</li>
+<li>absolute paths, drive letters, drive-relative paths, UNC paths</li>
+<li>NTFS alternate data streams, <code>a.html:hidden.exe</code> and <code>a.html::$DATA</code>, which hide a second file behind the first</li>
+<li>Windows device names with any extension, while <code>console.html</code> still installs normally</li>
+<li>trailing dots and spaces, which Windows strips, so two paths become one file</li>
+<li>embedded nulls, newlines, tabs, and a right-to-left override that makes a filename read backwards</li>
+<li>both protected files in every capitalisation, and near misses like <code>project.json</code> that must not be caught</li>
+<li>Git blob digests against values git itself produces, and that two files of the same length do not share one</li>
+</ul>
+<p><b>It was checked against a regression, not only against success.</b> Removing the device-name rule produced six failures; removing the backslash handling produced two. A suite that only ever passes proves nothing.</p>
+<p>That second one corrected a misunderstanding of my own. The backslash traversal cases had been passing for the wrong reason &mdash; the character allowlist rejects a backslash whatever else happens &mdash; so they were not testing the normalisation at all. The rule is what lets <code>css\site.css</code> install to the right place; it is not what stops <code>..\evil.html</code>. Two cases were added that actually exercise it.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

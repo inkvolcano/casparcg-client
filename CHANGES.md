@@ -628,6 +628,24 @@ Measured against Qt 6.5.3 rather than assumed, because the documentation does no
 
 So it is a gap, the current values are right, and neither needs raising for a big file. Both are now commented to say so, because raising them would only mean waiting longer to notice a dead connection.
 
+### The path rules are tested now, not argued about
+Everything that reaches a client - a direct push, a relay, a GitHub repository - ends at the same function, and that function writes HTML CasparCG will execute. If a path could escape its pack, anyone who reached any of those routes could write anywhere the client can write. Until now that was a careful reading of the code rather than a fact.
+
+`tools/test-paths.cpp` builds and runs against the real `TemplateInstaller`, with the three database calls stubbed because the rules under test never touch it. **60 checks, all passing.** Among them:
+
+- parent traversal, plain and after a segment, forward slash and backslash
+- absolute paths, drive letters, drive-relative paths, UNC paths
+- NTFS alternate data streams, `a.html:hidden.exe` and `a.html::$DATA`, which hide a second file behind the first
+- Windows device names with any extension, while `console.html` still installs normally
+- trailing dots and spaces, which Windows strips, so two paths become one file
+- embedded nulls, newlines, tabs, and a right-to-left override that makes a filename read backwards
+- both protected files in every capitalisation, and near misses like `project.json` that must not be caught
+- Git blob digests against values git itself produces, and that two files of the same length do not share one
+
+**It was checked against a regression, not only against success.** Removing the device-name rule produced six failures; removing the backslash handling produced two. A suite that only ever passes proves nothing.
+
+That second one corrected a misunderstanding of my own. The backslash traversal cases had been passing for the wrong reason - the character allowlist rejects a backslash whatever else happens - so they were not testing the normalisation at all. The rule is what lets `css\site.css` install to the right place; it is not what stops `..\evil.html`. Two cases were added that actually exercise it.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
