@@ -689,6 +689,14 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 </ul>
 <p><b>Confirmed by breaking it.</b> Ignoring the pack filter cost two checks, including the one that says a venue does not take another venue&rsquo;s packs. Never recognising a file as unchanged cost the check that a second poll is quiet, which is the difference between a client that costs one request an hour and one that re-downloads everything forever.</p>
 <p>That is 153 assertions across four suites. The route this was all built for now has a test that runs it.</p>
+
+<h3>GitHub Enterprise Server, and the test it made possible</h3>
+<p>A self-hosted GitHub answers the same API at its own address, usually <code>https://github.example.com/api/v3</code>. The client addressed <code>api.github.com</code> directly, so anyone on one could not reach their own repositories at all.</p>
+<p>The client takes a database setting, <code>RelayGitHubApi</code>. There is no field for it in Settings on purpose: almost nobody needs one, and empty means github.com. The push tool takes the whole thing in the address instead, <code>github:https://github.example.com/api/v3/owner/repo</code>.</p>
+<p>That also removed the reason the GitHub route had no test. It could only ever be checked against the live API for the shape of its answers; the logic that reads a tree, works out which pack a path belongs to, compares Git blob hashes and fetches by digest had never executed.</p>
+<p><code>tools/test-github.cpp</code> runs it against <code>tools/mock-github.php</code>, which answers the three calls a client makes in the shapes github.com actually uses, including the directory entries a real tree carries and the token and user-agent rules it enforces. <b>23 checks</b>: a first pull with the bytes compared, a pack this client does not follow left alone, a second pull that fetches nothing, a changed file fetched again, a truncated tree refused rather than guessed at, a refused token named as one, and an unreachable API that ends the poll without claiming to be up to date or disturbing what is installed.</p>
+<p><b>One of those checks was worthless until it was tested.</b> The assertion that a repository&rsquo;s own <code>.github</code> is not installed as a pack passed with the rule that prevents it switched off, because the pack filter was keeping it out anyway. A section that follows every pack was added, and only then did removing the rule produce a failure. Refusing a truncated tree cost two checks when switched off, one of them the client reporting itself up to date while being wrong.</p>
+<p>That is 176 assertions across five suites.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

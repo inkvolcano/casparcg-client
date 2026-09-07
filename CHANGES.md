@@ -705,6 +705,19 @@ This is what the whole exercise was for: a client on one network fetching templa
 
 That is 153 assertions across four suites. The route this was all built for now has a test that runs it.
 
+### GitHub Enterprise Server, and the test it made possible
+A self-hosted GitHub answers the same API at its own address, usually `https://github.example.com/api/v3`. The client addressed `api.github.com` directly, so anyone on one could not reach their own repositories at all.
+
+The client takes a database setting, `RelayGitHubApi`. There is no field for it in Settings on purpose: almost nobody needs one, and empty means github.com. The push tool takes the whole thing in the address instead, `github:https://github.example.com/api/v3/owner/repo`.
+
+That also removed the reason the GitHub route had no test. It could only ever be checked against the live API for the shape of its answers; the logic that reads a tree, works out which pack a path belongs to, compares Git blob hashes and fetches by digest had never executed.
+
+`tools/test-github.cpp` runs it against `tools/mock-github.php`, which answers the three calls a client makes in the shapes github.com actually uses, including the directory entries a real tree carries and the token and user-agent rules it enforces. **23 checks**: a first pull with the bytes compared, a pack this client does not follow left alone, a second pull that fetches nothing, a changed file fetched again, a truncated tree refused rather than guessed at, a refused token named as one, and an unreachable API that ends the poll without claiming to be up to date or disturbing what is installed.
+
+**One of those checks was worthless until it was tested.** The assertion that a repository's own `.github` is not installed as a pack passed with the rule that prevents it switched off, because the pack filter was keeping it out anyway. A section that follows every pack was added, and only then did removing the rule produce a failure. Refusing a truncated tree cost two checks when switched off, one of them the client reporting itself up to date while being wrong.
+
+That is 176 assertions across five suites.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

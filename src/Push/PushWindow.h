@@ -38,9 +38,11 @@ struct PushTarget
     bool relay = false;
     bool github = false;
 
-    // Only for GitHub. An empty branch means the repository's own default.
+    // Only for GitHub. An empty branch means the repository's own default, and an
+    // empty api means github.com rather than a GitHub Enterprise Server.
     QString ownerRepo;
     QString branch;
+    QString api;
 
     // Fill relay/github/ownerRepo/branch/host/port from what the operator typed.
     void readAddress(const QString& address);

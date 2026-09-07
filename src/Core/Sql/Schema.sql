@@ -163,6 +163,11 @@ INSERT INTO Configuration (Name, Value) VALUES('RelayToken', '');
 INSERT INTO Configuration (Name, Value) VALUES('RelayPollMinutes', '15');
 -- Empty means every pack the relay carries; a list means only those.
 INSERT INTO Configuration (Name, Value) VALUES('RelayPacks', '');
+
+-- Where the GitHub API lives. Empty means github.com. A GitHub Enterprise
+-- Server has its own, usually https://github.example.com/api/v3, and without
+-- this a client on one could not reach its own repositories at all.
+INSERT INTO Configuration (Name, Value) VALUES('RelayGitHubApi', '');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');

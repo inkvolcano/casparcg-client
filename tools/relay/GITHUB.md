@@ -117,6 +117,20 @@ If knowing which venues are current matters more to you than read-only client
 tokens, use the relay. Otherwise check a client from its own Server Status panel,
 where the relay row shows when it last checked and what happened.
 
+## GitHub Enterprise Server
+
+A self-hosted GitHub answers the same API at its own address, usually
+`https://github.example.com/api/v3`. Point the client at it with a database
+setting, `RelayGitHubApi`. There is no field for it in Settings on purpose:
+almost nobody needs one, and left empty it means github.com.
+
+In the push tool, write the whole thing into the address instead:
+
+```
+github:https://github.example.com/api/v3/owner/repo
+github:https://github.example.com/api/v3/owner/repo@branch
+```
+
 ## Limits worth knowing
 
 - An authenticated token gets 5000 API requests an hour. A poll costs one request

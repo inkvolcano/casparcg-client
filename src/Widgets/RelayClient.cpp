@@ -134,6 +134,24 @@ QString RelayClient::gitHubBranch()
     return (at >= 0) ? rest.mid(at + 1).trimmed() : QString();
 }
 
+// A GitHub Enterprise Server answers the same API at its own address, usually
+// https://github.example.com/api/v3. Without somewhere to put that, a client on one
+// could not reach its own repositories at all.
+//
+// There is no field for this in the settings, deliberately: almost nobody needs it,
+// and an empty value does the right thing. It is a database setting, and GITHUB.md
+// says where to put it.
+QString RelayClient::gitHubApi()
+{
+    QString configured = DatabaseManager::getInstance()
+        .getConfigurationByName("RelayGitHubApi").getValue().trimmed();
+
+    while (configured.endsWith('/'))
+        configured.chop(1);
+
+    return configured.isEmpty() ? QString("https://api.github.com") : configured;
+}
+
 QString RelayClient::sourceLabel()
 {
     if (!isGitHub())
@@ -239,7 +257,7 @@ void RelayClient::ping()
     // For GitHub the same question is "does this token open this repository", which
     // the repository endpoint answers without touching any file.
     QString target = isGitHub()
-        ? QString("https://api.github.com/repos/%1").arg(gitHubOwnerRepo())
+        ? QString("%1/repos/%2").arg(gitHubApi(), gitHubOwnerRepo())
         : endpoint("ping");
 
     QNetworkRequest request((QUrl(target)));
@@ -289,8 +307,8 @@ void RelayClient::requestManifest()
     // which is the whole manifest in a single call.
     QString branch = gitHubBranch().isEmpty() ? QString("HEAD") : gitHubBranch();
     QString target = isGitHub()
-        ? QString("https://api.github.com/repos/%1/git/trees/%2?recursive=1")
-            .arg(gitHubOwnerRepo(), QString::fromUtf8(QUrl::toPercentEncoding(branch)))
+        ? QString("%1/repos/%2/git/trees/%3?recursive=1")
+            .arg(gitHubApi(), gitHubOwnerRepo(), QString::fromUtf8(QUrl::toPercentEncoding(branch)))
         : endpoint("manifest");
 
     QNetworkRequest request((QUrl(target)));
@@ -564,7 +582,7 @@ void RelayClient::fetchOne(const Wanted& wanted)
     // a different file than the one the tree listed, even if the branch moved while
     // this poll was running.
     QString target = isGitHub()
-        ? QString("https://api.github.com/repos/%1/git/blobs/%2").arg(gitHubOwnerRepo(), wanted.sha1)
+        ? QString("%1/repos/%2/git/blobs/%3").arg(gitHubApi(), gitHubOwnerRepo(), wanted.sha1)
         : QString("%1&pack=%2&path=%3")
             .arg(endpoint("fetch"),
                  QString::fromUtf8(QUrl::toPercentEncoding(wanted.pack)),

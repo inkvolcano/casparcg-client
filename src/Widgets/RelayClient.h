@@ -72,6 +72,10 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // Empty means the repository's own default branch, which is what HEAD gets.
         static QString gitHubBranch();
 
+        // Where the GitHub API lives. github.com unless a GitHub Enterprise Server
+        // is configured, which has its own and is otherwise unreachable from here.
+        static QString gitHubApi();
+
         // What to call this source in a status line, without leaking the token.
         static QString sourceLabel();
 

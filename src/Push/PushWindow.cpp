@@ -77,6 +77,20 @@ void PushTarget::readAddress(const QString& address)
         this->host = trimmed;
 
         QString rest = trimmed.mid(QString("github:").length()).trimmed();
+
+        // "github:https://github.example.com/api/v3/owner/repo" for an Enterprise
+        // Server. Everything before the last two path segments is the API address.
+        if (rest.startsWith("http://", Qt::CaseInsensitive) || rest.startsWith("https://", Qt::CaseInsensitive))
+        {
+            int lastSlash = rest.lastIndexOf('/');
+            int ownerSlash = lastSlash > 0 ? rest.lastIndexOf('/', lastSlash - 1) : -1;
+            if (ownerSlash > 0)
+            {
+                this->api = rest.left(ownerSlash);
+                rest = rest.mid(ownerSlash + 1);
+            }
+        }
+
         int at = rest.indexOf('@');
         if (at >= 0)
         {
@@ -108,7 +122,10 @@ void PushTarget::readAddress(const QString& address)
 QString PushTarget::base() const
 {
     if (this->github)
-        return QString("https://api.github.com/repos/%1").arg(this->ownerRepo);
+    {
+        QString host = this->api.isEmpty() ? QString("https://api.github.com") : this->api;
+        return QString("%1/repos/%2").arg(host, this->ownerRepo);
+    }
 
     return this->relay ? this->host : QString("http://%1:%2").arg(this->host).arg(this->port);
 }
