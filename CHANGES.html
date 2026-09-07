@@ -740,6 +740,29 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p><code>tools/README.md</code> says what each piece is for, and carries the two habits this work earned:</p>
 <p><b>Break the thing you are testing and watch the test fail.</b> Twice here a check passed for a reason that had nothing to do with what it claimed to cover. Once a character rule rejected the input before the rule under test saw it; once a filter was quietly keeping a file out. Both looked fine until the code they were meant to guard was switched off and nothing happened.</p>
 <p><b>Assert on the result, not the return code.</b> The check that found the worst problem in this work was not &ldquo;did that call return 400&rdquo;. It was a sweep of the whole sandbox asking whether any file had landed somewhere it should not have.</p>
+
+<h3>Fixed: the window could end up taller than the screen</h3>
+<p>Dragging a panel tall stores its height, and that height is applied as a fixed one, which a panel cannot shrink below. Stacked in a column those heights become a floor the whole window cannot go under. There was already a guard setting a maximum size, but in Qt a layout minimum always beats a maximum, so it did nothing: the window was taller than the display and could not be dragged back.</p>
+<p>It happened after dragging a panel tall on a large monitor and opening the client on a smaller screen, which is why it seemed to come and go.</p>
+<p>Each column is now measured before anything is given out, and if it does not fit, every panel in it is reduced by the same proportion so the relative sizes survive. Nothing is touched when the column already fits, and nothing is touched when the screen height cannot be read. On a 1080p screen a real layout gives up three to four per cent; above about 1200&nbsp;px nothing is reduced at all.</p>
+
+<h3>The NDI panel had two names for one setting</h3>
+<p>Everything about the panel is keyed <code>NDI</code>, except the header colour overrides, which said <code>Ndi</code>. Those two agreed with each other so the feature worked, but under a key nothing else in the panel system would look for. They now match, any colour already chosen is carried across, and a stale height setting left by an older build is cleared out.</p>
+
+<h3>Deciding centrally which machine gets which packs</h3>
+<p>One relay or repository already carried every project, and each machine took a subset. But that subset was set on the machine, so moving a project between venues meant getting to the venue.</p>
+<p>The source now carries the answer, and <b>Assignments...</b> in the push tool is a grid for it: machines down the side, packs across the top, a tick where one takes the other. The <code>*</code> row is what a machine gets when it is not listed, which is how a shared pack reaches an estate without naming every box in it.</p>
+<p>Rows come from three places, because none is complete on its own: machines that have checked in, machines already named in the file, and anything added by hand for a venue that does not exist yet. A machine named but never heard from is greyed, because a typo in a machine name looks exactly like a machine that is switched off.</p>
+<p><b>Nothing is written until Save</b>, and Save asks first when a row has nothing ticked, because that means those machines take nothing and it is one tick away from a venue quietly never updating again.</p>
+<p>Precedence: a machine set to decide for itself always does, then the source when it names that machine, then the machine&rsquo;s own Packs field. A source that says nothing about a machine cannot change what that machine already does, so turning this on breaks nothing that already works. <b>Ignore what this machine is assigned</b> in a client&rsquo;s own settings takes that one machine back out of central control.</p>
+
+<h3>Settings that are not squashed together</h3>
+<p>The group boxes built in code set four pixels between rows and no margins, so the first row of each started where the title already was and the two crowded each other. All nine now have room under the title and air between rows.</p>
+<p>The Templates tab also says where a GitHub token comes from, under the Token field rather than in a tooltip nobody hovers, including that a client wants a read-only one and the push tool a second one with write.</p>
+
+<h3>Somewhere to start</h3>
+<p><code>tools/php/SETUP.md</code> is a walkthrough from nothing to a template arriving at a venue, for somebody who has not done this before. It picks a route, goes step by step, and every step ends with what you should see, so a step that quietly did not work is found there rather than five steps later. It ends with a table of symptoms and what each usually means.</p>
+<p>The README also has a Getting started section for a fresh install: what a server is, where its media and template paths come from, and why the client has to be told the same two folders.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

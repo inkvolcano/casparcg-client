@@ -118,6 +118,14 @@ at the venue. See [tools/php/relay/README.md](tools/php/relay/README.md).
 and rollback for nothing. Push your templates and clients pick them up on their next
 poll. GitHub Enterprise works too. See [tools/php/relay/GITHUB.md](tools/php/relay/GITHUB.md).
 
+**New to this? [tools/php/SETUP.md](tools/php/SETUP.md) walks either route through from
+nothing**, step by step, with something to check at each one so a step that quietly
+did not work is found there rather than five steps later.
+
+One repository or relay can carry every project while each venue takes only its own.
+**Assignments...** in the push tool is a grid for deciding that centrally, so moving a
+project between venues does not mean getting to the venue.
+
 Both make outbound connections only, so no firewall has to change. A **CasparCG
 Template Push** tool sits beside the client for the dev end: it compares a pack
 against a client, a relay or a repository and shows what would change before

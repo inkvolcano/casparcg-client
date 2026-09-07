@@ -6,8 +6,12 @@ to run the client, and each part solves a problem the client cannot solve alone.
 PHP 7.4 or newer. Each keeps its data in a folder created beside it, so there is
 nothing else to set up.
 
+**New to this? [SETUP.md](SETUP.md) walks it through from nothing**, picks a route for
+you, and says what you should see at each step.
+
 | | |
 |---|---|
+| [`SETUP.md`](SETUP.md) | start here: a walkthrough for somebody who has not done this |
 | [`relay/`](relay/README.md) | getting templates onto clients you cannot reach |
 | [`sheets/`](sheets/README.md) | a shared Google Sheets cache, and where usage is totalled |
 

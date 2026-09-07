@@ -774,6 +774,37 @@ It type-checks what changed, builds and runs every suite, adds up the assertions
 
 **Assert on the result, not the return code.** The check that found the worst problem in this work was not "did that call return 400". It was a sweep of the whole sandbox asking whether any file had landed somewhere it should not have.
 
+### Fixed: the window could end up taller than the screen
+Dragging a panel tall stores its height, and that height is applied as a fixed one, which a panel cannot shrink below. Stacked in a column those heights become a floor the whole window cannot go under. There was already a guard setting a maximum size, but in Qt a layout minimum always beats a maximum, so it did nothing: the window was taller than the display and could not be dragged back.
+
+It happened after dragging a panel tall on a large monitor and opening the client on a smaller screen, which is why it seemed to come and go.
+
+Each column is now measured before anything is given out, and if it does not fit, every panel in it is reduced by the same proportion so the relative sizes survive. Nothing is touched when the column already fits, and nothing is touched when the screen height cannot be read. On a 1080p screen a real layout gives up three to four per cent; above about 1200 px nothing is reduced at all.
+
+### The NDI panel had two names for one setting
+Everything about the panel is keyed `NDI`, except the header colour overrides, which said `Ndi`. Those two agreed with each other so the feature worked, but under a key nothing else in the panel system would look for. They now match, any colour already chosen is carried across, and a stale height setting left by an older build is cleared out.
+
+### Deciding centrally which machine gets which packs
+One relay or repository already carried every project, and each machine took a subset. But that subset was set on the machine, so moving a project between venues meant getting to the venue.
+
+The source now carries the answer, and **Assignments...** in the push tool is a grid for it: machines down the side, packs across the top, a tick where one takes the other. The `*` row is what a machine gets when it is not listed, which is how a shared pack reaches an estate without naming every box in it.
+
+Rows come from three places, because none is complete on its own: machines that have checked in, machines already named in the file, and anything added by hand for a venue that does not exist yet. A machine named but never heard from is greyed, because a typo in a machine name looks exactly like a machine that is switched off.
+
+**Nothing is written until Save**, and Save asks first when a row has nothing ticked, because that means those machines take nothing and it is one tick away from a venue quietly never updating again.
+
+Precedence: a machine set to decide for itself always does, then the source when it names that machine, then the machine's own Packs field. A source that says nothing about a machine cannot change what that machine already does, so turning this on breaks nothing that already works. **Ignore what this machine is assigned** in a client's own settings takes that one machine back out of central control.
+
+### Settings that are not squashed together
+The group boxes built in code set four pixels between rows and no margins, so the first row of each started where the title already was and the two crowded each other. All nine now have room under the title and air between rows.
+
+The Templates tab also says where a GitHub token comes from, under the Token field rather than in a tooltip nobody hovers, including that a client wants a read-only one and the push tool a second one with write.
+
+### Somewhere to start
+`tools/php/SETUP.md` is a walkthrough from nothing to a template arriving at a venue, for somebody who has not done this before. It picks a route, goes step by step, and every step ends with what you should see, so a step that quietly did not work is found there rather than five steps later. It ends with a table of symptoms and what each usually means.
+
+The README also has a Getting started section for a fresh install: what a server is, where its media and template paths come from, and why the client has to be told the same two folders.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
