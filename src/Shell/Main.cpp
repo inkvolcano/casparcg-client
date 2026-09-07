@@ -13,6 +13,7 @@
 #include "../Core/Events/Rundown/OpenRundownEvent.h"
 
 #include "../Widgets/MainWindow.h"
+#include "../Widgets/RelayClient.h"
 #include "../Widgets/SheetCacheServer.h"
 
 #ifdef Q_OS_MAC
@@ -346,12 +347,14 @@ int main(int argc, char* argv[])
     OscDeviceManager::getInstance().initialize();
     OscWebSocketManager::getInstance().initialize();
     SheetCacheServer::getInstance().start();
+    RelayClient::getInstance().start();
 
     int returnValue = application.exec();
 
     EventManager::getInstance().uninitialize();
     DatabaseManager::getInstance().uninitialize();
     GpiManager::getInstance().uninitialize();
+    RelayClient::getInstance().stop();
     SheetCacheServer::getInstance().stop();
     OscWebSocketManager::getInstance().uninitialize();
     OscDeviceManager::getInstance().uninitialize();

@@ -7,7 +7,9 @@
 
 #include "DatabaseManager.h"
 #include "GpiManager.h"
+#include "RelayClient.h"
 #include "SheetCacheServer.h"
+#include "TemplateInstaller.h"
 #include "SheetsProjectRegistry.h"
 #include "EventManager.h"
 #include "Events/OscOutputChangedEvent.h"
@@ -29,6 +31,7 @@
 #include "Models/OscOutputModel.h"
 
 #include <QtCore/QCoreApplication>
+#include <QtCore/QUuid>
 #include <QtCore/QSignalBlocker>
 #include <QtCore/QTimeZone>
 #include <QtCore/QTimer>
@@ -517,6 +520,181 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     sheetsVBox->addStretch();
 
     this->tabWidgetSettings->addTab(tabSheets, "Sheets");
+
+    // Templates tab: receiving a pack pushed from a dev machine. Separate from
+    // Sheets because it is a different job, though it shares the same socket.
+    QWidget* tabTemplates = new QWidget();
+    QVBoxLayout* templatesVBox = new QVBoxLayout(tabTemplates);
+
+    QGroupBox* pushGroup = new QGroupBox("Accept Template Pushes", tabTemplates);
+    QGridLayout* pushGrid = new QGridLayout(pushGroup);
+    pushGrid->setHorizontalSpacing(8);
+    pushGrid->setVerticalSpacing(4);
+
+    this->checkBoxTemplatePush = new QCheckBox("Let a dev machine install template packs on this client", pushGroup);
+    this->checkBoxTemplatePush->setToolTip(
+        "A template is HTML that CasparCG runs, so this stays off until it is wanted.\n"
+        "It uses the same port as the sheet cache, and turning it on starts that server\n"
+        "even when the cache itself is not being hosted.");
+    this->checkBoxTemplatePush->setChecked(TemplateInstaller::isEnabled());
+    pushGrid->addWidget(this->checkBoxTemplatePush, 0, 0, 1, 3);
+
+    pushGrid->addWidget(new QLabel("Token:", pushGroup), 1, 0);
+    this->lineEditTemplatePushToken = new QLineEdit(TemplateInstaller::token(), pushGroup);
+    this->lineEditTemplatePushToken->setPlaceholderText("press Generate");
+    this->lineEditTemplatePushToken->setToolTip(
+        "The pusher has to send this. An empty token never matches, so switching the\n"
+        "feature on without setting one leaves the endpoint shut rather than open.");
+    pushGrid->addWidget(this->lineEditTemplatePushToken, 1, 1);
+
+    QPushButton* generateToken = new QPushButton("Generate", pushGroup);
+    generateToken->setFixedHeight(22);
+    generateToken->setFocusPolicy(Qt::NoFocus);
+    QObject::connect(generateToken, &QPushButton::clicked, this, [this]() {
+        this->lineEditTemplatePushToken->setText(QUuid::createUuid().toString(QUuid::WithoutBraces));
+        this->lineEditTemplatePushToken->selectAll();
+    });
+    pushGrid->addWidget(generateToken, 1, 2);
+
+    pushGrid->addWidget(new QLabel("Install into:", pushGroup), 2, 0);
+    this->lineEditTemplatePushPath = new QLineEdit(
+        DatabaseManager::getInstance().getConfigurationByName("TemplatePushPath").getValue(), pushGroup);
+    this->lineEditTemplatePushPath->setPlaceholderText(TemplateInstaller::templatesRoot());
+    this->lineEditTemplatePushPath->setToolTip(
+        "Left empty, packs go to the template path of the first device that has one,\n"
+        "which on an ordinary setup is the right answer and needs nothing filled in.");
+    pushGrid->addWidget(this->lineEditTemplatePushPath, 2, 1, 1, 2);
+
+    pushGrid->addWidget(new QLabel(
+        "project.js and extensions.json are never written by a push: this machine owns the\n"
+        "API key, the local flag and the Sheets panel buttons.", pushGroup), 3, 0, 1, 3);
+
+    templatesVBox->addWidget(pushGroup);
+
+    // Pulling from a relay: the same job as a push, in the direction that survives a
+    // venue firewall. Nothing inbound is opened here; this machine reaches out.
+    QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay", tabTemplates);
+    QGridLayout* relayGrid = new QGridLayout(relayGroup);
+    relayGrid->setHorizontalSpacing(8);
+    relayGrid->setVerticalSpacing(4);
+
+    this->checkBoxRelayEnabled = new QCheckBox("Check a relay for new template packs", relayGroup);
+    this->checkBoxRelayEnabled->setToolTip(
+        "This client asks the relay what is there and fetches only the files that differ.\n"
+        "It works from behind any firewall, because nothing has to reach in to this machine.\n"
+        "Files removed from the relay are never removed from here.");
+    this->checkBoxRelayEnabled->setChecked(RelayClient::isEnabled());
+    relayGrid->addWidget(this->checkBoxRelayEnabled, 0, 0, 1, 4);
+
+    relayGrid->addWidget(new QLabel("Relay address:", relayGroup), 1, 0);
+    this->lineEditRelayUrl = new QLineEdit(RelayClient::url(), relayGroup);
+    this->lineEditRelayUrl->setPlaceholderText("https://example.com/relay/relay.php");
+    relayGrid->addWidget(this->lineEditRelayUrl, 1, 1, 1, 3);
+
+    relayGrid->addWidget(new QLabel("Download token:", relayGroup), 2, 0);
+    this->lineEditRelayToken = new QLineEdit(RelayClient::token(), relayGroup);
+    this->lineEditRelayToken->setPlaceholderText("the DOWNLOAD_TOKEN set in relay.php");
+    this->lineEditRelayToken->setToolTip(
+        "The relay keeps two tokens. This is the one that can only read.\n"
+        "The upload token belongs on the dev machine and should never be put here.");
+    relayGrid->addWidget(this->lineEditRelayToken, 2, 1, 1, 3);
+
+    relayGrid->addWidget(new QLabel("Check every:", relayGroup), 3, 0);
+    this->spinBoxRelayPoll = new QSpinBox(relayGroup);
+    this->spinBoxRelayPoll->setRange(1, 1440);
+    this->spinBoxRelayPoll->setSuffix(" min");
+    this->spinBoxRelayPoll->setValue(RelayClient::pollMinutes());
+    relayGrid->addWidget(this->spinBoxRelayPoll, 3, 1);
+
+    relayGrid->addWidget(new QLabel("Packs:", relayGroup), 4, 0);
+    this->lineEditRelayPacks = new QLineEdit(RelayClient::packFilter().join(", "), relayGroup);
+    this->lineEditRelayPacks->setPlaceholderText("leave empty to follow every pack on the relay");
+    this->lineEditRelayPacks->setToolTip(
+        "A comma-separated list, so one relay can carry every venue while this client\n"
+        "takes only the packs that are its own.");
+    relayGrid->addWidget(this->lineEditRelayPacks, 4, 1, 1, 3);
+
+    this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
+    this->labelRelayStatus->setWordWrap(true);
+    relayGrid->addWidget(this->labelRelayStatus, 5, 0, 1, 2);
+
+    QPushButton* relayTest = new QPushButton("Test", relayGroup);
+    relayTest->setFixedHeight(22);
+    relayTest->setFocusPolicy(Qt::NoFocus);
+    relayTest->setToolTip("Reach the relay and say what it is. Writes nothing.");
+    relayGrid->addWidget(relayTest, 5, 2);
+
+    QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
+    relayCheck->setFixedHeight(22);
+    relayCheck->setFocusPolicy(Qt::NoFocus);
+    relayCheck->setToolTip("Poll the relay now and install anything that differs.");
+    relayGrid->addWidget(relayCheck, 5, 3);
+
+    relayGrid->addWidget(new QLabel(
+        "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
+        "alone here exactly as they are during a push.", relayGroup), 6, 0, 1, 4);
+
+    // Both buttons act on what is typed rather than on what was last saved, so a
+    // test is a test of the address in front of the operator.
+    auto applyRelayFields = [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayUrl", this->lineEditRelayUrl->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayToken", this->lineEditRelayToken->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPacks", this->lineEditRelayPacks->text().trimmed()));
+    };
+
+    QObject::connect(&RelayClient::getInstance(), &RelayClient::progress, this, [this](const QString& line) {
+        if (this->labelRelayStatus != nullptr)
+            this->labelRelayStatus->setText(line);
+    });
+
+    QObject::connect(relayTest, &QPushButton::clicked, this, [this, applyRelayFields]() {
+        applyRelayFields();
+        this->labelRelayStatus->setText("Asking the relay...");
+        RelayClient::getInstance().ping();
+    });
+
+    QObject::connect(relayCheck, &QPushButton::clicked, this, [this, applyRelayFields]() {
+        applyRelayFields();
+        if (!RelayClient::getInstance().checkNow())
+            this->labelRelayStatus->setText("Already checking, or nothing is configured.");
+    });
+
+    templatesVBox->addWidget(relayGroup);
+    templatesVBox->addStretch();
+
+    this->tabWidgetSettings->addTab(tabTemplates, "Templates");
+
+    QObject::connect(this, &QDialog::accepted, this, [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "TemplatePushEnabled", this->checkBoxTemplatePush->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "TemplatePushToken", this->lineEditTemplatePushToken->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "TemplatePushPath", this->lineEditTemplatePushPath->text().trimmed()));
+
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayEnabled", this->checkBoxRelayEnabled->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayUrl", this->lineEditRelayUrl->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayToken", this->lineEditRelayToken->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPollMinutes", QString::number(this->spinBoxRelayPoll->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPacks", this->lineEditRelayPacks->text().trimmed()));
+
+        // Turning the feature on has to bring the socket up, and off may be the
+        // last thing keeping it up.
+        SheetCacheServer::getInstance().stop();
+        SheetCacheServer::getInstance().start();
+
+        // A new address or a new interval only means anything once the timer has
+        // been rebuilt on it.
+        RelayClient::getInstance().start();
+    });
 
     QObject::connect(this, &QDialog::accepted, this, [this]() {
         DatabaseManager::getInstance().updateConfiguration(

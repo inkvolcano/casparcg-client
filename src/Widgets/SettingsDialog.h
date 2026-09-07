@@ -106,6 +106,17 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QSpinBox* spinBoxWarmStale = nullptr;
     QSpinBox* spinBoxWarmSpacing = nullptr;
 
+    QCheckBox* checkBoxTemplatePush = nullptr;
+    QLineEdit* lineEditTemplatePushToken = nullptr;
+    QLineEdit* lineEditTemplatePushPath = nullptr;
+
+    QCheckBox* checkBoxRelayEnabled = nullptr;
+    QLineEdit* lineEditRelayUrl = nullptr;
+    QLineEdit* lineEditRelayToken = nullptr;
+    QSpinBox* spinBoxRelayPoll = nullptr;
+    QLineEdit* lineEditRelayPacks = nullptr;
+    QLabel* labelRelayStatus = nullptr;
+
     // One checkbox per discovered template project, writing the `local` flag straight
     // into that project's project.js.
     QWidget* sheetProjectsBox = nullptr;

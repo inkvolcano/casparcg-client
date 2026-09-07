@@ -464,6 +464,68 @@ Three belts against it coming back: the box's layout is pinned with `SetFixedSiz
 ### The result box is full width again
 `SetFixedSize` pins both dimensions to the size hint, so build 152 left the box exactly as wide as its longest value. The constraint is gone; the box expands to the row, and its **height** is pinned by hand at the same moments its content changes — shown, hidden, rendered, or a tab-only read — which is the half of `SetFixedSize` that was wanted.
 
+### Pushing template packs from a dev machine
+A small tool, **CasparCG Template Push**, built beside the client. It holds a folder of packs, a list of clients, and a button. **Compare** asks each client what it has and reports what would change without writing anything; **Push** sends only the files that differ.
+
+The receiving half is two endpoints on the HTTP server the client already runs for the sheet cache, so there is no second service to start:
+
+```
+GET /templates              the packs on that client
+GET /templates/<PACK>       every file with a digest, for comparing
+PUT /templates/<PACK>/<path>   install one file
+```
+
+**It is off until switched on, and every request carries a token.** A template is HTML that CasparCG executes, so an open install endpoint on a playout machine is a way to run code on it. **Settings → Templates** has the switch, a Generate button for the token, and the folder to install into — left empty, that is the template path of the first device that has one. An unset token never matches, so turning the feature on without setting one leaves the endpoint shut rather than open.
+
+**`project.js` and `extensions.json` are never written by a push.** The client itself edits the first (the API key and the `local` flag) and the Sheets panel writes the second, so a push that replaced them would quietly undo operator settings. The rule is enforced on the client, not just avoided by the pusher.
+
+Paths are taken apart segment by segment and the result checked against the folder it must sit under, so nothing escapes a pack. Files are written whole or not at all: a template half-replaced while CasparCG has it open is worse than one that was not updated.
+
+### File-level review before anything is written
+Push is now two steps and always in that order. **Compare** reads every ticked pack on every ticked client and lists each file with what it found; **Push ticked** sends the ones still ticked. Nothing is written until the list has been seen, which is the right default when the far end may be on air.
+
+Unchanged files were never being sent — both halves compared by digest from the start — but there was no way to see that. They are now listed too, dimmed and unticked, so the list is the evidence rather than a promise. New is green, changed is amber, and either can be unticked to hold it back; an unchanged one can be ticked to force it.
+
+A row says what happened to it after a push, and a sent file unticks itself so a second press cannot send it twice. **Tick all** and **Tick none** are there for a big pack.
+
+The templates-folder tooltip now says what it wants: the folder that *holds* the packs, not a pack itself. Pointing it at `...\templates\SEVILLE` would have read `webcg` and `font` as packs — and now the file list would show that before anything was written.
+
+### Push across networks: identify, deadlines, and keeping probes out
+Groundwork for a pusher that is not on the same network as the client it is pushing to.
+
+**Identify** asks each ticked client who it is — machine name, OS, where its packs live, how many it has — and answers the question a push should not be the first to ask: can I reach it, and is my token right. It writes nothing.
+
+**Every request now has a deadline** of twenty seconds. On a local network that never fires. Across the internet it is the difference between a slow push and one that has silently died with the queue behind it.
+
+**Repeated wrong tokens from one address are refused outright** for five minutes, because a wrong token is the shape a probe takes and an endpoint that can be reached from the internet will be probed. One correct token clears the count, so an operator who mistyped it four times and then got it right is not treated as an attack. The pusher names that refusal, along with a switched-off endpoint and a bad token, rather than reporting a transport error to decipher.
+
+### A relay, so the venue opens nothing
+Pushing straight at a client works on one network and is the better option there. Across the internet it asks a playout machine to accept an inbound connection on an endpoint that writes HTML CasparCG will run, and that is not a port anyone should open at a venue.
+
+So the direction is turned around. `tools/relay/relay.php` is a single file that drops on any PHP host from 7.4 up. The dev machine uploads a pack to it; each client asks it what is there and fetches what it does not already have. Both ends make outbound connections only, and neither has to know where the other is.
+
+```
+  dev machine  --upload-->   relay.php   <--poll & fetch--  client
+                             (your host)                    client
+```
+
+**Two tokens, deliberately not the same one.** The dev machine holds the upload token; the clients hold the download token. A client that is stolen reads only what it was already going to install, and cannot put a template on the relay for the other clients to pick up.
+
+**The pusher treats a relay as one more row.** Anything typed into Host : Port with a `://` in it is a relay rather than a client, so the table, Identify, Compare and Push all work unchanged and a relay and a direct client can be pushed to in the same pass. Identify says which relay answered and whether that token can actually upload, which is how the download token being pasted in the wrong box gets caught.
+
+**Settings -> Templates -> Pull Packs From A Relay** is the receiving half. An address, the download token, how often to check, and optionally the packs this client owns so one relay can carry every venue while each client takes only its own. **Test** reaches the relay and writes nothing; **Check now** polls immediately. A client also checks a few seconds after it starts, because a machine that was switched off is the one most likely to be behind.
+
+**A pull never deletes.** A file removed from the relay stays on every client that already has it. Taking a template off a machine that may be on air is not a decision worth making from the other side of the internet.
+
+**The bytes are checked against what the manifest promised.** A client hashes what it fetched and refuses to install it if the digest does not match, so a body that changed in transit is never written where CasparCG would run it. `project.js` and `extensions.json` are refused by the relay *and* by the client, and paths are checked at both ends, so neither end depends on the other being careful.
+
+**Put the relay behind HTTPS.** The tokens travel in a header and the templates travel as bytes. That is the one part the PHP file cannot do for itself, and `tools/relay/README.md` says so in the install steps.
+
+### Windows device names are refused as filenames
+`con.html`, `nul`, `lpt1.js` and the rest of the reserved names are device names on Windows with or without an extension, so writing one opens a console or a port instead of a file. Both the relay and the client's installer now refuse them by name, rather than leaving a confusing write failure to be discovered on a playout machine.
+
+`/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
+
 ### Where the data comes from
 The resolver reads the **local cache service first** — the same one the templates race against — and falls back to the Sheets API when the cache has nothing, which is exactly what a cache miss means there. Any answer it gets from the API is written back to the cache in the shape the templates expect, so a resolve leaves the cache warmer than it found it. The project (spreadsheet id and key) is inferred from the template's own folder, so there is nothing to configure.
 
