@@ -33,7 +33,7 @@ class QTimer;
 //
 // Two kinds of source, and only the first two steps differ between them.
 //
-//   relay      an address, and the PHP in tools/relay
+//   relay      an address, and the PHP in tools/php/relay
 //   github:owner/repo[@branch]     a private repository, packs at its root
 //
 // GitHub costs nothing to run, authenticates for you, and keeps the history of

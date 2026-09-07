@@ -31,8 +31,7 @@ It exits non-zero if anything failed, so it can go in a hook or a task.
 | `test-push.bat` | a whole push, clicked through the buttons, to a real client |
 | `test-pull.bat` | the pull route end to end against a real PHP relay |
 | `test-github.bat` | the GitHub pull route against `mock-github.php` |
-| `relay/` | the PHP relay itself, which is shipped to a host rather than built |
-| `php/` | the sheet cache and the strain collector, also shipped to a host rather than built |
+| `php/` | everything uploaded to a web host rather than built: the relay, and the sheets cache and collector |
 | `mock-github.php` | just enough of the GitHub API to run the pull route against |
 | `test-paths-stubs.cpp` | test doubles for the database, so settings come from the environment |
 

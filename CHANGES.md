@@ -502,7 +502,7 @@ Groundwork for a pusher that is not on the same network as the client it is push
 ### A relay, so the venue opens nothing
 Pushing straight at a client works on one network and is the better option there. Across the internet it asks a playout machine to accept an inbound connection on an endpoint that writes HTML CasparCG will run, and that is not a port anyone should open at a venue.
 
-So the direction is turned around. `tools/relay/relay.php` is a single file that drops on any PHP host from 7.4 up. The dev machine uploads a pack to it; each client asks it what is there and fetches what it does not already have. Both ends make outbound connections only, and neither has to know where the other is.
+So the direction is turned around. `tools/php/relay/relay.php` is a single file that drops on any PHP host from 7.4 up. The dev machine uploads a pack to it; each client asks it what is there and fetches what it does not already have. Both ends make outbound connections only, and neither has to know where the other is.
 
 ```
   dev machine  --upload-->   relay.php   <--poll & fetch--  client
@@ -519,7 +519,7 @@ So the direction is turned around. `tools/relay/relay.php` is a single file that
 
 **The bytes are checked against what the manifest promised.** A client hashes what it fetched and refuses to install it if the digest does not match, so a body that changed in transit is never written where CasparCG would run it. `project.js` and `extensions.json` are refused by the relay *and* by the client, and paths are checked at both ends, so neither end depends on the other being careful.
 
-**Put the relay behind HTTPS.** The tokens travel in a header and the templates travel as bytes. That is the one part the PHP file cannot do for itself, and `tools/relay/README.md` says so in the install steps.
+**Put the relay behind HTTPS.** The tokens travel in a header and the templates travel as bytes. That is the one part the PHP file cannot do for itself, and `tools/php/relay/README.md` says so in the install steps.
 
 ### Windows device names are refused as filenames
 `con.html`, `nul`, `lpt1.js` and the rest of the reserved names are device names on Windows with or without an extension, so writing one opens a console or a port instead of a file. Both the relay and the client's installer now refuse them by name, rather than leaving a confusing write failure to be discovered on a playout machine.
@@ -559,7 +559,7 @@ Write `github:owner/repo` where a relay address would go, on a client and in the
 
 Clients, relays and repositories sit in the same table and can be pushed to in one pass. Identify names the repository, its default branch, and says loudly if it is **public**, because templates in a public repository are readable by anyone.
 
-Tokens are fine-grained and scoped to the one repository: read-only on every client, read and write only in the push tool. A venue machine that goes missing cannot then change what the rest of the estate installs. `tools/relay/GITHUB.md` has the setup.
+Tokens are fine-grained and scoped to the one repository: read-only on every client, read and write only in the push tool. A venue machine that goes missing cannot then change what the rest of the estate installs. `tools/php/relay/GITHUB.md` has the setup.
 
 A repository too large for a single tree listing is refused rather than guessed at, because a truncated listing looks exactly like a repository missing files and would be reported as "up to date" while being wrong.
 
@@ -576,7 +576,7 @@ That endpoint shipped in build 160 with nothing calling it on either side. Both 
 
 It only reads that list when the token can upload, so a dev machine holding the wrong token is told that rather than shown an empty estate.
 
-**The GitHub route deliberately has no equivalent.** A report back would mean giving every venue machine write access to the templates every other machine installs, which is a bad trade for a status line. `tools/relay/GITHUB.md` says so where somebody choosing between the two will read it.
+**The GitHub route deliberately has no equivalent.** A report back would mean giving every venue machine write access to the templates every other machine installs, which is a bad trade for a status line. `tools/php/relay/GITHUB.md` says so where somebody choosing between the two will read it.
 
 ### Fixed: the client would not have compiled
 `RelayClient.h` declared a method taking a `QNetworkRequest&` while only forward-declaring `QNetworkAccessManager`. Six errors, and the first thing a build of 154 through 161 would have hit. It is one line, and it had been sitting there since the GitHub work landed.

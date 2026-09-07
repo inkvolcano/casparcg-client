@@ -26,7 +26,7 @@ cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /link /OPT:REF /LIBPATH:"%QT%\lib" Qt6Core.lib Qt6Network.lib
 if errorlevel 1 exit /b 1
 
-REM Run from the repository root so the test can read tools/relay/relay.php.
+REM Run from the repository root so the test can read tools/php/relay/relay.php.
 cd /d "%HERE%.."
 set PATH=%QT%\bin;%PATH%
 "%OUT%\test-github.exe"

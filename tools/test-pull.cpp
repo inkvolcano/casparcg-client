@@ -162,10 +162,10 @@ int main(int argc, char** argv)
     QByteArray relaySource = readFile(QDir(QCoreApplication::applicationDirPath())
                                          .filePath("relay.php"));
     if (relaySource.isEmpty())
-        relaySource = readFile("tools/relay/relay.php");
+        relaySource = readFile("tools/php/relay/relay.php");
     if (relaySource.isEmpty())
     {
-        out << "could not read tools/relay/relay.php\n";
+        out << "could not read tools/php/relay/relay.php\n";
         return 2;
     }
 

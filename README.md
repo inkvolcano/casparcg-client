@@ -19,11 +19,11 @@ getting on their network. Two ways here that do not.
 
 **A relay you host.** One PHP file on any host. A dev machine uploads packs to it,
 each client polls and pulls what it does not already have. Nothing inbound is opened
-at the venue. See [tools/relay/README.md](tools/relay/README.md).
+at the venue. See [tools/php/relay/README.md](tools/php/relay/README.md).
 
 **A private GitHub repository.** Same idea with nothing to host, and you get history
 and rollback for nothing. Push your templates and clients pick them up on their next
-poll. GitHub Enterprise works too. See [tools/relay/GITHUB.md](tools/relay/GITHUB.md).
+poll. GitHub Enterprise works too. See [tools/php/relay/GITHUB.md](tools/php/relay/GITHUB.md).
 
 Both make outbound connections only, so no firewall has to change. A **CasparCG
 Template Push** tool sits beside the client for the dev end: it compares a pack
@@ -46,9 +46,9 @@ A Sheets API key has a quota per minute, spent per key rather than per spreadshe
 Twenty templates reading one sheet spend twenty reads on one answer.
 
 The client can host a cache on its own port that templates read from instead, and
-`tools/php/` has the same thing for a host several machines can share, plus a
+`tools/php/sheets/` has the same thing for a host several machines can share, plus a
 collector where every client and connector reports what it is spending so one place
-knows the real total. See [tools/php/README.md](tools/php/README.md).
+knows the real total. See [tools/php/sheets/README.md](tools/php/sheets/README.md).
 
 ### Rundown and panel work
 
