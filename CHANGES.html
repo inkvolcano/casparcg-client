@@ -716,6 +716,20 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p>The push tool links Qt and nothing else of this project, so it carried its own copy of the Git blob hash. Two identical copies today are two copies that can disagree later, and the symptom would be every client deciding every file had changed, on every poll, with nothing to show for it but traffic.</p>
 <p>There is one now, in a header both include. It is the same function the tests already check against <code>git hash-object</code>.</p>
 <p>That is 229 assertions across six suites.</p>
+
+<h3>A push, driven through the buttons</h3>
+<p>Everything either side of a push had a test and the middle did not. Comparing a pack against a client, listing what would change, sending only the ticked rows, stamping each with the digest of what was read off disk, and the client checking that digest before writing: none of it had ever run together.</p>
+<p><code>tools/test-push.cpp</code> runs it the way an operator does. The window is built but never shown, the fields are filled in, and <b>Compare</b> and <b>Push ticked</b> are clicked. Nothing is invoked behind the interface, so the wiring is under test as much as the code. The receiving end is the real client server on a spare port with its templates in a temporary folder. <b>20 checks.</b></p>
+<ul>
+<li>Compare lists both files as new, and never offers <code>project.js</code> at all</li>
+<li>Push puts them on the client with the bytes compared, and the rows say sent</li>
+<li>Compare again lists them as unchanged rather than sending them twice</li>
+<li>an edit on the dev machine shows as changed while the file beside it stays unchanged, and pushing replaces the old bytes</li>
+<li>a wrong token lists nothing rather than guessing, and the client keeps what it already had</li>
+</ul>
+<p><b>The tool&rsquo;s saved settings are redirected to a temporary file before the window is built</b>, so running the test never touches the operator&rsquo;s own list of clients.</p>
+<p><b>Three ways of breaking it, three sets of failures.</b> Offering protected files cost the check that <code>project.js</code> stays put. Never recognising a file as unchanged cost three. Sending a wrong digest cost five, and those five are the interesting ones: the file simply never arrives, because the client refuses to write bytes that are not what the sender said they were. The two halves are genuinely checking each other rather than both assuming.</p>
+<p>That is 249 assertions across seven suites. Every part of this now has a test that runs it.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

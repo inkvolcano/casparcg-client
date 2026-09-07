@@ -740,6 +740,23 @@ There is one now, in a header both include. It is the same function the tests al
 
 That is 229 assertions across six suites.
 
+### A push, driven through the buttons
+Everything either side of a push had a test and the middle did not. Comparing a pack against a client, listing what would change, sending only the ticked rows, stamping each with the digest of what was read off disk, and the client checking that digest before writing: none of it had ever run together.
+
+`tools/test-push.cpp` runs it the way an operator does. The window is built but never shown, the fields are filled in, and **Compare** and **Push ticked** are clicked. Nothing is invoked behind the interface, so the wiring is under test as much as the code. The receiving end is the real client server on a spare port with its templates in a temporary folder. **20 checks.**
+
+- Compare lists both files as new, and never offers `project.js` at all
+- Push puts them on the client with the bytes compared, and the rows say sent
+- Compare again lists them as unchanged rather than sending them twice
+- an edit on the dev machine shows as changed while the file beside it stays unchanged, and pushing replaces the old bytes
+- a wrong token lists nothing rather than guessing, and the client keeps what it already had
+
+**The tool's saved settings are redirected to a temporary file before the window is built**, so running the test never touches the operator's own list of clients.
+
+**Three ways of breaking it, three sets of failures.** Offering protected files cost the check that `project.js` stays put. Never recognising a file as unchanged cost three. Sending a wrong digest cost five, and those five are the interesting ones: the file simply never arrives, because the client refuses to write bytes that are not what the sender said they were. The two halves are genuinely checking each other rather than both assuming.
+
+That is 249 assertions across seven suites. Every part of this now has a test that runs it.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
