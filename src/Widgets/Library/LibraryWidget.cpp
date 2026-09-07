@@ -561,6 +561,15 @@ void LibraryWidget::setupTools()
     widgetHttpPost->setText(4, Rundown::HTTPPOST);
     widgetHttpPost->setText(5, "0");
 
+    QTreeWidgetItem* widgetShellCommand = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetShellCommand->setIcon(0, QIcon(":/Graphics/Images/CustomCommandSmall.png"));
+    widgetShellCommand->setText(0, "Shell Command");
+    widgetShellCommand->setText(1, "0");
+    widgetShellCommand->setText(2, "Shell Command");
+    widgetShellCommand->setText(3, "");
+    widgetShellCommand->setText(4, Rundown::SHELLCOMMAND);
+    widgetShellCommand->setText(5, "0");
+
     QTreeWidgetItem* widgetOscOutput = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
     widgetOscOutput->setIcon(0, QIcon(":/Graphics/Images/OscOutputSmall.png"));
     widgetOscOutput->setText(0, "OSC Output");

@@ -36,6 +36,7 @@ qt_add_library(core
     Commands/GroupCommand.cpp Commands/GroupCommand.h
     Commands/HtmlCommand.cpp Commands/HtmlCommand.h
     Commands/HttpGetCommand.cpp Commands/HttpGetCommand.h
+    Commands/ShellCommand.cpp Commands/ShellCommand.h
     Commands/HttpPostCommand.cpp Commands/HttpPostCommand.h
     Commands/ImageScrollerCommand.cpp Commands/ImageScrollerCommand.h
     Commands/KeyerCommand.cpp Commands/KeyerCommand.h

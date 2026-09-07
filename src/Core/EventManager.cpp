@@ -592,4 +592,6 @@ void EventManager::fireAddRudnownItemEvent(const QString& type)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Autoplay Gateway", "", "", Rundown::AUTOPLAYGATEWAY, 0, "")));
     else if (type == Rundown::COMMANDGATEWAY)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Command Gateway", "", "", Rundown::COMMANDGATEWAY, 0, "")));
+    else if (type == Rundown::SHELLCOMMAND)
+        emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Shell Command", "", "", Rundown::SHELLCOMMAND, 0, "")));
 }

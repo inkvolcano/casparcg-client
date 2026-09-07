@@ -188,6 +188,7 @@ namespace Color
     static const QString DEFAULT_FOCUSGATEWAY_COLOR = "rgba(100, 80, 180, 128)";  // Purple
     static const QString DEFAULT_COMMANDGATEWAY_COLOR = "rgba(180, 100, 40, 128)"; // Burnt Orange
     static const QString DEFAULT_STORED_DATA_COLOR = "rgba(120, 70, 30, 140)";    // Brown
+    static const QString DEFAULT_SHELLCOMMAND_COLOR = "rgba(70, 80, 95, 150)";    // Slate
     static const QString DEFAULT_TRANSPARENT_COLOR = "Transparent";
     // Reds
     static const QString BRIGHT_RED_COLOR = "rgba(220, 50, 50, 128)";
@@ -655,6 +656,7 @@ namespace Rundown
     static const QString FOCUSGATEWAY = "FOCUSGATEWAY";
     static const QString COMMANDGATEWAY = "COMMANDGATEWAY";
     static const QString STOPAUTOLOOPS = "STOPAUTOLOOPS";
+    static const QString SHELLCOMMAND = "SHELLCOMMAND";
     static const int MAX_NUMBER_OF_RUNDONWS = 10;
     static const QString DEFAULT_NAME = "New Rundown";
     static const QString DEFAULT_AUDIO_NAME = "Audio";

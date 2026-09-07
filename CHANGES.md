@@ -1444,6 +1444,89 @@ A new Light theme option alongside the existing Flat and Curve themes. Lighter b
 
 ---
 
+## Auto-save and crash recovery
+
+A rundown is a file, and nothing was ever written to it without being asked. A
+crash took whatever had not been saved with it.
+
+The client now keeps a **recovery copy** of every rundown with unsaved changes,
+in `~/.CasparCG/Client/AutoSave`, rewritten on a timer. It is offered back at the
+next launch only if the client did not shut down cleanly — a normal quit already
+asked about unsaved work, so the copies are thrown away with it.
+
+- **Your own rundown files are never written to by this.** A recovered rundown
+  opens marked unsaved, pointing at the file it came from, and nothing reaches
+  that file until you save.
+- The restore prompt **names the rundowns** rather than counting them, so you can
+  see whether the one you care about is in there before deciding.
+- Declining is a decision, not a deferral: the copies go, and you are not asked
+  again at every launch about work you already said you did not want.
+- Each copy is written to a temporary name and renamed into place, so a crash
+  during a write can never leave a half-written recovery file.
+- Empty rundowns and repository rundowns are skipped — there is nothing in one to
+  recover, and the other is not ours to save.
+
+**Settings → General → Rundown**: turn it off, or change the interval (1–60
+minutes, 3 by default).
+
+## Shell Command items
+
+A rundown item that runs a program on this machine. It is for the kit CasparCG
+does not talk to: a router, a projector shutter, a telnet box, a script that does
+the part no protocol covers.
+
+It behaves like any other item — delay, channel badge, trigger banks, GPI, OSC
+remote triggering, clone support — and adds four fields of its own:
+
+- **Command** — program and arguments, quoted the way you would in a terminal, so
+  a path with a space in it works.
+- **Run in** — an optional working folder.
+- **Trigger on next** — fire on Next rather than Play.
+- **Wait for it** — hold the rundown until the program exits, with a timeout
+  (1–300 s) after which it is killed. Off by default, because a rundown should not
+  stall on a program that decides to take its time.
+
+**Every run is logged to the Http Log panel** with its exit code and whatever the
+program printed, stdout and stderr together, so a program that failed can say why.
+Stop on a running item kills it.
+
+### It is off until you turn it on
+
+A rundown is a file that gets shared, and one arriving from somewhere else should
+not be able to run a program on your machine by being opened. So:
+
+- **Shell Command items are refused unless this client has been told to allow
+  them** — `Settings → General → Rundown → Allow Shell Command items to run`, off
+  by default.
+- A refused item **says so on the row and in the inspector** rather than failing
+  silently at air time, and the refusal is logged like any other run.
+- The gate is checked when the item fires, not when it is edited, so a rundown can
+  be built and moved between machines and only the machine that has been told to
+  allow it runs anything.
+
+## Preview that plays instead of freezing
+
+*(Built earlier; documented here because it was never written down.)*
+
+The stock client's preview loads the first frame and stops. This fork sends **any
+playout hotkey to the preview channel** instead of the program channel, so what
+you get is the thing actually playing.
+
+- Set a **Preview Channel** per server in `Settings → Servers`.
+- Hold the **preview modifier** (`Settings → Hotkeys`: Shift, Ctrl, Alt or None)
+  and press any playout key — F2, F7, whatever — and it goes to the preview
+  channel.
+- Or latch it with the **PVW** button in the Server Status panel, and every key
+  goes to preview until you turn it off.
+- The selected item's channel badge shows the preview channel while the modifier
+  is held, so there is no guessing about where the next key will land.
+- Taking an item to program clears only the preview layer that item lit.
+
+`Settings → General → Preview` also has **Load template without playing on
+preview (F8)** for the old behaviour, and a preview-mode border you can turn off.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

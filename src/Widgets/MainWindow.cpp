@@ -15,6 +15,7 @@
 #include "PanelResizeHandle.h"
 #include "PerformancePanelWidget.h"
 #include "Rundown/RundownWidget.h"
+#include "Rundown/RundownTreeWidget.h"
 #include "SettingsDialog.h"
 #include "StatusBarWidget.h"
 #include "WhatsNewDialog.h"
@@ -61,6 +62,7 @@
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QMessageBox>
 #include <QtGui/QShortcut>
 #include <QtWidgets/QToolButton>
@@ -169,7 +171,72 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     // can never push the window beyond the screen (including when maximized).
     QTimer::singleShot(0, this, [this]() { constrainToScreen(); });
 
+    // Recovery copies only survive a launch that did not shut down cleanly, so
+    // finding any here means the last session ended badly. Asked after the window
+    // is up and before the What's New dialog, because losing work outranks news.
+    QTimer::singleShot(500, this, [this]() { offerAutoSaveRecovery(); });
+
     QTimer::singleShot(10000, this, [this]() { WhatsNewDialog::showOnStartupIfEnabled(this); });
+}
+
+void MainWindow::offerAutoSaveRecovery()
+{
+    QStringList pending = RundownWidget::pendingAutoSaves();
+    if (pending.isEmpty())
+        return;
+
+    // Name the rundowns rather than counting them: "Recover 2 rundowns?" does not
+    // tell an operator whether the one they care about is in there.
+    QStringList names;
+    foreach (const QString& path, pending)
+    {
+        QString original = RundownWidget::autoSaveOriginalPath(path);
+        names.append(original.isEmpty() ? QString("%1 (never saved)").arg(QFileInfo(path).completeBaseName())
+                                        : QFileInfo(original).fileName());
+    }
+
+    QMessageBox box(this);
+    box.setWindowTitle("Recover Rundowns");
+    box.setWindowIcon(QIcon(":/Graphics/Images/CasparCG.png"));
+    box.setIconPixmap(QPixmap(":/Graphics/Images/Attention.png"));
+    box.setText(QString("The client did not shut down cleanly. Unsaved changes were auto-saved for:\n\n%1\n\n"
+                        "Open them? Nothing is written to the original files until you save.")
+                    .arg(names.join("\n")));
+    box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    for (QAbstractButton* button : box.buttons())
+    {
+        button->setIcon(QIcon());
+        button->setFocusPolicy(Qt::NoFocus);
+    }
+
+    if (box.exec() != QMessageBox::Yes)
+    {
+        // Declining is a decision, not a deferral. Keeping them would ask again at
+        // every launch about work the operator has already said they do not want.
+        RundownWidget::clearAutoSaves();
+        return;
+    }
+
+    foreach (const QString& path, pending)
+    {
+        QString original = RundownWidget::autoSaveOriginalPath(path);
+
+        EventManager::getInstance().fireNewRundownEvent(NewRundownEvent());
+
+        RundownWidget* rundownWidget = findChild<RundownWidget*>();
+        if (rundownWidget == nullptr)
+            break;
+
+        RundownTreeWidget* tab = rundownWidget->activeTreeWidget();
+        if (tab == nullptr)
+            break;
+
+        tab->openAutoSaveCopy(path, original);
+    }
+
+    // The recovered work is on screen and marked unsaved, so the copies have done
+    // their job. Leaving them would offer the same rundowns again next launch.
+    RundownWidget::clearAutoSaves();
 }
 
 void MainWindow::setupMenu()
@@ -830,6 +897,11 @@ void MainWindow::showSettingsDialog()
     QObject::connect(dialog, SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
 
     dialog->exec();
+
+    // The auto-save settings live in that dialog, and an interval the operator
+    // just changed should take effect now rather than after the old one elapses.
+    if (this->widgetRundown != nullptr)
+        this->widgetRundown->applyAutoSaveSettings();
 }
 
 void MainWindow::toggleFullscreen()

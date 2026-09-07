@@ -74,6 +74,10 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxShowChannelHeaders;
         QCheckBox* checkBoxShowBankIcons;
         QCheckBox* checkBoxHttpLogLastOnly;
+        QCheckBox* checkBoxAutoSaveEnabled;
+        QCheckBox* checkBoxAllowShellCommands;
+        QLabel* labelAutoSaveMinutes;
+        QSpinBox* spinBoxAutoSaveMinutes;
         QCheckBox* checkBoxShowLastAction;
         QCheckBox* checkBoxActiveIndicatorPerChannel;
         QComboBox* comboBoxDisconnectMode;

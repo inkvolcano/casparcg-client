@@ -105,6 +105,10 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         void rebuildLayout();
         void constrainToScreen();
 
+        // Offers back any auto-saved rundowns left behind by a session that did
+        // not shut down cleanly. Does nothing when there are none.
+        void offerAutoSaveRecovery();
+
 
         // The usable height of the screen this window is on, or 0 when that cannot
         // be determined, which means "do not clamp".

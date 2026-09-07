@@ -173,6 +173,9 @@ INSERT INTO Configuration (Name, Value) VALUES('RelayGitHubApi', '');
 -- run the whole estate from one place. This is the way out of that for a single
 -- machine: set it and the Packs field on this client wins instead.
 INSERT INTO Configuration (Name, Value) VALUES('RelayPacksLocal', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('AutoSaveEnabled', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('AutoSaveMinutes', '3');
+INSERT INTO Configuration (Name, Value) VALUES('AllowShellCommands', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');

@@ -39,6 +39,7 @@ class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
         // by pointer, never by index: it is inserted mid-tree, so sectionItem() adds
         // a row for everything declared after Template once this exists.
         QTreeWidgetItem* templateSettingsTopLevel = nullptr;
+        QTreeWidgetItem* shellCommandTopLevel = nullptr;
         QTreeWidgetItem* sectionItem(int declaredIndex) const;
 
         void setDefaultVisibleWidgets();

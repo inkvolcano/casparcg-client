@@ -40,6 +40,7 @@
 #include "Inspector/InspectorRouteChannelWidget.h"
 #include "Inspector/InspectorRouteVideolayerWidget.h"
 #include "Inspector/InspectorGatewayWidget.h"
+#include "Inspector/InspectorShellCommandWidget.h"
 #include "Inspector/InspectorInvokeWidget.h"
 #include "Inspector/InspectorTransformWidget.h"
 #include "Inspector/InspectorSimpleModeWidget.h"
@@ -87,6 +88,7 @@
 #include "Commands/RouteChannelCommand.h"
 #include "Commands/RouteVideolayerCommand.h"
 #include "Commands/GatewayCommand.h"
+#include "Commands/ShellCommand.h"
 
 InspectorWidget::InspectorWidget(QWidget *parent)
     : QWidget(parent)
@@ -237,6 +239,18 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     this->treeWidgetInspector->addTopLevelItem(transformTopLevel);
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(transformTopLevel), 0, new InspectorTransformWidget(this));
 
+    // "Shell Command" is appended after Embedded Transform and reached through
+    // this pointer rather than sectionItem(), because sectionItem() maps declared
+    // indices onto rows by counting and a new row in the middle would hand every
+    // section below it its neighbour's widget.
+    this->shellCommandTopLevel = new QTreeWidgetItem();
+    this->shellCommandTopLevel->setText(0, "Shell Command");
+    this->shellCommandTopLevel->setBackground(0, QBrush(QColor(45, 45, 45)));
+    this->shellCommandTopLevel->setForeground(0, QBrush(QColor(255, 255, 255)));
+    this->treeWidgetInspector->addTopLevelItem(this->shellCommandTopLevel);
+    this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(this->shellCommandTopLevel), 0,
+                                             new InspectorShellCommandWidget(this));
+
     this->treeWidgetInspector->expandAll();
 
     // Embedded Transform and Simple Mode are rarely needed — start them collapsed;
@@ -386,6 +400,8 @@ void InspectorWidget::rundownItemSelected(const RundownItemSelectedEvent &event)
         sectionItem(39)->setHidden(false);
     else if (dynamic_cast<GatewayCommand *>(event.getCommand()))
         sectionItem(40)->setHidden(false);
+    else if (dynamic_cast<ShellCommand *>(event.getCommand()))
+        this->shellCommandTopLevel->setHidden(false);
 
     // Force the tree and scroll area to recalculate content size after
     // showing/hiding sections (especially the Embedded Transform section).
@@ -403,6 +419,7 @@ void InspectorWidget::setDefaultVisibleWidgets()
     sectionItem(2)->setHidden(true);
     sectionItem(3)->setHidden(true);
     this->templateSettingsTopLevel->setHidden(true);
+    this->shellCommandTopLevel->setHidden(true);
     sectionItem(4)->setHidden(true);
     sectionItem(5)->setHidden(true);
     sectionItem(6)->setHidden(true);

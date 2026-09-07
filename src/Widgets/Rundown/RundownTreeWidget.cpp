@@ -73,8 +73,12 @@
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
 
+#include "AutoSaveNaming.h"
+
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QPoint>
 #include <QtCore5Compat/QTextCodec>
 #include <QtCore/QElapsedTimer>
@@ -205,6 +209,7 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HtmlSmall.png"), "HTML Page", this, SLOT(addHtmlItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HttpGetSmall.png"), "HTTP GET Request", this, SLOT(addHttpGetItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HttpGetSmall.png"), "HTTP POST Request", this, SLOT(addHttpPostItem()));
+    this->contextMenuOther->addAction(QIcon(":/Graphics/Images/CustomCommandSmall.png"), "Shell Command", this, SLOT(addShellCommandItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/OscOutputSmall.png"), "OSC Output", this, SLOT(addOscOutputItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/PlayoutCommandSmall.png"), "Playout Command", this, SLOT(addPlayoutCommandItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/RouteChannelSmall.png"), "Route Channel", this, SLOT(addRouteChannelItem()));
@@ -1445,7 +1450,8 @@ void RundownTreeWidget::openRundown(const QString& path)
 
         this->treeWidgetRundown->setFocus();
 
-        DatabaseManager::getInstance().insertOpenRecent(path);
+        if (!this->suppressOpenRecent)
+            DatabaseManager::getInstance().insertOpenRecent(path);
 
         qDebug("RundownTreeWidget::openRundown %lld msec (%d items)", time.elapsed(), this->treeWidgetRundown->invisibleRootItem()->childCount());
     }
@@ -1599,21 +1605,7 @@ void RundownTreeWidget::saveRundown(bool saveAs)
 
         if (file.open(QFile::WriteOnly))
         {
-            QByteArray data;
-            QXmlStreamWriter writer(&data);
-
-            writer.setAutoFormatting(XmlFormatting::ENABLE_FORMATTING);
-            writer.setAutoFormattingIndent(XmlFormatting::NUMBER_OF_SPACES);
-
-            writer.writeStartDocument();
-            writer.writeStartElement("items");
-            writer.writeTextElement("allowremotetriggering", (this->allowRemoteRundownTriggering == true) ? "true" : "false");
-
-            for (int i = 0; i < this->treeWidgetRundown->invisibleRootItem()->childCount(); i++)
-                this->treeWidgetRundown->writeProperties(this->treeWidgetRundown->invisibleRootItem()->child(i), writer);
-
-            writer.writeEndElement();
-            writer.writeEndDocument();
+            QByteArray data = serialiseRundown();
 
             this->hexHash = QString(QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex());
             qDebug("Hash is %s", qPrintable(this->hexHash));
@@ -1632,16 +1624,8 @@ void RundownTreeWidget::saveRundown(bool saveAs)
     }
 }
 
-bool RundownTreeWidget::checkForSave() const
+QByteArray RundownTreeWidget::serialiseRundown() const
 {
-    // Don't save empty rundowns.
-    if (this->treeWidgetRundown->invisibleRootItem()->childCount() == 0)
-        return false;
-
-    // We can't save repository rundowns.
-    if (this->repositoryRundown)
-        return false;
-
     QByteArray data;
     QXmlStreamWriter writer(&data);
 
@@ -1658,13 +1642,139 @@ bool RundownTreeWidget::checkForSave() const
     writer.writeEndElement();
     writer.writeEndDocument();
 
-    QString hexHash = QString(QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex());
-    qDebug("Hash is %s", qPrintable(hexHash));
+    return data;
+}
+
+const QString& RundownTreeWidget::getActiveRundown() const
+{
+    return this->activeRundown;
+}
+
+bool RundownTreeWidget::openAutoSaveCopy(const QString& autoSavePath, const QString& originalPath)
+{
+    QFile source(autoSavePath);
+    if (!source.open(QFile::ReadOnly))
+        return false;
+
+    QByteArray content = source.readAll();
+    source.close();
+
+    // Drop the marker line the auto-save writer put in front of the rundown; what
+    // follows is ordinary rundown XML and has to reach the parser as such.
+    if (content.startsWith(AutoSaveNaming::marker()))
+    {
+        int newline = content.indexOf('\n');
+        if (newline < 0)
+            return false;
+
+        content = content.mid(newline + 1);
+    }
+
+    // openRundown() reads from a path, so the stripped copy needs one. It goes
+    // beside the recovery file rather than in the user's way, and is removed
+    // whether or not the load worked.
+    QString scratchPath = autoSavePath + ".restoring";
+
+    QFile scratch(scratchPath);
+    if (!scratch.open(QFile::WriteOnly | QFile::Truncate))
+        return false;
+
+    scratch.write(content);
+    scratch.close();
+
+    this->suppressOpenRecent = true;
+    openRundown(scratchPath);
+    this->suppressOpenRecent = false;
+
+    QFile::remove(scratchPath);
+
+    // openRundown() left this pointing at the scratch file and recorded its hash
+    // as the saved state. Both are wrong for a recovered rundown: it belongs to
+    // the file it was recovered for, and it is emphatically unsaved. Clearing the
+    // hash is what makes Ctrl+S and the quit prompt treat it as such.
+    this->activeRundown = originalPath.isEmpty() ? Rundown::DEFAULT_NAME : originalPath;
+    this->hexHash.clear();
+
+    EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
+
+    return true;
+}
+
+bool RundownTreeWidget::checkForSave() const
+{
+    // Don't save empty rundowns.
+    if (this->treeWidgetRundown->invisibleRootItem()->childCount() == 0)
+        return false;
+
+    // We can't save repository rundowns.
+    if (this->repositoryRundown)
+        return false;
+
+    QString hexHash = QString(QCryptographicHash::hash(serialiseRundown(), QCryptographicHash::Md5).toHex());
 
     if (hexHash != this->hexHash)
         return true;
 
     return false;
+}
+
+QString RundownTreeWidget::autoSaveStemFor(const QString& activeRundown)
+{
+    // Rundown::DEFAULT_NAME is this class's idea of "no file yet"; the naming
+    // rules themselves live in the header so they can be tested on their own.
+    if (activeRundown == Rundown::DEFAULT_NAME)
+        return AutoSaveNaming::stemFor(QString());
+
+    return AutoSaveNaming::stemFor(activeRundown);
+}
+
+bool RundownTreeWidget::writeAutoSaveCopy(const QString& directory) const
+{
+    // Only rundowns with something in them and something changed. checkForSave()
+    // already rules out empty and repository rundowns, so a copy is only ever made
+    // of work that would otherwise be lost.
+    if (!checkForSave())
+        return false;
+
+    QDir().mkpath(directory);
+
+    QString safeStem = autoSaveStemFor(this->activeRundown);
+
+    // The original path travels inside the file rather than in its name, so a
+    // restore knows where the rundown belongs without encoding a path in a
+    // filename. The rundown itself is written unchanged after this line.
+    QByteArray payload;
+    payload.append(AutoSaveNaming::marker());
+    payload.append(this->activeRundown.toUtf8().toPercentEncoding());
+    payload.append(" -->\n");
+    payload.append(serialiseRundown());
+
+    // Written to a temporary name and renamed into place, so a recovery file is
+    // never a half-written one: the crash this protects against can land here.
+    QString finalPath = QString("%1/%2.xml").arg(directory, safeStem);
+    QString partPath = finalPath + ".part";
+
+    QFile part(partPath);
+    if (!part.open(QFile::WriteOnly | QFile::Truncate))
+        return false;
+
+    if (part.write(payload) != payload.size())
+    {
+        part.close();
+        part.remove();
+        return false;
+    }
+
+    part.close();
+
+    QFile::remove(finalPath);
+    if (!QFile::rename(partPath, finalPath))
+    {
+        QFile::remove(partPath);
+        return false;
+    }
+
+    return true;
 }
 
 void RundownTreeWidget::colorizeItems(const QString& color)
@@ -3525,6 +3635,11 @@ void RundownTreeWidget::addHttpGetItem()
 void RundownTreeWidget::addHttpPostItem()
 {
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::HTTPPOST);
+}
+
+void RundownTreeWidget::addShellCommandItem()
+{
+    EventManager::getInstance().fireAddRudnownItemEvent(Rundown::SHELLCOMMAND);
 }
 
 void RundownTreeWidget::addOscOutputItem()

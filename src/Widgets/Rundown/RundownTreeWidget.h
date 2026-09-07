@@ -74,6 +74,30 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         bool checkForSave() const;
 
+        // The rundown as it would be written to disk. saveRundown() writes this,
+        // checkForSave() hashes it, and the auto-save copy is the same bytes — so
+        // a recovered rundown is byte-identical to one the user had saved.
+        QByteArray serialiseRundown() const;
+
+        // Writes a recovery copy into directory, named after the rundown it came
+        // from. Returns false when there is nothing worth recovering (an empty
+        // rundown, a repository rundown, or a failed write).
+        bool writeAutoSaveCopy(const QString& directory) const;
+
+        // The filename stem a recovery copy gets for a rundown at this path. The
+        // path is whatever the rundown was opened from, so this has to be unable
+        // to produce anything that walks out of the recovery folder.
+        static QString autoSaveStemFor(const QString& activeRundown);
+
+        // The file this rundown was opened from or last saved to, or
+        // Rundown::DEFAULT_NAME when it has never been given one.
+        const QString& getActiveRundown() const;
+
+        // Loads a recovery copy and points it back at the file it was recovered
+        // for, leaving it marked unsaved so the operator decides whether it wins.
+        // The rundown's own file is never touched by this.
+        bool openAutoSaveCopy(const QString& autoSavePath, const QString& originalPath);
+
         bool getAllowRemoteTriggering() const;
         bool isLocked() const;
         void setLocked(bool locked);
@@ -109,6 +133,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QList<GatewayExitLocation> findAllGatewayExitsInTree(const QString& gatewayId) const;
         bool active;
         bool enterPressed;
+        // Set only while a recovery copy is being loaded through openRundown(),
+        // so the scratch file it reads from never reaches the Open Recent list.
+        bool suppressOpenRecent = false;
         bool allowRemoteRundownTriggering;
         bool repositoryRundown;
 
@@ -221,6 +248,7 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addAnchorItem();
         Q_SLOT void addHttpGetItem();
         Q_SLOT void addHttpPostItem();
+        Q_SLOT void addShellCommandItem();
         Q_SLOT void addResetItem();
         Q_SLOT void addHtmlItem();
         Q_SLOT void addRouteChannelItem();

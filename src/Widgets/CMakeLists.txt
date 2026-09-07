@@ -40,6 +40,7 @@ qt_add_library(widgets
     Inspector/InspectorGroupWidget.cpp Inspector/InspectorGroupWidget.h Inspector/InspectorGroupWidget.ui
     Inspector/InspectorHtmlWidget.cpp Inspector/InspectorHtmlWidget.h Inspector/InspectorHtmlWidget.ui
     Inspector/InspectorHttpGetWidget.cpp Inspector/InspectorHttpGetWidget.h Inspector/InspectorHttpGetWidget.ui
+    Inspector/InspectorShellCommandWidget.cpp Inspector/InspectorShellCommandWidget.h Inspector/InspectorShellCommandWidget.ui
     Inspector/InspectorHttpPostWidget.cpp Inspector/InspectorHttpPostWidget.h Inspector/InspectorHttpPostWidget.ui
     Inspector/InspectorImageScrollerWidget.cpp Inspector/InspectorImageScrollerWidget.h Inspector/InspectorImageScrollerWidget.ui
     Inspector/InspectorKeyerWidget.cpp Inspector/InspectorKeyerWidget.h Inspector/InspectorKeyerWidget.ui
@@ -120,6 +121,7 @@ qt_add_library(widgets
     Rundown/RundownGroupWidget.cpp Rundown/RundownGroupWidget.h Rundown/RundownGroupWidget.ui
     Rundown/RundownHtmlWidget.cpp Rundown/RundownHtmlWidget.h Rundown/RundownHtmlWidget.ui
     Rundown/RundownHttpGetWidget.cpp Rundown/RundownHttpGetWidget.h Rundown/RundownHttpGetWidget.ui
+    Rundown/RundownShellCommandWidget.cpp Rundown/RundownShellCommandWidget.h Rundown/RundownShellCommandWidget.ui
     Rundown/RundownHttpPostWidget.cpp Rundown/RundownHttpPostWidget.h Rundown/RundownHttpPostWidget.ui
     Rundown/RundownImageScrollerWidget.cpp Rundown/RundownImageScrollerWidget.h Rundown/RundownImageScrollerWidget.ui
     Rundown/RundownItemFactory.cpp Rundown/RundownItemFactory.h

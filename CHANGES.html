@@ -131,6 +131,9 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#auto-save">Auto-save and Crash Recovery</a><br>
+<a href="#shell-command">Shell Command Items</a><br>
+<a href="#preview-plays">Preview That Plays</a><br>
 <a href="#stability">Stability Fixes</a>
 </div>
 
@@ -1574,6 +1577,63 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <li><b>Fixed invoke dropdowns showing the previous item's functions</b>: the Function dropdowns kept the functions discovered for the previously selected template. They now re-scan the selected item's own template on every selection.</li>
 <li><b>Wheel-safe inspector inputs</b>: spin boxes, dropdowns and sliders in the inspector (and the Simple Inspector) only react to the mouse wheel after being clicked &mdash; scrolling the inspector page no longer changes values by accident; the wheel scrolls the page instead.</li>
 </ul>
+
+<h2 id="auto-save">Auto-save and crash recovery</h2>
+
+<p>A rundown is a file, and nothing was ever written to it without being asked. A crash took whatever had not been saved with it.</p>
+
+<p>The client now keeps a <b>recovery copy</b> of every rundown with unsaved changes, in <code>~/.CasparCG/Client/AutoSave</code>, rewritten on a timer. It is offered back at the next launch only if the client did not shut down cleanly &mdash; a normal quit already asked about unsaved work, so the copies are thrown away with it.</p>
+
+<ul>
+<li><b>Your own rundown files are never written to by this.</b> A recovered rundown opens marked unsaved, pointing at the file it came from, and nothing reaches that file until you save.</li>
+<li>The restore prompt <b>names the rundowns</b> rather than counting them, so you can see whether the one you care about is in there before deciding.</li>
+<li>Declining is a decision, not a deferral: the copies go, and you are not asked again at every launch about work you already said you did not want.</li>
+<li>Each copy is written to a temporary name and renamed into place, so a crash during a write can never leave a half-written recovery file.</li>
+<li>Empty rundowns and repository rundowns are skipped &mdash; there is nothing in one to recover, and the other is not ours to save.</li>
+</ul>
+
+<p><b>Settings &rarr; General &rarr; Rundown</b>: turn it off, or change the interval (1&ndash;60 minutes, 3 by default).</p>
+
+<h2 id="shell-command">Shell Command items</h2>
+
+<p>A rundown item that runs a program on this machine. It is for the kit CasparCG does not talk to: a router, a projector shutter, a telnet box, a script that does the part no protocol covers.</p>
+
+<p>It behaves like any other item &mdash; delay, channel badge, trigger banks, GPI, OSC remote triggering, clone support &mdash; and adds four fields of its own:</p>
+
+<ul>
+<li><b>Command</b> &mdash; program and arguments, quoted the way you would in a terminal, so a path with a space in it works.</li>
+<li><b>Run in</b> &mdash; an optional working folder.</li>
+<li><b>Trigger on next</b> &mdash; fire on Next rather than Play.</li>
+<li><b>Wait for it</b> &mdash; hold the rundown until the program exits, with a timeout (1&ndash;300 s) after which it is killed. Off by default, because a rundown should not stall on a program that decides to take its time.</li>
+</ul>
+
+<p><b>Every run is logged to the Http Log panel</b> with its exit code and whatever the program printed, stdout and stderr together, so a program that failed can say why. Stop on a running item kills it.</p>
+
+<h3>It is off until you turn it on</h3>
+
+<p>A rundown is a file that gets shared, and one arriving from somewhere else should not be able to run a program on your machine by being opened. So:</p>
+
+<ul>
+<li><b>Shell Command items are refused unless this client has been told to allow them</b> &mdash; <code>Settings &rarr; General &rarr; Rundown &rarr; Allow Shell Command items to run</code>, off by default.</li>
+<li>A refused item <b>says so on the row and in the inspector</b> rather than failing silently at air time, and the refusal is logged like any other run.</li>
+<li>The gate is checked when the item fires, not when it is edited, so a rundown can be built and moved between machines and only the machine that has been told to allow it runs anything.</li>
+</ul>
+
+<h2 id="preview-plays">Preview that plays instead of freezing</h2>
+
+<p><i>(Built earlier; documented here because it was never written down.)</i></p>
+
+<p>The stock client's preview loads the first frame and stops. This fork sends <b>any playout hotkey to the preview channel</b> instead of the program channel, so what you get is the thing actually playing.</p>
+
+<ul>
+<li>Set a <b>Preview Channel</b> per server in <code>Settings &rarr; Servers</code>.</li>
+<li>Hold the <b>preview modifier</b> (<code>Settings &rarr; Hotkeys</code>: Shift, Ctrl, Alt or None) and press any playout key &mdash; F2, F7, whatever &mdash; and it goes to the preview channel.</li>
+<li>Or latch it with the <b>PVW</b> button in the Server Status panel, and every key goes to preview until you turn it off.</li>
+<li>The selected item's channel badge shows the preview channel while the modifier is held, so there is no guessing about where the next key will land.</li>
+<li>Taking an item to program clears only the preview layer that item lit.</li>
+</ul>
+
+<p><code>Settings &rarr; General &rarr; Preview</code> also has <b>Load template without playing on preview (F8)</b> for the old behaviour, and a preview-mode border you can turn off.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

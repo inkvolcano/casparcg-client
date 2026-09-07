@@ -999,6 +999,34 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->pushButtonDeleteThumbnails, row, 1);
     row++;
 
+    // ── Rundown ─────────────────────────────────────────────
+    addSection("Rundown");
+    this->checkBoxAutoSaveEnabled = new QCheckBox("Keep a recovery copy of unsaved rundowns");
+    this->checkBoxAutoSaveEnabled->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxAutoSaveEnabled->setToolTip("Writes a copy of any rundown with unsaved changes, and offers it back "
+                                              "if the client did not shut down cleanly.\n"
+                                              "Your own rundown files are never written to by this.");
+    grid->addWidget(this->checkBoxAutoSaveEnabled, row, 1, 1, 3);
+    row++;
+
+    this->labelAutoSaveMinutes = new QLabel("Recovery copy every:");
+    this->labelAutoSaveMinutes->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    grid->addWidget(this->labelAutoSaveMinutes, row, 0);
+    this->spinBoxAutoSaveMinutes = new QSpinBox();
+    this->spinBoxAutoSaveMinutes->setMinimum(1);
+    this->spinBoxAutoSaveMinutes->setMaximum(60);
+    this->spinBoxAutoSaveMinutes->setValue(3);
+    this->spinBoxAutoSaveMinutes->setSuffix(" min");
+    grid->addWidget(this->spinBoxAutoSaveMinutes, row, 1);
+    row++;
+
+    this->checkBoxAllowShellCommands = new QCheckBox("Allow Shell Command items to run");
+    this->checkBoxAllowShellCommands->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxAllowShellCommands->setToolTip("Shell Command items run a program on this machine.\n"
+                                                 "Leave this off unless you trust every rundown you open here.");
+    grid->addWidget(this->checkBoxAllowShellCommands, row, 1, 1, 3);
+    row++;
+
     // ── Preview ──────────────────────────────────────────────
     addSection("Preview");
     this->checkBoxShowPreviewBorder = new QCheckBox("Show preview mode border");
@@ -1338,8 +1366,27 @@ void SettingsDialog::setupGeneralTab()
     wireCheckBox(this->checkBoxShowChannelHeaders, "ShowChannelHeaders");
     wireCheckBox(this->checkBoxShowBankIcons, "ShowBankIcons");
     wireCheckBox(this->checkBoxHttpLogLastOnly, "HttpLogLastOnly");
+    wireCheckBox(this->checkBoxAutoSaveEnabled, "AutoSaveEnabled");
     wireCheckBox(this->checkBoxShowLastAction, "ShowLastAction");
     wireCheckBox(this->checkBoxActiveIndicatorPerChannel, "ActiveIndicatorPerChannel");
+
+    // Auto-save interval. Changing it restarts the timer straight away rather
+    // than waiting out the old interval first.
+    QString autoSaveMinutes = DatabaseManager::getInstance().getConfigurationByName("AutoSaveMinutes").getValue();
+    this->spinBoxAutoSaveMinutes->setValue(autoSaveMinutes.isEmpty() ? 3 : autoSaveMinutes.toInt());
+    QObject::connect(this->spinBoxAutoSaveMinutes, QOverload<int>::of(&QSpinBox::valueChanged), [](int value) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "AutoSaveMinutes", QString("%1").arg(value)));
+    });
+
+    // Shell commands are off unless switched on, so this one cannot use
+    // wireCheckBox(), which treats an unset value as on.
+    QString allowShell = DatabaseManager::getInstance().getConfigurationByName("AllowShellCommands").getValue();
+    this->checkBoxAllowShellCommands->setChecked(allowShell == "true");
+    QObject::connect(this->checkBoxAllowShellCommands, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "AllowShellCommands", checked ? "true" : "false"));
+    });
 
     // Disconnect mode dropdown.
     QString disconnectMode = DatabaseManager::getInstance().getConfigurationByName("DisconnectMode").getValue();

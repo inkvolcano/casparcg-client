@@ -11,8 +11,11 @@
 #include "Events/Rundown/AllowRemoteTriggeringEvent.h"
 #include "Events/Rundown/InsertRepositoryChangesEvent.h"
 
+#include "AutoSaveNaming.h"
+
 #include <QtCore/QDir>
 #include <QtCore/QDebug>
+#include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTimer>
 #include <QtCore/QUuid>
@@ -139,6 +142,123 @@ RundownWidget::RundownWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(markAllItemsAsUsed(const MarkAllItemsAsUsedEvent&)), this, SLOT(markAllItemsAsUsed(const MarkAllItemsAsUsedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(markAllItemsAsUnused(const MarkAllItemsAsUnusedEvent&)), this, SLOT(markAllItemsAsUnused(const MarkAllItemsAsUnusedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(reloadRundownMenu(const ReloadRundownMenuEvent&)), this, SLOT(reloadRundownMenu(const ReloadRundownMenuEvent&)));
+
+    this->autoSaveTimer = new QTimer(this);
+    QObject::connect(this->autoSaveTimer, SIGNAL(timeout()), this, SLOT(autoSaveTick()));
+    applyAutoSaveSettings();
+}
+
+QString RundownWidget::autoSaveDirectory()
+{
+    return QString("%1/.CasparCG/Client/AutoSave").arg(QDir::homePath());
+}
+
+bool RundownWidget::autoSaveEnabled()
+{
+    // On unless it has been turned off. A recovery copy costs nothing and never
+    // touches the rundown's own file, so the safe default is the helpful one.
+    return DatabaseManager::getInstance().getConfigurationByName("AutoSaveEnabled").getValue() != "false";
+}
+
+int RundownWidget::autoSaveMinutes()
+{
+    int minutes = DatabaseManager::getInstance().getConfigurationByName("AutoSaveMinutes").getValue().toInt();
+    if (minutes < 1)
+        minutes = 3;
+    if (minutes > 60)
+        minutes = 60;
+
+    return minutes;
+}
+
+void RundownWidget::applyAutoSaveSettings()
+{
+    if (this->autoSaveTimer == nullptr)
+        return;
+
+    if (!autoSaveEnabled())
+    {
+        this->autoSaveTimer->stop();
+
+        // Turning it off leaves nothing behind to be offered at the next launch.
+        clearAutoSaves();
+        return;
+    }
+
+    this->autoSaveTimer->start(autoSaveMinutes() * 60 * 1000);
+}
+
+QStringList RundownWidget::pendingAutoSaves()
+{
+    QDir directory(autoSaveDirectory());
+    if (!directory.exists())
+        return QStringList();
+
+    QStringList paths;
+    foreach (const QString& name, directory.entryList(QStringList("*.xml"), QDir::Files, QDir::Name))
+        paths.append(directory.filePath(name));
+
+    return paths;
+}
+
+QString RundownWidget::autoSaveOriginalPath(const QString& autoSavePath)
+{
+    QFile file(autoSavePath);
+    if (!file.open(QFile::ReadOnly))
+        return QString();
+
+    // The marker is the first line, so there is no reason to read a whole
+    // rundown to answer this.
+    QByteArray firstLine = file.readLine(4096);
+    file.close();
+
+    return AutoSaveNaming::originalPathFromLine(firstLine);
+}
+
+void RundownWidget::clearAutoSaves()
+{
+    QDir directory(autoSaveDirectory());
+    if (!directory.exists())
+        return;
+
+    // .part files are half-written copies from a crash mid-write; they go too.
+    foreach (const QString& name, directory.entryList(QStringList() << "*.xml" << "*.xml.part", QDir::Files))
+        directory.remove(name);
+}
+
+void RundownWidget::autoSaveTick()
+{
+    if (!autoSaveEnabled())
+        return;
+
+    QString directory = autoSaveDirectory();
+
+    QList<QTabWidget*> panes;
+    panes << this->tabWidgetRundown;
+    if (this->tabWidgetRundownSecondary != nullptr)
+        panes << this->tabWidgetRundownSecondary;
+
+    int written = 0;
+    for (QTabWidget* pane : panes)
+    {
+        for (int i = 0; i < pane->count(); i++)
+        {
+            RundownTreeWidget* tab = dynamic_cast<RundownTreeWidget*>(pane->widget(i));
+            if (tab == nullptr)
+                continue;
+
+            if (tab->writeAutoSaveCopy(directory))
+                written++;
+        }
+    }
+
+    // Only say something when something happened. A tick that found every rundown
+    // already saved should not be putting messages in front of an operator.
+    if (written > 0)
+    {
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("Auto-saved %1 rundown%2").arg(written).arg(written == 1 ? "" : "s")));
+    }
 }
 
 void RundownWidget::setupTabWidget(QTabWidget* tabWidget)
@@ -694,6 +814,11 @@ bool RundownWidget::checkForSaveBeforeQuit()
             }
         }
     }
+
+    // Every unsaved rundown has now been offered and either saved or knowingly
+    // abandoned, so the recovery copies have nothing left to recover. Leaving them
+    // would make the next launch offer back work the operator just chose to drop.
+    clearAutoSaves();
 
     return true;
 }
