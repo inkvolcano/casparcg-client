@@ -12,7 +12,7 @@
 class QNetworkAccessManager;
 class QTimer;
 
-// Pulling template packs from a relay.
+// Pulling template packs from a relay, or from a private GitHub repository.
 //
 // The other half of the push story, and the half that works across the internet.
 // Instead of a dev machine reaching in to this client, this client reaches out to a
@@ -22,11 +22,21 @@ class QTimer;
 //
 // What it does on each poll:
 //
-//   1. asks the relay for its manifest: every pack, every file, every digest
+//   1. asks for a manifest: every pack, every file, every digest
 //   2. keeps the packs this client is meant to follow
 //   3. compares each file's digest against the copy already on disk
 //   4. fetches only what differs, checks the bytes against the promised digest,
 //      and installs through TemplateInstaller
+//
+// Two kinds of source, and only the first two steps differ between them.
+//
+//   relay      an address, and the PHP in tools/relay
+//   github:owner/repo[@branch]     a private repository, packs at its root
+//
+// GitHub costs nothing to run, authenticates for you, and keeps the history of
+// every template as a side effect. One request lists the whole tree with a digest
+// per file, and those digests are Git blob hashes, so a pack on disk can be
+// compared against the repository without downloading anything.
 //
 // It never deletes. A file that vanished from the relay stays on this machine,
 // because removing a template from a box that may be on air is not a decision worth
@@ -50,6 +60,17 @@ class WIDGETS_EXPORT RelayClient : public QObject
         static QString url();
         static QString token();
         static int pollMinutes();
+
+        // A "github:owner/repo" or "github:owner/repo@branch" address rather than
+        // the address of a relay.
+        static bool isGitHub();
+        static QString gitHubOwnerRepo();
+
+        // Empty means the repository's own default branch, which is what HEAD gets.
+        static QString gitHubBranch();
+
+        // What to call this source in a status line, without leaking the token.
+        static QString sourceLabel();
 
         // Which packs this client follows, empty meaning all of them. A relay can
         // carry every venue's packs while each client takes only its own.
@@ -83,6 +104,12 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         void requestManifest();
         void planFrom(const QByteArray& manifestJson);
+        void planFromGitHubTree(const QByteArray& treeJson);
+
+        // The token and the headers each kind of source wants. GitHub needs an
+        // Authorization header, an API version and a user agent; a relay needs one
+        // header of its own.
+        void authorise(QNetworkRequest& request) const;
         void fetchNext();
         void done(const QString& note);
         void say(const QString& line);

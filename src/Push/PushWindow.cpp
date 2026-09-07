@@ -63,8 +63,51 @@ namespace
     }
 }
 
+// One place that decides what an address means, so the table, the settings file and
+// every request agree about it.
+void PushTarget::readAddress(const QString& address)
+{
+    QString trimmed = address.trimmed();
+
+    this->github = trimmed.startsWith("github:", Qt::CaseInsensitive);
+    if (this->github)
+    {
+        this->host = trimmed;
+
+        QString rest = trimmed.mid(QString("github:").length()).trimmed();
+        int at = rest.indexOf('@');
+        if (at >= 0)
+        {
+            this->branch = rest.mid(at + 1).trimmed();
+            rest = rest.left(at);
+        }
+
+        while (rest.endsWith('/'))
+            rest.chop(1);
+
+        this->ownerRepo = rest;
+        return;
+    }
+
+    // A scheme means a relay. Splitting a URL on its last colon would otherwise read
+    // "https" as the host, which is a confusing way to find that out.
+    this->relay = trimmed.contains("://");
+    if (this->relay)
+    {
+        this->host = trimmed;
+        return;
+    }
+
+    int colon = trimmed.lastIndexOf(':');
+    this->host = colon > 0 ? trimmed.left(colon) : trimmed;
+    this->port = colon > 0 ? trimmed.mid(colon + 1).toInt() : 3000;
+}
+
 QString PushTarget::base() const
 {
+    if (this->github)
+        return QString("https://api.github.com/repos/%1").arg(this->ownerRepo);
+
     return this->relay ? this->host : QString("http://%1:%2").arg(this->host).arg(this->port);
 }
 
@@ -73,17 +116,31 @@ QString PushTarget::label() const
     if (!this->name.isEmpty())
         return this->name;
 
+    if (this->github)
+        return QString("github.com/%1").arg(this->ownerRepo);
+
     return this->relay ? QString("relay %1").arg(this->host) : base();
 }
 
 QString PushTarget::infoUrl() const
 {
+    if (this->github)
+        return base();   // the repository itself answers "does this token open you"
+
     return this->relay ? relayQuery(this->host, "ping")
                        : QString("%1/templates/info").arg(base());
 }
 
 QString PushTarget::manifestUrl(const QString& pack) const
 {
+    if (this->github)
+    {
+        // One call lists the whole repository with a digest per file. It is not
+        // per-pack, and the caller keeps only the pack it asked about.
+        QString ref = this->branch.isEmpty() ? QString("HEAD") : this->branch;
+        return QString("%1/git/trees/%2?recursive=1").arg(base(), encoded(ref));
+    }
+
     if (this->relay)
         return QString("%1&pack=%2").arg(relayQuery(this->host, "manifest"), encoded(pack));
 
@@ -92,6 +149,9 @@ QString PushTarget::manifestUrl(const QString& pack) const
 
 QString PushTarget::uploadUrl(const QString& pack, const QString& relativePath) const
 {
+    if (this->github)
+        return QString("%1/contents/%2/%3").arg(base(), encoded(pack), encoded(relativePath, "/"));
+
     if (this->relay)
     {
         return QString("%1&pack=%2&path=%3").arg(relayQuery(this->host, "upload"),
@@ -101,9 +161,42 @@ QString PushTarget::uploadUrl(const QString& pack, const QString& relativePath) 
     return QString("%1/templates/%2/%3").arg(base(), pack, encoded(relativePath, "/"));
 }
 
-QByteArray PushTarget::tokenHeader() const
+QString PushTarget::removeUrl(const QString& pack, const QString& relativePath) const
 {
-    return this->relay ? QByteArray("X-Relay-Token") : QByteArray("X-Template-Token");
+    if (this->github)
+        return QString("%1/contents/%2/%3").arg(base(), encoded(pack), encoded(relativePath, "/"));
+
+    return QString("%1&pack=%2&path=%3").arg(relayQuery(this->host, "remove"),
+                                             encoded(pack), encoded(relativePath, "/"));
+}
+
+void PushTarget::authorise(QNetworkRequest& request) const
+{
+    if (this->github)
+    {
+        // GitHub refuses a request with no user agent, so that is not optional.
+        request.setRawHeader("Authorization", QByteArray("Bearer ") + this->token.toUtf8());
+        request.setRawHeader("Accept", "application/vnd.github+json");
+        request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+        request.setRawHeader("User-Agent", "CasparCG-Template-Push");
+        return;
+    }
+
+    request.setRawHeader(this->relay ? "X-Relay-Token" : "X-Template-Token", this->token.toUtf8());
+}
+
+// Git names a file by sha1 of "blob <length>\0" then its bytes. A tree listing
+// gives those, so a pack on disk can be compared against a repository without
+// downloading any of it.
+QString PushWindow::gitBlobSha(const QByteArray& content)
+{
+    QByteArray prefix = QByteArray("blob ") + QByteArray::number(content.size()) + '\0';
+
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(prefix);
+    hash.addData(content);
+
+    return QString::fromLatin1(hash.result().toHex());
 }
 
 namespace
@@ -160,11 +253,13 @@ void PushWindow::buildUi()
     this->targetTable->setColumnWidth(1, 110);
     this->targetTable->setColumnWidth(2, 150);
     this->targetTable->setToolTip(
-        "A client: host:port, the same port it hosts its sheet cache on, with the token\n"
-        "from its Settings -> Templates.\n\n"
-        "A relay: the full address of relay.php, with that relay's UPLOAD token. Use this\n"
-        "for any client you cannot reach directly. Those clients pull from the relay\n"
-        "themselves, so nothing has to reach in to them.");
+        "Three kinds of address, told apart by how they are written:\n\n"
+        "  10.0.0.5:3000                 a client, token from its Settings -> Templates\n"
+        "  https://host/relay/relay.php  a relay, that relay's UPLOAD token\n"
+        "  github:owner/repo@branch      a private repository, a GitHub token with\n"
+        "                                read and write access to its contents\n\n"
+        "Use a relay or a repository for any client you cannot reach directly. Those\n"
+        "clients pull for themselves, so nothing has to reach in to them.");
     targetLayout->addWidget(this->targetTable);
 
     QHBoxLayout* targetButtons = new QHBoxLayout();
@@ -273,9 +368,9 @@ void PushWindow::loadSettings()
         this->targetTable->setItem(row, 0, use);
         this->targetTable->setItem(row, 1, new QTableWidgetItem(entry.value("name").toString()));
         QString host = entry.value("host").toString();
+        bool whole = host.contains("://") || host.startsWith("github:", Qt::CaseInsensitive);
         this->targetTable->setItem(row, 2, new QTableWidgetItem(
-            host.contains("://") ? host
-                                 : QString("%1:%2").arg(host).arg(entry.value("port").toInt(3000))));
+            whole ? host : QString("%1:%2").arg(host).arg(entry.value("port").toInt(3000))));
         this->targetTable->setItem(row, 3, new QTableWidgetItem(entry.value("token").toString()));
     }
 
@@ -292,14 +387,17 @@ void PushWindow::saveSettings()
     for (int row = 0; row < this->targetTable->rowCount(); row++)
     {
         QString address = this->targetTable->item(row, 2) ? this->targetTable->item(row, 2)->text().trimmed() : QString();
-        bool relay = address.contains("://");
-        int colon = relay ? -1 : address.lastIndexOf(':');
+
+        // Stored the way it was typed, and taken apart again on the way back in, so
+        // there is one reading of an address rather than two that can drift.
+        PushTarget parsed;
+        parsed.readAddress(address);
 
         QJsonObject entry;
         entry.insert("send", this->targetTable->item(row, 0) && this->targetTable->item(row, 0)->checkState() == Qt::Checked);
         entry.insert("name", this->targetTable->item(row, 1) ? this->targetTable->item(row, 1)->text() : QString());
-        entry.insert("host", colon > 0 ? address.left(colon) : address);
-        entry.insert("port", colon > 0 ? address.mid(colon + 1).toInt() : 3000);
+        entry.insert("host", (parsed.relay || parsed.github) ? address : parsed.host);
+        entry.insert("port", parsed.port);
         entry.insert("token", this->targetTable->item(row, 3) ? this->targetTable->item(row, 3)->text() : QString());
         targets.append(entry);
     }
@@ -379,20 +477,7 @@ QList<PushTarget> PushWindow::checkedTargets() const
         PushTarget target;
         target.name = this->targetTable->item(row, 1) ? this->targetTable->item(row, 1)->text().trimmed() : QString();
         target.token = this->targetTable->item(row, 3) ? this->targetTable->item(row, 3)->text().trimmed() : QString();
-
-        // A scheme means a relay. Splitting a URL on its last colon would otherwise
-        // read "https" as the host, which is a confusing way to find out.
-        target.relay = address.contains("://");
-        if (target.relay)
-        {
-            target.host = address;
-        }
-        else
-        {
-            int colon = address.lastIndexOf(':');
-            target.host = colon > 0 ? address.left(colon) : address;
-            target.port = colon > 0 ? address.mid(colon + 1).toInt() : 3000;
-        }
+        target.readAddress(address);
 
         if (!target.host.isEmpty())
             targets.append(target);
@@ -422,7 +507,7 @@ QString PushWindow::humanBytes(qint64 bytes)
     return QString("%1 B").arg(bytes);
 }
 
-QMap<QString, QString> PushWindow::localFiles(const QString& pack) const
+QMap<QString, QString> PushWindow::localFiles(const QString& pack, bool gitStyle) const
 {
     QMap<QString, QString> files;
 
@@ -442,9 +527,12 @@ QMap<QString, QString> PushWindow::localFiles(const QString& pack) const
         if (!file.open(QIODevice::ReadOnly))
             continue;
 
-        files.insert(relative, QString::fromLatin1(
-            QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha1).toHex()));
+        QByteArray content = file.readAll();
         file.close();
+
+        files.insert(relative, gitStyle
+            ? gitBlobSha(content)
+            : QString::fromLatin1(QCryptographicHash::hash(content, QCryptographicHash::Sha1).toHex()));
     }
 
     return files;
@@ -512,7 +600,7 @@ void PushWindow::nextPair()
     QString pack = pair.second;
 
     QNetworkRequest request((QUrl(target.manifestUrl(pack))));
-    request.setRawHeader(target.tokenHeader(), target.token.toUtf8());
+    target.authorise(request);
 
     QNetworkReply* reply = this->network->get(request);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, target, pack]() {
@@ -535,19 +623,58 @@ void PushWindow::nextPair()
             return;
         }
 
+        QJsonObject answer = QJsonDocument::fromJson(body).object();
+
         QMap<QString, QString> remote;
-        foreach (const QJsonValue& value, QJsonDocument::fromJson(body).object().value("files").toArray())
+        if (target.github)
         {
-            QJsonObject entry = value.toObject();
-            remote.insert(entry.value("path").toString(), entry.value("sha1").toString());
+            if (answer.value("truncated").toBool())
+            {
+                // A truncated tree looks exactly like a repository missing files, and
+                // acting on it would offer to re-upload things that are already there.
+                log(QString("  %1 \xE2\x80\x94 the repository is too large for one tree listing").arg(target.label()));
+                nextPair();
+                return;
+            }
+
+            // The tree is the whole repository; keep the part under this pack.
+            QString prefix = pack + "/";
+            foreach (const QJsonValue& value, answer.value("tree").toArray())
+            {
+                QJsonObject entry = value.toObject();
+                if (entry.value("type").toString() != "blob")
+                    continue;
+
+                QString full = entry.value("path").toString();
+                if (!full.startsWith(prefix))
+                    continue;
+
+                remote.insert(full.mid(prefix.length()), entry.value("sha").toString());
+            }
+        }
+        else
+        {
+            foreach (const QJsonValue& value, answer.value("files").toArray())
+            {
+                QJsonObject entry = value.toObject();
+                remote.insert(entry.value("path").toString(), entry.value("sha1").toString());
+            }
         }
 
-        QMap<QString, QString> local = localFiles(pack);
+        QMap<QString, QString> local = localFiles(pack, target.github);
         if (local.isEmpty())
         {
             log(QString("  %1 / %2 \xE2\x80\x94 no such pack in the templates folder").arg(target.label(), pack));
             nextPair();
             return;
+        }
+
+        if (target.github && remote.isEmpty())
+        {
+            // Worth saying once rather than listing every file as new without
+            // comment: the first push of a pack looks exactly like this.
+            log(QString("  %1 / %2 is not in the repository yet; every file counts as new")
+                .arg(target.label(), pack));
         }
 
         QString packRoot = QDir(this->sourceEdit->text().trimmed()).filePath(pack);
@@ -559,6 +686,10 @@ void PushWindow::nextPair()
             job.relativePath = relative;
             job.absolutePath = QDir(packRoot).filePath(relative);
             job.bytes = QFileInfo(job.absolutePath).size();
+
+            // What the far end calls its copy. GitHub needs it to replace a file, and
+            // there is nothing to name when the file is not there yet.
+            job.remoteId = remote.value(relative);
 
             if (!remote.contains(relative))
                 job.state = PushJob::New;
@@ -582,6 +713,7 @@ void PushWindow::nextPair()
             job.target = target;
             job.pack = pack;
             job.relativePath = relative;
+            job.remoteId = remote.value(relative);
             job.state = PushJob::Extra;
             this->results.append(job);
         }
@@ -746,23 +878,49 @@ void PushWindow::sendOne(int index)
     file.close();
 
     QNetworkRequest request((QUrl(job.target.uploadUrl(job.pack, job.relativePath))));
-    request.setRawHeader(job.target.tokenHeader(), job.target.token.toUtf8());
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
+    job.target.authorise(request);
 
-    // What was read off this disk, so the far end can refuse anything else. Both a
-    // client and a relay check it, and neither stores a file that fails.
-    request.setRawHeader("X-Content-Sha1",
-        QCryptographicHash::hash(payload, QCryptographicHash::Sha1).toHex());
+    QNetworkReply* reply = nullptr;
 
-    // A client takes a PUT at a path; the relay takes a POST with the path in the
-    // query. Same bytes, and the only thing that differs is the far end's taste.
-    QNetworkReply* reply = job.target.relay ? this->network->post(request, payload)
-                                            : this->network->put(request, payload);
+    if (job.target.github)
+    {
+        // A commit, not a file write. The sha names the copy being replaced; leaving
+        // it out on an existing file is how GitHub is told this is a new one, and
+        // sending the wrong one is refused rather than overwriting somebody's work.
+        QJsonObject commit;
+        commit.insert("message", QString("%1 %2/%3")
+            .arg(job.state == PushJob::New ? "Add" : "Update", job.pack, job.relativePath));
+        commit.insert("content", QString::fromLatin1(payload.toBase64()));
+
+        if (!job.remoteId.isEmpty())
+            commit.insert("sha", job.remoteId);
+        if (!job.target.branch.isEmpty())
+            commit.insert("branch", job.target.branch);
+
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        reply = this->network->put(request, QJsonDocument(commit).toJson(QJsonDocument::Compact));
+    }
+    else
+    {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
+
+        // What was read off this disk, so the far end can refuse anything else. Both
+        // a client and a relay check it, and neither stores a file that fails.
+        request.setRawHeader("X-Content-Sha1",
+            QCryptographicHash::hash(payload, QCryptographicHash::Sha1).toHex());
+
+        // A client takes a PUT at a path; the relay takes a POST with the path in
+        // the query. Same bytes, and only the far end's taste differs.
+        reply = job.target.relay ? this->network->post(request, payload)
+                                 : this->network->put(request, payload);
+    }
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, index, job]() {
         reply->deleteLater();
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        bool ok = (status == 200);
+
+        // GitHub answers 201 for a file it created and 200 for one it replaced.
+        bool ok = (status == 200 || status == 201);
 
         if (!ok && worthRetrying(status) && index < this->results.count()
             && this->results.at(index).attempts < MAXIMUM_ATTEMPTS)
@@ -788,7 +946,17 @@ void PushWindow::sendOne(int index)
         else
         {
             this->failed++;
-            QString reason = QJsonDocument::fromJson(reply->readAll()).object().value("error").toString();
+
+            QJsonObject failure = QJsonDocument::fromJson(reply->readAll()).object();
+
+            // A relay says "error"; GitHub says "message". A 409 from GitHub means
+            // the file moved under us, which a fresh Compare fixes.
+            QString reason = failure.value("error").toString();
+            if (reason.isEmpty())
+                reason = failure.value("message").toString();
+            if (status == 409 && job.target.github)
+                reason = "the repository changed since Compare; run Compare again";
+
             log(QString("  refused %1 / %2 \xE2\x80\x94 %3").arg(job.target.label(), job.relativePath,
                 reason.isEmpty() ? reply->errorString() : reason));
         }
@@ -836,7 +1004,7 @@ void PushWindow::identifyTargets()
     foreach (const PushTarget& target, targets)
     {
         QNetworkRequest request((QUrl(target.infoUrl())));
-        request.setRawHeader(target.tokenHeader(), target.token.toUtf8());
+        target.authorise(request);
 
         QNetworkReply* reply = this->network->get(request);
         QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, target]() {
@@ -846,6 +1014,19 @@ void PushWindow::identifyTargets()
             if (status == 200)
             {
                 QJsonObject info = QJsonDocument::fromJson(reply->readAll()).object();
+
+                if (target.github)
+                {
+                    // Saying so loudly: templates in a public repository are readable
+                    // by anyone, and that is not usually what was meant.
+                    log(QString("  %1 \xE2\x86\x92 %2, default branch %3, %4")
+                        .arg(target.label(), info.value("full_name").toString(),
+                             info.value("default_branch").toString(),
+                             info.value("private").toBool()
+                                ? "private"
+                                : "PUBLIC \xE2\x80\x94 anyone can read these templates"));
+                    return;
+                }
 
                 if (target.relay)
                 {
@@ -869,6 +1050,8 @@ void PushWindow::identifyTargets()
             // The three an operator will actually hit, named rather than left as a
             // transport error to decipher.
             QString why = (status == 401) ? "wrong or missing token"
+                        : (status == 404 && target.github) ? "no such repository, or this token cannot see it"
+                        : (status == 403 && target.github) ? "refused by GitHub, usually the rate limit"
                         : (status == 403) ? "template push is switched off on that client"
                         : (status == 429) ? "temporarily refusing this address after repeated wrong tokens"
                         : reply->errorString();
@@ -898,7 +1081,7 @@ void PushWindow::removeExtras()
         if (this->fileTable->item(row, 0)->checkState() != Qt::Checked)
             continue;
 
-        if (!this->results.at(row).target.relay)
+        if (!this->results.at(row).target.canRemove())
         {
             onClients++;
             continue;
@@ -954,14 +1137,30 @@ void PushWindow::nextRemoval()
     int index = this->removeQueue.takeFirst();
     PushJob job = this->results.at(index);
 
-    QString target = QString("%1&pack=%2&path=%3")
-        .arg(relayQuery(job.target.host, "remove"),
-             encoded(job.pack), encoded(job.relativePath, "/"));
+    QNetworkRequest request((QUrl(job.target.removeUrl(job.pack, job.relativePath))));
+    job.target.authorise(request);
 
-    QNetworkRequest request((QUrl(target)));
-    request.setRawHeader(job.target.tokenHeader(), job.target.token.toUtf8());
+    QNetworkReply* reply = nullptr;
 
-    QNetworkReply* reply = this->network->post(request, QByteArray());
+    if (job.target.github)
+    {
+        // Also a commit, and it needs the sha of exactly the copy being removed. The
+        // file stays in the repository's history either way, which is the part that
+        // makes this the least alarming of the three targets to take things off.
+        QJsonObject commit;
+        commit.insert("message", QString("Remove %1/%2").arg(job.pack, job.relativePath));
+        commit.insert("sha", job.remoteId);
+        if (!job.target.branch.isEmpty())
+            commit.insert("branch", job.target.branch);
+
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        reply = this->network->sendCustomRequest(request, "DELETE",
+                                                 QJsonDocument(commit).toJson(QJsonDocument::Compact));
+    }
+    else
+    {
+        reply = this->network->post(request, QByteArray());
+    }
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, index, job]() {
         reply->deleteLater();
 

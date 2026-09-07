@@ -8,6 +8,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QMap>
+#include <QtCore/QPair>
 #include <QtCore/QTimer>
 #include <QtCore/QUrl>
 
@@ -91,6 +92,69 @@ QStringList RelayClient::packFilter()
     return packs;
 }
 
+// ---- which kind of source is configured ----
+
+bool RelayClient::isGitHub()
+{
+    return url().startsWith("github:", Qt::CaseInsensitive);
+}
+
+// "github:owner/repo@branch" -> "owner/repo"
+QString RelayClient::gitHubOwnerRepo()
+{
+    if (!isGitHub())
+        return QString();
+
+    QString rest = url().mid(QString("github:").length()).trimmed();
+    int at = rest.indexOf('@');
+    if (at >= 0)
+        rest = rest.left(at);
+
+    while (rest.endsWith('/'))
+        rest.chop(1);
+
+    return rest;
+}
+
+// Empty means whatever the repository calls its default branch. Asking for HEAD
+// gets that without a second request to find out its name.
+QString RelayClient::gitHubBranch()
+{
+    if (!isGitHub())
+        return QString();
+
+    QString rest = url().mid(QString("github:").length()).trimmed();
+    int at = rest.indexOf('@');
+
+    return (at >= 0) ? rest.mid(at + 1).trimmed() : QString();
+}
+
+QString RelayClient::sourceLabel()
+{
+    if (!isGitHub())
+        return url();
+
+    QString branch = gitHubBranch();
+    return branch.isEmpty() ? QString("github.com/%1").arg(gitHubOwnerRepo())
+                            : QString("github.com/%1 (%2)").arg(gitHubOwnerRepo(), branch);
+}
+
+// GitHub wants a bearer token, a stated API version and a user agent; it refuses
+// requests without the last of those. A relay wants one header of its own.
+void RelayClient::authorise(QNetworkRequest& request) const
+{
+    if (isGitHub())
+    {
+        request.setRawHeader("Authorization", QByteArray("Bearer ") + token().toUtf8());
+        request.setRawHeader("Accept", "application/vnd.github+json");
+        request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+        request.setRawHeader("User-Agent", "CasparCG-Client");
+        return;
+    }
+
+    request.setRawHeader("X-Relay-Token", token().toUtf8());
+}
+
 // The operator may paste the URL with a query already on it, or without. Both
 // should work rather than one of them silently doing nothing.
 QString RelayClient::endpoint(const QString& action)
@@ -137,13 +201,13 @@ bool RelayClient::checkNow()
     {
         // An empty token would be sent as an empty header and refused, which is a
         // worse way to learn this than being told.
-        say("Relay: no address or no token, nothing to poll.");
+        say("No address or no token, nothing to poll.");
         return false;
     }
 
     if (TemplateInstaller::templatesRoot().isEmpty())
     {
-        say("Relay: no template folder is configured on this machine.");
+        say("No template folder is configured on this machine.");
         return false;
     }
 
@@ -161,25 +225,50 @@ void RelayClient::ping()
 {
     if (url().isEmpty() || token().isEmpty())
     {
-        say("Relay: no address or no token.");
+        say("No address or no token.");
         return;
     }
 
-    QNetworkRequest request((QUrl(endpoint("ping"))));
-    request.setRawHeader("X-Relay-Token", token().toUtf8());
+    // For GitHub the same question is "does this token open this repository", which
+    // the repository endpoint answers without touching any file.
+    QString target = isGitHub()
+        ? QString("https://api.github.com/repos/%1").arg(gitHubOwnerRepo())
+        : endpoint("ping");
+
+    QNetworkRequest request((QUrl(target)));
+    authorise(request);
+
+    bool github = isGitHub();
 
     QNetworkReply* reply = this->network->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, github]() {
         reply->deleteLater();
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status != 200)
         {
-            say(QString("Relay: %1").arg(status == 401 ? "wrong or missing token" : reply->errorString()));
+            // GitHub answers 404 rather than 403 for a private repository a token
+            // cannot see, so saying "or the token cannot see it" is the honest reading.
+            QString why = (status == 401) ? "the token was refused"
+                        : (status == 404 && github) ? "no such repository, or this token cannot see it"
+                        : (status == 403) ? "refused, which on GitHub usually means the rate limit"
+                        : reply->errorString();
+
+            say(QString("Source: %1").arg(why));
             return;
         }
 
         QJsonObject info = QJsonDocument::fromJson(reply->readAll()).object();
+
+        if (github)
+        {
+            say(QString("GitHub: reached %1, default branch %2, %3.")
+                .arg(info.value("full_name").toString(),
+                     info.value("default_branch").toString(),
+                     info.value("private").toBool() ? "private" : "PUBLIC \xE2\x80\x94 templates here are visible to anyone"));
+            return;
+        }
+
         say(QString("Relay: reached \"%1\", %2 pack(s) available.")
             .arg(info.value("relay").toString(), QString::number(info.value("packs").toInt())));
     });
@@ -187,13 +276,23 @@ void RelayClient::ping()
 
 void RelayClient::requestManifest()
 {
-    say("Relay: asking what is there");
+    say(isGitHub() ? "GitHub: reading the tree" : "Relay: asking what is there");
 
-    QNetworkRequest request((QUrl(endpoint("manifest"))));
-    request.setRawHeader("X-Relay-Token", token().toUtf8());
+    // One request lists every file in the repository with a Git blob digest each,
+    // which is the whole manifest in a single call.
+    QString branch = gitHubBranch().isEmpty() ? QString("HEAD") : gitHubBranch();
+    QString target = isGitHub()
+        ? QString("https://api.github.com/repos/%1/git/trees/%2?recursive=1")
+            .arg(gitHubOwnerRepo(), QString::fromUtf8(QUrl::toPercentEncoding(branch)))
+        : endpoint("manifest");
+
+    QNetworkRequest request((QUrl(target)));
+    authorise(request);
+
+    bool github = isGitHub();
 
     QNetworkReply* reply = this->network->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, github]() {
         reply->deleteLater();
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -209,13 +308,139 @@ void RelayClient::requestManifest()
                 return;
             }
 
-            done(status == 401 ? "wrong or missing token"
-                               : QString("could not read the manifest (%1)").arg(reply->errorString()));
+            QString why = (status == 401) ? "wrong or missing token"
+                        : (status == 404 && github) ? "no such repository or branch, or this token cannot see it"
+                        : (status == 403 && github) ? "refused by GitHub, usually the rate limit"
+                        : QString("could not read the manifest (%1)").arg(reply->errorString());
+
+            done(why);
             return;
         }
 
-        planFrom(reply->readAll());
+        if (github)
+            planFromGitHubTree(reply->readAll());
+        else
+            planFrom(reply->readAll());
     });
+}
+
+// The same job as planFrom, against a GitHub tree instead of a relay manifest.
+//
+// A tree is flat: every file in the repository with its full path. The first path
+// segment is the pack, and the rest is where the file sits inside it. The digests
+// are Git blob hashes, so they are compared against local files hashed the same
+// way rather than against a plain sha1.
+void RelayClient::planFromGitHubTree(const QByteArray& treeJson)
+{
+    QJsonParseError parseError;
+    QJsonDocument document = QJsonDocument::fromJson(treeJson, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject())
+    {
+        done("GitHub did not answer with a tree");
+        return;
+    }
+
+    QJsonObject root = document.object();
+    if (root.value("truncated").toBool())
+    {
+        // Not something to work around quietly: a truncated tree would look exactly
+        // like a repository that is missing files, and this would delete nothing but
+        // would report "up to date" while being wrong.
+        done("the repository is too large for one tree listing, so this cannot tell what is missing");
+        return;
+    }
+
+    QStringList wantedPacks = packFilter();
+    int skippedPacks = 0;
+
+    // Group by pack first, so each pack's local digests are read once.
+    QMap<QString, QList<QPair<QString, QString> > > byPack;   // pack -> [(path, blob sha)]
+
+    foreach (const QJsonValue& value, root.value("tree").toArray())
+    {
+        QJsonObject entry = value.toObject();
+        if (entry.value("type").toString() != "blob")
+            continue;
+
+        QString full = entry.value("path").toString();
+        int slash = full.indexOf('/');
+        if (slash <= 0)
+            continue;   // a file at the repository root belongs to no pack
+
+        QString pack = full.left(slash);
+        QString relative = full.mid(slash + 1);
+
+        // A repository carries its own machinery. Without this, .github would be
+        // installed as a pack called ".github", and every file in it fetched first.
+        if (pack.startsWith('.') || !TemplateInstaller::isSafeSegment(pack))
+            continue;
+
+        if (!wantedPacks.isEmpty() && !wantedPacks.contains(pack, Qt::CaseInsensitive))
+            continue;
+
+        byPack[pack].append(qMakePair(relative, entry.value("sha").toString()));
+    }
+
+    if (!wantedPacks.isEmpty())
+        skippedPacks = wantedPacks.count() - byPack.count();
+
+    foreach (const QString& pack, byPack.keys())
+    {
+        QMap<QString, QString> mine = TemplateInstaller::packDigests(pack, true);
+
+        QList<QPair<QString, QString> > entries = byPack.value(pack);
+        for (int i = 0; i < entries.count(); i++)
+        {
+            QString relative = entries.at(i).first;
+            QString sha = entries.at(i).second;
+
+            if (relative.isEmpty() || sha.isEmpty())
+                continue;
+
+            if (TemplateInstaller::isProtected(relative))
+                continue;
+
+            if (!TemplateInstaller::isSafeRelativePath(relative))
+            {
+                say(QString("  %1 / %2 refused: not a usable path").arg(pack, relative));
+                continue;
+            }
+
+            if (mine.value(relative) == sha)
+                continue;
+
+            Wanted wanted;
+            wanted.pack = pack;
+            wanted.relativePath = relative;
+            wanted.sha1 = sha;          // a Git blob hash here, checked as one after the fetch
+            this->queue.append(wanted);
+        }
+    }
+
+    if (this->queue.count() > MAXIMUM_FILES_PER_POLL)
+    {
+        done(QString("the repository offered %1 files, which is more than one poll will take. "
+                     "Check the address and the pack list.").arg(this->queue.count()));
+        return;
+    }
+
+    if (byPack.isEmpty())
+    {
+        // Not the same thing as being up to date, and saying so would be wrong. The
+        // usual cause is packs sitting in a subfolder rather than at the root.
+        done("no packs found in the repository. Each folder at its root is one pack.");
+        return;
+    }
+
+    if (this->queue.isEmpty())
+    {
+        done(skippedPacks > 0 ? QString("already up to date (%1 named pack(s) not in the repository)").arg(skippedPacks)
+                              : "already up to date");
+        return;
+    }
+
+    say(QString("GitHub: %1 file(s) to fetch").arg(this->queue.count()));
+    fetchNext();
 }
 
 // What the relay has, minus what this machine already has. Everything that decides
@@ -324,16 +549,26 @@ void RelayClient::fetchNext()
 
 void RelayClient::fetchOne(const Wanted& wanted)
 {
-    QString target = QString("%1&pack=%2&path=%3")
-        .arg(endpoint("fetch"),
-             QString::fromUtf8(QUrl::toPercentEncoding(wanted.pack)),
-             QString::fromUtf8(QUrl::toPercentEncoding(wanted.relativePath, "/")));
+    // Asking for the blob by its own hash rather than by path: the answer cannot be
+    // a different file than the one the tree listed, even if the branch moved while
+    // this poll was running.
+    QString target = isGitHub()
+        ? QString("https://api.github.com/repos/%1/git/blobs/%2").arg(gitHubOwnerRepo(), wanted.sha1)
+        : QString("%1&pack=%2&path=%3")
+            .arg(endpoint("fetch"),
+                 QString::fromUtf8(QUrl::toPercentEncoding(wanted.pack)),
+                 QString::fromUtf8(QUrl::toPercentEncoding(wanted.relativePath, "/")));
 
     QNetworkRequest request((QUrl(target)));
-    request.setRawHeader("X-Relay-Token", token().toUtf8());
+    authorise(request);
+
+    if (isGitHub())
+        request.setRawHeader("Accept", "application/vnd.github.raw");   // the bytes, not JSON
+
+    bool github = isGitHub();
 
     QNetworkReply* reply = this->network->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, wanted]() {
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, wanted, github]() {
         reply->deleteLater();
 
         int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -362,15 +597,17 @@ void RelayClient::fetchOne(const Wanted& wanted)
 
         QByteArray body = reply->readAll();
 
-        // The manifest said what these bytes would be. If they are not that, something
-        // between here and the relay changed them, and the last thing to do with bytes
-        // like that is write them where CasparCG will run them.
-        QString actual = QString::fromLatin1(
-            QCryptographicHash::hash(body, QCryptographicHash::Sha1).toHex());
+        // The listing said what these bytes would be. If they are not that, something
+        // between here and there changed them, and the last thing to do with bytes
+        // like that is write them where CasparCG will run them. A Git blob hash for
+        // GitHub, a plain sha1 for a relay, checked the same way either way.
+        QString actual = github ? TemplateInstaller::gitBlobSha(body)
+                                : QString::fromLatin1(
+                                      QCryptographicHash::hash(body, QCryptographicHash::Sha1).toHex());
         if (actual != wanted.sha1)
         {
             this->failed++;
-            say(QString("  %1 / %2 refused: the bytes do not match the digest the relay promised")
+            say(QString("  %1 / %2 refused: the bytes do not match the digest it was listed with")
                 .arg(wanted.pack, wanted.relativePath));
             fetchNext();
             return;
@@ -410,6 +647,6 @@ void RelayClient::done(const QString& note)
     else
         this->summary = QString("%1 file(s) installed").arg(this->installed);
 
-    say(QString("Relay: %1").arg(this->summary));
+    say(QString("%1: %2").arg(isGitHub() ? "GitHub" : "Relay", this->summary));
     emit finished(this->installed, this->failed, this->summary);
 }

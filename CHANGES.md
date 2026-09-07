@@ -548,6 +548,26 @@ Compare now lists the other direction too. A file the far end has that the pack 
 
 **Clear** takes ticked "only there" files off a **relay**, and asks before it does. Clients are never touched by it - they have no delete endpoint on purpose, and a relay's own remove leaves whatever a client already installed exactly where it is. Ticking an "only there" row never sends anything either: Push skips them entirely, so the one checkbox cannot mean two things at once.
 
+### Templates from a private GitHub repository
+A second way to reach clients on a network you do not control, and for most people the easier one. It costs nothing to run, does the authentication and the HTTPS for you, and keeps the history of every template you have shipped as a side effect. A bad template can be reverted.
+
+Write `github:owner/repo` where a relay address would go, on a client and in the push tool alike. Add `@branch` for anything other than the default. Each folder at the root of the repository is one pack; root files and dot folders are ignored.
+
+**One request lists the whole repository with a digest per file.** Those digests are Git blob hashes, so a client hashes its own files the same way and fetches only what differs. A pack that has not changed costs a single request for the whole estate. Each file is then fetched **by its digest rather than its path**, so a branch that moves mid-poll cannot hand a client a different file than the one it was told about, and the bytes are hashed again on arrival.
+
+**On the dev machine you may not need the tool at all.** Clone, copy the pack in, commit, push, and every client picks it up on its next poll. The push tool is there if you want the same review-before-you-send flow: Compare lists what differs, Push commits the ticked files one at a time with a message naming each, and Clear removes leftovers as commits, so nothing is ever really lost.
+
+Clients, relays and repositories sit in the same table and can be pushed to in one pass. Identify names the repository, its default branch, and says loudly if it is **public**, because templates in a public repository are readable by anyone.
+
+Tokens are fine-grained and scoped to the one repository: read-only on every client, read and write only in the push tool. A venue machine that goes missing cannot then change what the rest of the estate installs. `tools/relay/GITHUB.md` has the setup.
+
+A repository too large for a single tree listing is refused rather than guessed at, because a truncated listing looks exactly like a repository missing files and would be reported as "up to date" while being wrong.
+
+### The relay knows which clients have caught up
+Uploading to a relay was uploading into a void: you heard that the relay took the file, and never learned whether the venue actually pulled it. Before a show that is the only question worth asking.
+
+Clients now check in after each poll, reporting their machine name and the version they have of each pack they follow. `?action=clients` answers with the estate, each machine marked current or behind and named per pack. A client's own token cannot ask that question - it reports about itself and nothing more - and a hostile machine name cannot escape the folder it is written into.
+
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.
 
 ### Where the data comes from

@@ -105,6 +105,53 @@ bool TemplateInstaller::isSafeRelativePath(const QString& relativePath)
     return true;
 }
 
+// Git hashes a file as sha1 of "blob <length>\0" then the bytes. Knowing that is
+// what lets a pack on disk be compared against a GitHub tree listing without
+// downloading a single file.
+QString TemplateInstaller::gitBlobSha(const QByteArray& content)
+{
+    QByteArray prefix = QByteArray("blob ") + QByteArray::number(content.size()) + '\0';
+
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(prefix);
+    hash.addData(content);
+
+    return QString::fromLatin1(hash.result().toHex());
+}
+
+QMap<QString, QString> TemplateInstaller::packDigests(const QString& pack, bool gitStyle)
+{
+    QMap<QString, QString> digests;
+
+    QString root = templatesRoot();
+    if (root.isEmpty() || !isSafeSegment(pack))
+        return digests;
+
+    QDir packDir(QDir(root).filePath(pack));
+    if (!packDir.exists())
+        return digests;
+
+    QDirIterator it(packDir.absolutePath(), QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext())
+    {
+        it.next();
+
+        QFile file(it.fileInfo().absoluteFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+
+        QByteArray content = file.readAll();
+        file.close();
+
+        QString relative = packDir.relativeFilePath(it.fileInfo().absoluteFilePath());
+        digests.insert(relative, gitStyle
+            ? gitBlobSha(content)
+            : QString::fromLatin1(QCryptographicHash::hash(content, QCryptographicHash::Sha1).toHex()));
+    }
+
+    return digests;
+}
+
 QJsonObject TemplateInstaller::listPacks()
 {
     QJsonObject result;

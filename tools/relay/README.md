@@ -3,6 +3,9 @@
 A single PHP file that lets a dev machine update templates on clients it cannot
 reach.
 
+There is a second way to do the same job with no host of your own: a private
+GitHub repository. See [GITHUB.md](GITHUB.md).
+
 ## Why
 
 Pushing straight from the dev machine to a client works, and it is the better
@@ -118,5 +121,7 @@ which is what the Packs field is for.
 | `GET ?action=fetch&pack=X&path=Y` | one file, with `X-Relay-Sha1` |
 | `POST ?action=upload&pack=X&path=Y` | body is the file; send `X-Content-Sha1` and it is checked before storing |
 | `POST ?action=remove&pack=X&path=Y` | removes it here only |
+| `POST ?action=checkin` | a client reporting what it now has |
+| `GET ?action=clients` | who has checked in, and who is behind (upload token) |
 
 All of them want `X-Relay-Token`. Wrong or missing is `401`.

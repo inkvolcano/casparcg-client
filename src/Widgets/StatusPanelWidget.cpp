@@ -350,8 +350,8 @@ void StatusPanelWidget::updateRelayStatus()
     if (relay.isBusy())
     {
         this->relayDot->setStyleSheet(amber);
-        this->relayLabel->setText("Relay checking");
-        this->relayRow->setToolTip("Reading the relay now.");
+        this->relayLabel->setText(QString("%1 checking").arg(RelayClient::isGitHub() ? "GitHub" : "Relay"));
+        this->relayRow->setToolTip("Reading the source now.");
         this->relayCheckButton->setEnabled(false);
         return;
     }
@@ -364,9 +364,9 @@ void StatusPanelWidget::updateRelayStatus()
         // Enabled but never run: grey rather than red, because nothing has gone
         // wrong yet and a red light on startup would be read as a fault.
         this->relayDot->setStyleSheet(grey);
-        this->relayLabel->setText("Relay not checked yet");
+        this->relayLabel->setText(QString("%1 not checked yet").arg(RelayClient::isGitHub() ? "GitHub" : "Relay"));
         this->relayRow->setToolTip(QString("Pulling from %1.\nNothing has been checked since this client started.")
-            .arg(RelayClient::url()));
+            .arg(RelayClient::sourceLabel()));
         return;
     }
 
@@ -378,9 +378,9 @@ void StatusPanelWidget::updateRelayStatus()
                 : QString("%1h ago").arg(seconds / 3600);
 
     this->relayDot->setStyleSheet(relay.lastCheckOk() ? green : red);
-    this->relayLabel->setText(QString("Relay %1").arg(ago));
+    this->relayLabel->setText(QString("%1 %2").arg(RelayClient::isGitHub() ? "GitHub" : "Relay", ago));
     this->relayRow->setToolTip(QString("Pulling from %1.\nLast check %2: %3.")
-        .arg(RelayClient::url(), ago, relay.lastSummary()));
+        .arg(RelayClient::sourceLabel(), ago, relay.lastSummary()));
 }
 
 void StatusPanelWidget::setupActivityPanel()

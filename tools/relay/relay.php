@@ -14,6 +14,8 @@
 //   GET  ?action=manifest[&pack=SEVILLE]                  what is here, with digests
 //   GET  ?action=fetch&pack=SEVILLE&path=calendar.html    one file
 //   GET  ?action=ping                                     is this a relay, and which
+//   POST ?action=checkin                                  a client saying what it now has
+//   GET  ?action=clients                                  who has checked in, and are they current
 //
 // TWO tokens, and they are deliberately not the same one. The dev machine holds
 // the upload token; the clients hold the download token. A client that is stolen
@@ -208,13 +210,57 @@ function allPacks() {
 
     $packs = array();
     foreach (scandir(STORAGE) as $name) {
-        if ($name === '.' || $name === '..' || !is_dir(STORAGE . '/' . $name)) {
+        // Anything dotted is this relay's own bookkeeping, not a pack. Without this
+        // the check-in folder would be offered to every client as something to
+        // install, which is exactly the wrong shape of mistake.
+        if ($name === '' || $name[0] === '.' || !is_dir(STORAGE . '/' . $name)) {
             continue;
         }
         $packs[] = $name;
     }
     sort($packs);
     return $packs;
+}
+
+// ---- who has picked things up ---------------------------------------------
+
+// Uploading to a relay is uploading into a void: the dev machine hears that the
+// relay took the file and never learns whether the venue actually pulled it. So
+// clients say so, and this is where that is kept.
+
+define('CLIENT_DIR', STORAGE . '/.clients');
+
+// Enough for any estate this is for, and a bound on what a misbehaving client can
+// fill the disk with. Updating an existing record is always allowed.
+define('MAX_CLIENTS', 500);
+
+/** A client name reduced to something safe to use as a filename. */
+function clientId($name) {
+    $id = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
+    $id = trim($id, '._-');
+    return $id === '' ? '' : substr($id, 0, 64);
+}
+
+function allClients() {
+    if (!is_dir(CLIENT_DIR)) {
+        return array();
+    }
+
+    $clients = array();
+    foreach (scandir(CLIENT_DIR) as $name) {
+        if (!str_ends_with($name, '.json')) {
+            continue;
+        }
+        $record = json_decode(file_get_contents(CLIENT_DIR . '/' . $name), true);
+        if (is_array($record)) {
+            $clients[] = $record;
+        }
+    }
+
+    usort($clients, function ($a, $b) {
+        return strcmp(isset($a['host']) ? $a['host'] : '', isset($b['host']) ? $b['host'] : '');
+    });
+    return $clients;
 }
 
 // ---- storage, and keeping it out of the web ------------------------------
@@ -254,6 +300,87 @@ switch ($action) {
             'maxBytes'  => MAX_FILE_BYTES,
             'at'        => gmdate('c'),
         ));
+
+    case 'checkin':
+        // A client's own token. It reports about itself and nothing else, and the
+        // record it writes is the one named after it.
+        requireToken(DOWNLOAD_TOKEN);
+
+        $sent = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($sent)) {
+            reply(400, array('error' => 'Expected a JSON body'));
+        }
+
+        $id = clientId(isset($sent['host']) ? $sent['host'] : '');
+        if ($id === '') {
+            reply(400, array('error' => 'Need a usable host name'));
+        }
+
+        // Only the fields this understands are kept. A client cannot store arbitrary
+        // content here by adding keys to the body.
+        $record = array(
+            'host'   => substr((string) $sent['host'], 0, 128),
+            'os'     => isset($sent['os']) ? substr((string) $sent['os'], 0, 128) : '',
+            'packs'  => array(),
+            'seenAt' => gmdate('c'),
+        );
+
+        if (isset($sent['packs']) && is_array($sent['packs'])) {
+            foreach ($sent['packs'] as $name => $version) {
+                if (!is_string($name) || !safeSegment($name) || count($record['packs']) >= 100) {
+                    continue;
+                }
+                $record['packs'][$name] = substr((string) $version, 0, 64);
+            }
+        }
+
+        $file = CLIENT_DIR . '/' . $id . '.json';
+        if (!is_dir(CLIENT_DIR) && !mkdir(CLIENT_DIR, 0755, true)) {
+            reply(500, array('error' => 'Cannot record check-ins'));
+        }
+
+        // A new name is capped; an existing one may always update itself, so a full
+        // relay never stops an estate that is already known from reporting.
+        if (!file_exists($file) && count(allClients()) >= MAX_CLIENTS) {
+            reply(429, array('error' => 'This relay is already tracking as many clients as it will'));
+        }
+
+        $temporary = $file . '.part';
+        if (file_put_contents($temporary, json_encode($record)) === false || !rename($temporary, $file)) {
+            @unlink($temporary);
+            reply(500, array('error' => 'Cannot record that check-in'));
+        }
+
+        reply(200, array('ok' => true, 'host' => $record['host'], 'at' => $record['seenAt']));
+
+    case 'clients':
+        // The dev machine's token: this is a view of the whole estate, which is not
+        // something one client should be able to enumerate with its own token.
+        requireToken(UPLOAD_TOKEN);
+
+        $current = array();
+        foreach (allPacks() as $name) {
+            $described = describePack($name);
+            $current[$name] = $described['version'];
+        }
+
+        $out = array();
+        foreach (allClients() as $client) {
+            $behind = array();
+            foreach ($current as $name => $version) {
+                // Only packs the client actually reported. A client that does not
+                // follow a pack is not behind on it.
+                if (isset($client['packs'][$name]) && $client['packs'][$name] !== $version) {
+                    $behind[] = $name;
+                }
+            }
+
+            $client['behind'] = $behind;
+            $client['current'] = empty($behind);
+            $out[] = $client;
+        }
+
+        reply(200, array('clients' => $out, 'packs' => $current, 'at' => gmdate('c')));
 
     case 'manifest':
         requireToken(DOWNLOAD_TOKEN);
@@ -352,6 +479,6 @@ switch ($action) {
     default:
         reply(400, array(
             'error'   => 'Unknown action',
-            'actions' => array('ping', 'manifest', 'fetch', 'upload', 'remove'),
+            'actions' => array('ping', 'manifest', 'fetch', 'upload', 'remove', 'checkin', 'clients'),
         ));
 }

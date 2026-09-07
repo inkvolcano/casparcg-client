@@ -571,32 +571,41 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     templatesVBox->addWidget(pushGroup);
 
-    // Pulling from a relay: the same job as a push, in the direction that survives a
-    // venue firewall. Nothing inbound is opened here; this machine reaches out.
-    QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay", tabTemplates);
+    // Pulling: the same job as a push, in the direction that survives a venue
+    // firewall. Nothing inbound is opened here; this machine reaches out. Either a
+    // relay or a private GitHub repository, told apart by how the address is written.
+    QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay Or GitHub", tabTemplates);
     QGridLayout* relayGrid = new QGridLayout(relayGroup);
     relayGrid->setHorizontalSpacing(8);
     relayGrid->setVerticalSpacing(4);
 
-    this->checkBoxRelayEnabled = new QCheckBox("Check a relay for new template packs", relayGroup);
+    this->checkBoxRelayEnabled = new QCheckBox("Check for new template packs", relayGroup);
     this->checkBoxRelayEnabled->setToolTip(
-        "This client asks the relay what is there and fetches only the files that differ.\n"
+        "This client asks what is there and fetches only the files that differ.\n"
         "It works from behind any firewall, because nothing has to reach in to this machine.\n"
-        "Files removed from the relay are never removed from here.");
+        "Files removed at the far end are never removed from here.");
     this->checkBoxRelayEnabled->setChecked(RelayClient::isEnabled());
     relayGrid->addWidget(this->checkBoxRelayEnabled, 0, 0, 1, 4);
 
-    relayGrid->addWidget(new QLabel("Relay address:", relayGroup), 1, 0);
+    relayGrid->addWidget(new QLabel("Source:", relayGroup), 1, 0);
     this->lineEditRelayUrl = new QLineEdit(RelayClient::url(), relayGroup);
-    this->lineEditRelayUrl->setPlaceholderText("https://example.com/relay/relay.php");
+    this->lineEditRelayUrl->setPlaceholderText("https://example.com/relay/relay.php   or   github:owner/repo");
+    this->lineEditRelayUrl->setToolTip(
+        "A relay: the full address of its relay.php.\n\n"
+        "A private GitHub repository: github:owner/repo, or github:owner/repo@branch\n"
+        "for a branch other than the default. Each folder at the root of the repository\n"
+        "is one pack. GitHub costs nothing to run and keeps the history of every\n"
+        "template as a side effect.");
     relayGrid->addWidget(this->lineEditRelayUrl, 1, 1, 1, 3);
 
-    relayGrid->addWidget(new QLabel("Download token:", relayGroup), 2, 0);
+    relayGrid->addWidget(new QLabel("Token:", relayGroup), 2, 0);
     this->lineEditRelayToken = new QLineEdit(RelayClient::token(), relayGroup);
-    this->lineEditRelayToken->setPlaceholderText("the DOWNLOAD_TOKEN set in relay.php");
+    this->lineEditRelayToken->setPlaceholderText("read-only token for whichever source is above");
     this->lineEditRelayToken->setToolTip(
-        "The relay keeps two tokens. This is the one that can only read.\n"
-        "The upload token belongs on the dev machine and should never be put here.");
+        "For a relay: its DOWNLOAD_TOKEN, the one that can only read. The upload token\n"
+        "belongs on the dev machine and should never be put here.\n\n"
+        "For GitHub: a fine-grained personal access token with read-only access to that\n"
+        "repository's contents. Give it nothing else, and nothing on any other repository.");
     relayGrid->addWidget(this->lineEditRelayToken, 2, 1, 1, 3);
 
     relayGrid->addWidget(new QLabel("Check every:", relayGroup), 3, 0);
@@ -608,10 +617,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     relayGrid->addWidget(new QLabel("Packs:", relayGroup), 4, 0);
     this->lineEditRelayPacks = new QLineEdit(RelayClient::packFilter().join(", "), relayGroup);
-    this->lineEditRelayPacks->setPlaceholderText("leave empty to follow every pack on the relay");
+    this->lineEditRelayPacks->setPlaceholderText("leave empty to follow every pack at the source");
     this->lineEditRelayPacks->setToolTip(
-        "A comma-separated list, so one relay can carry every venue while this client\n"
-        "takes only the packs that are its own.");
+        "A comma-separated list, so one relay or one repository can carry every venue\n"
+        "while this client takes only the packs that are its own.");
     relayGrid->addWidget(this->lineEditRelayPacks, 4, 1, 1, 3);
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
@@ -621,18 +630,21 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
     relayTest->setFocusPolicy(Qt::NoFocus);
-    relayTest->setToolTip("Reach the relay and say what it is. Writes nothing.");
+    relayTest->setToolTip("Reach the source and say what it is. Writes nothing.");
     relayGrid->addWidget(relayTest, 5, 2);
 
     QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
     relayCheck->setFixedHeight(22);
     relayCheck->setFocusPolicy(Qt::NoFocus);
-    relayCheck->setToolTip("Poll the relay now and install anything that differs.");
+    relayCheck->setToolTip("Check now and install anything that differs.");
     relayGrid->addWidget(relayCheck, 5, 3);
 
     relayGrid->addWidget(new QLabel(
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
         "alone here exactly as they are during a push.", relayGroup), 6, 0, 1, 4);
+
+    relayGrid->addWidget(new QLabel(
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 7, 0, 1, 4);
 
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.

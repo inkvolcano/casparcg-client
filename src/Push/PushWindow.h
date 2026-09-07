@@ -4,6 +4,8 @@
 #include <QtCore/QMap>
 #include <QtCore/QString>
 
+#include <QtNetwork/QNetworkRequest>
+
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QMainWindow>
@@ -13,22 +15,35 @@
 
 class QNetworkAccessManager;
 
-// Somewhere a pack can be sent. Either a CasparCG Client that accepts a push, or a
-// relay that clients pull from.
+// Somewhere a pack can be sent. One of three: a CasparCG Client that accepts a push,
+// a relay that clients pull from, or a private GitHub repository they pull from.
 //
-// Which one it is comes from how the address was typed. Anything with a scheme on it
-// is a relay; a plain host:port is a client. That keeps the table as it was and means
-// an operator who has only ever pushed directly changes nothing.
+// Which one comes from how the address was typed:
 //
-// The two speak different dialects of the same conversation, so every URL and the
-// name of the token header come from here rather than from the call sites.
+//   10.0.0.5:3000                  a client
+//   https://host/relay/relay.php   a relay
+//   github:owner/repo[@branch]     a repository, packs at its root
+//
+// That keeps the table as it was, so an operator who has only ever pushed directly
+// changes nothing.
+//
+// All three speak different dialects of the same conversation, so every URL and
+// every header comes from here rather than from the call sites.
 struct PushTarget
 {
     QString name;
-    QString host;        // host for a client; the whole URL for a relay
+    QString host;        // host for a client; the whole URL for a relay; the raw address for GitHub
     int port = 3000;
     QString token;
     bool relay = false;
+    bool github = false;
+
+    // Only for GitHub. An empty branch means the repository's own default.
+    QString ownerRepo;
+    QString branch;
+
+    // Fill relay/github/ownerRepo/branch/host/port from what the operator typed.
+    void readAddress(const QString& address);
 
     QString base() const;
     QString label() const;
@@ -42,9 +57,18 @@ struct PushTarget
     // Where one file goes.
     QString uploadUrl(const QString& pack, const QString& relativePath) const;
 
-    // A relay and a client authenticate with different headers and, deliberately,
-    // different tokens: the relay's upload token is not any client's push token.
-    QByteArray tokenHeader() const;
+    // Where a file is taken away again. Relays and repositories only.
+    QString removeUrl(const QString& pack, const QString& relativePath) const;
+
+    // Each kind authenticates differently, and deliberately with a different token:
+    // a relay's upload token is not any client's push token, and neither is a
+    // GitHub personal access token.
+    void authorise(QNetworkRequest& request) const;
+
+    // Whether files can be taken off this target at all. A client cannot: removing
+    // a template from a machine that may be on air is not a decision to make from
+    // another network, so it has no endpoint for it.
+    bool canRemove() const { return this->relay || this->github; }
 };
 
 // One file, on one client, and what comparing it found.
@@ -61,6 +85,11 @@ struct PushJob
     qint64 bytes = 0;
     State state = New;
     int attempts = 0;
+
+    // What the far end calls the copy it already has. GitHub needs this to replace
+    // or delete a file: without it an update would be read as an attempt to create
+    // something that is already there.
+    QString remoteId;
 
     QString stateText() const
     {
@@ -111,7 +140,11 @@ class PushWindow : public QMainWindow
         QList<PushTarget> checkedTargets() const;
         QStringList checkedPacks() const;
 
-        QMap<QString, QString> localFiles(const QString& pack) const;
+        // gitStyle asks for Git blob hashes rather than a plain sha1, which is what a
+        // GitHub tree listing gives back and therefore what it must be compared to.
+        QMap<QString, QString> localFiles(const QString& pack, bool gitStyle) const;
+
+        static QString gitBlobSha(const QByteArray& content);
         static bool isProtected(const QString& relativePath);
         static QString humanBytes(qint64 bytes);
 

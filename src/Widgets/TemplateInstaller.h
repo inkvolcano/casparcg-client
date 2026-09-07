@@ -4,6 +4,7 @@
 
 #include <QtCore/QByteArray>
 #include <QtCore/QJsonObject>
+#include <QtCore/QMap>
 #include <QtCore/QString>
 
 // Installing a template pack that was pushed from a dev machine.
@@ -47,6 +48,15 @@ class WIDGETS_EXPORT TemplateInstaller
         static bool isThrottled(const QString& peer);
         static void noteBadToken(const QString& peer);
         static void noteGoodToken(const QString& peer);
+
+        // Every file in a pack with the digest to compare it by, keyed on the
+        // relative path. Git blob digests when gitStyle is set, so a pack can be
+        // compared against a GitHub tree without fetching anything.
+        static QMap<QString, QString> packDigests(const QString& pack, bool gitStyle);
+
+        // sha1("blob <size>\0" + content), which is how Git names a file's contents
+        // and therefore what a tree listing gives back.
+        static QString gitBlobSha(const QByteArray& content);
 
         // The packs on this machine, with enough of a fingerprint to compare.
         static QJsonObject listPacks();
