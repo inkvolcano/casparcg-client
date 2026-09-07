@@ -156,6 +156,8 @@ qt_add_library(widgets
     SheetsPanelWidget.cpp SheetsPanelWidget.h SheetsPanelWidget.ui
     SheetsProjectRegistry.cpp SheetsProjectRegistry.h
     SheetCacheServer.cpp SheetCacheServer.h
+    TemplateInstaller.cpp TemplateInstaller.h
+    RelayClient.cpp RelayClient.h
     SheetDataResolver.cpp SheetDataResolver.h
     SheetsActionsDialog.cpp SheetsActionsDialog.h
     SimpleModeWidget.cpp SimpleModeWidget.h

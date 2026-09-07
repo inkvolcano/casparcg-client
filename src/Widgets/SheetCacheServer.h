@@ -60,7 +60,8 @@ class WIDGETS_EXPORT SheetCacheServer : public QObject
         Q_SLOT void readFromSocket();
         Q_SLOT void forgetSocket();
 
-        void handle(QTcpSocket* socket, const QString& method, const QString& target, const QByteArray& body);
+        void handle(QTcpSocket* socket, const QString& method, const QString& target,
+                    const QByteArray& body, const QString& pushToken);
         void respond(QTcpSocket* socket, int status, const QByteArray& body,
                      const QDateTime& cachedAt = QDateTime());
 

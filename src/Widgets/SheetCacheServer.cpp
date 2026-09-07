@@ -1,6 +1,7 @@
 #include "SheetCacheServer.h"
 
 #include "SheetDataResolver.h"
+#include "TemplateInstaller.h"
 
 #include "DatabaseManager.h"
 #include "Models/ConfigurationModel.h"
@@ -156,7 +157,9 @@ void SheetCacheServer::start()
     if (isRunning())
         return;
 
-    if (!isEnabled())
+    // The push endpoint rides on this same socket, so the server is wanted if
+    // either feature is on.
+    if (!isEnabled() && !TemplateInstaller::isEnabled())
         return;
 
     QDir().mkpath(cacheDirectory());
@@ -248,11 +251,14 @@ void SheetCacheServer::readFromSocket()
     QString target = QString::fromLatin1(requestLine.at(1));
 
     qsizetype contentLength = 0;
+    QString pushToken;
     for (int i = 1; i < lines.count(); i++)
     {
         QByteArray line = lines.at(i).trimmed();
         if (line.toLower().startsWith("content-length:"))
             contentLength = line.mid(line.indexOf(':') + 1).trimmed().toLongLong();
+        else if (line.toLower().startsWith("x-template-token:"))
+            pushToken = QString::fromUtf8(line.mid(line.indexOf(':') + 1).trimmed());
     }
 
     QByteArray body = buffer.mid(headerEnd + 4);
@@ -261,10 +267,11 @@ void SheetCacheServer::readFromSocket()
 
     body = body.left(contentLength);
 
-    handle(socket, method, target, body);
+    handle(socket, method, target, body, pushToken);
 }
 
-void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const QString& target, const QByteArray& body)
+void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const QString& target,
+                              const QByteArray& body, const QString& pushToken)
 {
     QUrl url(target);
     QUrlQuery query(url.query());
@@ -351,6 +358,103 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
         return;
     }
 
+    // ---- template push ----
+    // A template is HTML that CasparCG executes, so this is off unless switched on
+    // and every request carries the token from Settings. Both checks come before
+    // anything is read off the path.
+    if (path == "/templates" || path.startsWith("/templates/"))
+    {
+        if (!TemplateInstaller::isEnabled())
+        {
+            respond(socket, 403, "{\"error\":\"Template push is switched off on this client\"}");
+            return;
+        }
+
+        QString peer = socket->peerAddress().toString();
+        if (TemplateInstaller::isThrottled(peer))
+        {
+            respond(socket, 429, "{\"error\":\"Too many wrong tokens from this address; try later\"}");
+            return;
+        }
+
+        QString expected = TemplateInstaller::token();
+        if (expected.isEmpty() || pushToken != expected)
+        {
+            // An unset token never matches, so switching the feature on without
+            // setting one leaves it shut rather than open.
+            TemplateInstaller::noteBadToken(peer);
+            respond(socket, 401, "{\"error\":\"Missing or wrong X-Template-Token\"}");
+            return;
+        }
+
+        TemplateInstaller::noteGoodToken(peer);
+
+        QString remainder = path.mid(QString("/templates").length());
+        if (remainder.startsWith('/'))
+            remainder = remainder.mid(1);
+
+        if (remainder == "info")
+        {
+            respond(socket, 200, QJsonDocument(TemplateInstaller::identify()).toJson(QJsonDocument::Indented));
+            return;
+        }
+
+        if (remainder.isEmpty())
+        {
+            if (method != "GET")
+            {
+                respond(socket, 405, "{\"error\":\"Method not allowed\"}");
+                return;
+            }
+
+            respond(socket, 200, QJsonDocument(TemplateInstaller::listPacks()).toJson(QJsonDocument::Indented));
+            return;
+        }
+
+        int slash = remainder.indexOf('/');
+        QString pack = (slash < 0) ? remainder : remainder.left(slash);
+        QString relativePath = (slash < 0) ? QString() : remainder.mid(slash + 1);
+
+        if (relativePath.isEmpty())
+        {
+            if (method != "GET")
+            {
+                respond(socket, 405, "{\"error\":\"Method not allowed\"}");
+                return;
+            }
+
+            bool found = false;
+            QJsonObject described = TemplateInstaller::describePack(pack, &found);
+            respond(socket, found ? 200 : 404, QJsonDocument(described).toJson(QJsonDocument::Indented));
+            return;
+        }
+
+        if (method != "PUT")
+        {
+            respond(socket, 405, "{\"error\":\"Method not allowed\"}");
+            return;
+        }
+
+        QString reason;
+        int status = TemplateInstaller::installFile(pack, relativePath, body, &reason);
+        if (status == 200)
+        {
+            QJsonObject ok;
+            ok.insert("ok", true);
+            ok.insert("pack", pack);
+            ok.insert("path", relativePath);
+            ok.insert("bytes", body.size());
+            respond(socket, 200, QJsonDocument(ok).toJson(QJsonDocument::Compact));
+            return;
+        }
+
+        QJsonObject failure;
+        failure.insert("error", reason);
+        failure.insert("pack", pack);
+        failure.insert("path", relativePath);
+        respond(socket, status, QJsonDocument(failure).toJson(QJsonDocument::Compact));
+        return;
+    }
     // ---- the cache itself ----
     // Matched on the parameters rather than the path, so a template still asking for
     // local_server.php reaches this untouched.
@@ -424,7 +528,11 @@ void SheetCacheServer::respond(QTcpSocket* socket, int status, const QByteArray&
         case 204: reason = "No Content"; break;
         case 400: reason = "Bad Request"; break;
         case 404: reason = "Not Found"; break;
+        case 401: reason = "Unauthorized"; break;
+        case 403: reason = "Forbidden"; break;
         case 405: reason = "Method Not Allowed"; break;
+        case 409: reason = "Conflict"; break;
+        case 429: reason = "Too Many Requests"; break;
         case 500: reason = "Internal Server Error"; break;
         default: break;
     }
