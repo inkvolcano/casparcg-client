@@ -621,6 +621,16 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p><b>PHP&rsquo;s <code>post_max_size</code> is 8 MB by default, under the 32 MB the relay advertised.</b> A body over that limit does not arrive short, it arrives empty, and the relay would have written an empty file over a working template and reported success. Uploads now compare what arrived against the declared <code>Content-Length</code> and refuse a body that did not come whole, naming <code>post_max_size</code> as the cause. <code>ping</code> reports the limit that actually applies rather than the one in the source.</p>
 <p><b>A PHP warning printed in front of a JSON answer breaks every client.</b> On a host with <code>display_errors</code> on, one deprecation notice is enough, and the symptom gives no hint of the cause. The relay now turns display errors off for itself and discards anything that reached the output buffer before it answered, including on the raw file download where a warning would have corrupted the bytes.</p>
 <p>That is not the whole fix: some warnings are emitted at request startup, before any code in the file runs. A <code>.user.ini</code> and an <code>.htaccess</code> now ship beside <code>relay.php</code> to cover that, and <b>they have to be deployed with it</b> &mdash; they are dotfiles, so check your upload tool is not hiding them. The self-test reports it as a problem if they were not.</p>
+
+<h3>A venue can now say why it is stuck</h3>
+<p>A client that falls behind was a phone call: nobody can open the log on a machine at someone else&rsquo;s venue, and &ldquo;behind on SEVILLE&rdquo; does not say whether the disk is full, the token is wrong, or a file will not write.</p>
+<p>The check-in now carries what the last poll actually did, and Identify prints it beside the machine that is behind. A client that is current is not made to repeat itself.</p>
+<p><b>A client reporting failures is never shown as current.</b> One that could install nothing reports no packs at all, so judging by the pack list alone called it up to date. It reads <b>FAILING</b> now, on both ends, and the reason comes with it. The reported text is capped, like everything else a client can send.</p>
+
+<h3>Measured: the network timeouts are inactivity timeouts</h3>
+<p>Both halves set a transfer timeout, and it mattered whether that is a deadline or a gap. If it were a deadline, a large template on a slow venue link would be killed while it was transferring perfectly well, and every retry would do the same.</p>
+<p>Measured against Qt 6.5.3 rather than assumed, because the documentation does not say. A transfer delivering a byte every two seconds for eighteen seconds completed under a five second timeout. A transfer that stopped delivering was cut at 5.0 seconds.</p>
+<p>So it is a gap, the current values are right, and neither needs raising for a big file. Both are now commented to say so, because raising them would only mean waiting longer to notice a dead connection.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

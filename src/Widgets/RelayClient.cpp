@@ -24,8 +24,12 @@ namespace
     // refusal rather than as an hour of traffic.
     const int MAXIMUM_FILES_PER_POLL = 500;
 
-    // Long enough for a slow venue link, short enough that a dead relay does not
-    // hold the queue open until someone notices.
+    // An INACTIVITY timeout, not a deadline. Measured and confirmed against Qt
+    // 6.5.3: a transfer that keeps delivering bytes runs as long as it needs, and
+    // one that stops delivering is cut at exactly this interval.
+    //
+    // So this does not need raising for a large template on a slow link, and
+    // raising it would only mean waiting longer to notice a dead connection.
     const int TIMEOUT_MS = 30000;
 
     // Two more goes after the first. A venue link that drops a request is the
@@ -692,6 +696,13 @@ void RelayClient::sendCheckIn()
     body.insert("host", QSysInfo::machineHostName());
     body.insert("os", QSysInfo::prettyProductName());
     body.insert("packs", packs);
+
+    // What happened here, so a venue that is stuck can say why from the other side
+    // of the internet. Nobody can open this machine's log, and "behind on SEVILLE"
+    // without a reason is the start of a phone call rather than the end of one.
+    body.insert("result", this->summary);
+    body.insert("failed", this->failed);
+    body.insert("installed", this->installed);
 
     QNetworkRequest request((QUrl(endpoint("checkin"))));
     authorise(request);

@@ -504,6 +504,10 @@ switch ($action) {
             'host'   => substr((string) $sent['host'], 0, 128),
             'os'     => isset($sent['os']) ? substr((string) $sent['os'], 0, 128) : '',
             'packs'  => array(),
+            // What the client's last poll actually did. Capped like everything else
+            // here: a client does not get to decide how much of this disk it uses.
+            'result' => isset($sent['result']) ? substr((string) $sent['result'], 0, 300) : '',
+            'failed' => isset($sent['failed']) ? (int) $sent['failed'] : 0,
             'seenAt' => gmdate('c'),
         );
 
@@ -564,8 +568,13 @@ switch ($action) {
                 }
             }
 
+            // A client that reported failures is not current, whatever its pack list
+            // says. One that could install nothing reports no packs at all, and
+            // without this that reads as though it had nothing to do.
+            $failed = isset($client['failed']) ? (int) $client['failed'] : 0;
+
             $client['behind'] = $behind;
-            $client['current'] = empty($behind);
+            $client['current'] = empty($behind) && $failed === 0;
             $out[] = $client;
         }
 

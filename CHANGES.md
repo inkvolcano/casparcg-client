@@ -614,6 +614,20 @@ It answers `200` when nothing is wrong and `500` when something is, so it can go
 
 That is not the whole fix: some warnings are emitted at request startup, before any code in the file runs. A `.user.ini` and an `.htaccess` now ship beside `relay.php` to cover that, and **they have to be deployed with it** - they are dotfiles, so check your upload tool is not hiding them. The self-test reports it as a problem if they were not.
 
+### A venue can now say why it is stuck
+A client that falls behind was a phone call: nobody can open the log on a machine at someone else's venue, and "behind on SEVILLE" does not say whether the disk is full, the token is wrong, or a file will not write.
+
+The check-in now carries what the last poll actually did, and Identify prints it beside the machine that is behind. A client that is current is not made to repeat itself.
+
+**A client reporting failures is never shown as current.** One that could install nothing reports no packs at all, so judging by the pack list alone called it up to date. It reads **FAILING** now, on both ends, and the reason comes with it. The reported text is capped, like everything else a client can send.
+
+### Measured: the network timeouts are inactivity timeouts
+Both halves set a transfer timeout, and it mattered whether that is a deadline or a gap. If it were a deadline, a large template on a slow venue link would be killed while it was transferring perfectly well, and every retry would do the same.
+
+Measured against Qt 6.5.3 rather than assumed, because the documentation does not say. A transfer delivering a byte every two seconds for eighteen seconds completed under a five second timeout. A transfer that stopped delivering was cut at 5.0 seconds.
+
+So it is a gap, the current values are right, and neither needs raising for a big file. Both are now commented to say so, because raising them would only mean waiting longer to notice a dead connection.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

@@ -35,9 +35,10 @@ PushWindow::PushWindow(QWidget* parent)
 {
     this->network = new QNetworkAccessManager(this);
 
-    // A request that never answers would otherwise stall the whole queue. Across
-    // a local network this never fires; across the internet it is the difference
-    // between a slow push and one that appears to have died.
+    // An INACTIVITY timeout rather than a deadline. Confirmed against Qt 6.5.3: a
+    // transfer still delivering bytes is left alone however long it takes, and one
+    // that has stopped is cut at this interval. A large pack on a slow link is
+    // therefore safe, and this is not a number to raise for one.
     this->network->setTransferTimeout(20000);
 
     setWindowTitle("CasparCG Template Push");
@@ -1271,11 +1272,24 @@ void PushWindow::describeRelayClients(const PushTarget& target)
 
             // Columns, because this is read as a list of machines rather than
             // as sentences.
+            int failed = client.value("failed").toInt();
+
+            // Failures first. A client that could install nothing reports no packs,
+            // so judging only by the pack list would call it current.
+            QString state = (failed > 0) ? QString("FAILING")
+                          : behind.isEmpty() ? QString("current")
+                          : QString("behind on %1").arg(behind.join(", "));
+
+            // The reason, when there is one worth reading. A venue that is current
+            // does not need its last summary quoted back.
+            QString result = client.value("result").toString();
+            if (!result.isEmpty() && (failed > 0 || !behind.isEmpty()))
+                state += QString("  (%1)").arg(result);
+
             log(QString("    %1  %2  %3")
                 .arg(client.value("host").toString(), -22)
                 .arg(ago, -10)
-                .arg(behind.isEmpty() ? QString("current")
-                                      : QString("behind on %1").arg(behind.join(", "))));
+                .arg(state));
         }
     });
 }
