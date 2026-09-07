@@ -16,11 +16,39 @@
 //   GET  ?action=ping                                     is this a relay, and which
 //   POST ?action=checkin                                  a client saying what it now has
 //   GET  ?action=clients                                  who has checked in, and are they current
+//   GET  ?action=selftest                                 is this relay set up safely
 //
 // TWO tokens, and they are deliberately not the same one. The dev machine holds
 // the upload token; the clients hold the download token. A client that is stolen
 // can then read what it was already going to install, and cannot put anything
 // here for the other clients to fetch.
+
+// ---- keep PHP's own output out of the answers ----------------------------
+
+// Every answer here is JSON that a client parses. A host with display_errors on
+// will print a deprecation notice, or a warning about a request that exceeded
+// post_max_size, straight into the response body before this file runs a single
+// line. That turns valid JSON into garbage with HTML in front of it, and every
+// client fails on it for a reason no one would guess from the symptom.
+//
+// Errors still go to the host's log, which is where they belong.
+//
+// This is not the whole fix. Some warnings are emitted at request startup, before
+// this file runs a single statement, and nothing written here can catch one. The
+// .user.ini and .htaccess shipped beside this file cover that case, and they have
+// to be deployed with it. The self-test says so if they were not.
+$GLOBALS['relayDisplayErrorsWasOn'] = ini_get('display_errors');
+
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
+// A warning emitted before this point is already in the buffer, so it is thrown
+// away rather than sent. Nothing this file deliberately outputs is lost: every
+// reply happens after here.
+if (ob_get_level() === 0) {
+    ob_start();
+}
 
 // ---- configuration -------------------------------------------------------
 
@@ -65,7 +93,14 @@ if (!function_exists('str_ends_with')) {
 header('Content-Type: application/json');
 
 function reply($status, array $body) {
+    // Anything already in the buffer is PHP's, not ours, and it would corrupt the
+    // JSON. Dropped rather than sent, so a client always gets something it can parse.
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
+
     http_response_code($status);
+    header('Content-Type: application/json');
     echo json_encode($body, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -141,6 +176,35 @@ function isProtected($relativePath) {
     }
     $lower = strtolower($relativePath);
     return $lower === 'project.js' || $lower === 'extensions.json';
+}
+
+/** "8M" and "512K" and "1G" as a number of bytes. */
+function iniBytes($value) {
+    $value = trim((string) $value);
+    if ($value === '') {
+        return 0;
+    }
+
+    $number = (float) $value;
+    switch (strtolower(substr($value, -1))) {
+        case 'g': return (int) ($number * 1024 * 1024 * 1024);
+        case 'm': return (int) ($number * 1024 * 1024);
+        case 'k': return (int) ($number * 1024);
+    }
+    return (int) $number;
+}
+
+/**
+ * The largest body this relay can actually receive, which is not always the one it
+ * advertises: PHP's post_max_size wins, and on a default install it is smaller.
+ * A body over that limit does not arrive truncated, it arrives empty.
+ */
+function effectiveMaxBytes() {
+    $post = iniBytes(ini_get('post_max_size'));
+    if ($post > 0 && $post < MAX_FILE_BYTES) {
+        return $post;
+    }
+    return MAX_FILE_BYTES;
 }
 
 function packDir($pack) {
@@ -275,6 +339,124 @@ if (!file_exists($guard)) {
     file_put_contents($guard, "Require all denied\n<IfModule !mod_authz_core.c>\n  Deny from all\n</IfModule>\n");
 }
 
+// ---- is this thing set up safely -----------------------------------------
+
+// The failures that actually happen are not clever. Somebody deploys with the
+// shipped tokens. Somebody puts the storage under the web root on nginx, where the
+// .htaccess written next to it does nothing at all, and every template becomes a
+// public download. Somebody serves it over plain HTTP and the token goes across a
+// venue's wifi in clear.
+//
+// None of those announce themselves. This asks the questions instead of waiting for
+// someone to notice.
+function selfTest() {
+    $problems = array();
+    $warnings = array();
+    $notes = array();
+
+    // The one that turns a relay into a public write endpoint.
+    if (UPLOAD_TOKEN === 'change-me-upload' || DOWNLOAD_TOKEN === 'change-me-download') {
+        $problems[] = 'A token is still the shipped default. Anyone who has read this file can write templates here.';
+    }
+
+    // Two tokens with one value is one token, and the point of the split is gone:
+    // every client could then upload for every other client.
+    if (UPLOAD_TOKEN === DOWNLOAD_TOKEN) {
+        $problems[] = 'The upload and download tokens are the same, so every client can also upload.';
+    }
+
+    if (strlen(UPLOAD_TOKEN) < 20 || strlen(DOWNLOAD_TOKEN) < 20) {
+        $warnings[] = 'A token is shorter than 20 characters. Use something long and random.';
+    }
+
+    // Plain HTTP means the token and every template cross the network readable.
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+          || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+          || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+
+    $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+    $local = ($host === '' || strpos($host, 'localhost') === 0 || strpos($host, '127.0.0.1') === 0);
+
+    if (!$https && !$local) {
+        $problems[] = 'This request arrived over plain HTTP. Tokens and templates are readable in transit. Put it behind HTTPS.';
+    } elseif (!$https) {
+        $notes[] = 'Reached over plain HTTP, but on localhost, so this may just be a local test.';
+    }
+
+    // The quiet one. An .htaccess only binds Apache; on nginx or IIS the storage
+    // folder under a web root is simply served, token or no token.
+    $server = isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'unknown';
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? realpath($_SERVER['DOCUMENT_ROOT']) : false;
+    $storage = realpath(STORAGE);
+    $underDocRoot = ($docRoot !== false && $storage !== false
+                     && str_starts_with($storage, $docRoot . DIRECTORY_SEPARATOR));
+
+    if ($underDocRoot) {
+        $apache = (stripos($server, 'apache') !== false);
+        if ($apache) {
+            $warnings[] = 'Storage sits under the web root. The .htaccess covers Apache, but moving STORAGE outside the web root is safer.';
+        } else {
+            $problems[] = 'Storage sits under the web root on ' . $server . ', where .htaccess does nothing. '
+                        . 'Every template here may be downloadable without a token. Move STORAGE outside the web root, '
+                        . 'or add the equivalent deny rule for this server.';
+        }
+    } else {
+        $notes[] = 'Storage is outside the web root, which is where it belongs.';
+    }
+
+    if (!is_dir(STORAGE)) {
+        $problems[] = 'The storage folder does not exist and could not be created.';
+    } elseif (!is_writable(STORAGE)) {
+        $problems[] = 'The storage folder is not writable, so no upload can ever succeed.';
+    }
+
+    // Read before ini_set ran, so this is the host's own setting. It matters more
+    // than it looks: a request-startup warning is emitted before this file executes
+    // and lands in front of the JSON, which every client then fails to parse.
+    if (filter_var($GLOBALS['relayDisplayErrorsWasOn'], FILTER_VALIDATE_BOOLEAN)) {
+        $problems[] = 'display_errors is on for this host, so a PHP warning can be printed in front of '
+                    . 'a JSON answer and break every client. The .user.ini and .htaccess shipped beside '
+                    . 'relay.php fix this; deploy them alongside it, or set display_errors = Off for this host.';
+    }
+
+    if (version_compare(PHP_VERSION, '7.4', '<')) {
+        $problems[] = 'PHP ' . PHP_VERSION . ' is older than this needs. 7.4 or newer.';
+    }
+
+    // What an upload is actually allowed to be, which is not always what the relay
+    // says. PHP wins, and on a default install its limit is much the smaller.
+    $postMax = ini_get('post_max_size');
+    if (iniBytes($postMax) > 0 && iniBytes($postMax) < MAX_FILE_BYTES) {
+        $warnings[] = 'post_max_size is ' . $postMax . ', below the ' . round(MAX_FILE_BYTES / 1048576)
+                    . ' MB this relay advertises. Anything larger is refused rather than stored, '
+                    . 'which is correct but not what the limit says. Raise post_max_size in php.ini, '
+                    . 'or lower MAX_FILE_BYTES to match.';
+    }
+
+    $notes[] = 'PHP ' . PHP_VERSION . ' on ' . $server . '; post_max_size ' . $postMax
+             . '; the largest file that can actually be uploaded here is '
+             . round(effectiveMaxBytes() / 1048576, 1) . ' MB.';
+
+    $bytes = 0;
+    $files = 0;
+    foreach (allPacks() as $name) {
+        $described = describePack($name);
+        $bytes += $described['bytes'];
+        $files += count($described['files']);
+    }
+
+    $notes[] = count(allPacks()) . ' pack(s), ' . $files . ' file(s), '
+             . round($bytes / 1048576, 1) . ' MB stored; ' . count(allClients()) . ' client(s) checked in.';
+
+    return array(
+        'ok'       => empty($problems),
+        'problems' => $problems,
+        'warnings' => $warnings,
+        'notes'    => $notes,
+        'at'       => gmdate('c'),
+    );
+}
+
 // ---- routes --------------------------------------------------------------
 
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -297,7 +479,7 @@ switch ($action) {
             'relay'     => RELAY_NAME,
             'packs'     => count(allPacks()),
             'canUpload' => tokenIs(UPLOAD_TOKEN),
-            'maxBytes'  => MAX_FILE_BYTES,
+            'maxBytes'  => effectiveMaxBytes(),
             'at'        => gmdate('c'),
         ));
 
@@ -353,6 +535,13 @@ switch ($action) {
 
         reply(200, array('ok' => true, 'host' => $record['host'], 'at' => $record['seenAt']));
 
+    case 'selftest':
+        // The upload token: this reports on how the relay is configured, which is
+        // not something a client should be able to ask about.
+        requireToken(UPLOAD_TOKEN);
+        $result = selfTest();
+        reply($result['ok'] ? 200 : 500, $result);
+
     case 'clients':
         // The dev machine's token: this is a view of the whole estate, which is not
         // something one client should be able to enumerate with its own token.
@@ -405,6 +594,13 @@ switch ($action) {
             reply(404, array('error' => 'No such file'));
         }
 
+        // Same reasoning as reply(): a warning in front of the bytes would corrupt
+        // the file, and the digest check on the far end would refuse a template that
+        // was actually fine.
+        if (ob_get_level() > 0) {
+            ob_clean();
+        }
+
         header('Content-Type: application/octet-stream');
         header('Content-Length: ' . filesize($real));
         header('X-Relay-Sha1: ' . sha1_file($real));
@@ -422,8 +618,26 @@ switch ($action) {
 
         $body = file_get_contents('php://input');
         if ($body === false) {
+            $body = '';
+        }
+
+        // PHP silently discards a body over post_max_size, so what arrives is empty
+        // rather than short. Writing that would replace a working template with
+        // nothing, and the sender would be told it succeeded.
+        $declared = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : -1;
+        if ($declared > 0 && strlen($body) !== $declared) {
+            reply(413, array(
+                'error'    => 'The body did not arrive whole. This is almost always post_max_size in php.ini.',
+                'sent'     => $declared,
+                'received' => strlen($body),
+                'limit'    => ini_get('post_max_size'),
+            ));
+        }
+
+        if ($body === '') {
             reply(400, array('error' => 'No body'));
         }
+
         if (strlen($body) > MAX_FILE_BYTES) {
             reply(413, array('error' => 'Larger than this relay accepts'));
         }
@@ -479,6 +693,7 @@ switch ($action) {
     default:
         reply(400, array(
             'error'   => 'Unknown action',
-            'actions' => array('ping', 'manifest', 'fetch', 'upload', 'remove', 'checkin', 'clients'),
+            'actions' => array('ping', 'manifest', 'fetch', 'upload', 'remove',
+                               'checkin', 'clients', 'selftest'),
         ));
 }

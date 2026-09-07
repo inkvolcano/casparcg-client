@@ -957,6 +957,8 @@ void PushWindow::sendOne(int index)
                 reason = failure.value("message").toString();
             if (status == 409 && job.target.github)
                 reason = "the repository changed since Compare; run Compare again";
+            if (status == 413 && reason.isEmpty())
+                reason = "the far end would not take a file this size";
 
             log(QString("  refused %1 / %2 \xE2\x80\x94 %3").arg(job.target.label(), job.relativePath,
                 reason.isEmpty() ? reply->errorString() : reason));

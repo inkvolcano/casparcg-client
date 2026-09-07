@@ -594,6 +594,26 @@ It runs uic over the .ui files and moc over every `Q_OBJECT` header the named so
 
 It will not catch anything that only fails at link time, such as a slot declared and never defined.
 
+It does now. It reads each header for members declared and never given a body anywhere, which is the classic link error: the compiler is happy, moc connects the slot by name, and the link fails. Tuned against the real tree until it reported nothing on code that already links, then checked that it still catches a member deliberately left undefined.
+
+### The relay can check its own deployment
+`?action=selftest`, with the upload token. It asks the questions whose answers are silent when they are wrong.
+
+- a token still on the shipped default, or both tokens the same, which collapses the read/write split
+- storage sitting under the web root, which on nginx or IIS means every template is downloadable without a token, because the `.htaccess` beside it only binds Apache
+- plain HTTP, where the token and the templates cross the network readable
+- an upload limit smaller than the one the relay advertises
+- errors that would be printed into responses
+
+It answers `200` when nothing is wrong and `500` when something is, so it can go in a monitor.
+
+### Two real faults it found immediately
+**PHP's `post_max_size` is 8 MB by default, under the 32 MB the relay advertised.** A body over that limit does not arrive short, it arrives empty, and the relay would have written an empty file over a working template and reported success. Uploads now compare what arrived against the declared `Content-Length` and refuse a body that did not come whole, naming `post_max_size` as the cause. `ping` reports the limit that actually applies rather than the one in the source.
+
+**A PHP warning printed in front of a JSON answer breaks every client.** On a host with `display_errors` on, one deprecation notice is enough, and the symptom gives no hint of the cause. The relay now turns display errors off for itself and discards anything that reached the output buffer before it answered, including on the raw file download where a warning would have corrupted the bytes.
+
+That is not the whole fix: some warnings are emitted at request startup, before any code in the file runs. A `.user.ini` and an `.htaccess` now ship beside `relay.php` to cover that, and **they have to be deployed with it** - they are dotfiles, so check your upload tool is not hiding them. The self-test reports it as a problem if they were not.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

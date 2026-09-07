@@ -14,12 +14,14 @@ It also runs uic over every .ui and moc over every Q_OBJECT header the given
 files need, into a temporary folder, and compiles the moc output too. A signal
 whose type does not exist shows up there rather than three minutes into a build.
 
-What it will not catch: anything that only fails at link time, such as a slot
-that is declared and never defined.
+It also looks for members declared in a header and never defined anywhere, which
+is the classic link error: a slot that exists in the header, is connected by name
+through moc, and has no body. The compiler is happy and the link is not.
 """
 
 import glob
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -121,6 +123,134 @@ def moc_headers(qt_bin, sources, out_dir):
     return generated
 
 
+SKIP_IN_BODY = ('= 0', '=0', '= default', '= delete', 'Q_OBJECT', 'Q_DECLARE',
+                'typedef', 'friend', 'using ', 'enum ', 'return ', 'Q_SIGNAL')
+
+
+def declarations(header_text):
+    """[(class, member)] for every member function declared and not defined inline.
+
+    A header holds several classes and each owns its own members, so this tracks
+    the class body it is inside rather than pairing every name with every class.
+
+    Deliberately conservative: anything it cannot read confidently is skipped, so
+    it under-reports rather than complaining about code that is fine.
+    """
+    found = []
+
+    current = None        # the class whose body we are in
+    depth = 0             # brace depth inside that body
+    in_signals = False
+
+    for raw_line in header_text.splitlines():
+        line = raw_line.strip()
+
+        if current is None:
+            match = re.match(r'^(?:class|struct)\s+(?:[A-Z0-9_]+\s+)?(\w+)\b', line)
+            if match and not line.endswith(';'):
+                current = match.group(1)
+                depth = line.count('{') - line.count('}')
+                in_signals = False
+            continue
+
+        depth += line.count('{') - line.count('}')
+        if depth <= 0:
+            current = None
+            continue
+
+        # moc writes the body of every signal, so one without a definition is right.
+        stripped = line.rstrip(':')
+        if line.endswith(':') and stripped in ('Q_SIGNALS', 'signals'):
+            in_signals = True
+            continue
+        if line.endswith(':') and stripped in ('public', 'private', 'protected',
+                                               'public slots', 'private slots',
+                                               'protected slots', 'Q_SLOTS'):
+            in_signals = False
+            continue
+        if in_signals:
+            continue
+
+        # Only a member of the class we are directly inside; a nested struct's
+        # members belong to it, not to us.
+        if depth != 1:
+            continue
+
+        if not line.endswith(';') or '(' not in line or ')' not in line:
+            continue
+
+        # The tail of a declaration split over several lines. Its last identifier
+        # is an argument or a default value, never the member's name.
+        if line.count(')') > line.count('('):
+            continue
+        if line.startswith(('//', '*', '#', '/*')):
+            continue
+        if any(token in line for token in SKIP_IN_BODY):
+            continue
+        if '{' in line or '}' in line:
+            continue                      # defined inline right here
+        if 'operator' in line or 'template' in line:
+            continue
+
+        head = line.split('(', 1)[0].rstrip()
+        if not head or '=' in head or ',' in head:
+            continue
+
+        parts = head.split()
+        if len(parts) < 2 and not head.startswith('~'):
+            continue                      # a bare name is more likely a variable
+
+        name = parts[-1].lstrip('*&')
+        if not name.replace('~', '').replace('_', '').isalnum():
+            continue
+
+        found.append((current, name))
+
+    return found
+
+
+def undefined_members(sources):
+    """(class, member, header) for each declaration with no definition found.
+
+    A definition counts if it appears in the paired .cpp or in any other source in
+    the tree, because a class is occasionally split across files.
+    """
+    findings = []
+
+    for source in sources:
+        header = os.path.splitext(source)[0] + '.h'
+        if not os.path.exists(header):
+            continue
+
+        with open(header, 'r', encoding='utf-8', errors='replace') as handle:
+            header_text = handle.read()
+        with open(source, 'r', encoding='utf-8', errors='replace') as handle:
+            source_text = handle.read()
+
+        for name, member in declarations(header_text):
+                if (name + '::' + member) in source_text:
+                    continue
+
+                # Defined in some other translation unit in this module?
+                found = False
+                for base, _, files in os.walk(os.path.dirname(source) or ROOT):
+                    for other in files:
+                        if not other.endswith('.cpp'):
+                            continue
+                        path = os.path.join(base, other)
+                        with open(path, 'r', encoding='utf-8', errors='replace') as handle:
+                            if (name + '::' + member) in handle.read():
+                                found = True
+                                break
+                    if found:
+                        break
+
+                if not found:
+                    findings.append((name, member, os.path.relpath(header, ROOT)))
+
+    return findings
+
+
 def changed_files(all_mine):
     """What to check when nothing was named."""
     if all_mine:
@@ -205,7 +335,17 @@ def main():
 
     print()
     print('%d passed, %d failed' % (len(sources) + len(generated) - len(failures), len(failures)))
-    return 1 if failures else 0
+
+    # The link-time class of error, which /Zs cannot see: declared, connected by
+    # name through moc, and never given a body.
+    missing = undefined_members(sources)
+    if missing:
+        print()
+        print('Declared but no definition found (would fail at link):')
+        for class_name, member, header in missing:
+            print('  %s::%s   %s' % (class_name, member, header))
+
+    return 1 if (failures or missing) else 0
 
 
 if __name__ == '__main__':

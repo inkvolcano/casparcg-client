@@ -25,11 +25,25 @@ ends make outbound connections only. Neither has to know where the other is.
 
 ## Install
 
-1. Copy `relay.php` somewhere on a PHP host. PHP 7.4 or newer.
+1. Copy `relay.php` **and the `.user.ini` and `.htaccess` beside it** to a PHP
+   host. PHP 7.4 or newer. Those two turn off `display_errors` for the relay: a
+   PHP warning printed in front of a JSON answer breaks every client, and some
+   warnings happen before `relay.php` runs, so no code inside it can catch them.
+   They are dotfiles, so check your upload tool is not hiding them.
 2. Open it and change `UPLOAD_TOKEN` and `DOWNLOAD_TOKEN`. Two different
    long random strings. A relay left on the shipped values is a relay anyone can
    write templates to.
-3. Load `relay.php?action=ping` with a token header to check it answers.
+3. Load `relay.php?action=selftest` with the **upload** token. It checks the
+   things that go wrong quietly: default or matching tokens, storage that is
+   reachable over the web, plain HTTP, an upload limit smaller than advertised,
+   and errors that would be printed into responses.
+
+```bash
+curl -H "X-Relay-Token: YOUR-UPLOAD-TOKEN" "https://example.com/relay/relay.php?action=selftest"
+```
+
+It answers `200` when nothing is wrong and `500` when something is, so it can be
+put in a monitor.
 
 ```bash
 curl -H "X-Relay-Token: YOUR-DOWNLOAD-TOKEN" "https://example.com/relay/relay.php?action=ping"
@@ -123,5 +137,6 @@ which is what the Packs field is for.
 | `POST ?action=remove&pack=X&path=Y` | removes it here only |
 | `POST ?action=checkin` | a client reporting what it now has |
 | `GET ?action=clients` | who has checked in, and who is behind (upload token) |
+| `GET ?action=selftest` | is this relay set up safely (upload token) |
 
 All of them want `X-Relay-Token`. Wrong or missing is `401`.

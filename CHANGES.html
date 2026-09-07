@@ -603,6 +603,24 @@ python tools/syntax-check.py a.cpp b.cpp     just these
 python tools/syntax-check.py --all-mine      everything changed on this branch</code></pre>
 <p>It runs uic over the .ui files and moc over every <code>Q_OBJECT</code> header the named sources need, and compiles the moc output too, which is where a signal with a type that does not exist shows up. Visual Studio, the Qt kit and the dependencies the build fetches for itself are all found by looking rather than by being told, so a version bump does not turn every check into a complaint about a missing header.</p>
 <p>It will not catch anything that only fails at link time, such as a slot declared and never defined.</p>
+
+<p>It does now. It reads each header for members declared and never given a body anywhere, which is the classic link error: the compiler is happy, moc connects the slot by name, and the link fails. Tuned against the real tree until it reported nothing on code that already links, then checked that it still catches a member deliberately left undefined.</p>
+
+<h3>The relay can check its own deployment</h3>
+<p><code>?action=selftest</code>, with the upload token. It asks the questions whose answers are silent when they are wrong.</p>
+<ul>
+<li>a token still on the shipped default, or both tokens the same, which collapses the read/write split</li>
+<li>storage sitting under the web root, which on nginx or IIS means every template is downloadable without a token, because the <code>.htaccess</code> beside it only binds Apache</li>
+<li>plain HTTP, where the token and the templates cross the network readable</li>
+<li>an upload limit smaller than the one the relay advertises</li>
+<li>errors that would be printed into responses</li>
+</ul>
+<p>It answers <code>200</code> when nothing is wrong and <code>500</code> when something is, so it can go in a monitor.</p>
+
+<h3>Two real faults it found immediately</h3>
+<p><b>PHP&rsquo;s <code>post_max_size</code> is 8 MB by default, under the 32 MB the relay advertised.</b> A body over that limit does not arrive short, it arrives empty, and the relay would have written an empty file over a working template and reported success. Uploads now compare what arrived against the declared <code>Content-Length</code> and refuse a body that did not come whole, naming <code>post_max_size</code> as the cause. <code>ping</code> reports the limit that actually applies rather than the one in the source.</p>
+<p><b>A PHP warning printed in front of a JSON answer breaks every client.</b> On a host with <code>display_errors</code> on, one deprecation notice is enough, and the symptom gives no hint of the cause. The relay now turns display errors off for itself and discards anything that reached the output buffer before it answered, including on the raw file download where a warning would have corrupted the bytes.</p>
+<p>That is not the whole fix: some warnings are emitted at request startup, before any code in the file runs. A <code>.user.ini</code> and an <code>.htaccess</code> now ship beside <code>relay.php</code> to cover that, and <b>they have to be deployed with it</b> &mdash; they are dotfiles, so check your upload tool is not hiding them. The self-test reports it as a problem if they were not.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 
