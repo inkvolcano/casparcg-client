@@ -718,6 +718,28 @@ That also removed the reason the GitHub route had no test. It could only ever be
 
 That is 176 assertions across five suites.
 
+### How an address is read, and every URL built from one
+The push tool was the last part with no test at all. One text field decides whether a push goes to a client on the next rack, a relay on the internet, or a Git repository, and the three are told apart by how the address is written. Misread it and a push goes somewhere it was not meant to, carrying a token in a header the far end was not expecting.
+
+`tools/test-target.cpp` runs that. **53 checks**, no network and no files.
+
+- `host:port` is a client, a missing port means 3000, and every endpoint on it is built from that
+- an address with a scheme is a relay, so a URL is never split on the colon in `https:` and read as a host of "https"
+- a relay URL that already carries a query gets its action added rather than a second question mark that would break it
+- `github:owner/repo`, with and without a branch and a trailing slash
+- `github:https://github.example.com/api/v3/owner/repo`, where only the last two segments are the repository, with and without a branch after it
+- spaces are encoded in a path while the separators are not, on all three kinds
+- each kind gets its own authentication and **not** the others': a client's push token never leaves as a bearer token, and a relay's upload token never goes out in a client's header
+
+**Both address rules were checked by breaking them.** Not recognising an Enterprise address cost six checks; not telling a relay from a client cost fourteen.
+
+### One Git hash function instead of two
+The push tool links Qt and nothing else of this project, so it carried its own copy of the Git blob hash. Two identical copies today are two copies that can disagree later, and the symptom would be every client deciding every file had changed, on every poll, with nothing to show for it but traffic.
+
+There is one now, in a header both include. It is the same function the tests already check against `git hash-object`.
+
+That is 229 assertions across six suites.
+
 Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.
 
 `/templates/info` sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.

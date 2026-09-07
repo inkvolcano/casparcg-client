@@ -697,6 +697,25 @@ python tools/syntax-check.py --all-mine      everything changed on this branch</
 <p><code>tools/test-github.cpp</code> runs it against <code>tools/mock-github.php</code>, which answers the three calls a client makes in the shapes github.com actually uses, including the directory entries a real tree carries and the token and user-agent rules it enforces. <b>23 checks</b>: a first pull with the bytes compared, a pack this client does not follow left alone, a second pull that fetches nothing, a changed file fetched again, a truncated tree refused rather than guessed at, a refused token named as one, and an unreachable API that ends the poll without claiming to be up to date or disturbing what is installed.</p>
 <p><b>One of those checks was worthless until it was tested.</b> The assertion that a repository&rsquo;s own <code>.github</code> is not installed as a pack passed with the rule that prevents it switched off, because the pack filter was keeping it out anyway. A section that follows every pack was added, and only then did removing the rule produce a failure. Refusing a truncated tree cost two checks when switched off, one of them the client reporting itself up to date while being wrong.</p>
 <p>That is 176 assertions across five suites.</p>
+
+<h3>How an address is read, and every URL built from one</h3>
+<p>The push tool was the last part with no test at all. One text field decides whether a push goes to a client on the next rack, a relay on the internet, or a Git repository, and the three are told apart by how the address is written. Misread it and a push goes somewhere it was not meant to, carrying a token in a header the far end was not expecting.</p>
+<p><code>tools/test-target.cpp</code> runs that. <b>53 checks</b>, no network and no files.</p>
+<ul>
+<li><code>host:port</code> is a client, a missing port means 3000, and every endpoint on it is built from that</li>
+<li>an address with a scheme is a relay, so a URL is never split on the colon in <code>https:</code> and read as a host of &ldquo;https&rdquo;</li>
+<li>a relay URL that already carries a query gets its action added rather than a second question mark that would break it</li>
+<li><code>github:owner/repo</code>, with and without a branch and a trailing slash</li>
+<li><code>github:https://github.example.com/api/v3/owner/repo</code>, where only the last two segments are the repository, with and without a branch after it</li>
+<li>spaces are encoded in a path while the separators are not, on all three kinds</li>
+<li>each kind gets its own authentication and <b>not</b> the others&rsquo;: a client&rsquo;s push token never leaves as a bearer token, and a relay&rsquo;s upload token never goes out in a client&rsquo;s header</li>
+</ul>
+<p><b>Both address rules were checked by breaking them.</b> Not recognising an Enterprise address cost six checks; not telling a relay from a client cost fourteen.</p>
+
+<h3>One Git hash function instead of two</h3>
+<p>The push tool links Qt and nothing else of this project, so it carried its own copy of the Git blob hash. Two identical copies today are two copies that can disagree later, and the symptom would be every client deciding every file had changed, on every poll, with nothing to show for it but traffic.</p>
+<p>There is one now, in a header both include. It is the same function the tests already check against <code>git hash-object</code>.</p>
+<p>That is 229 assertions across six suites.</p>
 <p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
 <p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
 

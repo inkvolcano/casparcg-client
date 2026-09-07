@@ -1,6 +1,7 @@
 #include "TemplateInstaller.h"
 
 #include "DatabaseManager.h"
+#include "../Common/GitBlobSha.h"
 #include "Models/DeviceModel.h"
 
 #include <QtCore/QCryptographicHash>
@@ -110,13 +111,7 @@ bool TemplateInstaller::isSafeRelativePath(const QString& relativePath)
 // downloading a single file.
 QString TemplateInstaller::gitBlobSha(const QByteArray& content)
 {
-    QByteArray prefix = QByteArray("blob ") + QByteArray::number(content.size()) + '\0';
-
-    QCryptographicHash hash(QCryptographicHash::Sha1);
-    hash.addData(prefix);
-    hash.addData(content);
-
-    return QString::fromLatin1(hash.result().toHex());
+    return gitBlobShaOf(content);
 }
 
 QMap<QString, QString> TemplateInstaller::packDigests(const QString& pack, bool gitStyle)

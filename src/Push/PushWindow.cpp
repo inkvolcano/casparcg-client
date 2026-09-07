@@ -1,4 +1,5 @@
 #include "PushWindow.h"
+#include "../Common/GitBlobSha.h"
 
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QDateTime>
@@ -209,13 +210,7 @@ void PushTarget::authorise(QNetworkRequest& request) const
 // downloading any of it.
 QString PushWindow::gitBlobSha(const QByteArray& content)
 {
-    QByteArray prefix = QByteArray("blob ") + QByteArray::number(content.size()) + '\0';
-
-    QCryptographicHash hash(QCryptographicHash::Sha1);
-    hash.addData(prefix);
-    hash.addData(content);
-
-    return QString::fromLatin1(hash.result().toHex());
+    return gitBlobShaOf(content);
 }
 
 namespace
