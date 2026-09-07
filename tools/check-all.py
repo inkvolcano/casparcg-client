@@ -89,6 +89,18 @@ def main():
     if not checker.stdout.strip():
         print('  nothing changed to check')
 
+    # Compiling a file directly says nothing about whether the real build knows it
+    # exists, and a source missing from a CMakeLists fails on the machine none of
+    # this runs on.
+    print()
+    print('Build wiring')
+    wiring = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-cmake.py')],
+                            cwd=ROOT, capture_output=True, text=True)
+    wiring_ok = wiring.returncode == 0
+    for line in wiring.stdout.splitlines():
+        if line.strip() and not line.startswith('Sources') and not line.startswith('Database'):
+            print('  ' + line.strip())
+
     print()
     print('Suites')
 
@@ -127,10 +139,12 @@ def main():
 
     if not syntax_ok:
         print('Syntax check failed.')
+    if not wiring_ok:
+        print('Build wiring has a problem.')
     if broken:
         print('Failed: ' + ', '.join(broken))
 
-    return 0 if (syntax_ok and not broken and totalFailed == 0) else 1
+    return 0 if (syntax_ok and wiring_ok and not broken and totalFailed == 0) else 1
 
 
 if __name__ == '__main__':
