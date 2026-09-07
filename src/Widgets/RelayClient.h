@@ -3,6 +3,7 @@
 #include "Shared.h"
 
 #include <QtCore/QDateTime>
+#include <QtCore/QJsonObject>
 #include <QtCore/QList>
 #include <QtCore/QMap>
 #include <QtCore/QObject>
@@ -81,7 +82,24 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         // Which packs this client follows, empty meaning all of them. A relay can
         // carry every venue's packs while each client takes only its own.
+        //
+        // This is the local answer. The source can override it per machine, which is
+        // what lets one person decide the whole estate from one place instead of
+        // visiting every venue.
         static QStringList packFilter();
+
+        // What the source says this machine should have, or empty when it says
+        // nothing about it. Named by machine name, the same one a check-in uses.
+        static QStringList assignedPacks(const QJsonObject& assignments);
+
+        // The list actually used for a poll: the source's answer when it has one,
+        // and the local setting when it does not. Never silently empty, because an
+        // empty list means "every pack" and that is not a safe way to be wrong.
+        static QStringList packsForThisMachine(const QJsonObject& assignments);
+
+        // Whether this machine ignores what it is assigned and uses its own list.
+        // Off by default: the point of assignments is that one person decides.
+        static bool packsDecidedLocally();
 
         bool isBusy() const { return this->busy; }
         QDateTime lastRun() const { return this->ranAt; }
@@ -120,6 +138,14 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         void planFrom(const QByteArray& manifestJson);
         void planFromGitHubTree(const QByteArray& treeJson);
+
+        // A repository keeps its assignments in a file at its root, so the tree has
+        // to be held while that file is fetched and the planning happens after.
+        void fetchGitHubAssignments(const QByteArray& treeJson, const QString& blobSha);
+
+        // What the repository's assignments.json said this poll, empty when it has
+        // none or could not be read.
+        QJsonObject gitHubAssignments;
 
         // The token and the headers each kind of source wants. GitHub needs an
         // Authorization header, an API version and a user agent; a relay needs one

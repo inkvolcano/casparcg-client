@@ -17,6 +17,8 @@
 //   POST ?action=checkin                                  a client saying what it now has
 //   GET  ?action=clients                                  who has checked in, and are they current
 //   GET  ?action=selftest                                 is this relay set up safely
+//   GET  ?action=assignments                              which client gets which packs
+//   POST ?action=assignments                              set that (upload token)
 //
 // TWO tokens, and they are deliberately not the same one. The dev machine holds
 // the upload token; the clients hold the download token. A client that is stolen
@@ -294,6 +296,16 @@ function allPacks() {
 
 define('CLIENT_DIR', STORAGE . '/.clients');
 
+// Which client gets which packs, decided in one place instead of on every machine.
+//
+//   { "STUDIO-A": ["SEVILLE", "SHARED"], "*": ["SHARED"] }
+//
+// A name is a client's machine name, the same one it checks in under. "*" is what a
+// machine gets when it is not named. A client that is named nowhere and has no "*"
+// to fall back on keeps whatever it was set to locally, so adding this file cannot
+// silently stop an existing machine from updating.
+define('ASSIGNMENTS', STORAGE . '/.assignments.json');
+
 // Enough for any estate this is for, and a bound on what a misbehaving client can
 // fill the disk with. Updating an existing record is always allowed.
 define('MAX_CLIENTS', 500);
@@ -303,6 +315,15 @@ function clientId($name) {
     $id = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
     $id = trim($id, '._-');
     return $id === '' ? '' : substr($id, 0, 64);
+}
+
+function assignments() {
+    if (!file_exists(ASSIGNMENTS)) {
+        return array();
+    }
+
+    $map = json_decode(file_get_contents(ASSIGNMENTS), true);
+    return is_array($map) ? $map : array();
 }
 
 function allClients() {
@@ -580,6 +601,95 @@ switch ($action) {
 
         reply(200, array('clients' => $out, 'packs' => $current, 'at' => gmdate('c')));
 
+    case 'assignments':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Deciding what every venue installs is the dev machine's job, so it
+            // takes the upload token rather than the one every client holds.
+            requireToken(UPLOAD_TOKEN);
+
+            $sent = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($sent)) {
+                reply(400, array('error' => 'Expected a JSON object of client to pack list'));
+            }
+
+            // Only the shape this understands is stored. A name has to be usable as
+            // a client name and every pack has to be a real pack name, so a typo
+            // cannot become a path.
+            $clean = array();
+            $dropped = array();
+
+            foreach ($sent as $client => $packs) {
+                if (!is_string($client) || $client === '' || strlen($client) > 128) {
+                    continue;
+                }
+
+                // A machine name has to already be one, not merely survive being
+                // cleaned into one. A key of "../evil" would never match any machine,
+                // but storing it invites somebody to think it does something.
+                if ($client !== '*' && clientId($client) !== $client) {
+                    $dropped[] = $client;
+                    continue;
+                }
+
+                if (!is_array($packs)) {
+                    $dropped[] = $client;
+                    continue;
+                }
+
+                $list = array();
+                foreach ($packs as $pack) {
+                    if (is_string($pack) && safeSegment($pack)) {
+                        $list[] = $pack;
+                    }
+                }
+
+                // An empty list is a real instruction: this machine takes nothing.
+                // So a list that arrived with packs in it and ends up empty is not
+                // that instruction, it is a typo, and storing it would quietly stop
+                // a venue updating. Dropped instead, which leaves the machine on
+                // whatever it had.
+                if (empty($list) && !empty($packs)) {
+                    $dropped[] = $client;
+                    continue;
+                }
+
+                $clean[$client] = $list;
+            }
+
+            // A pack name can be perfectly valid and still not be a pack. Assigning
+            // SEVILE instead of SEVILLE is accepted by every check above and then
+            // quietly delivers nothing to that venue.
+            //
+            // Not refused, because assigning a pack before uploading it is a
+            // reasonable order to work in. Reported, so the mistake is visible at the
+            // moment it is made rather than at the venue an hour later.
+            $known = allPacks();
+            $unknown = array();
+            foreach ($clean as $client => $list) {
+                foreach ($list as $pack) {
+                    if (!in_array($pack, $known, true) && !in_array($pack, $unknown, true)) {
+                        $unknown[] = $pack;
+                    }
+                }
+            }
+
+            $temporary = ASSIGNMENTS . '.part';
+            if (file_put_contents($temporary, json_encode($clean, JSON_PRETTY_PRINT)) === false
+                || !rename($temporary, ASSIGNMENTS)) {
+                @unlink($temporary);
+                reply(500, array('error' => 'Cannot store the assignments'));
+            }
+
+            reply(200, array('ok' => true, 'clients' => count($clean),
+                             'dropped' => $dropped, 'unknownPacks' => $unknown));
+        }
+
+        // Readable with either token: a client needs to know what it is assigned.
+        if (!tokenIs(UPLOAD_TOKEN) && !tokenIs(DOWNLOAD_TOKEN)) {
+            reply(401, array('error' => 'Missing or wrong X-Relay-Token'));
+        }
+        reply(200, array('assignments' => assignments(), 'at' => gmdate('c')));
+
     case 'manifest':
         requireToken(DOWNLOAD_TOKEN);
         if ($pack !== '') {
@@ -590,7 +700,10 @@ switch ($action) {
         foreach (allPacks() as $name) {
             $packs[] = describePack($name);
         }
-        reply(200, array('packs' => $packs, 'at' => gmdate('c')));
+
+        // Sent with the manifest rather than as its own request: a client needs both
+        // on every poll, and one round trip is one round trip.
+        reply(200, array('packs' => $packs, 'assignments' => assignments(), 'at' => gmdate('c')));
 
     case 'fetch':
         requireToken(DOWNLOAD_TOKEN);
@@ -703,6 +816,6 @@ switch ($action) {
         reply(400, array(
             'error'   => 'Unknown action',
             'actions' => array('ping', 'manifest', 'fetch', 'upload', 'remove',
-                               'checkin', 'clients', 'selftest'),
+                               'checkin', 'clients', 'selftest', 'assignments'),
         ));
 }

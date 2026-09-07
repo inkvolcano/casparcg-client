@@ -178,6 +178,86 @@ void RelayClient::authorise(QNetworkRequest& request) const
     request.setRawHeader("X-Relay-Token", token().toUtf8());
 }
 
+// What the source says this machine should have.
+//
+// Keyed on machine name, matched without regard to case because nobody types a
+// hostname the same way twice. "*" is the answer for a machine that is not named,
+// which is how a whole estate gets a shared pack without listing every box.
+QStringList RelayClient::assignedPacks(const QJsonObject& assignments)
+{
+    QStringList packs;
+    if (assignments.isEmpty())
+        return packs;
+
+    QString me = QSysInfo::machineHostName();
+
+    QJsonValue mine;
+    foreach (const QString& key, assignments.keys())
+    {
+        if (key.compare(me, Qt::CaseInsensitive) == 0)
+        {
+            mine = assignments.value(key);
+            break;
+        }
+    }
+
+    if (mine.isUndefined() || mine.isNull())
+        mine = assignments.value("*");
+
+    if (!mine.isArray())
+        return packs;
+
+    foreach (const QJsonValue& value, mine.toArray())
+    {
+        QString name = value.toString().trimmed();
+        if (!name.isEmpty())
+            packs.append(name);
+    }
+
+    return packs;
+}
+
+bool RelayClient::packsDecidedLocally()
+{
+    return DatabaseManager::getInstance()
+        .getConfigurationByName("RelayPacksLocal").getValue() == "true";
+}
+
+// The source decides when it has an opinion about this machine; the local setting
+// decides when it does not, and whenever this machine has been told to ignore it.
+//
+// A source that names this machine with an empty list is an opinion: it means this
+// machine takes nothing. That is different from saying nothing, and the two must not
+// collapse into each other, because an empty filter means "every pack" further down.
+QStringList RelayClient::packsForThisMachine(const QJsonObject& assignments)
+{
+    // The way out, for the one machine that needs to differ from whatever the estate
+    // was told. Deliberately a decision made at the machine, because that is where
+    // somebody is standing when they need it.
+    if (packsDecidedLocally())
+        return packFilter();
+
+    QString me = QSysInfo::machineHostName();
+
+    bool named = assignments.contains("*");
+    foreach (const QString& key, assignments.keys())
+    {
+        if (key.compare(me, Qt::CaseInsensitive) == 0)
+            named = true;
+    }
+
+    if (named)
+    {
+        QStringList assigned = assignedPacks(assignments);
+
+        // Named with nothing is a real instruction, and the only way to say it here
+        // is a name no pack will ever have.
+        return assigned.isEmpty() ? QStringList("\x01none") : assigned;
+    }
+
+    return packFilter();
+}
+
 // The operator may paste the URL with a query already on it, or without. Both
 // should work rather than one of them silently doing nothing.
 QString RelayClient::endpoint(const QString& action)
@@ -241,6 +321,7 @@ bool RelayClient::checkNow()
     this->manifestAttempts = 0;
     this->versionByPack.clear();
     this->packsWithFailures.clear();
+    this->gitHubAssignments = QJsonObject();
 
     requestManifest();
     return true;
@@ -343,9 +424,68 @@ void RelayClient::requestManifest()
         }
 
         if (github)
-            planFromGitHubTree(reply->readAll());
+        {
+            // A repository has nowhere to put this but a file, so it is read out of
+            // the tree before anything is planned against it.
+            QByteArray tree = reply->readAll();
+            QString assignmentsBlob;
+
+            foreach (const QJsonValue& value,
+                     QJsonDocument::fromJson(tree).object().value("tree").toArray())
+            {
+                QJsonObject entry = value.toObject();
+                if (entry.value("type").toString() == "blob"
+                    && entry.value("path").toString().compare("assignments.json", Qt::CaseInsensitive) == 0)
+                {
+                    assignmentsBlob = entry.value("sha").toString();
+                    break;
+                }
+            }
+
+            if (!assignmentsBlob.isEmpty())
+                fetchGitHubAssignments(tree, assignmentsBlob);
+            else
+                planFromGitHubTree(tree);
+        }
         else
+        {
             planFrom(reply->readAll());
+        }
+    });
+}
+
+// One extra request, and only when the repository actually carries the file.
+//
+// A failure here is not a reason to stop: an unreadable assignment file should leave
+// the client on whatever it was set to locally rather than pulling nothing, so the
+// tree is planned either way.
+void RelayClient::fetchGitHubAssignments(const QByteArray& treeJson, const QString& blobSha)
+{
+    QNetworkRequest request((QUrl(QString("%1/repos/%2/git/blobs/%3")
+        .arg(gitHubApi(), gitHubOwnerRepo(), blobSha))));
+    authorise(request);
+    request.setRawHeader("Accept", "application/vnd.github.raw");
+
+    QNetworkReply* reply = this->network->get(request);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, treeJson]() {
+        reply->deleteLater();
+
+        this->gitHubAssignments = QJsonObject();
+
+        if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200)
+        {
+            QJsonDocument document = QJsonDocument::fromJson(reply->readAll());
+            if (document.isObject())
+                this->gitHubAssignments = document.object();
+            else
+                say("  assignments.json is not a JSON object; using the local pack list");
+        }
+        else
+        {
+            say("  could not read assignments.json; using the local pack list");
+        }
+
+        planFromGitHubTree(treeJson);
     });
 }
 
@@ -375,7 +515,7 @@ void RelayClient::planFromGitHubTree(const QByteArray& treeJson)
         return;
     }
 
-    QStringList wantedPacks = packFilter();
+    QStringList wantedPacks = packsForThisMachine(this->gitHubAssignments);
     int skippedPacks = 0;
 
     // Group by pack first, so each pack's local digests are read once.
@@ -480,7 +620,9 @@ void RelayClient::planFrom(const QByteArray& manifestJson)
         return;
     }
 
-    QStringList wantedPacks = packFilter();
+    // What this machine is assigned, if the source says. Falls back to the local
+    // setting when it does not.
+    QStringList wantedPacks = packsForThisMachine(document.object().value("assignments").toObject());
     int skippedPacks = 0;
 
     foreach (const QJsonValue& value, document.object().value("packs").toArray())

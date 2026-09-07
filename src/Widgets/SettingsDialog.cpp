@@ -662,28 +662,37 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "while this client takes only the packs that are its own.");
     relayGrid->addWidget(this->lineEditRelayPacks, 5, 1, 1, 3);
 
+    this->checkBoxRelayPacksLocal = new QCheckBox(
+        "Ignore what this machine is assigned and use the list above", relayGroup);
+    this->checkBoxRelayPacksLocal->setToolTip(
+        "Normally the source decides which packs this machine takes, so one\n"
+        "person can run the whole estate from one place. Tick this and the\n"
+        "field above wins here instead, for the one machine that has to differ.");
+    this->checkBoxRelayPacksLocal->setChecked(RelayClient::packsDecidedLocally());
+    relayGrid->addWidget(this->checkBoxRelayPacksLocal, 6, 1, 1, 3);
+
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 6, 0, 1, 2);
+    relayGrid->addWidget(this->labelRelayStatus, 7, 0, 1, 2);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
     relayTest->setFocusPolicy(Qt::NoFocus);
     relayTest->setToolTip("Reach the source and say what it is. Writes nothing.");
-    relayGrid->addWidget(relayTest, 6, 2);
+    relayGrid->addWidget(relayTest, 7, 2);
 
     QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
     relayCheck->setFixedHeight(22);
     relayCheck->setFocusPolicy(Qt::NoFocus);
     relayCheck->setToolTip("Check now and install anything that differs.");
-    relayGrid->addWidget(relayCheck, 6, 3);
+    relayGrid->addWidget(relayCheck, 7, 3);
 
     relayGrid->addWidget(new QLabel(
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
-        "alone here exactly as they are during a push.", relayGroup), 7, 0, 1, 4);
+        "alone here exactly as they are during a push.", relayGroup), 8, 0, 1, 4);
 
     relayGrid->addWidget(new QLabel(
-        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 8, 0, 1, 4);
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 9, 0, 1, 4);
 
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.
@@ -736,6 +745,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
             ConfigurationModel(0, "RelayPollMinutes", QString::number(this->spinBoxRelayPoll->value())));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayPacks", this->lineEditRelayPacks->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPacksLocal",
+                               this->checkBoxRelayPacksLocal->isChecked() ? "true" : "false"));
 
         // Turning the feature on has to bring the socket up, and off may be the
         // last thing keeping it up.

@@ -168,6 +168,11 @@ INSERT INTO Configuration (Name, Value) VALUES('RelayPacks', '');
 -- Server has its own, usually https://github.example.com/api/v3, and without
 -- this a client on one could not reach its own repositories at all.
 INSERT INTO Configuration (Name, Value) VALUES('RelayGitHubApi', '');
+
+-- Normally the source decides which packs a machine takes, so one person can
+-- run the whole estate from one place. This is the way out of that for a single
+-- machine: set it and the Packs field on this client wins instead.
+INSERT INTO Configuration (Name, Value) VALUES('RelayPacksLocal', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');

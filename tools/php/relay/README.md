@@ -105,6 +105,43 @@ switched off is the one most likely to be behind.
 One relay can carry every venue's packs while each client takes only its own,
 which is what the Packs field is for.
 
+## Deciding who gets what
+
+One relay can carry every venue. Which packs a machine takes can be set on the
+machine, in its Packs field, or centrally here so nobody has to visit a venue to
+change it.
+
+```bash
+curl -X POST -H "X-Relay-Token: YOUR-UPLOAD-TOKEN" -H "Content-Type: application/json" \
+  --data '{"STUDIO-A":["SEVILLE","SHARED"],"TRUCK-2":["MARSEILLE","SHARED"],"*":["SHARED"]}' \
+  "https://example.com/relay/relay.php?action=assignments"
+```
+
+A name is a machine name, the same one it checks in under. The `*` entry is what a
+machine gets when it is not named.
+
+A machine named nowhere, with no `*` to fall back on, keeps whatever it was set to
+locally. Adding this file therefore cannot silently stop an existing machine from
+updating.
+
+**A machine named with an empty list takes nothing.** That is a real instruction and
+is different from not being named at all, and the client keeps the two apart. It has
+to: an empty pack filter further down means *every* pack, so confusing them would
+hand a venue the whole estate.
+
+The reply says what it would not take:
+
+- `dropped` is names it refused to store at all, such as one that is not a usable
+  machine name, or a list that was not a list.
+- `unknownPacks` is packs that were assigned but are not on this relay. Those are
+  **not** refused, because assigning a pack before uploading it is a reasonable
+  order to work in. But `SEVILE` instead of `SEVILLE` looks exactly the same to
+  every other check and would otherwise deliver nothing to that venue with no sign
+  of why, so it is named here instead.
+
+A single machine can be taken back out of central control. Tick **Ignore what this
+machine is assigned** in its own Settings, and its own Packs field wins there.
+
 ## What it will not do
 
 - **It never deletes on its own.** A file removed from the relay stays on every
@@ -138,5 +175,7 @@ which is what the Packs field is for.
 | `POST ?action=checkin` | a client reporting what it now has |
 | `GET ?action=clients` | who has checked in, and who is behind (upload token) |
 | `GET ?action=selftest` | is this relay set up safely (upload token) |
+| `GET ?action=assignments` | which client gets which packs |
+| `POST ?action=assignments` | set that (upload token) |
 
 All of them want `X-Relay-Token`. Wrong or missing is `401`.

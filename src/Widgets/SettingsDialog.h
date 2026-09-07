@@ -115,6 +115,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QLineEdit* lineEditRelayToken = nullptr;
     QSpinBox* spinBoxRelayPoll = nullptr;
     QLineEdit* lineEditRelayPacks = nullptr;
+    QCheckBox* checkBoxRelayPacksLocal = nullptr;
     QLabel* labelRelayStatus = nullptr;
 
     // One checkbox per discovered template project, writing the `local` flag straight
