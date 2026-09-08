@@ -26,6 +26,7 @@
 #include "EventManager.h"
 #include "SheetCacheServer.h"
 #include "DatabaseManager.h"
+#include "PanelRegistry.h"
 #include "DeviceManager.h"
 #include "Events/ExportPresetEvent.h"
 #include "Events/ImportPresetEvent.h"
@@ -1108,31 +1109,16 @@ bool MainWindow::nativeEvent(const QByteArray& eventType, void* message, qintptr
 }
 #endif
 
+// Heights come from PanelRegistry rather than from an if-chain here, so a panel
+// added there is sized without anyone remembering to also edit this file.
 static int defaultPanelHeight(const QString& id)
 {
-    if (id == "Preview") return Panel::DEFAULT_PREVIEW_HEIGHT;
-    if (id == "Live" || id == "NDI") return Panel::DEFAULT_LIVE_HEIGHT;
-    if (id == "AudioLevels") return Panel::DEFAULT_AUDIOLEVELS_HEIGHT;
-    if (id == "Clock") return Panel::DEFAULT_CLOCK_HEIGHT;
-    if (id == "Performance") return Panel::DEFAULT_PERFORMANCE_HEIGHT;
-    if (id == "HttpLog") return Panel::DEFAULT_HTTPLOG_HEIGHT;
-    if (id == "Sheets") return Panel::DEFAULT_SHEETS_HEIGHT;
-    if (id == "SimpleInspector") return Panel::DEFAULT_SIMPLE_INSPECTOR_HEIGHT;
-    return 0;
+    return PanelRegistry::defaultHeight(id);
 }
 
 static int defaultCompactHeight(const QString& id)
 {
-    if (id == "Preview") return Panel::COMPACT_PREVIEW_HEIGHT;
-    if (id == "Live") return Panel::COMPACT_LIVE_HEIGHT;
-    if (id == "AudioLevels") return Panel::COMPACT_AUDIOLEVELS_HEIGHT;
-    if (id == "Clock") return Panel::COMPACT_CLOCK_HEIGHT;
-    if (id == "Performance") return Panel::COMPACT_PERFORMANCE_HEIGHT;
-    if (id == "HttpLog") return Panel::COMPACT_HTTPLOG_HEIGHT;
-    if (id == "Sheets") return Panel::COMPACT_SHEETS_HEIGHT;
-    if (id == "Library") return 25;
-    if (id == "NDI") return 25;
-    return 25; // fallback: just the tab header
+    return PanelRegistry::compactHeight(id);
 }
 
 void MainWindow::rebuildLayout()

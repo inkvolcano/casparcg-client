@@ -1931,6 +1931,50 @@ lands this is for building and checking graphics, not for playing them out.
 
 ---
 
+## One list of the panels
+
+A fix for a bug, and for the reason the bug existed.
+
+**The bug:** the **iNews** panel could be placed in the layout editor, had no row
+in *Panel Sizing*, and was **not saved by a named layout**. Place it, save a
+layout, load that layout back, and the panel was gone.
+
+**The reason:** the panel it happened to is one hardly anybody uses, so nobody
+reported it. And it happened because a panel's id was written out by hand in six
+different files - the layout editor's list, its display names, the default height,
+the collapsed height, the widget lookup, the *Panel Sizing* rows, the sizing
+default, and the set of keys a named layout claims. Fourteen scattered mentions.
+Miss one and the panel half-works, quietly.
+
+One of those lists carried a comment saying it was kept there *so a preset and the
+editor could not drift apart*. It had drifted anyway. A second hand-written list
+is not a defence against a first one.
+
+So there is now **one list**, in `PanelRegistry.h`, and everything else reads it:
+what panels exist, what each is called, what height it opens at, what it collapses
+to, what sizing mode it starts in, and which settings a named layout owns. Adding
+a panel is one entry in one file.
+
+**What you get from this now:**
+
+- **iNews is saved by named layouts** and has a *Panel Sizing* row, like every
+  other panel.
+- The *Panel Sizing* list is in the **same order** as the layout editor, rather
+  than its own.
+- Nothing else moved. Every panel opens at the height it always did and starts in
+  the sizing mode it always did - pinned by tests, because a registry that
+  disagreed with the old code would resize everybody's layout the first time it
+  rebuilt.
+
+One thing cannot be generic: mapping an id to the actual widget. That is still
+written out once in `MainWindow`, and there is now a check that fails the build
+tools if a registered panel is missing from it - the worst failure of the set,
+where a panel places, sizes, saves, and shows nothing.
+
+The *Layout* settings tab now **scrolls**, like every other tab already did. It
+was the one tab built in code rather than from the designer file, so it had been
+missed - and it is the tab that grows by a row every time a panel is added.
+
 ## The Live panel, and what is actually wrong with it
 
 Worth explaining, because it is not what it looks like. **The client decodes

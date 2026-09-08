@@ -2,29 +2,22 @@
 
 #include "DatabaseManager.h"
 #include "Models/ConfigurationModel.h"
+#include "PanelRegistry.h"
 
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QVBoxLayout>
 
-const QStringList LayoutEditorWidget::allWidgetIds = {
-    "AudioLevels", "Preview", "Library", "Duration", "StatusBar",
-    "Clock", "ServerStatus", "Activity", "TriggerBanks", "Live", "NDI", "Performance", "HttpLog", "Sheets", "Inspector", "SimpleInspector"
-};
+// Both of these used to be hand-written lists here, and the copy in the settings
+// dialog and the one in LayoutPreset had drifted from them. They now come from
+// PanelRegistry, so the editor cannot offer a panel the rest of the client does
+// not know how to size or save.
+const QStringList LayoutEditorWidget::allWidgetIds = PanelRegistry::ids();
 
 QString LayoutEditorWidget::widgetDisplayName(const QString& id)
 {
-    static const QMap<QString, QString> names = {
-        {"AudioLevels", "Audio Levels"}, {"Preview", "Preview"},
-        {"Library", "Library"}, {"Duration", "iNews"},
-        {"StatusBar", "Status Bar"}, {"Clock", "Clock"},
-        {"ServerStatus", "Server Status"}, {"Activity", "Activity"},
-        {"TriggerBanks", "Trigger Banks"}, {"Live", "Live"},
-        {"NDI", "NDI"}, {"Performance", "Performance"}, {"HttpLog", "Http Log"}, {"Sheets", "Google Sheets"}, {"Inspector", "Inspector"},
-        {"SimpleInspector", "Simple Inspector"}
-    };
-    return names.value(id, id);
+    return PanelRegistry::displayName(id);
 }
 
 QString LayoutEditorWidget::columnDisplayName(const QString& id)

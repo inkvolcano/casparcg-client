@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are twenty test suites and a syntax checker. Twenty commands that each take a
+There are twenty-one test suites and a syntax checker. Twenty-one commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -43,6 +43,7 @@ SUITES = [
     ('test-placement', False, 'whether a panel is placed, and so whether its work runs at all'),
     ('test-ograflibrary', False, 'finding OGraf graphics in a template folder, and naming them'),
     ('test-streamcommand', False, 'the Live panel stream command, and that its default is unchanged'),
+    ('test-panelregistry', False, 'one list of panels, and every consumer answering from it'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),
@@ -114,6 +115,17 @@ def main():
         if line.strip() and not line.startswith('Sources') and not line.startswith('Database'):
             print('  ' + line.strip())
 
+    # The registry made one list of the panels, but MainWindow still has to map an
+    # id to an actual widget by hand. This is the only check that reaches it.
+    print()
+    print('Panels')
+    panels = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-panels.py')],
+                            cwd=ROOT, capture_output=True, text=True)
+    panels_ok = panels.returncode == 0
+    for line in panels.stdout.splitlines():
+        if line.strip():
+            print('  ' + line.strip())
+
     # A feature nobody is told about is a feature nobody uses.
     print()
     print('Changelog')
@@ -166,10 +178,13 @@ def main():
         print('Build wiring has a problem.')
     if not story_ok:
         print('A feature is missing from the changelog.')
+    if not panels_ok:
+        print('A panel is registered but not placed, or a consumer stopped reading the registry.')
     if broken:
         print('Failed: ' + ', '.join(broken))
 
-    return 0 if (syntax_ok and wiring_ok and story_ok and not broken and totalFailed == 0) else 1
+    return 0 if (syntax_ok and wiring_ok and story_ok and panels_ok
+                 and not broken and totalFailed == 0) else 1
 
 
 if __name__ == '__main__':

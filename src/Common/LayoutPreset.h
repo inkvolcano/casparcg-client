@@ -23,6 +23,8 @@
 // Header-only, like PanelFit.h and OgrafManifest.h, so the key sets and the
 // round trip can be compiled and tested without linking the widgets.
 
+#include "PanelRegistry.h"
+
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QMap>
@@ -42,15 +44,17 @@ namespace LayoutPreset
         return scope == scopePanel() || scope == scopeSimple();
     }
 
-    // Every panel the layout editor can place. Kept here rather than only in the
-    // settings dialog so a preset and the editor cannot drift apart: a panel
-    // missing from this list would silently not be saved.
+    // Every panel the layout editor can place, from the one registry the editor
+    // and the settings dialog also read.
+    //
+    // This used to be its own copy of the list, written here precisely so a preset
+    // and the editor could not drift apart - and it drifted anyway: iNews was in
+    // the editor and not in here, so it could be placed and was then not saved by
+    // any named layout. A second hand-written list is not a defence against a
+    // first one. Reading the registry is.
     inline QStringList panelIds()
     {
-        return QStringList()
-            << "AudioLevels" << "Preview" << "Library" << "Inspector" << "ServerStatus"
-            << "Activity" << "TriggerBanks" << "Live" << "NDI" << "Performance"
-            << "HttpLog" << "Sheets" << "SimpleInspector" << "Clock" << "StatusBar";
+        return PanelRegistry::ids();
     }
 
     // The configuration keys a preset of this scope owns. Anything not in here is

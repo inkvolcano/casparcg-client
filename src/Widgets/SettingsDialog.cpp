@@ -1,6 +1,7 @@
 #include "SettingsDialog.h"
 #include "PreviewWidget.h"
 #include "StreamCommand.h"
+#include "PanelRegistry.h"
 #include "LayoutPresetBar.h"
 #include "LayoutPreset.h"
 #include "DeviceDialog.h"
@@ -307,24 +308,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QGridLayout* psGrid = new QGridLayout(panelSizingGroup);
     spaceOutGroup(psGrid);
 
-    struct PanelDef { QString id; QString label; QString defaultMode; };
-    QList<PanelDef> panels = {
-        {"AudioLevels", "Audio Levels", "fixed"},
-        {"Preview", "Preview", "resizable"},
-        {"Library", "Library", "expanding"},
-        {"Inspector", "Inspector", "expanding"},
-        {"ServerStatus", "Server Status", "fixed"},
-        {"Activity", "Activity", "expanding"},
-        {"TriggerBanks", "Trigger Banks", "fixed"},
-        {"Live", "Live", "resizable"},
-        {"NDI", "NDI", "resizable"},
-        {"Performance", "Performance", "fixed"},
-        {"HttpLog", "Http Log", "fixed"},
-        {"Sheets", "Google Sheets", "resizable"},
-        {"SimpleInspector", "Simple Inspector", "resizable"},
-        {"Clock", "Clock", "fixed"},
-        {"StatusBar", "Status Bar", "fixed"},
-    };
+    // One row per registered panel, in the same order the layout editor lists
+    // them. This used to be a hand-written table, and the panel it had quietly
+    // dropped - iNews - could be placed but never sized.
+    const QList<PanelRegistry::Entry>& panels = PanelRegistry::all();
 
     // Column headers.
     psGrid->addWidget(new QLabel("Panel", panelSizingGroup), 0, 0);
@@ -333,7 +320,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     int psRow = 1;
     for (const auto& p : panels)
     {
-        psGrid->addWidget(new QLabel(p.label, panelSizingGroup), psRow, 0);
+        psGrid->addWidget(new QLabel(p.displayName, panelSizingGroup), psRow, 0);
 
         QComboBox* combo = new QComboBox(panelSizingGroup);
         combo->addItem("Fixed", "fixed");
@@ -342,7 +329,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
         QString currentMode = DatabaseManager::getInstance()
             .getConfigurationByName("PanelSizeMode_" + p.id).getValue();
-        if (currentMode.isEmpty()) currentMode = p.defaultMode;
+        if (currentMode.isEmpty()) currentMode = p.defaultSizeMode;
 
         for (int i = 0; i < combo->count(); i++)
         {
@@ -354,7 +341,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         }
         psGrid->addWidget(combo, psRow, 1);
 
-        this->panelSizingEntries.append({p.id, p.label, combo});
+        this->panelSizingEntries.append({p.id, p.displayName, combo});
         psRow++;
     }
 
@@ -380,7 +367,17 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         EventManager::getInstance().fireRebuildLayout();
     });
 
-    this->tabWidgetSettings->addTab(tabLayout, "Layout");
+    // The tabs built from the .ui file are wrapped in a scroll area higher up.
+    // This one is built in code and was not, so its content simply ran off the
+    // bottom of a short dialog - and Panel Sizing grows by a row every time a
+    // panel is added, which is now meant to be a one-line change. A tab that has
+    // to be measured by hand afterwards is not a one-line change.
+    QScrollArea* layoutScroll = new QScrollArea();
+    layoutScroll->setWidgetResizable(true);
+    layoutScroll->setFrameShape(QFrame::NoFrame);
+    layoutScroll->setWidget(tabLayout);
+
+    this->tabWidgetSettings->addTab(layoutScroll, "Layout");
 
     // Simple Mode tab: its own independent layout + grid options.
     QWidget* tabSimpleMode = new QWidget();
@@ -924,16 +921,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
 void SettingsDialog::reloadPanelSizing()
 {
-    // The defaults live in the same table the combos were built from, so a panel
-    // whose preset cleared its mode falls back to what it started as rather than
-    // to whichever entry happens to be first in the list.
-    static const QMap<QString, QString> defaults = {
-        {"AudioLevels", "fixed"},   {"Preview", "resizable"},   {"Library", "expanding"},
-        {"Inspector", "expanding"}, {"ServerStatus", "fixed"},  {"Activity", "expanding"},
-        {"TriggerBanks", "fixed"},  {"Live", "resizable"},      {"NDI", "resizable"},
-        {"Performance", "fixed"},   {"HttpLog", "fixed"},       {"Sheets", "resizable"},
-        {"SimpleInspector", "resizable"}, {"Clock", "fixed"},   {"StatusBar", "fixed"},
-    };
+    // The defaults come from the same registry the combos were built from, so a
+    // panel whose preset cleared its mode falls back to what it started as rather
+    // than to whichever entry happens to be first in the list.
 
     for (const PanelSizingEntry& entry : this->panelSizingEntries)
     {
@@ -944,7 +934,7 @@ void SettingsDialog::reloadPanelSizing()
             .getConfigurationByName("PanelSizeMode_" + entry.panelId).getValue();
 
         if (mode.isEmpty())
-            mode = defaults.value(entry.panelId, "fixed");
+            mode = PanelRegistry::defaultSizeMode(entry.panelId);
 
         const int index = entry.combo->findData(mode);
         if (index >= 0)
