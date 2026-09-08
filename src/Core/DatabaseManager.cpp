@@ -262,6 +262,93 @@ FormatModel DatabaseManager::getFormat(const QString& name)
                        sql.value("Height").toInt(), sql.value("FramesPerSecond").toString());
 }
 
+QList<LayoutPresetModel> DatabaseManager::getLayoutPresets(const QString& scope)
+{
+    QMutexLocker locker(&mutex);
+
+    QSqlQuery sql;
+    sql.prepare("SELECT l.Id, l.Name, l.Scope, l.Data FROM LayoutPreset l "
+                "WHERE l.Scope = :Scope ORDER BY l.Name COLLATE NOCASE");
+    sql.bindValue(":Scope", scope);
+
+    if (!sql.exec())
+       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+
+    QList<LayoutPresetModel> models;
+    while (sql.next())
+    {
+        models.push_back(LayoutPresetModel(sql.value("Id").toInt(), sql.value("Name").toString(),
+                                           sql.value("Scope").toString(), sql.value("Data").toString()));
+    }
+
+    return models;
+}
+
+void DatabaseManager::saveLayoutPreset(const QString& name, const QString& scope, const QString& data)
+{
+    QMutexLocker locker(&mutex);
+
+    QSqlDatabase::database().transaction();
+
+    // Saving over a name the operator already used is what they asked for when
+    // they typed it again, so this is one call rather than an insert that fails
+    // and a caller that has to know to try an update.
+    QSqlQuery sql;
+    sql.prepare("UPDATE LayoutPreset SET Data = :Data WHERE Scope = :Scope AND Name = :Name COLLATE NOCASE");
+    sql.bindValue(":Data", data);
+    sql.bindValue(":Scope", scope);
+    sql.bindValue(":Name", name);
+
+    if (!sql.exec())
+       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+
+    if (sql.numRowsAffected() == 0)
+    {
+        sql.prepare("INSERT INTO LayoutPreset (Name, Scope, Data) VALUES(:Name, :Scope, :Data)");
+        sql.bindValue(":Name", name);
+        sql.bindValue(":Scope", scope);
+        sql.bindValue(":Data", data);
+
+        if (!sql.exec())
+           qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+    }
+
+    QSqlDatabase::database().commit();
+}
+
+void DatabaseManager::renameLayoutPreset(int id, const QString& name)
+{
+    QMutexLocker locker(&mutex);
+
+    QSqlDatabase::database().transaction();
+
+    QSqlQuery sql;
+    sql.prepare("UPDATE LayoutPreset SET Name = :Name WHERE Id = :Id");
+    sql.bindValue(":Name", name);
+    sql.bindValue(":Id", id);
+
+    if (!sql.exec())
+       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+
+    QSqlDatabase::database().commit();
+}
+
+void DatabaseManager::deleteLayoutPreset(int id)
+{
+    QMutexLocker locker(&mutex);
+
+    QSqlDatabase::database().transaction();
+
+    QSqlQuery sql;
+    sql.prepare("DELETE FROM LayoutPreset WHERE Id = :Id");
+    sql.bindValue(":Id", id);
+
+    if (!sql.exec())
+       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+
+    QSqlDatabase::database().commit();
+}
+
 QList<QString> DatabaseManager::getOpenRecent()
 {
     QMutexLocker locker(&mutex);

@@ -142,6 +142,7 @@ qt_add_library(core
     Models/BlendModeModel.cpp Models/BlendModeModel.h
     Models/ChromaModel.cpp Models/ChromaModel.h
     Models/ConfigurationModel.cpp Models/ConfigurationModel.h
+    Models/LayoutPresetModel.cpp Models/LayoutPresetModel.h
     Models/DeviceModel.cpp Models/DeviceModel.h
     Models/DirectionModel.cpp Models/DirectionModel.h
     Models/FormatModel.cpp Models/FormatModel.h

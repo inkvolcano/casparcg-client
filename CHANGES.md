@@ -1671,6 +1671,47 @@ preview with nothing running.
 
 ---
 
+## Named layouts
+
+A layout is not one setting. It is the columns and their order, which panels sit
+in each, and for every panel its size mode, height, span, span direction,
+collapsed state and anchor — a couple of dozen rows. Rearranging all of that for
+a different job and then rearranging it back was a long manual job, so it did not
+get done.
+
+**Settings → Layout** and **Settings → Simple Mode** each now have a **Saved
+Layouts** row: pick a name, and **Apply**, **Save As...**, **Rename...** or
+**Delete**.
+
+- **The two modes keep their own lists.** The normal arrangement and the one
+  Simple Mode uses are separate, and a layout saved in one is never offered in
+  the other. A Simple Mode layout also carries its button grid — columns, rows,
+  and whether the play/stop and preview buttons show.
+- **Applying one changes nothing else.** A preset owns a fixed set of layout
+  keys and writes only those, so loading a layout cannot disturb a server
+  address, a hotkey, a token or any other setting. A preset that has been edited
+  by hand to carry something outside that set has the extra ignored.
+- **Applying writes every key the layout owns**, including the ones the preset
+  has nothing for. Those go back to their defaults, because that is what they
+  were when the layout was saved — leaving whatever is there now would give an
+  arrangement matching neither the preset nor the screen.
+- **Saving over a name asks first**, and names are compared without regard to
+  case, so "Studio" and "studio" are the same layout rather than two rows nobody
+  can tell apart.
+- The settings dialog redraws itself when a layout is applied, so the editor and
+  the Panel Sizing list show what was just loaded rather than what was there a
+  moment ago.
+
+### One limit
+
+Panel sizing keys are not separated by mode in this client — Simple Mode reads
+the same `PanelSizeMode_`, `PanelSpan_` and height settings as the normal layout.
+So they belong to the **normal** layout, and a Simple Mode preset carries the
+column arrangement and the button grid rather than panel sizing. Separating them
+would be a change reaching well past this feature.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

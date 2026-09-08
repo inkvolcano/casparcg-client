@@ -3,6 +3,7 @@
 #include "Shared.h"
 #include "Models/BlendModeModel.h"
 #include "Models/ConfigurationModel.h"
+#include "Models/LayoutPresetModel.h"
 #include "Models/ChromaModel.h"
 #include "Models/DeviceModel.h"
 #include "Models/DirectionModel.h"
@@ -39,6 +40,11 @@ class CORE_EXPORT DatabaseManager
 
         QList<FormatModel> getFormat();
         FormatModel getFormat(const QString& name);
+
+        QList<LayoutPresetModel> getLayoutPresets(const QString& scope);
+        void saveLayoutPreset(const QString& name, const QString& scope, const QString& data);
+        void renameLayoutPreset(int id, const QString& name);
+        void deleteLayoutPreset(int id);
 
         QList<QString> getOpenRecent();
         void insertOpenRecent(const QString& path);

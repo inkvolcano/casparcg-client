@@ -1,5 +1,7 @@
 #include "SettingsDialog.h"
 #include "PreviewWidget.h"
+#include "LayoutPresetBar.h"
+#include "LayoutPreset.h"
 #include "DeviceDialog.h"
 #include "LayoutEditorWidget.h"
 #include "OscOutputDialog.h"
@@ -236,6 +238,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Layout editor tab.
     QWidget* tabLayout = new QWidget();
     QVBoxLayout* tabLayoutVBox = new QVBoxLayout(tabLayout);
+    this->layoutPresetBar = new LayoutPresetBar(LayoutPreset::scopePanel(), tabLayout);
+    tabLayoutVBox->addWidget(this->layoutPresetBar);
+
     this->layoutEditor = new LayoutEditorWidget(tabLayout);
     tabLayoutVBox->addWidget(this->layoutEditor);
 
@@ -304,6 +309,19 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->checkBoxShowEmptyPanels->setChecked(showEmptyVal == "true");
     tabLayoutVBox->addWidget(this->checkBoxShowEmptyPanels);
 
+    // Applying a preset rewrites the settings this tab is showing. Rebuilding the
+    // editor and re-reading the sizing combos is what stops the dialog displaying
+    // the arrangement that was there a moment ago.
+    QObject::connect(this->layoutPresetBar, &LayoutPresetBar::presetApplied, this, [this]() {
+        this->layoutEditor->loadFromConfig();
+        reloadPanelSizing();
+
+        QString showEmpty = DatabaseManager::getInstance().getConfigurationByName("ShowEmptyPanels").getValue();
+        this->checkBoxShowEmptyPanels->setChecked(showEmpty == "true");
+
+        EventManager::getInstance().fireRebuildLayout();
+    });
+
     this->tabWidgetSettings->addTab(tabLayout, "Layout");
 
     // Simple Mode tab: its own independent layout + grid options.
@@ -311,6 +329,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QVBoxLayout* smVBox = new QVBoxLayout(tabSimpleMode);
 
     smVBox->addWidget(new QLabel("Panel layout used while Simple Mode is active (View \xe2\x86\x92 Simple Mode):", tabSimpleMode));
+    this->simpleLayoutPresetBar = new LayoutPresetBar(LayoutPreset::scopeSimple(), tabSimpleMode);
+    smVBox->addWidget(this->simpleLayoutPresetBar);
+
     this->simpleLayoutEditor = new LayoutEditorWidget(tabSimpleMode, "Simple");
     smVBox->addWidget(this->simpleLayoutEditor, 1);
 
@@ -333,6 +354,12 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     smOptionsRow->addStretch();
     smVBox->addWidget(smButtonsGroup);
+
+    QObject::connect(this->simpleLayoutPresetBar, &LayoutPresetBar::presetApplied, this, [this]() {
+        this->simpleLayoutEditor->loadFromConfig();
+
+        EventManager::getInstance().fireRebuildLayout();
+    });
 
     this->tabWidgetSettings->addTab(tabSimpleMode, "Simple Mode");
 
@@ -811,6 +838,40 @@ SettingsDialog::SettingsDialog(QWidget* parent)
                 this->checkBoxShowEmptyPanels->isChecked() ? "true" : "false"));
         EventManager::getInstance().fireRebuildLayout();
     });
+}
+
+void SettingsDialog::reloadPanelSizing()
+{
+    // The defaults live in the same table the combos were built from, so a panel
+    // whose preset cleared its mode falls back to what it started as rather than
+    // to whichever entry happens to be first in the list.
+    static const QMap<QString, QString> defaults = {
+        {"AudioLevels", "fixed"},   {"Preview", "resizable"},   {"Library", "expanding"},
+        {"Inspector", "expanding"}, {"ServerStatus", "fixed"},  {"Activity", "expanding"},
+        {"TriggerBanks", "fixed"},  {"Live", "resizable"},      {"NDI", "resizable"},
+        {"Performance", "fixed"},   {"HttpLog", "fixed"},       {"Sheets", "resizable"},
+        {"SimpleInspector", "resizable"}, {"Clock", "fixed"},   {"StatusBar", "fixed"},
+    };
+
+    for (const PanelSizingEntry& entry : this->panelSizingEntries)
+    {
+        if (entry.combo == nullptr)
+            continue;
+
+        QString mode = DatabaseManager::getInstance()
+            .getConfigurationByName("PanelSizeMode_" + entry.panelId).getValue();
+
+        if (mode.isEmpty())
+            mode = defaults.value(entry.panelId, "fixed");
+
+        const int index = entry.combo->findData(mode);
+        if (index >= 0)
+        {
+            entry.combo->blockSignals(true);
+            entry.combo->setCurrentIndex(index);
+            entry.combo->blockSignals(false);
+        }
+    }
 }
 
 void SettingsDialog::setupGeneralTab()

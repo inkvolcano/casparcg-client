@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#named-layouts">Named Layouts</a><br>
 <a href="#ograf">OGraf Graphics</a><br>
 <a href="#preview-panel">Preview Panel</a><br>
 <a href="#auto-save">Auto-save and Crash Recovery</a><br>
@@ -1720,6 +1721,24 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p><b>It needs Qt WebEngine</b>, like the template preview it is built on. A build without it says so in the panel and everything else works.</p>
 
 <p><b>Browsing for graphics still needs a server.</b> The panel previews whatever is selected, and it needs no server to do it &mdash; but the Library that lists what you can select is still filled by a server scan. Graphics already in a saved rundown preview with nothing running.</p>
+
+<h2 id="named-layouts">Named layouts</h2>
+
+<p>A layout is not one setting. It is the columns and their order, which panels sit in each, and for every panel its size mode, height, span, span direction, collapsed state and anchor &mdash; a couple of dozen rows. Rearranging all of that for a different job and then rearranging it back was a long manual job, so it did not get done.</p>
+
+<p><b>Settings &rarr; Layout</b> and <b>Settings &rarr; Simple Mode</b> each now have a <b>Saved Layouts</b> row: pick a name, and <b>Apply</b>, <b>Save As...</b>, <b>Rename...</b> or <b>Delete</b>.</p>
+
+<ul>
+<li><b>The two modes keep their own lists.</b> The normal arrangement and the one Simple Mode uses are separate, and a layout saved in one is never offered in the other. A Simple Mode layout also carries its button grid &mdash; columns, rows, and whether the play/stop and preview buttons show.</li>
+<li><b>Applying one changes nothing else.</b> A preset owns a fixed set of layout keys and writes only those, so loading a layout cannot disturb a server address, a hotkey, a token or any other setting. A preset that has been edited by hand to carry something outside that set has the extra ignored.</li>
+<li><b>Applying writes every key the layout owns</b>, including the ones the preset has nothing for. Those go back to their defaults, because that is what they were when the layout was saved &mdash; leaving whatever is there now would give an arrangement matching neither the preset nor the screen.</li>
+<li><b>Saving over a name asks first</b>, and names are compared without regard to case, so "Studio" and "studio" are the same layout rather than two rows nobody can tell apart.</li>
+<li>The settings dialog redraws itself when a layout is applied, so the editor and the Panel Sizing list show what was just loaded rather than what was there a moment ago.</li>
+</ul>
+
+<h3>One limit</h3>
+
+<p>Panel sizing keys are not separated by mode in this client &mdash; Simple Mode reads the same <code>PanelSizeMode_</code>, <code>PanelSpan_</code> and height settings as the normal layout. So they belong to the <b>normal</b> layout, and a Simple Mode preset carries the column arrangement and the button grid rather than panel sizing. Separating them would be a change reaching well past this feature.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

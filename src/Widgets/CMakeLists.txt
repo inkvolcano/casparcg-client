@@ -73,6 +73,7 @@ qt_add_library(widgets
     Inspector/TemplateDataTreeBaseWidget.cpp Inspector/TemplateDataTreeBaseWidget.h
     HttpResponsePanelWidget.cpp HttpResponsePanelWidget.h HttpResponsePanelWidget.ui
     LayoutEditorWidget.cpp LayoutEditorWidget.h
+    LayoutPresetBar.cpp LayoutPresetBar.h
     Library/AudioTreeBaseWidget.cpp Library/AudioTreeBaseWidget.h
     Library/DataTreeBaseWidget.cpp Library/DataTreeBaseWidget.h
     Library/DeviceFilterWidget.cpp Library/DeviceFilterWidget.h Library/DeviceFilterWidget.ui

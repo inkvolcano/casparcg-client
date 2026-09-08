@@ -20,6 +20,7 @@
 #include <QtWidgets/QWidget>
 
 class LayoutEditorWidget;
+class LayoutPresetBar;
 
 class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
 {
@@ -95,6 +96,12 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QComboBox* comboBoxTimezone1;
         QComboBox* comboBoxTimezone2;
         LayoutEditorWidget* layoutEditor;
+        LayoutPresetBar* layoutPresetBar = nullptr;
+        LayoutPresetBar* simpleLayoutPresetBar = nullptr;
+
+        // Re-reads the Panel Sizing combos from the database. Needed after a
+        // saved layout has been applied underneath them.
+        void reloadPanelSizing();
         LayoutEditorWidget* simpleLayoutEditor = nullptr;
         QSpinBox* spinBoxSimpleColumns = nullptr;
         QCheckBox* checkBoxSimplePlayStop = nullptr;
