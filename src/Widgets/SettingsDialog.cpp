@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "PreviewWidget.h"
 #include "DeviceDialog.h"
 #include "LayoutEditorWidget.h"
 #include "OscOutputDialog.h"
@@ -1039,6 +1040,32 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->previewFreezeTemplateCheck, row, 1, 1, 3);
     row++;
 
+    this->checkBoxPreviewAutoPlayVideo = new QCheckBox("Start playing a video as soon as it is selected");
+    this->checkBoxPreviewAutoPlayVideo->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewAutoPlayVideo->setToolTip("Off by default: selecting an item during a show should not start "
+                                                   "making noise on its own.");
+    grid->addWidget(this->checkBoxPreviewAutoPlayVideo, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxPreviewAudioMeters = new QCheckBox("Show audio meters over the picture");
+    this->checkBoxPreviewAudioMeters->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewAudioMeters->setToolTip("Levels are read from the file itself, so they follow scrubbing and "
+                                                  "hold while paused.");
+    grid->addWidget(this->checkBoxPreviewAudioMeters, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxPreviewTemplates = new QCheckBox("Render templates in the Preview panel");
+    this->checkBoxPreviewTemplates->setFocusPolicy(Qt::NoFocus);
+    grid->addWidget(this->checkBoxPreviewTemplates, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview (thumbnails only, as before)");
+    this->checkBoxPreviewLegacyMode->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewLegacyMode->setToolTip("Puts the panel back exactly as it was: a database thumbnail for "
+                                                 "stills, the local file for movies, nothing for anything else.");
+    grid->addWidget(this->checkBoxPreviewLegacyMode, row, 1, 1, 3);
+    row++;
+
     // ── Panels ───────────────────────────────────────────────
     addSection("Panels");
     this->checkBoxShowSTEPButton = new QCheckBox("Show STEP button in Server Status");
@@ -1395,6 +1422,44 @@ void SettingsDialog::setupGeneralTab()
     QObject::connect(this->comboBoxDisconnectMode, &QComboBox::currentTextChanged, [](const QString& text) {
         DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DisconnectMode", text));
     });
+
+    // Preview panel. Legacy mode turns the other three off in the UI as well as
+    // in the panel, so the dialog cannot suggest a combination that does nothing.
+    wireCheckBox(this->checkBoxPreviewAudioMeters, "PreviewAudioMeters");
+    wireCheckBox(this->checkBoxPreviewTemplates, "PreviewTemplates");
+
+    QString previewAutoPlay = DatabaseManager::getInstance().getConfigurationByName("PreviewAutoPlayVideo").getValue();
+    this->checkBoxPreviewAutoPlayVideo->setChecked(previewAutoPlay == "true");
+    QObject::connect(this->checkBoxPreviewAutoPlayVideo, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "PreviewAutoPlayVideo", checked ? "true" : "false"));
+    });
+
+    QString previewLegacy = DatabaseManager::getInstance().getConfigurationByName("PreviewLegacyMode").getValue();
+    this->checkBoxPreviewLegacyMode->setChecked(previewLegacy == "true");
+
+    auto applyPreviewLegacy = [this](bool legacy) {
+        this->checkBoxPreviewAutoPlayVideo->setEnabled(!legacy);
+        this->checkBoxPreviewAudioMeters->setEnabled(!legacy);
+        this->checkBoxPreviewTemplates->setEnabled(!legacy);
+    };
+    applyPreviewLegacy(this->checkBoxPreviewLegacyMode->isChecked());
+
+    QObject::connect(this->checkBoxPreviewLegacyMode, &QCheckBox::toggled, [applyPreviewLegacy](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "PreviewLegacyMode", checked ? "true" : "false"));
+        applyPreviewLegacy(checked);
+    });
+
+    // Say plainly when the build cannot do it, rather than leaving a tickbox that
+    // quietly achieves nothing.
+    if (!PreviewWidget::templateRenderingAvailable())
+    {
+        this->checkBoxPreviewTemplates->setEnabled(false);
+        this->checkBoxPreviewTemplates->setText("Render templates in the Preview panel (needs Qt WebEngine)");
+        this->checkBoxPreviewTemplates->setToolTip("This client was built without Qt WebEngine, so it cannot render "
+                                                    "a template. Everything else in the panel works.");
+    }
 
     // Template preview freeze.
     QString freezeVal = DatabaseManager::getInstance().getConfigurationByName("PreviewFreezeTemplate").getValue();

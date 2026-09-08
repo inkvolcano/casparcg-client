@@ -95,6 +95,7 @@ qt_add_library(widgets
     OscTimeWidget.cpp OscTimeWidget.h OscTimeWidget.ui
     PresetDialog.cpp PresetDialog.h PresetDialog.ui
     PreviewContentWidget.cpp PreviewContentWidget.h
+    PreviewAudioAnalyser.cpp PreviewAudioAnalyser.h
     PreviewWidget.cpp PreviewWidget.h PreviewWidget.ui
     Rundown/AbstractRundownWidget.cpp Rundown/AbstractRundownWidget.h
     Rundown/OpenRundownFromUrlDialog.cpp Rundown/OpenRundownFromUrlDialog.h Rundown/OpenRundownFromUrlDialog.ui
@@ -206,6 +207,14 @@ target_link_libraries(widgets PUBLIC
 
     $<$<PLATFORM_ID:Windows>:psapi>
 )
+
+# Template preview, when this machine has Qt WebEngine. The define is what
+# PreviewWidget.cpp switches on; without it that file compiles to a panel that
+# explains the template cannot be rendered.
+if (Qt6WebEngineWidgets_FOUND)
+    target_link_libraries(widgets PUBLIC Qt::WebEngineWidgets)
+    target_compile_definitions(widgets PUBLIC CASPARCG_HAS_WEBENGINE)
+endif()
 
 # Resources:
 set(Widgets_resource_files

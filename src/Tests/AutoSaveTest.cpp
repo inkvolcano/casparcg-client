@@ -90,7 +90,7 @@ private slots:
 
         // A path with the things that would break a naive marker: spaces, a
         // non-ASCII character, and the "-->" the comment ends with.
-        QString original = "C:/shows/late \xc3\xa9dition/Tonight.xml";
+        QString original = QString::fromUtf8("C:/shows/late \xc3\xa9" "dition/Tonight.xml");
         QString path = writeAutoSaveFile(directory + "/Tonight.xml", original);
         QVERIFY(!path.isEmpty());
 

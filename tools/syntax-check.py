@@ -73,7 +73,10 @@ def include_dirs(qt_include):
         for hit in glob.glob(os.path.join(BUILD, pattern)):
             dirs.append(hit)
 
-    for module in ('', 'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtXml', 'QtSql'):
+    # QtMultimedia and QtTest are here because the Preview panel and src/Tests use
+    # them; a module missing from this list fails as a bare "cannot open include".
+    for module in ('', 'QtCore', 'QtGui', 'QtWidgets', 'QtNetwork', 'QtXml', 'QtSql',
+                   'QtMultimedia', 'QtTest'):
         dirs.append(os.path.join(qt_include, module) if module else qt_include)
 
     return dirs
@@ -121,6 +124,41 @@ def moc_headers(qt_bin, sources, out_dir):
             print('  moc FAILED   ' + os.path.relpath(header, ROOT))
 
     return generated
+
+
+def moc_self_including_sources(qt_bin, sources, out_dir):
+    """moc a .cpp that declares Q_OBJECT and includes its own .moc.
+
+    A test that puts its whole QObject in the .cpp ends with #include "X.moc",
+    which the real build generates through AUTOMOC. Without the same file here,
+    every such source fails on a missing include and says nothing about whether
+    the code is actually correct. Nothing is added to the compile set: the .moc
+    is included by the source, not compiled on its own.
+    """
+    moc = os.path.join(qt_bin, 'moc.exe')
+    if not os.path.exists(moc):
+        return 0
+
+    made = 0
+    for source in sources:
+        if not source.endswith('.cpp'):
+            continue
+
+        with open(source, 'r', encoding='utf-8', errors='replace') as handle:
+            body = handle.read()
+
+        stem = os.path.basename(source)[:-4]
+        if 'Q_OBJECT' not in body or ('#include "%s.moc"' % stem) not in body:
+            continue
+
+        target = os.path.join(out_dir, stem + '.moc')
+        if subprocess.call([moc, source, '-o', target],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0:
+            made += 1
+        else:
+            print('  moc FAILED   ' + os.path.relpath(source, ROOT))
+
+    return made
 
 
 SKIP_IN_BODY = ('= 0', '=0', '= default', '= delete', 'Q_OBJECT', 'Q_DECLARE',
@@ -298,6 +336,7 @@ def main():
     out_dir = tempfile.mkdtemp(prefix='syntaxcheck-')
     made = generate_ui(qt_bin, out_dir)
     generated = moc_headers(qt_bin, sources, out_dir)
+    moc_self_including_sources(qt_bin, sources, out_dir)
 
     print('%d ui header(s), %d moc file(s), %d source(s)'
           % (made, len(generated), len(sources)))

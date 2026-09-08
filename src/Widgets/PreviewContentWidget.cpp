@@ -1,5 +1,7 @@
 #include "PreviewContentWidget.h"
 
+#include "AudioLevelTrack.h"
+
 #include <QtGui/QPainter>
 #include <QtGui/QFont>
 
@@ -29,6 +31,96 @@ bool PreviewContentWidget::isZoomed() const
     return this->zoomed;
 }
 
+void PreviewContentWidget::setAudioLevels(const QVector<double>& dbfs)
+{
+    if (this->audioLevels == dbfs)
+        return;
+
+    this->audioLevels = dbfs;
+    update();
+}
+
+void PreviewContentWidget::clearAudioLevels()
+{
+    if (this->audioLevels.isEmpty())
+        return;
+
+    this->audioLevels.clear();
+    update();
+}
+
+void PreviewContentWidget::setPlaceholder(const QString& text)
+{
+    if (this->placeholder == text)
+        return;
+
+    this->placeholder = text;
+    update();
+}
+
+void PreviewContentWidget::paintAudioMeters(QPainter& painter, const QRectF& frame)
+{
+    if (this->audioLevels.isEmpty())
+        return;
+
+    // Sized from the frame rather than fixed, so the meters stay in proportion
+    // whether the panel is a strip along the bottom of the screen or half of it.
+    const int channels = this->audioLevels.size();
+    const double barWidth = qBound(3.0, frame.width() * 0.012, 9.0);
+    const double gap = qMax(1.0, barWidth * 0.35);
+    const double inset = qMax(4.0, barWidth * 0.8);
+
+    const double totalWidth = channels * barWidth + (channels - 1) * gap;
+    const double height = qMax(24.0, frame.height() * 0.42);
+
+    // Bottom right of the picture: the corner least likely to hold the thing the
+    // operator is looking at, and where a meter is conventionally expected.
+    const double left = frame.right() - inset - totalWidth;
+    const double bottom = frame.bottom() - inset;
+    const double top = bottom - height;
+
+    if (left < frame.left() || top < frame.top())
+        return;
+
+    // A backing panel, because a green bar over bright picture is unreadable.
+    QRectF backing(left - gap, top - gap, totalWidth + gap * 2, height + gap * 2);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0, 0, 0, 110));
+    painter.drawRoundedRect(backing, 2, 2);
+
+    for (int channel = 0; channel < channels; channel++)
+    {
+        const double db = this->audioLevels.at(channel);
+
+        // Same floor as AudioMeterWidget, so a level here and a level on the
+        // server meters read the same.
+        const double fraction = qBound(0.0, (db - AudioLevelTrack::DB_MIN) / (0.0 - AudioLevelTrack::DB_MIN), 1.0);
+
+        const double x = left + channel * (barWidth + gap);
+
+        // The unlit track first, so a silent channel still reads as a channel.
+        painter.setBrush(QColor(255, 255, 255, 28));
+        painter.drawRect(QRectF(x, top, barWidth, height));
+
+        if (fraction <= 0.0)
+            continue;
+
+        const double litHeight = height * fraction;
+        QRectF lit(x, bottom - litHeight, barWidth, litHeight);
+
+        // Green until it is worth noticing, amber approaching the ceiling, red at
+        // the top — the same thresholds the server meters use.
+        QColor colour(0x00, 0xcc, 0x00);
+        if (db > -3.0)
+            colour = QColor(0xee, 0x00, 0x00);
+        else if (db > -12.0)
+            colour = QColor(0xdd, 0x99, 0x00);
+
+        painter.setBrush(colour);
+        painter.drawRect(lit);
+    }
+}
+
 void PreviewContentWidget::paintEvent(QPaintEvent* event)
 {
     Q_UNUSED(event);
@@ -38,7 +130,19 @@ void PreviewContentWidget::paintEvent(QPaintEvent* event)
     painter.fillRect(rect(), Qt::black);
 
     if (this->currentImage.isNull())
+    {
+        if (!this->placeholder.isEmpty())
+        {
+            QFont font = painter.font();
+            font.setPixelSize(11);
+            painter.setFont(font);
+            painter.setPen(QColor(150, 150, 150));
+            painter.drawText(rect().adjusted(12, 12, -12, -12),
+                             Qt::AlignCenter | Qt::TextWordWrap, this->placeholder);
+        }
+
         return;
+    }
 
     QSizeF widgetSize = size();
     QSizeF imgSize = this->currentImage.size();
@@ -70,6 +174,10 @@ void PreviewContentWidget::paintEvent(QPaintEvent* event)
 
     QRectF target(x, y, scaledW, scaledH);
     painter.drawImage(target, this->currentImage);
+
+    // Clipped to the widget, because a zoomed picture reaches past its edges and
+    // the meters belong to the panel, not to the picture.
+    paintAudioMeters(painter, target.intersected(QRectF(rect())));
 
     // Draw zoom badge when zoomed.
     if (this->zoomed)

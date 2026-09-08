@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are ten test suites and a syntax checker. Ten commands that each take a
+There are eleven test suites and a syntax checker. Eleven commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -33,6 +33,7 @@ SUITES = [
     ('test-layout',  False, 'panel heights kept inside the screen so the window can always fit'),
     ('test-assign',  False, 'who decides which packs a machine takes: the source, or the machine'),
     ('test-autosave',False, 'naming a recovery copy, and reading back the rundown it came from'),
+    ('test-preview', False, 'preview audio levels: peaks, unknown-vs-silent, and meter ballistics'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

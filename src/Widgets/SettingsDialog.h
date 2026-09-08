@@ -76,6 +76,10 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxHttpLogLastOnly;
         QCheckBox* checkBoxAutoSaveEnabled;
         QCheckBox* checkBoxAllowShellCommands;
+        QCheckBox* checkBoxPreviewAutoPlayVideo;
+        QCheckBox* checkBoxPreviewAudioMeters;
+        QCheckBox* checkBoxPreviewTemplates;
+        QCheckBox* checkBoxPreviewLegacyMode;
         QLabel* labelAutoSaveMinutes;
         QSpinBox* spinBoxAutoSaveMinutes;
         QCheckBox* checkBoxShowLastAction;

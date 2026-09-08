@@ -1527,6 +1527,62 @@ preview (F8)** for the old behaviour, and a preview-mode border you can turn off
 
 ---
 
+## The Preview panel shows the thing, not a thumbnail of it
+
+The panel used to show a small database thumbnail for stills, play the local file
+for movies, and nothing at all for anything else. It now previews what is
+actually selected, **with no CasparCG server running**: everything it needs comes
+off local disk, using the Media path and Template path already set per server.
+
+**Images** load from the real file rather than the database thumbnail. The
+thumbnail is small, and it only exists once a server has scanned the media — this
+panel now works before that has ever happened.
+
+**Videos** keep the timebar and gain a stop button. Drag the bar to scrub.
+
+**Templates render.** The panel loads the template's own `.html` and shows it
+running, with four buttons that call what a CasparCG template understands:
+
+| Button | What it calls |
+|---|---|
+| Play | `update()` with the template's own `debugData`, then `play()` |
+| Next | `next()` |
+| Update | `update()` with the template's own `debugData` |
+| Stop | `stop()` |
+
+Update feeds the template the sample values it already carries in
+`window.debugData` — the same block the Inspector reads to build its typed
+fields — so the preview shows a populated graphic without anything being typed.
+A rundown item is previewed under the template name **on the item**, not the one
+it was dragged in with, so retyping it in the Inspector changes what you see.
+
+**Audio meters** are drawn over the picture, one bar per channel. Qt cannot tap
+what the player is playing, so the levels are decoded from the file separately
+and held on a timeline the meter reads by position. That is better than metering
+the stream, not a workaround for it: the meters cannot drift out of sync,
+**scrubbing moves them**, and a paused frame keeps showing what that moment
+sounds like. Peaks are taken instantly and the fall is rate-limited, so a
+transient is never under-reported and the bars can still be read.
+
+### Settings → General → Preview
+
+- **Start playing a video as soon as it is selected** — off, because selecting an
+  item during a show should not start making noise on its own.
+- **Show audio meters over the picture** — on.
+- **Render templates in the Preview panel** — on, where the build can.
+- **Legacy preview (thumbnails only, as before)** — puts all of it back exactly
+  as it was. The other three switch off with it.
+
+### One build note
+
+Rendering a template needs **Qt WebEngine**, which is a large component that
+minimal Qt installs do not carry. It is optional on purpose: a build without it
+compiles and runs unchanged, and the panel says so where the template would be.
+Everything else here — images, video, the timebar, the meters — needs nothing
+extra.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

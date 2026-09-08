@@ -4,9 +4,12 @@
 
 #include <QtCore/QPoint>
 #include <QtCore/QPointF>
+#include <QtCore/QString>
+#include <QtCore/QVector>
 #include <QtGui/QImage>
 #include <QtGui/QMouseEvent>
 #include <QtGui/QPaintEvent>
+#include <QtGui/QPainter>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT PreviewContentWidget : public QWidget
@@ -20,6 +23,16 @@ public:
     void clearContent();
     bool isZoomed() const;
 
+    // Audio meters drawn over the picture, one bar per channel, in dBFS. They sit
+    // inside the drawn frame rather than beside it so they scale with the picture
+    // and cost the panel no height of its own.
+    void setAudioLevels(const QVector<double>& dbfs);
+    void clearAudioLevels();
+
+    // Shown centred when there is nothing to draw, so an empty box says why it is
+    // empty instead of just being black.
+    void setPlaceholder(const QString& text);
+
 signals:
     void doubleClicked();
 
@@ -31,7 +44,11 @@ protected:
     void mouseReleaseEvent(QMouseEvent* event) override;
 
 private:
+    void paintAudioMeters(QPainter& painter, const QRectF& frame);
+
     QImage currentImage;
+    QVector<double> audioLevels;
+    QString placeholder;
     bool zoomed = false;
     QPointF panOffset{0, 0};
     QPoint lastMousePos;

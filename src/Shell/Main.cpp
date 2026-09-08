@@ -299,6 +299,13 @@ int main(int argc, char* argv[])
 
     // QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
+#ifdef CASPARCG_HAS_WEBENGINE
+    // The Preview panel renders HTML templates in a QWebEngineView, which shares
+    // an OpenGL context with the rest of the application. This has to be set
+    // before the QApplication exists, so it cannot live with the panel.
+    QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+#endif
+
     Application application(argc, argv);
     application.setApplicationName("CasparCG Client");
     application.setApplicationVersion(QString("%1.%2.%3.%4").arg(MAJOR_VERSION).arg(MINOR_VERSION).arg(REVISION_VERSION).arg(BUILD_VERSION));
