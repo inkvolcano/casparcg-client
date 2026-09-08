@@ -11,6 +11,8 @@
 
 #include "Global.h"
 
+#include "OgrafManifest.h"
+
 #include "DatabaseManager.h"
 #include "EventManager.h"
 #include "Playout.h"
@@ -670,6 +672,17 @@ void InspectorTemplateWidget::loadDebugData()
             return;
         }
 
+        // An OGraf graphic says the same thing in a standard way: JSON Schema in
+        // its manifest, with GDD's gddType naming the editor. That is the version
+        // other tools already speak, so it is tried before this fork's own
+        // window.debugData convention.
+        QString manifestPath = Ograf::findManifest(templatePath, templateName);
+        if (!manifestPath.isEmpty())
+        {
+            loadOgrafFields(manifestPath);
+            return;
+        }
+
         QString filePath = QDir(templatePath).filePath(templateName + ".html");
 
         QFile file(filePath);
@@ -781,6 +794,70 @@ void InspectorTemplateWidget::loadDebugData()
 }
 
 
+
+void InspectorTemplateWidget::loadOgrafFields(const QString& manifestPath)
+{
+    Ograf::Manifest manifest = Ograf::load(manifestPath);
+
+    if (!manifest.valid)
+    {
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("OGraf manifest could not be read: %1").arg(manifest.error)));
+        return;
+    }
+
+    const QVector<Ograf::Field> fields = Ograf::fieldsFor(manifest.schema);
+
+    if (fields.isEmpty())
+    {
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("\"%1\" declares no editable fields.").arg(manifest.name)));
+        return;
+    }
+
+    // Merge, don't wipe — the same rule the debugData path follows. A key already
+    // in the table keeps its row and whatever the operator has typed into it;
+    // only its declared type is refreshed, because the manifest is the authority
+    // on that and nothing else is.
+    QTreeWidgetItem* root = this->treeWidgetTemplateData->invisibleRootItem();
+    QMap<QString, QTreeWidgetItem*> existingRows;
+    for (int i = 0; i < root->childCount(); i++)
+        existingRows[root->child(i)->text(0)] = root->child(i);
+
+    int addedCount = 0;
+    foreach (const Ograf::Field& field, fields)
+    {
+        QTreeWidgetItem* treeItem = existingRows.value(field.key);
+
+        if (treeItem == nullptr)
+        {
+            treeItem = new QTreeWidgetItem();
+            treeItem->setText(0, field.key);
+            treeItem->setText(1, this->checkBoxImportValues->isChecked() ? field.value : QString());
+            root->addChild(treeItem);
+            existingRows[field.key] = treeItem;
+            addedCount++;
+        }
+
+        treeItem->setData(0, Qt::UserRole, field.mode);
+
+        if (field.mode == Ograf::Mode::Cycle && !field.cycleValues.isEmpty())
+            treeItem->setData(0, Qt::UserRole + 1, field.cycleValues);
+
+        // The schema's title is a better thing to hover than the raw key,
+        // especially once a nested group has turned keys into dotted paths.
+        if (!field.label.isEmpty() && field.label != field.key)
+            treeItem->setToolTip(0, field.label);
+    }
+
+    this->fieldCounter = root->childCount();
+
+    updateTemplateDataModels();
+
+    EventManager::getInstance().fireStatusbarEvent(
+        StatusbarEvent(QString("Imported %1 fields (%2 new) from OGraf graphic \"%3\"")
+            .arg(fields.size()).arg(addedCount).arg(manifest.name)));
+}
 
 // ---- expected result ----
 

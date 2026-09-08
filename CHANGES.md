@@ -1622,6 +1622,43 @@ graphic's own folder, and an `id` containing a slash is refused outright.
 A graphic that fails to load says why, in the panel, with the error from the
 manifest or the stack from the module.
 
+### Key discovery reads OGraf too
+
+The Inspector's **Load fields** already builds typed rows from a template's
+`window.debugData` and `window.debugDataModes`. That is a convention this fork
+invented and nothing else speaks. OGraf says the same thing in a standard way, so
+key discovery now reads that as well: point it at a graphic and it builds the
+same typed rows from the manifest's JSON Schema.
+
+Types come from the schema plus [GDD](https://ograf.ebu.io/)'s `gddType`, which
+is how OGraf says "this string is a colour" rather than leaving every field a
+text box:
+
+| In the manifest | Row becomes |
+|---|---|
+| `gddType: "color-rrggbb"` or `"color-rrggbbaa"` | colour picker |
+| `gddType: "select"`, or any plain `enum` | cycle, with the choices in schema order |
+| `type: "integer"`, `gddType: "duration-ms"` | integer |
+| `type: "number"`, `gddType: "percentage"` | decimal |
+| `type: "boolean"` | boolean |
+| everything else, including `single-line`, `multi-line` and file paths | text |
+
+A plain JSON Schema `enum` is treated as a choice whether or not GDD named it
+one, so a graphic from a tool that never heard of GDD still gets its dropdown.
+
+**Nested groups flatten onto rows.** A CasparCG template's data is a flat set of
+key/value pairs and an OGraf schema may nest, so `home: { score }` becomes a row
+keyed `home.score`. The schema's `title` becomes the row's tooltip, which is
+worth having once keys are dotted paths.
+
+**Defaults are rendered for a text table**, so a boolean arrives as `true`, not
+as `1`, and a whole number as `2` rather than `2.0`. A default of `""`, `0` or
+`false` is kept — those are real values a graphic may rely on.
+
+**Rows are merged, not replaced.** A key already in the table keeps its row and
+whatever has been typed into it; only its declared type is refreshed, because the
+manifest is the authority on that and nothing else is.
+
 ### Two limits worth knowing
 
 **It needs Qt WebEngine**, like the template preview it is built on. A build
