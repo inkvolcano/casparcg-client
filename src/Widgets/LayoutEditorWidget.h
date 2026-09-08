@@ -23,7 +23,6 @@ class WIDGETS_EXPORT LayoutEditorWidget : public QWidget
     private:
         QString keyPrefix;
 
-        static const QStringList allWidgetIds;
         static QString widgetDisplayName(const QString& id);
         static QString columnDisplayName(const QString& id);
 

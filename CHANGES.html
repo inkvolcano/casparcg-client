@@ -1895,6 +1895,20 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 
 <p>The <i>Layout</i> settings tab now <b>scrolls</b>, like every other tab already did. It was the one tab built in code rather than from the designer file, so it had been missed &mdash; and it is the tab that grows by a row every time a panel is added.</p>
 
+<h3>iNews is now a legacy panel</h3>
+
+<p>With one list to put it in, <b>iNews is off by default</b>. It is 86 lines of countdown LCD inherited at the fork, never touched since, named after a product most people running this client do not have &mdash; and until now it was offered to everybody in the layout editor with no hint of what it was.</p>
+
+<p><b>It is hidden, not removed</b>, and the difference matters:</p>
+
+<ul>
+<li>A layout that <b>already places it keeps it</b>, keeps its sizing row, and is still saved by a named layout. Nothing moves for anyone using it.</li>
+<li>It only stops appearing in the <i>Hidden</i> list of panels you can add.</li>
+<li><b>Settings &rarr; Layout &rarr; Show legacy panels</b> brings it back.</li>
+</ul>
+
+<p>Hiding costs nothing to the people who never wanted it. Removing would have cost a working layout to whoever did.</p>
+
 <h2 id="live-stream">The Live panel, and what is actually wrong with it</h2>
 
 <p>Worth explaining, because it is not what it looks like. <b>The client decodes nothing for the Live panel.</b> It tells the <i>server</i> to encode a UDP mpegts stream and then plays that back. So the cost of having Live open lands on the <b>playout machine</b>, not on the machine watching it &mdash; and one hardcoded string decides all of it:</p>

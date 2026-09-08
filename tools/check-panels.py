@@ -29,7 +29,7 @@ MAINWINDOW = os.path.join(ROOT, 'src', 'Widgets', 'MainWindow.cpp')
 # The files that must not grow a hand-written panel list again. Each is a file
 # that had one, mapped to the marker proving it now reads the registry instead.
 CONSUMERS = {
-    os.path.join('src', 'Widgets', 'LayoutEditorWidget.cpp'): 'PanelRegistry::ids()',
+    os.path.join('src', 'Widgets', 'LayoutEditorWidget.cpp'): 'PanelRegistry::offeredIds(',
     os.path.join('src', 'Widgets', 'SettingsDialog.cpp'): 'PanelRegistry::all()',
     os.path.join('src', 'Common', 'LayoutPreset.h'): 'PanelRegistry::ids()',
     os.path.join('src', 'Widgets', 'MainWindow.cpp'): 'PanelRegistry::defaultHeight',

@@ -1,0 +1,12 @@
+-- Whether the layout editor offers the panels kept only for compatibility.
+--
+-- iNews is the one: 86 lines of countdown LCD inherited at the fork, never
+-- touched since, named after a product most people running this client do not
+-- have. Off by default means it stops being offered to people who would have to
+-- look it up to find out what it is.
+--
+-- It is hidden, not removed. A layout that already places it keeps it, keeps its
+-- sizing row, and keeps being saved by a named layout - taking a panel away from
+-- somebody using it is a worse outcome than showing it to somebody who is not.
+-- Turning this on brings it back to the list.
+INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('ShowLegacyPanels', 'false');

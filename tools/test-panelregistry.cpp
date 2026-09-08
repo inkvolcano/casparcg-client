@@ -165,6 +165,49 @@ static void theOnesThatWereMissedAreThere()
          "and it has a sizing mode to start from");
 }
 
+static void aLegacyPanelIsHiddenAndNotRemoved()
+{
+    // iNews is 86 lines of countdown LCD inherited at the fork, named after a
+    // product most people running this client do not have. It stopped being
+    // offered. It did not stop existing, and the difference is the whole point:
+    // hiding it costs nothing to somebody not using it, and removing it would
+    // cost a working layout to somebody who is.
+    expectTrue(PanelRegistry::isLegacy("Duration"), "iNews is legacy");
+    expectTrue(!PanelRegistry::offeredIds(false).contains("Duration"),
+               "and is not offered by default");
+    expectTrue(PanelRegistry::offeredIds(true).contains("Duration"),
+               "and comes back when legacy panels are turned on");
+
+    // Everything below still answers for it, which is what keeps an existing
+    // layout working rather than half-working - the exact failure this registry
+    // was built to end.
+    expectTrue(PanelRegistry::contains("Duration"), "it is still registered");
+    expectTrue(LayoutPreset::panelIds().contains("Duration"),
+               "a named layout still saves it");
+    same(PanelRegistry::displayName("Duration"), "iNews", "it still has its name");
+    same(PanelRegistry::defaultSizeMode("Duration"), "fixed", "and its sizing mode");
+    sameInt(PanelRegistry::compactHeight("Duration"), 25, "and still collapses to a header");
+
+    // Nothing else was quietly retired along with it.
+    const QStringList offered = PanelRegistry::offeredIds(false);
+    for (const PanelRegistry::Entry& panel : PanelRegistry::all())
+    {
+        if (panel.legacy)
+            continue;
+
+        expectTrue(offered.contains(panel.id),
+                   QString("\"%1\" is still offered").arg(panel.id));
+    }
+
+    sameInt(PanelRegistry::offeredIds(true).size(), PanelRegistry::ids().size(),
+            "with legacy on, everything registered is offered");
+    expectTrue(PanelRegistry::offeredIds(false).size() < PanelRegistry::ids().size(),
+               "and with it off, something is actually being held back");
+
+    expectTrue(!PanelRegistry::isLegacy("Preview"), "Preview is not legacy");
+    expectTrue(!PanelRegistry::isLegacy("Teleprompter"), "and neither is a panel that does not exist");
+}
+
 static void theHeightsAreTheOnesTheClientAlreadyUsed()
 {
     // The registry replaced two if-chains in MainWindow. If it disagrees with them
@@ -258,6 +301,7 @@ int main(int argc, char* argv[])
     aNamedLayoutSavesEveryPanelThatCanBePlaced();
     everyPanelOwnsItsKeys();
     theOnesThatWereMissedAreThere();
+    aLegacyPanelIsHiddenAndNotRemoved();
     theHeightsAreTheOnesTheClientAlreadyUsed();
     theSizingModesAreTheOnesTheDialogAlreadyShowed();
     anUnknownIdIsHarmless();

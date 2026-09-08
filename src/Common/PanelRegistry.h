@@ -45,6 +45,13 @@ namespace PanelRegistry
         // What the Panel Sizing list starts it at: "fixed", "resizable" or
         // "expanding".
         QString defaultSizeMode = "fixed";
+
+        // Kept for the people already using it, not offered to anyone else. A
+        // legacy panel stays registered - it sizes, it is saved by a named
+        // layout, and a layout that already places it is untouched - but it is
+        // not in the list of panels you can add unless legacy panels are turned
+        // on. Hiding it is reversible; removing it would not be.
+        bool legacy = false;
     };
 
     // Built once. The lookups below run inside the layout rebuild, once per panel
@@ -60,7 +67,9 @@ namespace PanelRegistry
             panels.append({ "Preview", "Preview",
                             ::Panel::DEFAULT_PREVIEW_HEIGHT, ::Panel::COMPACT_PREVIEW_HEIGHT, "resizable" });
             panels.append({ "Library", "Library", 0, 25, "expanding" });
-            panels.append({ "Duration", "iNews", 0, 25, "fixed" });
+            // 86 lines of countdown LCD inherited at the fork and never touched,
+            // named after a product most people running this client do not have.
+            panels.append({ "Duration", "iNews", 0, 25, "fixed", true });
             panels.append({ "StatusBar", "Status Bar", 0, 25, "fixed" });
             panels.append({ "Clock", "Clock",
                             ::Panel::DEFAULT_CLOCK_HEIGHT, ::Panel::COMPACT_CLOCK_HEIGHT, "fixed" });
@@ -97,6 +106,35 @@ namespace PanelRegistry
             list.append(panel.id);
 
         return list;
+    }
+
+    // What the layout editor offers. Everything else - what a named layout saves,
+    // what has a height, what has a sizing mode - still uses ids(), because a
+    // panel somebody already placed has to keep working whether or not it is
+    // still being offered.
+    inline QStringList offeredIds(bool includeLegacy)
+    {
+        QStringList list;
+        for (const Entry& panel : all())
+        {
+            if (panel.legacy && !includeLegacy)
+                continue;
+
+            list.append(panel.id);
+        }
+
+        return list;
+    }
+
+    inline bool isLegacy(const QString& id)
+    {
+        for (const Entry& panel : all())
+        {
+            if (panel.id == id)
+                return panel.legacy;
+        }
+
+        return false;
     }
 
     inline bool contains(const QString& id)

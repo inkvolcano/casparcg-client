@@ -155,6 +155,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         };
         QList<PanelSizingEntry> panelSizingEntries;
         QCheckBox* checkBoxShowEmptyPanels;
+        QCheckBox* checkBoxShowLegacyPanels = nullptr;
 
         // Channel color sliders + preview.
         QSlider* sliderAngle;

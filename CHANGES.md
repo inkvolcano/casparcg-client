@@ -1975,6 +1975,23 @@ The *Layout* settings tab now **scrolls**, like every other tab already did. It
 was the one tab built in code rather than from the designer file, so it had been
 missed - and it is the tab that grows by a row every time a panel is added.
 
+### iNews is now a legacy panel
+
+With one list to put it in, **iNews is off by default**. It is 86 lines of
+countdown LCD inherited at the fork, never touched since, named after a product
+most people running this client do not have - and until now it was offered to
+everybody in the layout editor with no hint of what it was.
+
+**It is hidden, not removed**, and the difference matters:
+
+- A layout that **already places it keeps it**, keeps its sizing row, and is
+  still saved by a named layout. Nothing moves for anyone using it.
+- It only stops appearing in the *Hidden* list of panels you can add.
+- **Settings -> Layout -> Show legacy panels** brings it back.
+
+Hiding costs nothing to the people who never wanted it. Removing would have cost
+a working layout to whoever did.
+
 ## The Live panel, and what is actually wrong with it
 
 Worth explaining, because it is not what it looks like. **The client decodes

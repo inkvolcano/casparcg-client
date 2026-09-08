@@ -9,12 +9,10 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QVBoxLayout>
 
-// Both of these used to be hand-written lists here, and the copy in the settings
-// dialog and the one in LayoutPreset had drifted from them. They now come from
-// PanelRegistry, so the editor cannot offer a panel the rest of the client does
-// not know how to size or save.
-const QStringList LayoutEditorWidget::allWidgetIds = PanelRegistry::ids();
-
+// This file used to own the list of panels and their display names, and the copy
+// in the settings dialog and the one in LayoutPreset had drifted from it. Both
+// now come from PanelRegistry, so the editor cannot offer a panel the rest of the
+// client does not know how to size or save.
 QString LayoutEditorWidget::widgetDisplayName(const QString& id)
 {
     return PanelRegistry::displayName(id);
@@ -208,7 +206,13 @@ void LayoutEditorWidget::loadFromConfig()
     this->availableList = createWidgetList();
     availLayout->addWidget(this->availableList);
 
-    for (const QString& wid : allWidgetIds)
+    // A legacy panel is offered only if legacy panels are turned on. One that is
+    // already placed is not affected - it is in a column above, not in this list -
+    // so turning them off never takes a panel away from somebody using it.
+    const bool showLegacy = DatabaseManager::getInstance()
+        .getConfigurationByName("ShowLegacyPanels").getValue() == "true";
+
+    for (const QString& wid : PanelRegistry::offeredIds(showLegacy))
     {
         if (!usedWidgets.contains(wid))
         {

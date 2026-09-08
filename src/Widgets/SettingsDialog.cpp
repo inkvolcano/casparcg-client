@@ -2,6 +2,7 @@
 #include "PreviewWidget.h"
 #include "StreamCommand.h"
 #include "PanelRegistry.h"
+#include "PanelPlacement.h"
 #include "LayoutPresetBar.h"
 #include "LayoutPreset.h"
 #include "DeviceDialog.h"
@@ -317,9 +318,27 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     psGrid->addWidget(new QLabel("Panel", panelSizingGroup), 0, 0);
     psGrid->addWidget(new QLabel("Size Mode", panelSizingGroup), 0, 1);
 
+    // A legacy panel gets a sizing row if it is turned on, or if a layout already
+    // places it - a row for a panel nobody can add is clutter, but a panel on
+    // screen with no way to size it is worse.
+    const bool showLegacy = DatabaseManager::getInstance()
+        .getConfigurationByName("ShowLegacyPanels").getValue() == "true";
+
+    // Both arrangements, because the sizing keys are not namespaced by mode -
+    // Simple Mode reads the same ones - so a panel placed only there still needs
+    // the row that sizes it.
+    QStringList placedPanels;
+    QStringList columnKeys = PanelPlacement::columnKeys(false);
+    columnKeys.append(PanelPlacement::columnKeys(true));
+    for (const QString& key : columnKeys)
+        placedPanels.append(DatabaseManager::getInstance().getConfigurationByName(key).getValue());
+
     int psRow = 1;
     for (const auto& p : panels)
     {
+        if (p.legacy && !showLegacy && !PanelPlacement::isPlaced(p.id, placedPanels))
+            continue;
+
         psGrid->addWidget(new QLabel(p.displayName, panelSizingGroup), psRow, 0);
 
         QComboBox* combo = new QComboBox(panelSizingGroup);
@@ -353,6 +372,31 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         .getConfigurationByName("ShowEmptyPanels").getValue();
     this->checkBoxShowEmptyPanels->setChecked(showEmptyVal == "true");
     tabLayoutVBox->addWidget(this->checkBoxShowEmptyPanels);
+
+    // Legacy panels. Off by default, which is what stops iNews being offered to
+    // the many people who have never run iNews. A layout that already places one
+    // keeps it either way.
+    this->checkBoxShowLegacyPanels = new QCheckBox("Show legacy panels (iNews)", tabLayout);
+    this->checkBoxShowLegacyPanels->setToolTip(
+        "Adds panels kept only for compatibility back to the list above.\n\n"
+        "They are hidden, not removed: a layout that already uses one keeps it,\n"
+        "keeps its sizing, and is still saved by a named layout.");
+    this->checkBoxShowLegacyPanels->setChecked(
+        DatabaseManager::getInstance().getConfigurationByName("ShowLegacyPanels").getValue() == "true");
+    tabLayoutVBox->addWidget(this->checkBoxShowLegacyPanels);
+
+    // Written on the spot rather than on OK, because the list it changes is the
+    // one immediately above the box.
+    QObject::connect(this->checkBoxShowLegacyPanels, &QCheckBox::toggled, this, [this](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "ShowLegacyPanels", checked ? "true" : "false"));
+
+        // The setting is global, so both editors have to be told - otherwise the
+        // Simple Mode tab keeps showing the answer from before the box was ticked.
+        this->layoutEditor->loadFromConfig();
+        if (this->simpleLayoutEditor != nullptr)
+            this->simpleLayoutEditor->loadFromConfig();
+    });
 
     // Applying a preset rewrites the settings this tab is showing. Rebuilding the
     // editor and re-reading the sizing combos is what stops the dialog displaying
