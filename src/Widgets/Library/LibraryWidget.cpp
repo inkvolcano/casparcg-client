@@ -33,6 +33,10 @@
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QHBoxLayout>
+#include "MediaListing.h"
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QGridLayout>
+#include <algorithm>
 #include <QtWidgets/QTreeWidgetItem>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
@@ -204,6 +208,8 @@ LibraryWidget::LibraryWidget(QWidget* parent)
     this->treeWidgetPreset->setColumnHidden(2, true);
 
     this->useDropFrameNotation = (DatabaseManager::getInstance().getConfigurationByName("UseDropFrameNotation").getValue() == "true") ? true : false;
+
+    buildSortControl();
 
     QObject::connect(this->treeWidgetTool, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(customContextMenuRequested(const QPoint &)));
     QObject::connect(this->treeWidgetPreset, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(customContextMenuPresetRequested(const QPoint &)));
@@ -665,6 +671,81 @@ void LibraryWidget::repositoryRundown(const RepositoryRundownEvent& event)
     this->treeWidgetPreset->setEnabled(!this->lock);
 }
 
+// The sort control, built in code because the filter row is a grid from the
+// designer file and adding a fourth cell to it there would mean regenerating the
+// whole form for one combo box.
+void LibraryWidget::buildSortControl()
+{
+    QGridLayout* grid = qobject_cast<QGridLayout*>(this->layout());
+    if (grid == nullptr)
+        return;
+
+    this->comboBoxSort = new QComboBox(this);
+    this->comboBoxSort->setFocusPolicy(Qt::NoFocus);
+    this->comboBoxSort->setToolTip(
+        "How the Library is ordered.\n\n"
+        "Size and date come from the server's own listing. Items it did not\n"
+        "report a size or a date for sort to the end rather than to the top.");
+
+    const MediaListing::SortBy all[] = {
+        MediaListing::SortBy::Name, MediaListing::SortBy::Newest,
+        MediaListing::SortBy::Largest, MediaListing::SortBy::Longest
+    };
+
+    for (const MediaListing::SortBy sort : all)
+        this->comboBoxSort->addItem(MediaListing::label(sort), MediaListing::toKey(sort));
+
+    const QString stored = DatabaseManager::getInstance()
+        .getConfigurationByName("LibrarySortBy").getValue();
+    const int index = this->comboBoxSort->findData(MediaListing::toKey(MediaListing::fromKey(stored)));
+    if (index >= 0)
+        this->comboBoxSort->setCurrentIndex(index);
+
+    // Sits to the right of the stretch, so the filter and the device filter keep
+    // the positions they have always had.
+    grid->addWidget(this->comboBoxSort, 1, 3);
+
+    QObject::connect(this->comboBoxSort, QOverload<int>::of(&QComboBox::activated), this, [this](int index) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "LibrarySortBy", this->comboBoxSort->itemData(index).toString()));
+
+        this->mediaChanged(MediaChangedEvent());
+    });
+}
+
+// One order for the whole list, applied before the rows are built - the tree is
+// filled in list order, so sorting here is what the operator sees.
+//
+// Two properties the sorting itself owns, both in MediaListing so they can be
+// tested: an item the server reported nothing for sorts last rather than first,
+// and equal rows fall back to the name so the list does not reshuffle itself
+// between refreshes.
+void LibraryWidget::applySort(QList<LibraryModel>& models) const
+{
+    const MediaListing::SortBy sortBy = MediaListing::fromKey(
+        DatabaseManager::getInstance().getConfigurationByName("LibrarySortBy").getValue());
+
+    if (sortBy == MediaListing::SortBy::Name)
+        return; // Already what the query returned.
+
+    std::stable_sort(models.begin(), models.end(),
+                     [sortBy](const LibraryModel& left, const LibraryModel& right) {
+        MediaListing::Entry l;
+        l.name = left.getName();
+        l.sizeBytes = left.getSize();
+        l.timestamp = left.getTimestamp();
+        l.durationMs = MediaListing::msFromTimecode(left.getTimecode());
+
+        MediaListing::Entry r;
+        r.name = right.getName();
+        r.sizeBytes = right.getSize();
+        r.timestamp = right.getTimestamp();
+        r.durationMs = MediaListing::msFromTimecode(right.getTimecode());
+
+        return MediaListing::lessThan(l, r, sortBy);
+    });
+}
+
 void LibraryWidget::mediaChanged(const MediaChangedEvent& event)
 {
     Q_UNUSED(event);
@@ -682,6 +763,8 @@ void LibraryWidget::mediaChanged(const MediaChangedEvent& event)
         models = DatabaseManager::getInstance().getLibraryMedia();
     else
         models = DatabaseManager::getInstance().getLibraryMediaByFilter(this->lineEditFilter->text(), dynamic_cast<DeviceFilterWidget*>(this->widgetDeviceFilter)->getDeviceFilter());
+
+    applySort(models);
 
     if (models.count() > 0)
     {

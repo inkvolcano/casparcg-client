@@ -1014,14 +1014,15 @@ QList<LibraryModel> DatabaseManager::getLibraryMedia()
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) ORDER BY l.Name, l.DeviceId"))
+    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) ORDER BY l.Name, l.DeviceId"))
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
     QList<LibraryModel> models;
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1031,14 +1032,15 @@ QList<LibraryModel> DatabaseManager::getLibraryTemplate()
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 ORDER BY l.Name, l.DeviceId"))
+    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 ORDER BY l.Name, l.DeviceId"))
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
     QList<LibraryModel> models;
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1048,14 +1050,15 @@ QList<LibraryModel> DatabaseManager::getLibraryData()
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 ORDER BY l.Name, l.DeviceId"))
+    if (!sql.exec("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t WHERE  l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 ORDER BY l.Name, l.DeviceId"))
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
     QList<LibraryModel> models;
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1068,21 +1071,21 @@ QList<LibraryModel> DatabaseManager::getLibraryMediaByFilter(const QString& filt
 
     if (!filter.isEmpty() && devices.isEmpty()) // Filter on all devices.
     {    
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) AND l.Name LIKE :Name "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (!filter.isEmpty() && !devices.isEmpty()) // Filter specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) AND l.Name LIKE :Name AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (filter.isEmpty() && !devices.isEmpty()) // All on specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
     }
@@ -1094,7 +1097,8 @@ QList<LibraryModel> DatabaseManager::getLibraryMediaByFilter(const QString& filt
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1107,21 +1111,21 @@ QList<LibraryModel> DatabaseManager::getLibraryTemplateByFilter(const QString& f
 
     if (!filter.isEmpty() && devices.isEmpty()) // Filter on all devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 AND l.Name LIKE :Name "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (!filter.isEmpty() && !devices.isEmpty()) // Filter specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 AND l.Name LIKE :Name AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (filter.isEmpty() && !devices.isEmpty()) // All on specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
     }
@@ -1133,7 +1137,8 @@ QList<LibraryModel> DatabaseManager::getLibraryTemplateByFilter(const QString& f
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1146,21 +1151,21 @@ QList<LibraryModel> DatabaseManager::getLibraryDataByFilter(const QString& filte
 
     if (!filter.isEmpty() && devices.isEmpty()) // Filter on all devices.
     {  
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 AND l.Name LIKE :Name "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (!filter.isEmpty() && !devices.isEmpty()) // Filter specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 AND l.Name LIKE :Name AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Name", QString("%%1%").arg(filter));
     }
     else if (filter.isEmpty() && !devices.isEmpty()) // All on specific devices.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 AND d.Address IN ('" + QStringList(devices).join("', '") + "') "
                     "ORDER BY l.Name, l.DeviceId");
     }
@@ -1172,7 +1177,8 @@ QList<LibraryModel> DatabaseManager::getLibraryDataByFilter(const QString& filte
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1182,7 +1188,7 @@ QList<LibraryModel> DatabaseManager::getLibraryByDeviceId(int deviceId)
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                 "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND d.Id = :Id "
                 "ORDER BY l.Name, l.DeviceId");
     sql.bindValue(":Id", deviceId);
@@ -1194,7 +1200,8 @@ QList<LibraryModel> DatabaseManager::getLibraryByDeviceId(int deviceId)
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1207,14 +1214,14 @@ QList<LibraryModel> DatabaseManager::getLibraryByDeviceIdAndFilter(int deviceId,
 
     if (filter.isEmpty())
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND d.Id = :Id "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Id", deviceId);
     }
     else // Filter.
     {
-        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+        sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                     "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND d.Id = :Id AND l.Name LIKE :Name "
                     "ORDER BY l.Name, l.DeviceId");
         sql.bindValue(":Id", deviceId);
@@ -1228,7 +1235,8 @@ QList<LibraryModel> DatabaseManager::getLibraryByDeviceIdAndFilter(int deviceId,
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1238,7 +1246,7 @@ QList<LibraryModel> DatabaseManager::getLibraryMediaByDeviceAddress(const QStrin
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                 "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND (l.TypeId = 1 OR l.TypeId = 3 OR l.TypeId = 4) AND d.Address = :Address "
                 "ORDER BY l.Id, l.DeviceId");
     sql.bindValue(":Address", address);
@@ -1250,7 +1258,8 @@ QList<LibraryModel> DatabaseManager::getLibraryMediaByDeviceAddress(const QStrin
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1260,7 +1269,7 @@ QList<LibraryModel> DatabaseManager::getLibraryTemplateByDeviceAddress(const QSt
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                 "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 5 AND d.Address = :Address "
                 "ORDER BY l.Id, l.DeviceId");
     sql.bindValue(":Address", address);
@@ -1272,7 +1281,8 @@ QList<LibraryModel> DatabaseManager::getLibraryTemplateByDeviceAddress(const QSt
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1282,7 +1292,7 @@ QList<LibraryModel> DatabaseManager::getLibraryDataByDeviceAddress(const QString
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                 "WHERE l.DeviceId = d.Id AND l.TypeId = t.Id AND l.TypeId = 2 AND d.Address = :Address "
                 "ORDER BY l.Id, l.DeviceId");
     sql.bindValue(":Address", address);
@@ -1294,7 +1304,8 @@ QList<LibraryModel> DatabaseManager::getLibraryDataByDeviceAddress(const QString
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
 }
@@ -1304,7 +1315,7 @@ QList<LibraryModel> DatabaseManager::getLibraryByNameAndDeviceId(const QString& 
     QMutexLocker locker(&mutex);
 
     QSqlQuery sql;
-    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode FROM Library l, Device d, Type t "
+    sql.prepare("SELECT l.Id, l.Name, d.Name, t.Value, l.ThumbnailId, l.Timecode, l.Size, l.Timestamp FROM Library l, Device d, Type t "
                 "WHERE  l.Name = :Name AND l.DeviceId = :DeviceId AND l.DeviceId = d.Id AND l.TypeId = t.Id");
     sql.bindValue(":Name", name);
     sql.bindValue(":DeviceId", deviceId);
@@ -1316,9 +1327,47 @@ QList<LibraryModel> DatabaseManager::getLibraryByNameAndDeviceId(const QString& 
     while (sql.next())
         models.push_back(LibraryModel(sql.value("Id").toInt(), sql.value(1).toString(), sql.value(1).toString(),
                                       sql.value(2).toString(), sql.value("Value").toString(), sql.value("ThumbnailId").toInt(),
-                                      sql.value("Timecode").toString()));
+                                      sql.value("Timecode").toString(),
+                                      sql.value("Size").toLongLong(), sql.value("Timestamp").toString()));
 
     return models;
+}
+
+// Filling in the size and the date on rows that already existed.
+//
+// The library sync only ever inserts names it has not seen, so after an upgrade
+// every row already in the table would have kept a null size and no date until
+// somebody renamed the file. The sort would have worked and shown nothing, which
+// is indistinguishable from being broken.
+//
+// Only rows that are actually missing something are touched, so the usual case -
+// a refresh where nothing changed - writes nothing at all.
+void DatabaseManager::updateLibraryMediaDetails(const QString& address, const QList<LibraryModel>& models)
+{
+    if (models.isEmpty())
+        return;
+
+    QMutexLocker locker(&mutex);
+
+    int deviceId = getDeviceByAddress(address).getId();
+
+    QSqlDatabase::database().transaction();
+
+    QSqlQuery sql;
+    foreach (const LibraryModel& model, models)
+    {
+        sql.prepare("UPDATE Library SET Size = :Size, Timestamp = :Timestamp "
+                    "WHERE DeviceId = :DeviceId AND Name = :Name");
+        sql.bindValue(":Size", model.getSize());
+        sql.bindValue(":Timestamp", model.getTimestamp());
+        sql.bindValue(":DeviceId", deviceId);
+        sql.bindValue(":Name", model.getName());
+
+        if (!sql.exec())
+           qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+    }
+
+    QSqlDatabase::database().commit();
 }
 
 void DatabaseManager::updateLibraryMedia(const QString& address, const QList<LibraryModel>& deleteModels, const QList<LibraryModel>& insertModels)
@@ -1357,13 +1406,15 @@ void DatabaseManager::updateLibraryMedia(const QString& address, const QList<Lib
             else if (insertModels.at(i).getType() == Rundown::STILL)
                 typeId = std::find_if(typeModels.begin(), typeModels.end(), TypeModel::ByName(Rundown::STILL))->getId();
 
-            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode) "
-                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode)");
+            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode, Size, Timestamp) "
+                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode, :Size, :Timestamp)");
             sql.bindValue(":Name", insertModels.at(i).getName());
             sql.bindValue(":DeviceId", deviceId);
             sql.bindValue(":TypeId", typeId);
             sql.bindValue(":ThumbnailId", insertModels.at(i).getThumbnailId());
             sql.bindValue(":Timecode", insertModels.at(i).getTimecode());
+            sql.bindValue(":Size", insertModels.at(i).getSize());
+            sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
@@ -1401,13 +1452,15 @@ void DatabaseManager::updateLibraryTemplate(const QString& address, const QList<
     {
         for (int i = 0; i < insertModels.count(); i++)
         {
-            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode) "
-                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode)");
+            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode, Size, Timestamp) "
+                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode, :Size, :Timestamp)");
             sql.bindValue(":Name", insertModels.at(i).getName());
             sql.bindValue(":DeviceId", deviceId);
             sql.bindValue(":TypeId", typeId);
             sql.bindValue(":ThumbnailId", insertModels.at(i).getThumbnailId());
             sql.bindValue(":Timecode", insertModels.at(i).getTimecode());
+            sql.bindValue(":Size", insertModels.at(i).getSize());
+            sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
@@ -1455,13 +1508,15 @@ void DatabaseManager::updateLibraryData(const QString& address, const QList<Libr
             if (insertModels.at(i).getType() == "DATA")
                 typeId = std::find_if(typeModels.begin(), typeModels.end(), TypeModel::ByName("DATA"))->getId();
 
-            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode) "
-                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode)");
+            sql.prepare("INSERT INTO Library (Name, DeviceId, TypeId, ThumbnailId, Timecode, Size, Timestamp) "
+                        "VALUES(:Name, :DeviceId, :TypeId, :ThumbnailId, :Timecode, :Size, :Timestamp)");
             sql.bindValue(":Name", insertModels.at(i).getName());
             sql.bindValue(":DeviceId", deviceId);
             sql.bindValue(":TypeId", typeId);
             sql.bindValue(":ThumbnailId", insertModels.at(i).getThumbnailId());
             sql.bindValue(":Timecode", insertModels.at(i).getTimecode());
+            sql.bindValue(":Size", insertModels.at(i).getSize());
+            sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));

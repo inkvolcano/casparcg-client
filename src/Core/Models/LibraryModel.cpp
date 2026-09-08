@@ -1,8 +1,20 @@
 #include "LibraryModel.h"
 
-LibraryModel::LibraryModel(int id, const QString& label, const QString& name, const QString& deviceName, const QString& type, int thumbnailId, const QString& timecode)
-    : id(id), label(label), name(name), deviceName(deviceName), type(type), thumbnailId(thumbnailId), timecode(timecode)
+LibraryModel::LibraryModel(int id, const QString& label, const QString& name, const QString& deviceName, const QString& type, int thumbnailId, const QString& timecode,
+                           qint64 size, const QString& timestamp)
+    : id(id), label(label), name(name), deviceName(deviceName), type(type), thumbnailId(thumbnailId), timecode(timecode),
+      size(size), timestamp(timestamp)
 {
+}
+
+qint64 LibraryModel::getSize() const
+{
+    return this->size;
+}
+
+const QString& LibraryModel::getTimestamp() const
+{
+    return this->timestamp;
 }
 
 int LibraryModel::getId() const

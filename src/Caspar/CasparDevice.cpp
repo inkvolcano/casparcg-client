@@ -1,5 +1,8 @@
 #include "CasparDevice.h"
 
+#include "../Common/MediaListing.h"
+
+
 #include "StreamCommand.h"
 
 #include "Timecode.h"
@@ -658,39 +661,32 @@ void CasparDevice::sendNotification()
 
             AmcpDevice::response.removeFirst(); // First post is the header, 200 CLS OK.
 
+            // Every field the server sends is read here now. The name, the
+            // type and the length were already; the size and the timestamp were
+            // parsed past and dropped, which is why the Library has never been
+            // able to sort by anything but name.
+            //
+            // The line format and its edge cases - names containing spaces,
+            // trailing fields simply absent, and the timestamp that is fourteen
+            // digits of nonsense in CasparCG's own documentation - live in
+            // MediaListing.h where they can be tested against real lines.
             QList<CasparMedia> items;
             foreach (QString response, AmcpDevice::response)
             {
-                QString name = response.split("\" ").at(0);
-                name.replace("\\", "/");
-                if (name.startsWith("\""))
-                    name.remove(0, 1);
+                const MediaListing::Entry entry = MediaListing::parseLine(response);
+                if (!entry.isValid())
+                    continue;
 
-                if (name.endsWith("\""))
-                    name.remove(name.length() - 1, 1);
-
-                QString type = response.split("\" ").at(1).trimmed().split(" ").at(0);
-
+                // The timecode shown in the Library is what it always was: the
+                // length and the rate, both of which the parse already produced.
+                // Splitting the line a second time here is how the field indices
+                // drift apart, so it is not done.
                 QString timecode;
-                if (response.split("\" ").at(1).trimmed().split(" ").count() > 5)
-                {
-                    // Format:
-                    // "AMB"  MOVIE  6445960 20121101160514 643 1/60
-                    // "CG1080I50"  MOVIE  6159792 20121101150514 264 1/25
-                    // "GO1080P25"  MOVIE  16694084 20121101150514 445 1/25
-                    // "WIPE"  MOVIE  1268784 20121101150514 31 1/25
-                    // "HOOLOOVOO"  MOVIE  1111111 22222222222222 333 100/2997
-                    QString totalFrames = response.split("\" ").at(1).trimmed().split(" ").at(4);
-                    QStringList timebase = response.split("\" ").at(1).trimmed().split(" ").at(5).split("/");
+                if (entry.hasDuration() && entry.fps > 0.0)
+                    timecode = Timecode::fromTime(entry.durationMs / 1000.0, entry.fps, false);
 
-                    int frames = totalFrames.toInt();
-                    double fps = timebase.at(1).toDouble() / timebase.at(0).toDouble();
-
-                    double time = frames * (1.0 / fps);
-                    timecode = Timecode::fromTime(time, fps, false);
-                }
-
-                items.push_back(CasparMedia(name, type, timecode));
+                items.push_back(CasparMedia(entry.name, entry.type, timecode,
+                                            entry.sizeBytes, entry.timestamp));
             }
 
             emit mediaChanged(items, *this);

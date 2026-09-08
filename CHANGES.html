@@ -131,6 +131,8 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#library-sort">Library Sorting</a><br>
+<a href="#meter-ballistics">Meter Peak Hold And Clipping</a><br>
 <a href="#panel-registry">One List Of The Panels</a><br>
 <a href="#live-stream">The Live Panel Stream</a><br>
 <a href="#ograf-switch">OGraf As One Switch</a><br>
@@ -1870,6 +1872,54 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>One honest limit</h3>
 
 <p>A graphic dragged into a rundown <b>previews, and does not play</b>. CasparCG Server has no OGraf support yet &mdash; SuperFly.tv have said they are building it. Until that lands this is for building and checking graphics, not for playing them out.</p>
+
+<h2 id="library-sort">Sorting the Library by date, size and length</h2>
+
+<p>The Library could sort by name and by nothing else. The type is already the tabs, so what was missing was <b>the clip that just landed</b> &mdash; and in a folder of four hundred files sorted alphabetically, finding that is a search rather than a glance.</p>
+
+<p><b>The data was already arriving.</b> A server answers <code>CLS</code> with one line per file:</p>
+
+<pre><code>"AMB"  MOVIE  6445960 20121101160514 643 1/60</code></pre>
+
+<p>That is name, type, <b>size in bytes</b>, <b>when it was written</b>, length in frames, and the frame rate. The client parsed the last two into a timecode and <b>threw the size and the timestamp away</b> on every refresh, for years.</p>
+
+<p>They are now kept, and the Library has a sort control next to the filter:</p>
+
+<ul>
+<li><b>Name</b> &mdash; what it always did, and still the default.</li>
+<li><b>Newest first</b> &mdash; the file the server wrote most recently.</li>
+<li><b>Largest first</b></li>
+<li><b>Longest first</b></li>
+</ul>
+
+<p>Two details that decide whether this is useful or annoying:</p>
+
+<ul>
+<li><b>Anything the server reported nothing for sorts to the end</b>, never the top. A library of stills with no size would otherwise fill the top of a size-sorted list and look like a broken sort rather than like missing data.</li>
+<li><b>Equal rows fall back to the name</b>, so the order is stable. Two clips of the same length swapping places between refreshes is the kind of thing that makes a panel feel unreliable.</li>
+</ul>
+
+<p>Rows already in your library get their size and date <b>filled in on the next refresh</b> rather than only when a file is renamed &mdash; without that, an upgraded client would sort perfectly and have nothing to sort by.</p>
+
+<h2 id="meter-ballistics">Peak hold and clip indication on the Audio Levels meters</h2>
+
+<p>The meters drew whatever number arrived last. Levels come in over OSC a handful of times a second and each replaced the one before it, so:</p>
+
+<ul>
+<li><b>A transient was invisible.</b> One frame at -2 dB between two frames at -20 was drawn once and gone.</li>
+<li><b>Clipping left no trace at all.</b> The one event a meter exists to report was the one it forgot fastest.</li>
+</ul>
+
+<p>Now:</p>
+
+<ul>
+<li><b>The peak is marked and held</b> for a moment before falling, so a transient the bar has already dropped away from still has something on screen saying it happened.</li>
+<li><b>A clip latches.</b> It stays lit until you <b>click the meter</b> to clear it, because the question after a show is "did it clip", not "is it clipping".</li>
+<li><b>The bar falls at a rate</b> rather than jumping, and the rate is in decibels per second rather than per packet &mdash; so the meters behave the same against a busy server and an idle one.</li>
+<li><b>A stream that stops decays to silence</b> instead of freezing on its last reading, which used to read as "still playing". A dropped packet or two changes nothing.</li>
+</ul>
+
+<p>Both are on by default and can be turned off in <code>Settings &rarr; Preview and Panels</code>.</p>
 
 <h2 id="panel-registry">One list of the panels</h2>
 

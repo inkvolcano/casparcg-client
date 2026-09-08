@@ -1931,6 +1931,69 @@ lands this is for building and checking graphics, not for playing them out.
 
 ---
 
+## Sorting the Library by date, size and length
+
+The Library could sort by name and by nothing else. The type is already the tabs,
+so what was missing was **the clip that just landed** - and in a folder of four
+hundred files sorted alphabetically, finding that is a search rather than a
+glance.
+
+**The data was already arriving.** A server answers `CLS` with one line per file:
+
+```
+"AMB"  MOVIE  6445960 20121101160514 643 1/60
+```
+
+That is name, type, **size in bytes**, **when it was written**, length in frames,
+and the frame rate. The client parsed the last two into a timecode and **threw the
+size and the timestamp away** on every refresh, for years.
+
+They are now kept, and the Library has a sort control next to the filter:
+
+- **Name** - what it always did, and still the default.
+- **Newest first** - the file the server wrote most recently.
+- **Largest first**
+- **Longest first**
+
+Two details that decide whether this is useful or annoying:
+
+- **Anything the server reported nothing for sorts to the end**, never the top. A
+  library of stills with no size would otherwise fill the top of a size-sorted
+  list and look like a broken sort rather than like missing data.
+- **Equal rows fall back to the name**, so the order is stable. Two clips of the
+  same length swapping places between refreshes is the kind of thing that makes a
+  panel feel unreliable.
+
+Rows already in your library get their size and date **filled in on the next
+refresh** rather than only when a file is renamed - without that, an upgraded
+client would sort perfectly and have nothing to sort by.
+
+## Peak hold and clip indication on the Audio Levels meters
+
+The meters drew whatever number arrived last. Levels come in over OSC a handful
+of times a second and each replaced the one before it, so:
+
+- **A transient was invisible.** One frame at -2 dB between two frames at -20 was
+  drawn once and gone.
+- **Clipping left no trace at all.** The one event a meter exists to report was
+  the one it forgot fastest.
+
+Now:
+
+- **The peak is marked and held** for a moment before falling, so a transient the
+  bar has already dropped away from still has something on screen saying it
+  happened.
+- **A clip latches.** It stays lit until you **click the meter** to clear it,
+  because the question after a show is "did it clip", not "is it clipping".
+- **The bar falls at a rate** rather than jumping, and the rate is in decibels per
+  second rather than per packet - so the meters behave the same against a busy
+  server and an idle one.
+- **A stream that stops decays to silence** instead of freezing on its last
+  reading, which used to read as "still playing". A dropped packet or two changes
+  nothing.
+
+Both are on by default and can be turned off in `Settings -> Preview and Panels`.
+
 ## One list of the panels
 
 A fix for a bug, and for the reason the bug existed.

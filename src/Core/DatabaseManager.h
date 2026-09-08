@@ -101,6 +101,7 @@ class CORE_EXPORT DatabaseManager
         QList<LibraryModel> getLibraryDataByDeviceAddress(const QString& address);
         QList<LibraryModel> getLibraryByNameAndDeviceId(const QString& name, int deviceId);
         void updateLibraryMedia(const QString& address, const QList<LibraryModel>& deleteModels, const QList<LibraryModel>& insertModels);
+        void updateLibraryMediaDetails(const QString& address, const QList<LibraryModel>& models);
         void updateLibraryTemplate(const QString& address, const QList<LibraryModel>& deleteModels, const QList<LibraryModel>& insertModels);
         void updateLibraryData(const QString& address, const QList<LibraryModel>& deleteModels, const QList<LibraryModel>& insertModels);
         void deleteLibrary(int deviceId);

@@ -1263,6 +1263,27 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxPreviewLegacyMode, row, 1, 1, 3);
     row++;
 
+    // The Audio Levels meters. Both default on: a meter that hides a clip is not
+    // a preference, it is a fault. They are settings because somebody metering
+    // eight channels in a narrow column may want the plain bars back.
+    this->checkBoxMeterPeakHold = new QCheckBox("Audio Levels: hold the peak");
+    this->checkBoxMeterPeakHold->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxMeterPeakHold->setToolTip(
+        "Marks the highest recent level and holds it for a moment.\n\n"
+        "Without it a transient is drawn for one refresh and gone, so a brief\n"
+        "overload between two quiet readings leaves nothing on screen.");
+    grid->addWidget(this->checkBoxMeterPeakHold, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxMeterClipIndicator = new QCheckBox("Audio Levels: latch clipping");
+    this->checkBoxMeterClipIndicator->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxMeterClipIndicator->setToolTip(
+        "Lights a lamp above the meter when a channel reaches full scale, and\n"
+        "leaves it lit until you click the meter to clear it.\n\n"
+        "The question after a show is \"did it clip\", not \"is it clipping\".");
+    grid->addWidget(this->checkBoxMeterClipIndicator, row, 1, 1, 3);
+    row++;
+
     // ── Panels ───────────────────────────────────────────────
     addSection("Panels");
     this->checkBoxShowSTEPButton = new QCheckBox("Show STEP button in Server Status");
@@ -1648,6 +1669,20 @@ void SettingsDialog::setupGeneralTab()
     QObject::connect(this->checkBoxPreviewAutoPlayVideo, &QCheckBox::toggled, [](bool checked) {
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "PreviewAutoPlayVideo", checked ? "true" : "false"));
+    });
+
+    QString meterPeakHold = DatabaseManager::getInstance().getConfigurationByName("MeterPeakHold").getValue();
+    this->checkBoxMeterPeakHold->setChecked(meterPeakHold != "false");
+    QObject::connect(this->checkBoxMeterPeakHold, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "MeterPeakHold", checked ? "true" : "false"));
+    });
+
+    QString meterClip = DatabaseManager::getInstance().getConfigurationByName("MeterClipIndicator").getValue();
+    this->checkBoxMeterClipIndicator->setChecked(meterClip != "false");
+    QObject::connect(this->checkBoxMeterClipIndicator, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "MeterClipIndicator", checked ? "true" : "false"));
     });
 
     QString previewLegacy = DatabaseManager::getInstance().getConfigurationByName("PreviewLegacyMode").getValue();

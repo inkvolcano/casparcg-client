@@ -82,6 +82,8 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxPreviewAudioMeters;
         QCheckBox* checkBoxPreviewTemplates;
         QCheckBox* checkBoxPreviewLegacyMode;
+        QCheckBox* checkBoxMeterPeakHold = nullptr;
+        QCheckBox* checkBoxMeterClipIndicator = nullptr;
         QCheckBox* checkBoxOgrafEnabled;
 
         // Created in code rather than in the .ui: the Live Stream tab positions

@@ -23,6 +23,7 @@
 #include <QtWidgets/QTabWidget>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QSpinBox>
+#include <QtWidgets/QComboBox>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
@@ -36,6 +37,13 @@ class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
         static int dropVideolayer();
 
     private:
+        // The Library could sort by name and nothing else, while the server sent
+        // the size and the date on every listing and the client threw them away.
+        QComboBox* comboBoxSort = nullptr;
+
+        void buildSortControl();
+        void applySort(QList<LibraryModel>& models) const;
+
         bool lock = false;
         bool useDropFrameNotation = false;
         bool collapsed = false;

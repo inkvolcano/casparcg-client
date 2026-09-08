@@ -3,6 +3,8 @@
 #include "Shared.h"
 #include "ui_AudioMeterWidget.h"
 
+#include "MeterBallistics.h"
+
 #include "OscSubscription.h"
 #include "Events/Inspector/ChannelChangedEvent.h"
 #include "Events/Inspector/DeviceChangedEvent.h"
@@ -25,9 +27,21 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
     protected:
         void paintEvent(QPaintEvent* event) override;
 
+        // Clicking the meter clears a latched clip. There is nowhere else to put
+        // it - the panel is a row of meters with no room for a button each - and
+        // it is what every mixer in the building already does.
+        void mousePressEvent(QMouseEvent* event) override;
+
     private:
         int channel;
         double currentLevel;
+
+        // What the meter shows between readings: the bar's fall, the peak marker
+        // and whether a clip has been seen and not yet acknowledged.
+        MeterBallistics::Meter meter;
+        QTimer* decayTimer = nullptr;
+        bool peakHoldEnabled = true;
+        bool clipIndicatorEnabled = true;
         LibraryModel* model;
         AbstractCommand* command;
 
@@ -43,4 +57,5 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
         Q_SLOT void emptyRundown(const EmptyRundownEvent&);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
         Q_SLOT void audioSubscriptionReceived(const QString&, const QList<QVariant>&);
+        Q_SLOT void decayTick();
 };

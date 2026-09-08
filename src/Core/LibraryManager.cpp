@@ -180,12 +180,47 @@ void LibraryManager::mediaChanged(const QList<CasparMedia>& mediaItems, CasparDe
         }
 
         if (!found)
-            insertModels.push_back(LibraryModel(0, mediaItem.getName(), mediaItem.getName(), "", mediaItem.getType(), 0, mediaItem.getTimecode()));
+            insertModels.push_back(LibraryModel(0, mediaItem.getName(), mediaItem.getName(), "", mediaItem.getType(), 0, mediaItem.getTimecode(),
+                                               mediaItem.getSize(), mediaItem.getTimestamp()));
     }
 
-    if (deleteModels.count() > 0 || insertModels.count() > 0)
+    // Rows that already existed keep whatever they were stored with, and before
+    // the server's size and date were kept that was nothing. Without this, an
+    // upgraded client would sort by size and date perfectly and have neither for
+    // anything already in its library - which looks exactly like a broken sort.
+    QList<LibraryModel> detailModels;
+    foreach (CasparMedia mediaItem, mediaItems)
     {
-        DatabaseManager::getInstance().updateLibraryMedia(device.getAddress(), deleteModels, insertModels);
+        if (mediaItem.getSize() < 0 && mediaItem.getTimestamp().isEmpty())
+            continue;
+
+        foreach (const LibraryModel& libraryModel, libraryModels)
+        {
+            if (libraryModel.getName() != mediaItem.getName())
+                continue;
+
+            // Only when something is actually missing or has changed, so the
+            // ordinary refresh where nothing moved writes nothing at all.
+            if (libraryModel.getSize() != mediaItem.getSize()
+                || libraryModel.getTimestamp() != mediaItem.getTimestamp())
+            {
+                detailModels.push_back(LibraryModel(libraryModel.getId(), mediaItem.getName(), mediaItem.getName(),
+                                                    "", mediaItem.getType(), 0, mediaItem.getTimecode(),
+                                                    mediaItem.getSize(), mediaItem.getTimestamp()));
+            }
+
+            break;
+        }
+    }
+
+    if (!detailModels.isEmpty())
+        DatabaseManager::getInstance().updateLibraryMediaDetails(device.getAddress(), detailModels);
+
+    if (deleteModels.count() > 0 || insertModels.count() > 0 || !detailModels.isEmpty())
+    {
+        if (deleteModels.count() > 0 || insertModels.count() > 0)
+            DatabaseManager::getInstance().updateLibraryMedia(device.getAddress(), deleteModels, insertModels);
+
         EventManager::getInstance().fireMediaChangedEvent(MediaChangedEvent());
     }
 

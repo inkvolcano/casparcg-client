@@ -1,7 +1,8 @@
 #include "CasparMedia.h"
 
-CasparMedia::CasparMedia(const QString& name, const QString& type, const QString& timecode)
-    : name(name), type(type), timecode(timecode)
+CasparMedia::CasparMedia(const QString& name, const QString& type, const QString& timecode,
+                         qint64 size, const QString& timestamp)
+    : name(name), type(type), timecode(timecode), size(size), timestamp(timestamp)
 {
 }
 
@@ -18,4 +19,14 @@ const QString& CasparMedia::getType() const
 const QString& CasparMedia::getTimecode() const
 {
     return this->timecode;
+}
+
+qint64 CasparMedia::getSize() const
+{
+    return this->size;
+}
+
+const QString& CasparMedia::getTimestamp() const
+{
+    return this->timestamp;
 }

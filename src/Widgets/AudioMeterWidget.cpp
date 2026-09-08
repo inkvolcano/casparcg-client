@@ -8,6 +8,10 @@
 
 #include <cmath>
 
+#include <QtCore/QDateTime>
+#include <QtCore/QTimer>
+
+#include <QtGui/QMouseEvent>
 #include <QtGui/QPainter>
 
 // Block meter constants.
@@ -37,6 +41,18 @@ static const QColor BLOCK_COLORS_ON[BLOCK_COUNT] = {
     QColor(0xee, 0x00, 0x00),  // 9: red
 };
 
+// The peak marker sits on top of a block rather than replacing it, so the bar
+// still reads normally underneath. White carries at a glance against every block
+// colour, which red would not against the top of the scale.
+static const QColor PEAK_COLOR = QColor(0xff, 0xff, 0xff);
+static const int PEAK_HEIGHT = 2;
+
+// The clip lamp. Latched, so it has to be visibly different from the top block
+// being lit - a brighter red, above the meter rather than in it.
+static const QColor CLIP_COLOR = QColor(0xff, 0x30, 0x20);
+static const QColor CLIP_COLOR_OFF = QColor(0x30, 0x0c, 0x0a);
+static const int CLIP_HEIGHT = 3;
+
 // Dim (off) colors — same hue at very low brightness.
 static const QColor BLOCK_COLORS_OFF[BLOCK_COUNT] = {
     QColor(0x08, 0x22, 0x08),
@@ -56,6 +72,22 @@ AudioMeterWidget::AudioMeterWidget(QWidget* parent)
       channel(-1), currentLevel(DB_MIN), model(NULL), command(NULL), audioSubscription(NULL)
 {
     setupUi(this);
+
+    this->meter.reset();
+
+    QString peakHold = DatabaseManager::getInstance().getConfigurationByName("MeterPeakHold").getValue();
+    this->peakHoldEnabled = (peakHold != "false");
+    QString clipIndicator = DatabaseManager::getInstance().getConfigurationByName("MeterClipIndicator").getValue();
+    this->clipIndicatorEnabled = (clipIndicator != "false");
+
+    // The fall has to happen in real time rather than only when a packet lands,
+    // or a stream that stops leaves the meter frozen at the last level it saw -
+    // which reads as "still playing". 25 fps is smooth and costs a fill of a few
+    // dozen rectangles.
+    this->decayTimer = new QTimer(this);
+    this->decayTimer->setTimerType(Qt::CoarseTimer);
+    QObject::connect(this->decayTimer, SIGNAL(timeout()), this, SLOT(decayTick()));
+    this->decayTimer->start(40);
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(channelChanged(const ChannelChangedEvent&)), this, SLOT(channelChanged(const ChannelChangedEvent&)));
@@ -114,6 +146,33 @@ void AudioMeterWidget::paintEvent(QPaintEvent* event)
         painter.fillRect(BLOCK_X, y, BLOCK_WIDTH, BLOCK_HEIGHT,
                          lit ? BLOCK_COLORS_ON[i] : BLOCK_COLORS_OFF[i]);
     }
+
+    // The peak marker, drawn over the block it lands in rather than instead of
+    // it, so the bar still reads normally underneath. This is the whole reason
+    // for the change: a transient that the bar has already fallen away from
+    // still has something on screen saying it happened.
+    if (this->peakHoldEnabled && this->meter.hasPeak())
+    {
+        int peakBlock = static_cast<int>((this->meter.peak() - DB_MIN) / dbPerBlock);
+        if (peakBlock < 0)
+            peakBlock = 0;
+        if (peakBlock > BLOCK_COUNT - 1)
+            peakBlock = BLOCK_COUNT - 1;
+
+        int blockIndex = BLOCK_COUNT - 1 - peakBlock;
+        int y = METER_TOP + blockIndex * (BLOCK_HEIGHT + BLOCK_GAP);
+
+        painter.fillRect(BLOCK_X, y, BLOCK_WIDTH, PEAK_HEIGHT, PEAK_COLOR);
+    }
+
+    // The clip lamp sits above the scale, not in it, because it has to be
+    // distinguishable from the top block simply being lit - one is "loud now",
+    // the other is "it clipped, and you may not have been looking".
+    if (this->clipIndicatorEnabled)
+    {
+        painter.fillRect(BLOCK_X, METER_TOP - CLIP_HEIGHT - BLOCK_GAP, BLOCK_WIDTH, CLIP_HEIGHT,
+                         this->meter.clipped() ? CLIP_COLOR : CLIP_COLOR_OFF);
+    }
 }
 
 void AudioMeterWidget::deviceChanged(const DeviceChangedEvent& event)
@@ -132,6 +191,7 @@ void AudioMeterWidget::deviceChanged(const DeviceChangedEvent& event)
         if (DeviceManager::getInstance().getDeviceByName(event.getDeviceName()) == NULL)
             return;
 
+        this->meter.reset();
         this->currentLevel = DB_MIN;
         update();
 
@@ -166,6 +226,9 @@ void AudioMeterWidget::emptyRundown(const EmptyRundownEvent& event)
 
     this->model = NULL;
 
+    // An emptied rundown must drop the peak and the clip too, or the next one
+    // opens showing the last one's overload.
+    this->meter.reset();
     this->currentLevel = DB_MIN;
     update();
 }
@@ -208,8 +271,36 @@ void AudioMeterWidget::audioSubscriptionReceived(const QString& predicate, const
     if (value < DB_MIN)
         value = DB_MIN;
 
-    this->currentLevel = value;
+    this->meter.addReading(value, QDateTime::currentMSecsSinceEpoch());
+    this->currentLevel = this->meter.level();
     update();
+}
+
+void AudioMeterWidget::decayTick()
+{
+    // Repaint only when the picture actually changed. A row of meters redrawing
+    // 25 times a second for nothing is exactly the sort of idle cost the panel
+    // placement work went looking for.
+    const double levelBefore = this->meter.level();
+    const double peakBefore = this->meter.peak();
+
+    this->meter.advanceTo(QDateTime::currentMSecsSinceEpoch());
+    this->currentLevel = this->meter.level();
+
+    if (this->meter.level() != levelBefore || this->meter.peak() != peakBefore)
+        update();
+}
+
+void AudioMeterWidget::mousePressEvent(QMouseEvent* event)
+{
+    Q_UNUSED(event);
+
+    // A latch nobody can clear is a lamp that is on forever.
+    if (this->meter.clipped())
+    {
+        this->meter.clearClip();
+        update();
+    }
 }
 
 double AudioMeterWidget::convertToLevel(int value)
