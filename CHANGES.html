@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
 <a href="#drag-lock">Drag Between Rundowns</a><br>
@@ -1820,6 +1821,20 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <li><b>Nothing downstream can act without a usable root.</b> Compare and push both ask for the pack's folder and get nothing when there isn't one, so neither can walk or upload from beside the executable.</li>
 <li>A pack name that would climb out of the templates folder is refused, because those come back from saved settings as well as from a directory listing.</li>
 </ul>
+
+<h2 id="panel-split">Three panels, three files</h2>
+
+<p>Server Status, Activity and Trigger Banks were separate panels you could place separately, and one 2090-line <code>StatusPanelWidget</code> &mdash; the largest widget in the client after the settings dialog and the main window. Changing anything in one meant working inside a file that owned the other two.</p>
+
+<p>They are now <code>ServerStatusPanelWidget</code>, <code>ActivityPanelWidget</code> and <code>TriggerBanksPanelWidget</code>, with a <code>.ui</code> each.</p>
+
+<p>They turned out to share almost nothing. Across 2090 lines there was exactly <b>one</b> cross-reference: the banks rows read the Activity panel's "Big &amp; Bold" flag. Both panels now keep their own copy, driven by the same global signal neither needs to know the other listens to. The one genuinely shared thing &mdash; how a channel number is coloured on a badge &mdash; moved to a header both read, because two panels on one screen disagreeing about a channel's colour is worse than either colour being wrong.</p>
+
+<p><b>Nothing about the layout changes.</b> Each panel still owns the tab widget the layout places, so headers, menus, collapsing and named layouts behave exactly as before.</p>
+
+<h3>It is not why the client got faster</h3>
+
+<p>Splitting files is a compile-time and maintainability change; the same objects would have done the same work. The speed-up in this release came from a separate finding the split turned up &mdash; see below.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

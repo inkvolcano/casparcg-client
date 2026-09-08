@@ -153,7 +153,9 @@ qt_add_library(widgets
     SettingsDialog.cpp SettingsDialog.h SettingsDialog.ui
     ClockWidget.cpp ClockWidget.h ClockWidget.ui
     StatusBarWidget.cpp StatusBarWidget.h
-    StatusPanelWidget.cpp StatusPanelWidget.h StatusPanelWidget.ui
+    ServerStatusPanelWidget.cpp ServerStatusPanelWidget.h ServerStatusPanelWidget.ui
+    ActivityPanelWidget.cpp ActivityPanelWidget.h ActivityPanelWidget.ui
+    TriggerBanksPanelWidget.cpp TriggerBanksPanelWidget.h TriggerBanksPanelWidget.ui
     WhatsNewDialog.cpp WhatsNewDialog.h
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h

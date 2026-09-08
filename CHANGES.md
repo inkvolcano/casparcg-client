@@ -1854,6 +1854,36 @@ Now an unset folder is not a folder:
 
 ---
 
+## Three panels, three files
+
+Server Status, Activity and Trigger Banks were separate panels you could place
+separately, and one 2090-line `StatusPanelWidget` — the largest widget in the
+client after the settings dialog and the main window. Changing anything in one
+meant working inside a file that owned the other two.
+
+They are now `ServerStatusPanelWidget`, `ActivityPanelWidget` and
+`TriggerBanksPanelWidget`, with a `.ui` each.
+
+They turned out to share almost nothing. Across 2090 lines there was exactly
+**one** cross-reference: the banks rows read the Activity panel's "Big & Bold"
+flag. Both panels now keep their own copy, driven by the same global signal
+neither needs to know the other listens to. The one genuinely shared thing — how
+a channel number is coloured on a badge — moved to a header both read, because
+two panels on one screen disagreeing about a channel's colour is worse than
+either colour being wrong.
+
+**Nothing about the layout changes.** Each panel still owns the tab widget the
+layout places, so headers, menus, collapsing and named layouts behave exactly as
+before.
+
+### It is not why the client got faster
+
+Splitting files is a compile-time and maintainability change; the same objects
+would have done the same work. The speed-up in this release came from a separate
+finding the split turned up — see below.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

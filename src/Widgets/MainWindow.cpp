@@ -110,7 +110,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     // StatusPanelWidget stays as a hidden controller; its tab widgets are
     // placed individually by rebuildLayout().
-    this->widgetStatusPanel->hide();
+    this->widgetServerStatus->hide();
+    this->widgetActivity->hide();
+    this->widgetTriggerBanks->hide();
 
     QString showPreviewBorderValue = DatabaseManager::getInstance().getConfigurationByName("ShowPreviewBorder").getValue();
     this->showPreviewBorder = showPreviewBorderValue.isEmpty() || showPreviewBorderValue == "true";
@@ -1216,9 +1218,9 @@ void MainWindow::rebuildLayout()
     };
 
     // Access the 3 independent sub-panels from StatusPanelWidget.
-    QWidget* serverTab = widgetStatusPanel->serverTabWidget();
-    QWidget* activityTab = widgetStatusPanel->activityTabWidget();
-    QWidget* banksTab = widgetStatusPanel->banksTabWidget();
+    QWidget* serverTab = widgetServerStatus->tabWidget();
+    QWidget* activityTab = widgetActivity->tabWidget();
+    QWidget* banksTab = widgetTriggerBanks->tabWidget();
 
     // Properly remove movable widgets from their current layouts before reparenting.
     QList<QWidget*> movable = {
@@ -1248,10 +1250,12 @@ void MainWindow::rebuildLayout()
     widgetSimpleMode->setParent(this);
     widgetSimpleMode->hide();
 
-    // Keep widgetStatusPanel alive — it owns the serverTab/activityTab/banksTab
-    // sub-widgets. Without this, deleting layoutWidget3 (its .ui parent) would
-    // destroy it and cause a use-after-free crash.
-    widgetStatusPanel->setParent(this);
+    // Keep the three panels alive — each owns the tab widget the layout places.
+    // Without this, deleting layoutWidget3 (their .ui parent) would destroy them
+    // and cause a use-after-free crash.
+    widgetServerStatus->setParent(this);
+    widgetActivity->setParent(this);
+    widgetTriggerBanks->setParent(this);
 
     // Delete old column containers from the splitter immediately.
     while (splitterVertical->count() > 0)
@@ -1927,9 +1931,9 @@ QWidget* MainWindow::widgetById(const QString& id)
     if (id == "Preview") return widgetPreview;
     if (id == "Library") return widgetLibrary;
     if (id == "Duration") return widgetDuration;
-    if (id == "ServerStatus") return widgetStatusPanel->serverTabWidget();
-    if (id == "Activity") return widgetStatusPanel->activityTabWidget();
-    if (id == "TriggerBanks") return widgetStatusPanel->banksTabWidget();
+    if (id == "ServerStatus") return widgetServerStatus->tabWidget();
+    if (id == "Activity") return widgetActivity->tabWidget();
+    if (id == "TriggerBanks") return widgetTriggerBanks->tabWidget();
     if (id == "Live") return widgetLive;
     if (id == "NDI") return widgetNdi;
     if (id == "Performance") return widgetPerformance;
