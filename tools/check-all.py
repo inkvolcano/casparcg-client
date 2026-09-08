@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are sixteen test suites and a syntax checker. Sixteen commands that each take a
+There are seventeen test suites and a syntax checker. Seventeen commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -39,6 +39,7 @@ SUITES = [
     ('test-mediacheck', False, 'missing media: when it is claimed, and when nothing is claimed'),
     ('test-droprules', False, 'whether a rundown accepts a drop, including into a locked one'),
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
+    ('test-templateroot', False, 'the push tool templates folder, and what an unset one must not do'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#push-root">Push Tool Pack List Fix</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
 <a href="#drag-lock">Drag Between Rundowns</a><br>
 <a href="#missing-media">Missing Media Warnings</a><br>
@@ -1801,6 +1802,24 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h2 id="readme">The README</h2>
 
 <p>The community forum badge pointed at <code>casparcg.com/forum</code>, which has moved; it now points at <b>casparcgforum.org</b>. And the changelog is linked from the README in three places, including a badge, because it was not linked from anywhere a new reader would look.</p>
+
+<h2 id="push-root">The push tool listed Qt's own folders as template packs</h2>
+
+<p>Leave the <b>Templates folder</b> field empty and the push tool showed a pack list of <code>generic</code>, <code>iconengines</code>, <code>imageformats</code>, <code>platforms</code>, <code>qmltooling</code>, <code>resources</code> &mdash; Qt's runtime, sitting next to the executable, offered as things to push to a playout machine.</p>
+
+<p>The field's grey text is a placeholder, not a value. Empty, the tool did <code>QDir("")</code>, and Qt resolves an empty path to the program's <b>working directory</b> and reports that it exists. So it listed whatever was beside it.</p>
+
+<p>Listing them was the half you could see. Every later step used the same empty root, and joining a pack name to it gave a <b>relative</b> path &mdash; resolved against the working directory again. Comparing walked Qt's DLLs, and <b>Push ticked would have uploaded them into a client's templates folder</b> under a pack called <code>platforms</code>.</p>
+
+<p>Now an unset folder is not a folder:</p>
+
+<ul>
+<li>The pack list says <b>"No templates folder is set. Use Browse to pick one."</b> instead of showing something plausible and wrong.</li>
+<li>A <b>relative path is refused too</b> &mdash; it is the same trap in different clothes, and Browse never produces one.</li>
+<li>A folder that does not exist, or is a file, says which way it is wrong.</li>
+<li><b>Nothing downstream can act without a usable root.</b> Compare and push both ask for the pack's folder and get nothing when there isn't one, so neither can walk or upload from beside the executable.</li>
+<li>A pack name that would climb out of the templates folder is refused, because those come back from saved settings as well as from a directory listing.</li>
+</ul>
 
 <h2 id="compatibility">Compatibility</h2>
 

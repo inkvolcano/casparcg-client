@@ -1,4 +1,6 @@
 #include "PushWindow.h"
+
+#include "../Common/TemplateRoot.h"
 #include "AssignmentsDialog.h"
 #include "../Common/GitBlobSha.h"
 
@@ -465,9 +467,20 @@ void PushWindow::refreshPacks()
     QStringList ticked = checkedPacks();
     this->packList->clear();
 
-    QDir directory(this->sourceEdit->text().trimmed());
-    if (!directory.exists())
+    // An empty field used to mean "the folder I happen to be running in", because
+    // QDir("") is the working directory and says it exists. That listed Qt's own
+    // runtime folders as though they were template packs.
+    const TemplateRoot::Root root = TemplateRoot::resolve(this->sourceEdit->text());
+    if (!root.usable)
+    {
+        // Say why the list is empty. An empty list with no explanation is what
+        // made the old behaviour look plausible.
+        QListWidgetItem* item = new QListWidgetItem(root.problem, this->packList);
+        item->setFlags(Qt::NoItemFlags);
         return;
+    }
+
+    QDir directory(root.path);
 
     foreach (const QString& name, directory.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
     {
@@ -534,7 +547,11 @@ QMap<QString, QString> PushWindow::localFiles(const QString& pack, bool gitStyle
 {
     QMap<QString, QString> files;
 
-    QDir packDir(QDir(this->sourceEdit->text().trimmed()).filePath(pack));
+    const QString packRoot = TemplateRoot::packPath(TemplateRoot::resolve(this->sourceEdit->text()), pack);
+    if (packRoot.isEmpty())
+        return files;
+
+    QDir packDir(packRoot);
     if (!packDir.exists())
         return files;
 
@@ -701,7 +718,14 @@ void PushWindow::nextPair()
                 .arg(target.label(), pack));
         }
 
-        QString packRoot = QDir(this->sourceEdit->text().trimmed()).filePath(pack);
+        QString packRoot = TemplateRoot::packPath(TemplateRoot::resolve(this->sourceEdit->text()), pack);
+        if (packRoot.isEmpty())
+        {
+            log(QString("  %1 / %2 skipped: it is not inside the templates folder").arg(target.label(), pack));
+            nextPair();
+            return;
+        }
+
         foreach (const QString& relative, local.keys())
         {
             PushJob job;

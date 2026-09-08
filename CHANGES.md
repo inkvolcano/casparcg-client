@@ -1822,6 +1822,38 @@ reader would look.
 
 ---
 
+## The push tool listed Qt's own folders as template packs
+
+Leave the **Templates folder** field empty and the push tool showed a pack list
+of `generic`, `iconengines`, `imageformats`, `platforms`, `qmltooling`,
+`resources` — Qt's runtime, sitting next to the executable, offered as things to
+push to a playout machine.
+
+The field's grey text is a placeholder, not a value. Empty, the tool did
+`QDir("")`, and Qt resolves an empty path to the program's **working directory**
+and reports that it exists. So it listed whatever was beside it.
+
+Listing them was the half you could see. Every later step used the same empty
+root, and joining a pack name to it gave a **relative** path — resolved against
+the working directory again. Comparing walked Qt's DLLs, and **Push ticked would
+have uploaded them into a client's templates folder** under a pack called
+`platforms`.
+
+Now an unset folder is not a folder:
+
+- The pack list says **"No templates folder is set. Use Browse to pick one."**
+  instead of showing something plausible and wrong.
+- A **relative path is refused too** — it is the same trap in different clothes,
+  and Browse never produces one.
+- A folder that does not exist, or is a file, says which way it is wrong.
+- **Nothing downstream can act without a usable root.** Compare and push both ask
+  for the pack's folder and get nothing when there isn't one, so neither can walk
+  or upload from beside the executable.
+- A pack name that would climb out of the templates folder is refused, because
+  those come back from saved settings as well as from a directory listing.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files
