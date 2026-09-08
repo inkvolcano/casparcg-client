@@ -1,0 +1,12 @@
+-- What the client asks a server to send to the Live panel.
+--
+-- The client does not decode anything for the Live panel: it tells the server to
+-- encode a UDP mpegts stream and then plays that, so the cost lands on the
+-- playout machine. Two things are open upstream about this one string -- that it
+-- costs about 40% of an i7 (#271), and that with a newer server the stream does
+-- not arrive at all (#316) -- and neither can be fixed without a server to test
+-- against.
+--
+-- Empty means the string the client has always sent, so nothing changes for
+-- anyone it works for. Set it and it replaces everything after the URL.
+INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('StreamParameters', '');

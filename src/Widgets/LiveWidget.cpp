@@ -232,10 +232,16 @@ void LiveWidget::startStream()
                     {
                         int quality = DatabaseManager::getInstance().getConfigurationByName("StreamQuality").getValue().toInt();
 
+                        // Empty means the built-in parameters. Anyone whose server
+                        // will not produce that stream, or whose playout machine
+                        // cannot afford it, can change it in Settings.
+                        const QString parameters = DatabaseManager::getInstance()
+                            .getConfigurationByName("StreamParameters").getValue();
+
                         if (this->windowMode)
-                            device->startStream(this->deviceChannel.toInt(), this->streamPort, quality, this->useKey);
+                            device->startStream(this->deviceChannel.toInt(), this->streamPort, quality, this->useKey, parameters);
                         else
-                            device->startStream(this->deviceChannel.toInt(), this->streamPort, quality, this->useKey, Stream::COMPACT_WIDTH, Stream::COMPACT_HEIGHT);
+                            device->startStream(this->deviceChannel.toInt(), this->streamPort, quality, this->useKey, parameters, Stream::COMPACT_WIDTH, Stream::COMPACT_HEIGHT);
                     }
                 }
             }

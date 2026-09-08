@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are nineteen test suites and a syntax checker. Nineteen commands that each take a
+There are twenty test suites and a syntax checker. Twenty commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -42,6 +42,7 @@ SUITES = [
     ('test-templateroot', False, 'the push tool templates folder, and what an unset one must not do'),
     ('test-placement', False, 'whether a panel is placed, and so whether its work runs at all'),
     ('test-ograflibrary', False, 'finding OGraf graphics in a template folder, and naming them'),
+    ('test-streamcommand', False, 'the Live panel stream command, and that its default is unchanged'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "PreviewWidget.h"
+#include "StreamCommand.h"
 #include "LayoutPresetBar.h"
 #include "LayoutPreset.h"
 #include "DeviceDialog.h"
@@ -211,6 +212,63 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->spinBoxNetworkCache->setValue(DatabaseManager::getInstance().getConfigurationByName("NetworkCache").getValue().toInt());
     this->comboBoxLogLevel->setCurrentIndex(this->comboBoxLogLevel->findData(DatabaseManager::getInstance().getConfigurationByName("LogLevel").getValue()));
     this->lineEditStreamPort->setPlaceholderText(QString("%1").arg(Stream::DEFAULT_PORT));
+
+    // What the client asks the server to encode and send to the Live panel.
+    //
+    // The client decodes nothing here: it tells the server to encode a UDP mpegts
+    // stream and plays that, so the cost lands on the playout machine. Two things
+    // are open upstream about this one string - what it costs (#271) and whether
+    // the stream arrives at all with a newer server (#316) - and neither can be
+    // fixed without a server to test against. Making it editable is what lets
+    // somebody with either problem act instead of waiting.
+    //
+    // The tab positions its children absolutely, so these do too.
+    {
+        QWidget* streamTab = this->lineEditStreamPort->parentWidget();
+
+        QLabel* parametersLabel = new QLabel("Parameters:", streamTab);
+        parametersLabel->setGeometry(80, 145, 111, 20);
+
+        this->lineEditStreamParameters = new QLineEdit(streamTab);
+        this->lineEditStreamParameters->setGeometry(200, 145, 434, 20);
+        this->lineEditStreamParameters->setFocusPolicy(Qt::ClickFocus);
+        this->lineEditStreamParameters->setText(
+            DatabaseManager::getInstance().getConfigurationByName("StreamParameters").getValue());
+        this->lineEditStreamParameters->setPlaceholderText("empty = the built-in parameters");
+        this->lineEditStreamParameters->setToolTip(
+            "Everything after the URL in the ADD STREAM command sent to the server.\n\n"
+            "Empty means exactly what this client has always sent, so leave it alone\n"
+            "if the Live panel already works.\n\n"
+            "{quality}, {width}, {height} and {key} are filled in from the settings above.");
+
+        QLabel* presetLabel = new QLabel("Try:", streamTab);
+        presetLabel->setGeometry(80, 172, 111, 20);
+
+        this->comboBoxStreamPreset = new QComboBox(streamTab);
+        this->comboBoxStreamPreset->setGeometry(200, 172, 434, 22);
+
+        const QList<StreamCommand::Preset> presets = StreamCommand::presets();
+        foreach (const StreamCommand::Preset& preset, presets)
+        {
+            this->comboBoxStreamPreset->addItem(preset.name, preset.parameters);
+            this->comboBoxStreamPreset->setItemData(
+                this->comboBoxStreamPreset->count() - 1, preset.note, Qt::ToolTipRole);
+        }
+
+        // Picking one fills the field; it is not applied until OK, and the field
+        // stays editable, because these are starting points rather than answers.
+        QObject::connect(this->comboBoxStreamPreset, QOverload<int>::of(&QComboBox::activated),
+                         this, [this](int index) {
+            this->lineEditStreamParameters->setText(
+                this->comboBoxStreamPreset->itemData(index).toString());
+        });
+
+        QLabel* presetHelp = new QLabel(
+            "None of these can be verified from here - they are starting points to test.", streamTab);
+        presetHelp->setGeometry(200, 198, 434, 18);
+        presetHelp->setStyleSheet("color: rgba(150, 150, 150, 220); font-size: 10px;");
+    }
+
     QString streamPort = DatabaseManager::getInstance().getConfigurationByName("StreamPort").getValue();
     if (!streamPort.isEmpty())
         this->lineEditStreamPort->setText(streamPort);
@@ -2467,6 +2525,12 @@ void SettingsDialog::streamPortChanged()
         streamPort = QString("%1").arg(Stream::DEFAULT_PORT);
 
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "StreamPort", streamPort));
+
+    if (this->lineEditStreamParameters != nullptr)
+    {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "StreamParameters", this->lineEditStreamParameters->text().trimmed()));
+    }
 }
 
 void SettingsDialog::repositoryPortChanged()

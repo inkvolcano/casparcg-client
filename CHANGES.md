@@ -1931,6 +1931,53 @@ lands this is for building and checking graphics, not for playing them out.
 
 ---
 
+## The Live panel, and what is actually wrong with it
+
+Worth explaining, because it is not what it looks like. **The client decodes
+nothing for the Live panel.** It tells the *server* to encode a UDP mpegts stream
+and then plays that back. So the cost of having Live open lands on the **playout
+machine**, not on the machine watching it — and one hardcoded string decides all
+of it:
+
+```
+ADD 1 STREAM udp://<client_ip_address>:9250 -format mpegts -codec:v libx264
+    -crf:v 23 -tune:v zerolatency -preset:v ultrafast -filter:v scale=288:162
+```
+
+Two things are open upstream, and both come back to that string:
+
+- **[#271](https://github.com/CasparCG/client/issues/271) (2019)** — turning Live
+  on costs about **40% of an i7**. It is libx264 encoding every frame at the
+  channel's rate to produce a 288-pixel-wide thumbnail. Nobody has changed the
+  settings since they were written.
+- **[#316](https://github.com/CasparCG/client/issues/316) (2024)** — against a
+  2.4.1 server the stream never arrives, and **VLC on the same machine cannot open
+  it either**, while the old 2.0.8 client works. The reporter sees "unused option"
+  warnings from the newer ffmpeg. A stream VLC also cannot open was never produced
+  properly, which points at the options rather than the receiving end.
+
+**Neither can be fixed blind.** Both need a real server to test against, and
+guessing at ffmpeg options that somebody's working setup depends on is how you
+break the people it currently works for.
+
+So the string is now **editable**, in `Settings → Live Stream → Parameters`:
+
+- **Empty means exactly what the client has always sent** — byte for byte, pinned
+  by a test so it cannot drift. Nothing changes for anyone Live already works for.
+- Fill it in and it replaces everything after the URL. `{quality}`, `{width}`,
+  `{height}` and `{key}` are filled in from the settings above, so a setting still
+  follows the panel rather than hard-coding its size.
+- A **Try:** dropdown offers starting points, each saying what it trades: a
+  cheaper encoder (`mpeg2video`) and half frame rate for the CPU problem, and a
+  video-only variant for the case where nothing arrives at all. They are labelled
+  as things to test, because none of them can be verified from here.
+
+If one of them fixes it for you, that is worth reporting upstream — those two
+issues have been open for years partly because nobody could say which option was
+at fault.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

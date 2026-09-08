@@ -83,7 +83,10 @@ class CASPAR_EXPORT CasparDevice : public AmcpDevice
         void startFileRecorder(int channel, const QString& filename, const QString& preset, bool withAlpha);
         void stopFileRecorder(int channel, const QString& filename);
 
-        void startStream(int channel, int port, int quality = 23, bool key = false, int width = 0, int height = 0);
+        // parameters overrides what is sent after the URL; empty means the built-in
+        // default, which is exactly what this client has always sent.
+        void startStream(int channel, int port, int quality = 23, bool key = false,
+                         const QString& parameters = QString(), int width = 0, int height = 0);
         void stopStream(int channel, int port);
 
         void playDeviceInput(int channel, int videolayer, int device, const QString& format);

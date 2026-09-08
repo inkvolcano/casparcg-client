@@ -1,5 +1,7 @@
 #include "CasparDevice.h"
 
+#include "StreamCommand.h"
+
 #include "Timecode.h"
 
 #include "../Core/DatabaseManager.h"
@@ -362,27 +364,19 @@ void CasparDevice::stopFileRecorder(int channel, const QString& filename)
                  .arg(QString("%1").arg(qChecksum(filename.toUtf8()))));
 }
 
-void CasparDevice::startStream(int channel, int port, int quality, bool key, int width, int height)
+void CasparDevice::startStream(int channel, int port, int quality, bool key,
+                               const QString& parameters, int width, int height)
 {
-    if (width > 0 && height > 0)
-    {
-        //writeMessage(QString("ADD %1 STREAM udp://<client_ip_address>:%2 -format mpegts -codec:v libx264 -crf:v %3 -tune:v zerolatency -preset:v ultrafast -filter:v scale=%4:%5%6")
-          //           .arg(channel).arg(port).arg(quality).arg(width).arg(height).arg((key == true) ? ",alphaextract,format=pix_fmts=yuv422p" : ""));
-        writeMessage(QString("ADD %1 STREAM udp://<client_ip_address>:%2 -format mpegts -codec:v libx264 -crf:v %3 -tune:v zerolatency -preset:v ultrafast -filter:v %4scale=%5:%6  -filter:a \"pan=stereo|c0=FL|c1=FR\"")
-                             .arg(channel).arg(port).arg(quality)
-                             .arg((key == true) ? "alphaextract,format=pix_fmts=yuv422p," : "")
-                             .arg(width).arg(height));
-    }
-    else
-    {
-        writeMessage(QString("ADD %1 STREAM udp://<client_ip_address>:%2 -format mpegts -codec:v libx264 -crf:v %3 -tune:v zerolatency -preset:v ultrafast %4  -filter:a \"pan=stereo|c0=FL|c1=FR\"")
-                     .arg(channel).arg(port).arg(quality).arg((key == true) ? "-filter:v alphaextract" : ""));
-    }
+    // The parameters are handed in rather than read here: this library talks
+    // AMCP and knows nothing about settings, and the string that decides them
+    // lives in Common/StreamCommand.h where it can be tested.
+    writeMessage(StreamCommand::buildAdd(channel, port,
+        StreamCommand::parametersFor(parameters, quality, key, width, height)));
 }
 
 void CasparDevice::stopStream(int channel, int port)
 {
-    writeMessage(QString("REMOVE %1 STREAM udp://<client_ip_address>:%2").arg(channel).arg(port));
+    writeMessage(StreamCommand::buildRemove(channel, port));
 }
 
 void CasparDevice::playDeviceInput(int channel, int videolayer, int device, const QString& format)

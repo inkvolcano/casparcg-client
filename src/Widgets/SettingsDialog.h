@@ -83,6 +83,11 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxPreviewTemplates;
         QCheckBox* checkBoxPreviewLegacyMode;
         QCheckBox* checkBoxOgrafEnabled;
+
+        // Created in code rather than in the .ui: the Live Stream tab positions
+        // its children absolutely, and these go below the existing fields.
+        QLineEdit* lineEditStreamParameters = nullptr;
+        QComboBox* comboBoxStreamPreset = nullptr;
         QLabel* labelAutoSaveMinutes;
         QSpinBox* spinBoxAutoSaveMinutes;
         QCheckBox* checkBoxShowLastAction;
