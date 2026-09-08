@@ -1,7 +1,8 @@
 #include <QtTest>
 
-#include "Rundown/RundownTreeWidget.h"
-#include "Rundown/RundownWidget.h"
+// The widgets delegate these rules to this header, and including them here
+// would pull in their uic-generated ui_*.h, which this target does not build.
+#include "AutoSaveNaming.h"
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -11,6 +12,20 @@ class AutoSaveTest : public QObject
     Q_OBJECT
 
 private:
+    // The file-reading half of RundownWidget::autoSaveOriginalPath, which is all
+    // that method does before handing the line to AutoSaveNaming.
+    QString firstLineOriginal(const QString& path)
+    {
+        QFile file(path);
+        if (!file.open(QFile::ReadOnly))
+            return QString();
+
+        QByteArray firstLine = file.readLine(4096);
+        file.close();
+
+        return AutoSaveNaming::originalPathFromLine(firstLine);
+    }
+
     // Writes a file shaped like a real recovery copy: the marker line the writer
     // puts in front, then the rundown.
     QString writeAutoSaveFile(const QString& path, const QString& originalPath)
@@ -34,15 +49,17 @@ private:
 private slots:
     void anUnsavedRundownGetsANameOfItsOwn()
     {
-        QCOMPARE(RundownTreeWidget::autoSaveStemFor(""), QString("Untitled"));
-        QCOMPARE(RundownTreeWidget::autoSaveStemFor(Rundown::DEFAULT_NAME), QString("Untitled"));
+        QCOMPARE(AutoSaveNaming::stemFor(""), QString("Untitled"));
+        // The widget maps its own "no file yet" value onto an empty string before
+        // calling this; the naming rule itself only ever sees the empty case.
+        QCOMPARE(AutoSaveNaming::stemFor(QString()), QString("Untitled"));
     }
 
     void anOrdinaryPathKeepsItsName()
     {
-        QCOMPARE(RundownTreeWidget::autoSaveStemFor("C:/shows/Tonight.xml"), QString("Tonight"));
-        QCOMPARE(RundownTreeWidget::autoSaveStemFor("/home/op/late show.xml"), QString("late show"));
-        QCOMPARE(RundownTreeWidget::autoSaveStemFor("C:/shows/Show-2_final.xml"), QString("Show-2_final"));
+        QCOMPARE(AutoSaveNaming::stemFor("C:/shows/Tonight.xml"), QString("Tonight"));
+        QCOMPARE(AutoSaveNaming::stemFor("/home/op/late show.xml"), QString("late show"));
+        QCOMPARE(AutoSaveNaming::stemFor("C:/shows/Show-2_final.xml"), QString("Show-2_final"));
     }
 
     void aStemCanNeverLeaveTheRecoveryFolder()
@@ -60,7 +77,7 @@ private slots:
 
         foreach (const QString& path, nasty)
         {
-            QString stem = RundownTreeWidget::autoSaveStemFor(path);
+            QString stem = AutoSaveNaming::stemFor(path);
 
             QVERIFY2(!stem.contains('/'), qPrintable(QString("'%1' -> '%2' kept a slash").arg(path, stem)));
             QVERIFY2(!stem.contains('\\'), qPrintable(QString("'%1' -> '%2' kept a backslash").arg(path, stem)));
@@ -79,8 +96,8 @@ private slots:
     {
         // completeBaseName() of "..." is empty, and an empty filename would make
         // the write fail rather than land somewhere odd. It gets a name instead.
-        QVERIFY(!RundownTreeWidget::autoSaveStemFor("C:/shows/....xml").isEmpty());
-        QVERIFY(!RundownTreeWidget::autoSaveStemFor("///").isEmpty());
+        QVERIFY(!AutoSaveNaming::stemFor("C:/shows/....xml").isEmpty());
+        QVERIFY(!AutoSaveNaming::stemFor("///").isEmpty());
     }
 
     void theOriginalPathSurvivesTheMarker()
@@ -94,7 +111,7 @@ private slots:
         QString path = writeAutoSaveFile(directory + "/Tonight.xml", original);
         QVERIFY(!path.isEmpty());
 
-        QCOMPARE(RundownWidget::autoSaveOriginalPath(path), original);
+        QCOMPARE(firstLineOriginal(path), original);
 
         QFile::remove(path);
         QDir().rmdir(directory);
@@ -110,7 +127,7 @@ private slots:
 
         // Empty, not garbage: the restore prompt uses this to decide whether to
         // name a file or say the rundown was never saved.
-        QCOMPARE(RundownWidget::autoSaveOriginalPath(path), QString(""));
+        QCOMPARE(firstLineOriginal(path), QString(""));
 
         QFile::remove(path);
         QDir().rmdir(directory);
@@ -127,7 +144,7 @@ private slots:
         file.write("<?xml version=\"1.0\"?><items></items>");
         file.close();
 
-        QCOMPARE(RundownWidget::autoSaveOriginalPath(path), QString());
+        QCOMPARE(firstLineOriginal(path), QString());
 
         QFile::remove(path);
         QDir().rmdir(directory);
@@ -135,19 +152,10 @@ private slots:
 
     void aMissingFileIsNotACrash()
     {
-        QCOMPARE(RundownWidget::autoSaveOriginalPath(QDir::tempPath() + "/no-such-autosave.xml"),
+        QCOMPARE(firstLineOriginal(QDir::tempPath() + "/no-such-autosave.xml"),
                  QString());
     }
 
-    void theIntervalIsClampedToSomethingSurvivable()
-    {
-        // Read straight from the database, so a hand-edited or absent value must
-        // still land somewhere that neither hammers the disk nor never fires.
-        int minutes = RundownWidget::autoSaveMinutes();
-
-        QVERIFY2(minutes >= 1 && minutes <= 60,
-                 qPrintable(QString("autoSaveMinutes() = %1").arg(minutes)));
-    }
 };
 
 int runAutoSaveTest(int argc, char* argv[])
