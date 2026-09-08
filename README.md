@@ -1,8 +1,9 @@
 # CasparCG Client
 
 ![platforms](https://img.shields.io/badge/platforms-windows%20%7C%20linux%20%7C%20osx-brightgreen.svg?style=flat-square)
-[![help](https://img.shields.io/badge/help-community%20forum-green.svg?style=flat-square)](https://casparcg.com/forum)
+[![help](https://img.shields.io/badge/help-community%20forum-green.svg?style=flat-square)](https://casparcgforum.org/)
 [![license](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square)](LICENSE)
+[![changes](https://img.shields.io/badge/changelog-whats%20new-orange.svg?style=flat-square)](CHANGES.md)
 
 <p align="center"><img src="/src/Widgets/Images/Clients.png"></p>
 
@@ -98,6 +99,8 @@ None of this is needed to run a show, and each is documented on its own.
   [tools/php/relay/GITHUB.md](tools/php/relay/GITHUB.md)
 - **A stream-deck style grid** for operating without a mouse: Simple Mode, in the
   layout settings
+- **Everything this fork adds**, in order: [CHANGES.md](CHANGES.md), or
+  **Help &rarr; What's New** in the client itself
 
 ## What this fork adds
 
@@ -197,8 +200,19 @@ the one that opted in runs anything.
 ### Rundown and panel work
 
 Nested groups, a Simple Mode grid for stream-deck style operation, per-panel
-layout with spanning and resizable columns, an NDI monitoring panel, trigger banks,
-and a Sheets-bound template inspector. [CHANGES.md](CHANGES.md) has the detail.
+layout with spanning and resizable columns, named layouts you can switch between,
+an NDI monitoring panel, trigger banks, and a Sheets-bound template inspector.
+
+### Everything, in order
+
+**[CHANGES.md](CHANGES.md) is the full list** — every change since the fork, by
+feature area. Read it here; GitHub shows it properly.
+
+The same content lives in [CHANGES.html](CHANGES.html), which is what the client
+itself displays under **Help &rarr; What's New**. It is compiled into the binary,
+so the list you see in the client is always the one for the build you are running.
+(On GitHub that file shows as source rather than as a page — the markdown above is
+the one to read.)
 
 ### Working on it
 

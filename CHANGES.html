@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#github-checkin">GitHub Check-ins</a><br>
 <a href="#drag-lock">Drag Between Rundowns</a><br>
 <a href="#missing-media">Missing Media Warnings</a><br>
 <a href="#named-layouts">Named Layouts</a><br>
@@ -1777,6 +1778,29 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="github-checkin">Check-ins on the GitHub route</h2>
+
+<p>A venue pulling from a PHP relay reported to that relay after every poll, so the push tool's <b>Assignments...</b> view could say which venues were behind. A venue pulling from a private GitHub repository reported nowhere.</p>
+
+<p>That was deliberate. A client's GitHub token is <b>read-only on purpose</b>, and writing a check-in file back into the templates repository would mean every venue machine holding a token that could push templates to every other venue. Nobody should make that trade for a status line, and this fork still does not.</p>
+
+<p>The way out is that those are two questions, not one. <b>Where templates come from and where a machine reports</b> only looked joined because a relay answers both.</p>
+
+<p><b>Settings &rarr; Templates</b> now has <b>Report to</b> and <b>Report token</b>. Fill them in and a client reports there whatever it pulls from &mdash; so a GitHub venue gets its check-ins back, with no token upgrade anywhere:</p>
+
+<ul>
+<li>The relay you report to <b>needs no packs</b>. Deploy <code>relay.php</code>, set its tokens, leave its storage empty: it is a logbook.</li>
+<li>Every client that reports shows up in <b>Assignments...</b> and in <code>?action=clients</code> whether it pulled from that relay or from GitHub, and the record now carries a <b><code>source</code></b> field saying which.</li>
+<li>The report token falls back to the pull token when left empty, which is right when a machine pulls and reports to the same relay, and wrong on the GitHub route &mdash; so fill it in there.</li>
+<li>Left empty, nothing changes: a relay client reports to its relay as before, and a GitHub client reports nowhere.</li>
+</ul>
+
+<p>The GitHub token stays read-only and the repository is still never written to.</p>
+
+<h2 id="readme">The README</h2>
+
+<p>The community forum badge pointed at <code>casparcg.com/forum</code>, which has moved; it now points at <b>casparcgforum.org</b>. And the changelog is linked from the README in three places, including a badge, because it was not linked from anywhere a new reader would look.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

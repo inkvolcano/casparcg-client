@@ -63,6 +63,11 @@ class WIDGETS_EXPORT RelayClient : public QObject
         static bool isEnabled();
         static QString url();
         static QString token();
+        // Where this machine reports, when that is not where it pulls from. Set
+        // these to give a GitHub-route venue check-ins without a writable token.
+        static QString checkInUrl();
+        static QString checkInToken();
+
         static int pollMinutes();
 
         // A "github:owner/repo" or "github:owner/repo@branch" address rather than

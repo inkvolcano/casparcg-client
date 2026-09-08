@@ -1782,6 +1782,46 @@ about.
 
 ---
 
+## Check-ins on the GitHub route
+
+A venue pulling from a PHP relay reported to that relay after every poll, so the
+push tool's **Assignments...** view could say which venues were behind. A venue
+pulling from a private GitHub repository reported nowhere.
+
+That was deliberate. A client's GitHub token is **read-only on purpose**, and
+writing a check-in file back into the templates repository would mean every venue
+machine holding a token that could push templates to every other venue. Nobody
+should make that trade for a status line, and this fork still does not.
+
+The way out is that those are two questions, not one. **Where templates come from
+and where a machine reports** only looked joined because a relay answers both.
+
+**Settings → Templates** now has **Report to** and **Report token**. Fill them in
+and a client reports there whatever it pulls from — so a GitHub venue gets its
+check-ins back, with no token upgrade anywhere:
+
+- The relay you report to **needs no packs**. Deploy `relay.php`, set its tokens,
+  leave its storage empty: it is a logbook.
+- Every client that reports shows up in **Assignments...** and in
+  `?action=clients` whether it pulled from that relay or from GitHub, and the
+  record now carries a **`source`** field saying which.
+- The report token falls back to the pull token when left empty, which is right
+  when a machine pulls and reports to the same relay, and wrong on the GitHub
+  route — so fill it in there.
+- Left empty, nothing changes: a relay client reports to its relay as before, and
+  a GitHub client reports nowhere.
+
+The GitHub token stays read-only and the repository is still never written to.
+
+## The README
+
+The community forum badge pointed at `casparcg.com/forum`, which has moved; it
+now points at **casparcgforum.org**. And the changelog is linked from the README
+in three places, including a badge, because it was not linked from anywhere a new
+reader would look.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

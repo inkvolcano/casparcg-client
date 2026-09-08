@@ -1,5 +1,7 @@
 #include "RelayClient.h"
 
+#include "CheckInTarget.h"
+
 #include "DatabaseManager.h"
 #include "TemplateInstaller.h"
 
@@ -76,6 +78,19 @@ QString RelayClient::url()
 QString RelayClient::token()
 {
     return DatabaseManager::getInstance().getConfigurationByName("RelayToken").getValue().trimmed();
+}
+
+// Where this machine reports, when that is not simply where it pulls from. The
+// case this exists for is a venue pulling templates from GitHub: its token there
+// is read-only and must stay that way, so it reports to a relay instead.
+QString RelayClient::checkInUrl()
+{
+    return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInUrl").getValue().trimmed();
+}
+
+QString RelayClient::checkInToken()
+{
+    return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInToken").getValue().trimmed();
 }
 
 int RelayClient::pollMinutes()
@@ -831,11 +846,16 @@ void RelayClient::done(const QString& note)
 // machine's name and can tell the dev machine which venues are behind, which is the
 // question worth answering before a show.
 //
-// Nothing here is sent to a GitHub source: a client's token there is read-only by
-// design, and keeping it that way is worth more than the report.
+// A GitHub source is still never written to: a client's token there is read-only
+// by design, and keeping it that way is worth more than the report. A venue on
+// that route reports by being given a check-in address of its own — a relay, or
+// anything that accepts the same POST — which needs no token upgrade anywhere.
 void RelayClient::sendCheckIn()
 {
-    if (isGitHub() || url().isEmpty() || token().isEmpty())
+    const CheckInTarget::Decision target =
+        CheckInTarget::decide(isGitHub(), url(), token(), checkInUrl(), checkInToken());
+
+    if (!target.send)
         return;
 
     if (this->versionByPack.isEmpty())
@@ -860,12 +880,16 @@ void RelayClient::sendCheckIn()
     // What happened here, so a venue that is stuck can say why from the other side
     // of the internet. Nobody can open this machine's log, and "behind on SEVILLE"
     // without a reason is the start of a phone call rather than the end of one.
+    body.insert("source", isGitHub() ? "github" : "relay");
     body.insert("result", this->summary);
     body.insert("failed", this->failed);
     body.insert("installed", this->installed);
 
-    QNetworkRequest request((QUrl(endpoint("checkin"))));
-    authorise(request);
+    QNetworkRequest request((QUrl(CheckInTarget::endpointFor(target.url))));
+
+    // Always the relay's header, never GitHub's: the destination is a relay even
+    // when the templates came from somewhere else entirely.
+    request.setRawHeader("X-Relay-Token", target.token.toUtf8());
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply* reply = this->network->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
