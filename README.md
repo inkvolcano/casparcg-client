@@ -151,6 +151,49 @@ The client can host a cache on its own port that templates read from instead, an
 collector where every client and connector reports what it is spending so one place
 knows the real total. See [tools/php/sheets/README.md](tools/php/sheets/README.md).
 
+### Previewing without a server
+
+The Preview panel shows the thing that is selected rather than a thumbnail of it,
+and it needs no CasparCG server running to do it. Images come off disk, videos
+play with a timebar you can scrub, and **HTML templates render**, with buttons
+that call what a template understands: play, next, update, stop. Update feeds the
+template the sample values it already carries, so a preview shows a populated
+graphic without anything being typed.
+
+Audio meters are drawn over the picture. The levels are decoded from the file
+rather than tapped from the player, which means they cannot drift, scrubbing
+moves them, and a paused frame still shows what that moment sounds like.
+
+A **legacy preview** setting puts the panel back exactly as it was.
+
+### OGraf
+
+[OGraf](https://ograf.ebu.io/) is the EBU's open specification for HTML broadcast
+graphics. Point a server's Template path at a folder of them and they render in
+the Preview panel, driven through the spec's own `load` / `playAction` /
+`updateAction` / `stopAction` API.
+
+**Key discovery reads them too.** The Inspector builds its typed fields from an
+OGraf manifest's JSON Schema — colour pickers, dropdowns, number fields — the
+same way it does from this fork's own `window.debugData` convention. A graphic
+authored in any OGraf tool is editable here without being touched.
+
+### Not losing work
+
+Rundowns are files and nothing was ever written without being asked, so a crash
+took whatever had not been saved. The client now keeps a **recovery copy** of
+anything unsaved and offers it back at the next launch — but only after a launch
+that did not shut down cleanly, because a normal quit already asked. Your own
+rundown files are never written to by it.
+
+### Driving things CasparCG does not talk to
+
+A **Shell Command** rundown item runs a program on this machine: a router, a
+projector shutter, a telnet box, a script that does the part no protocol covers.
+It is **off until it is switched on**, and the check happens when the item fires
+rather than when it is edited — so a rundown can move between machines and only
+the one that opted in runs anything.
+
 ### Rundown and panel work
 
 Nested groups, a Simple Mode grid for stream-deck style operation, per-panel
@@ -163,9 +206,10 @@ and a Sheets-bound template inspector. [CHANGES.md](CHANGES.md) has the detail.
 python tools/check-all.py
 ```
 
-Type-checks what changed, verifies every source is in the build, and runs the test
-suites. A few minutes; `--fast` is under a minute. See
-[tools/README.md](tools/README.md).
+Type-checks what changed, verifies every source is in the build, audits the
+changelog against the code, and runs the test suites — 446 assertions across
+eight of them without touching the network. A few minutes; `--fast` is under a
+minute. See [tools/README.md](tools/README.md).
 
 ## Development
 
@@ -176,6 +220,12 @@ suites. A few minutes; `--fast` is under a minute. See
 
 * Run cmake with the argument `Qt6_ROOT` with a value of `c:\Qt\6.5.3\msvc2019_64` pointing to your qt installation.
 * Open the Visual Studio project file
+
+**Qt WebEngine is optional.** It renders HTML templates and OGraf graphics in the
+Preview panel, and nothing else uses it. CMake looks for it and says which way it
+went; a build without it compiles and runs unchanged, and the panel explains
+itself where the template would be. Install *Qt WebEngine* alongside the modules
+above if you want that half.
 
 #### macOS
 * Install Qt 6.5 for macOS from [Qt archive](https://www.qt.io/download). You may wish to select a more minimal installation than the full 6.5 tree.
