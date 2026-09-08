@@ -5,6 +5,7 @@
 #include "PreviewAudioAnalyser.h"
 
 #include "AudioLevelTrack.h"
+#include "OgrafManifest.h"
 
 #include "DatabaseManager.h"
 #include "EventManager.h"
@@ -16,6 +17,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QTextStream>
 #include <QtCore/QTimer>
@@ -314,6 +317,17 @@ void PreviewWidget::setThumbnail()
         }
 
         const QString templateName = templateNameForSelection();
+
+        // OGraf first. A graphic and a template can sit in the same folder, and a
+        // graphic that declares itself with a manifest is the more specific
+        // answer, so it wins.
+        QString manifestPath = resolveOgrafManifest(deviceName, templateName);
+        if (!manifestPath.isEmpty())
+        {
+            loadOgraf(manifestPath);
+            return;
+        }
+
         QString filePath = resolveTemplateFile(deviceName, templateName);
 
         if (filePath.isEmpty())
@@ -471,6 +485,127 @@ QString PreviewWidget::resolveTemplateFile(const QString& deviceName, const QStr
     return QString();
 }
 
+QString PreviewWidget::resolveOgrafManifest(const QString& deviceName, const QString& graphicName) const
+{
+    DeviceModel device = DatabaseManager::getInstance().getDeviceByName(deviceName);
+    QString templatePath = device.getTemplatePath();
+
+    if (templatePath.isEmpty() || graphicName.isEmpty())
+        return QString();
+
+    QString baseName = graphicName;
+    baseName.replace('\\', '/');
+
+    // Two shapes are accepted, because both are how people actually store them:
+    // the name pointing straight at a manifest, and the name being the folder
+    // that holds one. The spec allows several manifests in a folder, so a folder
+    // is only unambiguous when it holds exactly one.
+    QString direct = QDir(templatePath).filePath(baseName + ".ograf.json");
+    if (QFileInfo::exists(direct))
+        return direct;
+
+    QDir folder(QDir(templatePath).filePath(baseName));
+    if (folder.exists())
+    {
+        QStringList manifests;
+        foreach (const QString& entry, folder.entryList(QDir::Files, QDir::Name))
+        {
+            if (Ograf::isManifestFileName(entry))
+                manifests.append(entry);
+        }
+
+        if (manifests.size() == 1)
+            return folder.filePath(manifests.first());
+    }
+
+    return QString();
+}
+
+QString PreviewWidget::ogrenderHostPage(const QString& manifestPath)
+{
+    // The renderer the spec describes, in as little code as it takes: import the
+    // module the manifest names, define it as a custom element, put it in the
+    // page, and expose the actions for the panel to call. The graphic is a Web
+    // Component, so the browser does the rest.
+    //
+    // Written into the graphic's own folder rather than held in memory, because
+    // the module and every resource it reaches for are resolved relative to the
+    // page that loaded them.
+    QFileInfo manifestInfo(manifestPath);
+
+    QFile file(manifestPath);
+    if (!file.open(QIODevice::ReadOnly))
+        return QString();
+
+    Ograf::Manifest manifest = Ograf::parse(file.readAll());
+    file.close();
+
+    if (!manifest.valid)
+        return QString();
+
+    const QString data = QString::fromUtf8(
+        QJsonDocument(Ograf::defaultDataFor(manifest.schema)).toJson(QJsonDocument::Compact));
+
+    QString html;
+    html += "<!doctype html><html><head><meta charset=\"utf-8\">";
+    html += "<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}";
+    html += "#err{color:#e88;font:12px sans-serif;padding:10px;white-space:pre-wrap}</style>";
+    html += "</head><body><div id=\"err\" hidden></div><script type=\"module\">\n";
+
+    html += "const DEFAULT_DATA = " + data + ";\n";
+    html += "let element = null;\n";
+    html += "let currentStep = undefined;\n";
+    html += "function fail(e){const d=document.getElementById('err');d.hidden=false;";
+    html += "d.textContent='This graphic did not load.\\n\\n'+(e && e.stack ? e.stack : e);}\n";
+
+    html += "try {\n";
+    html += "  const module = await import('./" + manifest.main + "');\n";
+    html += "  const Graphic = module.default;\n";
+    html += "  if (!Graphic) throw new Error('The module has no default export.');\n";
+    html += "  const tag = 'ograf-preview-graphic';\n";
+    html += "  if (!customElements.get(tag)) customElements.define(tag, Graphic);\n";
+    html += "  element = document.createElement(tag);\n";
+    html += "  element.style.position='absolute'; element.style.inset='0';\n";
+    html += "  document.body.appendChild(element);\n";
+    // load() carries the initial state and resolves when the graphic will accept
+    // actions, which is what makes load-then-play work without a race.
+    html += "  await element.load({ data: DEFAULT_DATA, renderType: 'realtime',\n";
+    html += "    renderCharacteristics: { resolution: { width: window.innerWidth, height: window.innerHeight },\n";
+    html += "      frameRate: 50 } });\n";
+    html += "} catch (e) { fail(e); }\n";
+
+    // Every action is guarded: a graphic that throws must show why rather than
+    // leaving a panel that silently does nothing when a button is pressed.
+    html += "window.ografPlay = async (goto) => { try { const r = await element.playAction(\n";
+    html += "  goto === undefined ? { delta: 1 } : { goto: goto });\n";
+    html += "  currentStep = r && r.currentStep; } catch (e) { fail(e); } };\n";
+    html += "window.ografNext = async () => { try { const r = await element.playAction({ delta: 1 });\n";
+    html += "  currentStep = r && r.currentStep; } catch (e) { fail(e); } };\n";
+    html += "window.ografUpdate = async (data) => { try { await element.updateAction(\n";
+    html += "  { data: data || DEFAULT_DATA }); } catch (e) { fail(e); } };\n";
+    html += "window.ografStop = async () => { try { await element.stopAction({});\n";
+    html += "  currentStep = undefined; } catch (e) { fail(e); } };\n";
+    html += "window.ografCustom = async (id) => { try { await element.customAction(\n";
+    html += "  { id: id, payload: {} }); } catch (e) { fail(e); } };\n";
+
+    html += "</script></body></html>\n";
+
+    // A fixed name, so previewing a hundred graphics leaves one file per folder
+    // rather than a hundred. It is rewritten every time.
+    QString hostPath = manifestInfo.dir().filePath(".casparcg-ograf-preview.html");
+
+    QFile host(hostPath);
+    if (!host.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return QString();
+
+    host.write(html.toUtf8());
+    host.close();
+
+    this->ografStepCount = manifest.stepCount;
+
+    return hostPath;
+}
+
 bool PreviewWidget::loadImage(const QString& filePath)
 {
     if (filePath.isEmpty())
@@ -556,9 +691,48 @@ void PreviewWidget::loadTemplate(const QString& filePath)
 #endif
 }
 
+void PreviewWidget::loadOgraf(const QString& manifestPath)
+{
+#ifdef CASPARCG_HAS_WEBENGINE
+    QString hostPath = ogrenderHostPage(manifestPath);
+
+    if (hostPath.isEmpty())
+    {
+        this->image = QImage();
+        this->contentWidget->clearContent();
+
+        QFile file(manifestPath);
+        QString why = "the manifest could not be read";
+        if (file.open(QIODevice::ReadOnly))
+        {
+            Ograf::Manifest manifest = Ograf::parse(file.readAll());
+            file.close();
+            if (!manifest.error.isEmpty())
+                why = manifest.error;
+        }
+
+        this->contentWidget->setPlaceholder(QString("This OGraf graphic could not be loaded:\n\n%1").arg(why));
+        return;
+    }
+
+    this->showingOgraf = true;
+
+    loadTemplate(hostPath);
+#else
+    Q_UNUSED(manifestPath);
+
+    this->image = QImage();
+    this->contentWidget->clearContent();
+    this->contentWidget->setPlaceholder(
+        "Previewing an OGraf graphic needs Qt WebEngine, and this client was built without it.\n\n"
+        "Everything else in this panel works as normal.");
+#endif
+}
+
 void PreviewWidget::clearTemplate()
 {
     this->templateBar->setVisible(false);
+    this->showingOgraf = false;
 
     if (this->templateView == nullptr)
     {
@@ -681,24 +855,54 @@ void PreviewWidget::updateMeters()
 
 void PreviewWidget::templatePlay()
 {
-    // Data first, then play: a template that reads its fields on play would
-    // otherwise animate on in empty and populate a frame later.
+    // An OGraf graphic was already given its data by load(), and its playAction
+    // takes the step to go to; goto 0 is "play from the start".
+    if (this->showingOgraf)
+    {
+        runTemplateScript("if (window.ografPlay) window.ografPlay(0);");
+        return;
+    }
+
+    // A CasparCG template gets its data first, then play: one that reads its
+    // fields on play would otherwise animate on empty and populate a frame later.
     runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(templateDataJson()));
     runTemplateScript("try { if (window.play) window.play(); } catch (e) {}");
 }
 
 void PreviewWidget::templateNext()
 {
+    if (this->showingOgraf)
+    {
+        // Steps are the OGraf model for this: a relative step of one, which the
+        // graphic turns into the end when it runs past its own stepCount.
+        runTemplateScript("if (window.ografNext) window.ografNext();");
+        return;
+    }
+
     runTemplateScript("try { if (window.next) window.next(); } catch (e) {}");
 }
 
 void PreviewWidget::templateUpdate()
 {
+    if (this->showingOgraf)
+    {
+        // No argument: the host page falls back to the defaults it read out of
+        // the manifest's schema, which is OGraf's version of debugData.
+        runTemplateScript("if (window.ografUpdate) window.ografUpdate();");
+        return;
+    }
+
     runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(templateDataJson()));
 }
 
 void PreviewWidget::templateStop()
 {
+    if (this->showingOgraf)
+    {
+        runTemplateScript("if (window.ografStop) window.ografStop();");
+        return;
+    }
+
     runTemplateScript("try { if (window.stop) window.stop(); } catch (e) {}");
 }
 

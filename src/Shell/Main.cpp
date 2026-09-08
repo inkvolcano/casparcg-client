@@ -304,6 +304,17 @@ int main(int argc, char* argv[])
     // an OpenGL context with the rest of the application. This has to be set
     // before the QApplication exists, so it cannot live with the panel.
     QApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+
+    // An OGraf graphic is an ES module that the preview page imports, and
+    // Chromium refuses module imports between file:// URLs because their origin
+    // is null. Without this, every OGraf graphic fails to load with a CORS error
+    // and nothing else explains why.
+    //
+    // The scope is narrow in practice: it lets local pages read local files, and
+    // the only local page this client ever loads is the one it writes itself,
+    // beside the operator's own templates on their own machine.
+    if (!qEnvironmentVariableIsSet("QTWEBENGINE_CHROMIUM_FLAGS"))
+        qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--allow-file-access-from-files");
 #endif
 
     Application application(argc, argv);

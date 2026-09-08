@@ -89,6 +89,11 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         QLabel* timeLabel = nullptr;
         bool sliderDragging = false;
 
+        // True while the thing in the view is an OGraf graphic rather than a
+        // CasparCG template. The buttons are the same four; what they call is not.
+        bool showingOgraf = false;
+        int ografStepCount = 1;
+
         // Template transport: the four things a CasparCG template understands.
         QWidget* templateBar = nullptr;
         QToolButton* templatePlayButton = nullptr;
@@ -116,6 +121,13 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         void clearTemplate();
         void runTemplateScript(const QString& script);
         QString templateNameForSelection() const;
+
+        // An OGraf graphic is a folder with a "*.ograf.json" manifest beside the
+        // module it names. Returns the manifest path, or empty when the selected
+        // name is an ordinary CasparCG template instead.
+        QString resolveOgrafManifest(const QString& deviceName, const QString& graphicName) const;
+        void loadOgraf(const QString& manifestPath);
+        QString ogrenderHostPage(const QString& manifestPath);
         QString templateDataJson() const;
         QString formatTime(qint64 ms);
 

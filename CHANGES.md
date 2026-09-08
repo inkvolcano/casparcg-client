@@ -1583,6 +1583,57 @@ extra.
 
 ---
 
+## OGraf graphics
+
+[OGraf](https://ograf.ebu.io/) is the EBU's open specification for HTML broadcast
+graphics: a graphic is a folder holding a `*.ograf.json` manifest, a Javascript
+module whose default export is a Web Component, and its resources. Any compliant
+renderer can play any compliant graphic, which is the point of it.
+
+**The Preview panel renders them.** Point a server's Template path at a folder of
+graphics and select one, and the panel loads the module the manifest names,
+puts the component in the page, and drives it through the spec's own API:
+
+| Button | What the spec calls |
+|---|---|
+| Play | `playAction({ goto: 0 })` |
+| Next | `playAction({ delta: 1 })` — the OGraf step model |
+| Update | `updateAction({ data })` |
+| Stop | `stopAction({})` |
+
+`load()` runs first with the graphic's initial state and is awaited before any
+action, which is how the spec says to avoid the race in load-then-play.
+
+**A graphic previews populated, not empty.** OGraf carries sample values as JSON
+Schema `default`s in the manifest's `schema` field, and those are read and handed
+to the graphic. This is the standard version of the `window.debugData` convention
+this fork already reads for CasparCG templates — same idea, but one every OGraf
+tool speaks. A default of `""`, `0` or `false` is kept: those are real values a
+graphic may rely on, and dropping them is the easy bug here.
+
+Both shapes of storage are accepted: a name pointing straight at
+`<name>.ograf.json`, or a name that is a folder holding exactly one manifest. A
+folder with several manifests is ambiguous by design — the spec allows it, so
+those graphics have to be named individually.
+
+**A manifest is a file that arrives from somewhere else**, so `main` and every
+thumbnail path is refused rather than sanitised if it could reach outside the
+graphic's own folder, and an `id` containing a slash is refused outright.
+A graphic that fails to load says why, in the panel, with the error from the
+manifest or the stack from the module.
+
+### Two limits worth knowing
+
+**It needs Qt WebEngine**, like the template preview it is built on. A build
+without it says so in the panel and everything else works.
+
+**Browsing for graphics still needs a server.** The panel previews whatever is
+selected, and it needs no server to do it — but the Library that lists what you
+can select is still filled by a server scan. Graphics already in a saved rundown
+preview with nothing running.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

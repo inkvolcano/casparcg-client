@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#ograf">OGraf Graphics</a><br>
 <a href="#preview-panel">Preview Panel</a><br>
 <a href="#auto-save">Auto-save and Crash Recovery</a><br>
 <a href="#shell-command">Shell Command Items</a><br>
@@ -1669,6 +1670,33 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>One build note</h3>
 
 <p>Rendering a template needs <b>Qt WebEngine</b>, which is a large component that minimal Qt installs do not carry. It is optional on purpose: a build without it compiles and runs unchanged, and the panel says so where the template would be. Everything else here &mdash; images, video, the timebar, the meters &mdash; needs nothing extra.</p>
+
+<h2 id="ograf">OGraf graphics</h2>
+
+<p><a href="https://ograf.ebu.io/">OGraf</a> is the EBU's open specification for HTML broadcast graphics: a graphic is a folder holding a <code>*.ograf.json</code> manifest, a Javascript module whose default export is a Web Component, and its resources. Any compliant renderer can play any compliant graphic, which is the point of it.</p>
+
+<p><b>The Preview panel renders them.</b> Point a server's Template path at a folder of graphics and select one, and the panel loads the module the manifest names, puts the component in the page, and drives it through the spec's own API:</p>
+
+<ul>
+<li><b>Play</b> &mdash; <code>playAction({ goto: 0 })</code></li>
+<li><b>Next</b> &mdash; <code>playAction({ delta: 1 })</code>, the OGraf step model</li>
+<li><b>Update</b> &mdash; <code>updateAction({ data })</code></li>
+<li><b>Stop</b> &mdash; <code>stopAction({})</code></li>
+</ul>
+
+<p><code>load()</code> runs first with the graphic's initial state and is awaited before any action, which is how the spec says to avoid the race in load-then-play.</p>
+
+<p><b>A graphic previews populated, not empty.</b> OGraf carries sample values as JSON Schema <code>default</code>s in the manifest's <code>schema</code> field, and those are read and handed to the graphic. This is the standard version of the <code>window.debugData</code> convention this fork already reads for CasparCG templates &mdash; same idea, but one every OGraf tool speaks. A default of <code>""</code>, <code>0</code> or <code>false</code> is kept: those are real values a graphic may rely on, and dropping them is the easy bug here.</p>
+
+<p>Both shapes of storage are accepted: a name pointing straight at <code>&lt;name&gt;.ograf.json</code>, or a name that is a folder holding exactly one manifest. A folder with several manifests is ambiguous by design &mdash; the spec allows it, so those graphics have to be named individually.</p>
+
+<p><b>A manifest is a file that arrives from somewhere else</b>, so <code>main</code> and every thumbnail path is refused rather than sanitised if it could reach outside the graphic's own folder, and an <code>id</code> containing a slash is refused outright. A graphic that fails to load says why, in the panel, with the error from the manifest or the stack from the module.</p>
+
+<h3>Two limits worth knowing</h3>
+
+<p><b>It needs Qt WebEngine</b>, like the template preview it is built on. A build without it says so in the panel and everything else works.</p>
+
+<p><b>Browsing for graphics still needs a server.</b> The panel previews whatever is selected, and it needs no server to do it &mdash; but the Library that lists what you can select is still filled by a server scan. Graphics already in a saved rundown preview with nothing running.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 
