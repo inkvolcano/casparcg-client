@@ -1,5 +1,7 @@
 #include "StatusPanelWidget.h"
 
+#include "PanelPlacement.h"
+
 #include "Global.h"
 #include "PanelHelper.h"
 #include "DeviceManager.h"
@@ -88,7 +90,14 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
     this->cleanupTimer = new QTimer(this);
     this->cleanupTimer->setInterval(500);
     QObject::connect(this->cleanupTimer, SIGNAL(timeout()), this, SLOT(cleanupStaleEntries()));
-    this->cleanupTimer->start();
+    // Started by updatePlacement(), and only when the Activity panel is somewhere.
+
+    updatePlacement();
+
+    // The layout is what decides whether any of this runs, so the answer is
+    // re-read whenever the layout changes rather than only at startup.
+    QObject::connect(&EventManager::getInstance(), &EventManager::rebuildLayout,
+                     this, [this]() { updatePlacement(); });
 
     // Connect playback progress event.
     QObject::connect(&EventManager::getInstance(), SIGNAL(playbackProgress(const PlaybackProgressEvent&)),
@@ -134,6 +143,34 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(bigBoldModeChanged(bool)),
                      this, SLOT(bigBoldModeChangedSlot(bool)));
 
+}
+
+void StatusPanelWidget::updatePlacement()
+{
+    const bool simpleMode = DatabaseManager::getInstance()
+        .getConfigurationByName("SimpleMode").getValue() == "true";
+
+    QStringList columns;
+    foreach (const QString& key, PanelPlacement::columnKeys(simpleMode))
+        columns.append(DatabaseManager::getInstance().getConfigurationByName(key).getValue());
+
+    this->serverPlaced = PanelPlacement::isPlaced("ServerStatus", columns);
+    this->activityPlaced = PanelPlacement::isPlaced("Activity", columns);
+    this->banksPlaced = PanelPlacement::isPlaced("TriggerBanks", columns);
+
+    // A timer for a panel nobody placed is a wake-up twice a second for nothing.
+    if (this->cleanupTimer != nullptr)
+    {
+        if (this->activityPlaced && !this->cleanupTimer->isActive())
+            this->cleanupTimer->start();
+        else if (!this->activityPlaced && this->cleanupTimer->isActive())
+            this->cleanupTimer->stop();
+    }
+
+    if (this->serverPlaced && !this->cacheStatusTimer.isActive())
+        this->cacheStatusTimer.start(2000);
+    else if (!this->serverPlaced && this->cacheStatusTimer.isActive())
+        this->cacheStatusTimer.stop();
 }
 
 void StatusPanelWidget::setupServerPanel()
@@ -220,13 +257,16 @@ void StatusPanelWidget::setupCacheRow(QVBoxLayout* serverOuterLayout)
     // Bypass can be thrown from the menu, the settings or over HTTP, so the light
     // is read from the server rather than remembered from the last click here.
     QObject::connect(&this->cacheStatusTimer, &QTimer::timeout, this, &StatusPanelWidget::updateCacheStatus);
-    this->cacheStatusTimer.start(2000);
+    // Started by updatePlacement(), and only when Server Status is somewhere.
 
     updateCacheStatus();
 }
 
 void StatusPanelWidget::updateCacheStatus()
 {
+    if (!this->serverPlaced)
+        return;
+
     if (this->cacheRow == nullptr)
         return;
 
@@ -328,6 +368,9 @@ void StatusPanelWidget::setupRelayRow(QVBoxLayout* serverOuterLayout)
 
 void StatusPanelWidget::updateRelayStatus()
 {
+    if (!this->serverPlaced)
+        return;
+
     if (this->relayRow == nullptr)
         return;
 
@@ -699,6 +742,9 @@ void StatusPanelWidget::updateNoActivityLabel()
 
 void StatusPanelWidget::channelActivity(const ChannelActivityEvent& event)
 {
+    if (!this->activityPlaced)
+        return;
+
     QString key = QString("%1:%2").arg(event.getChannel()).arg(event.getVideolayer());
 
     if (!event.getActive())
@@ -802,6 +848,9 @@ void StatusPanelWidget::channelCleared(const QString& deviceName, int channel, i
 
 void StatusPanelWidget::autoLoopCountdown(const AutoLoopCountdownEvent& event)
 {
+    if (!this->activityPlaced)
+        return;
+
     // Use a distinct key so this row doesn't collide with the regular play activity row
     // for the same channel/videolayer.
     QString key = QString("autoloop:%1:%2").arg(event.getChannel()).arg(event.getVideolayer());
@@ -889,6 +938,12 @@ void StatusPanelWidget::autoLoopCountdown(const AutoLoopCountdownEvent& event)
 
 void StatusPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
 {
+    // The hottest path in this file: one of these arrives per playing layer at
+    // the OSC polling rate. Doing nothing when the panel is not placed is the
+    // whole point of the check.
+    if (!this->activityPlaced)
+        return;
+
     QString key = QString("%1:%2").arg(event.getChannel()).arg(event.getVideolayer());
     bool isNew = false;
     QString preservedLabel;     // Preserve label from static entry when upgrading
@@ -1304,6 +1359,9 @@ void StatusPanelWidget::reorderActivity()
 
 void StatusPanelWidget::cleanupStaleEntries()
 {
+    if (!this->activityPlaced)
+        return;
+
     qint64 now = QDateTime::currentMSecsSinceEpoch();
     QStringList toRemove;
 

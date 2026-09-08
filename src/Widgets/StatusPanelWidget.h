@@ -39,6 +39,14 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         QTabWidget* banksTabWidget() { return tabWidgetBanks; }
 
     private:
+        // Whether each panel is anywhere in the layout. Re-read whenever the
+        // layout is rebuilt. A panel that is not placed does no work at all —
+        // not merely no drawing, because the signal still arrives at a hidden
+        // widget and the handler still runs.
+        bool serverPlaced = true;
+        bool activityPlaced = true;
+        bool banksPlaced = true;
+
         bool serverCollapsed;
         bool activityCollapsed;
         bool banksCollapsed;
@@ -162,6 +170,10 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         bool showSTEP;
 
         void setupMenus();
+        // Re-reads which of the three are placed and starts or stops the work
+        // that belongs to each. Called at construction and on every rebuild.
+        void updatePlacement();
+
         void setupServerPanel();
         void setupActivityPanel();
         void setupBanksPanel();
