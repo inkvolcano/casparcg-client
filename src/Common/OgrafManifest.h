@@ -23,6 +23,9 @@
 //
 // Spec: https://ograf.ebu.io/  (v1 specification, Manifest Model)
 
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -113,6 +116,173 @@ namespace Ograf
         }
 
         return data;
+    }
+
+    // ---- fields ----------------------------------------------------------
+    //
+    // The edit modes the Inspector's key/value table understands. They are ints
+    // on the tree item rather than an enum on the wire, so the numbers matter:
+    // this is the same mapping window.debugDataModes produces.
+    namespace Mode
+    {
+        const int Text = 0;
+        const int Integer = 1;
+        const int Decimal = 2;
+        const int Boolean = 3;
+        const int Color = 4;
+        const int Cycle = 5;
+    }
+
+    struct Field
+    {
+        QString key;          // dotted path, so a nested object flattens onto one row
+        QString label;        // the schema's "title", or the key when it has none
+        QString value;        // the default rendered for the table
+        bool hasDefault = false;
+        int mode = Mode::Text;
+        QString cycleValues;  // "left|center|right" for a select
+    };
+
+    // A default value as the key/value table wants it: a string. The table sends
+    // these to a template as text, so this is a rendering, not a serialisation —
+    // a boolean has to arrive as "true", not as "1".
+    inline QString renderDefault(const QJsonValue& value)
+    {
+        switch (value.type())
+        {
+            case QJsonValue::Bool:
+                return value.toBool() ? "true" : "false";
+
+            case QJsonValue::String:
+                return value.toString();
+
+            case QJsonValue::Double:
+            {
+                const double number = value.toDouble();
+
+                // A whole number is written without a decimal point, because
+                // "2.0" in a field the graphic reads as an integer looks wrong to
+                // an operator and can read wrong to the template.
+                if (number == static_cast<double>(static_cast<qlonglong>(number)))
+                    return QString::number(static_cast<qlonglong>(number));
+
+                return QString::number(number);
+            }
+
+            case QJsonValue::Array:
+            case QJsonValue::Object:
+                return QString::fromUtf8(
+                    QJsonDocument::fromVariant(value.toVariant()).toJson(QJsonDocument::Compact)).trimmed();
+
+            default:
+                return QString();
+        }
+    }
+
+    // Which editor a property wants, from JSON Schema plus GDD's gddType
+    // extension. GDD is what OGraf uses to say "this string is a colour" or
+    // "this number is one of these five" — without it every field would be a
+    // text box, which is the thing typed fields exist to avoid.
+    inline int modeFor(const QJsonObject& property)
+    {
+        const QString gddType = property.value("gddType").toString();
+        const QString type = property.value("type").toString();
+
+        if (gddType.startsWith("color-"))
+            return Mode::Color;
+
+        // An enum is a choice whether or not GDD named it one.
+        if (property.value("enum").isArray() || gddType == "select")
+            return Mode::Cycle;
+
+        if (type == "boolean")
+            return Mode::Boolean;
+
+        if (type == "integer" || gddType == "integer" || gddType == "duration-ms")
+            return Mode::Integer;
+
+        if (type == "number" || gddType == "number" || gddType == "percentage")
+            return Mode::Decimal;
+
+        return Mode::Text;
+    }
+
+    // The choices for a select, in the order the schema lists them.
+    inline QString cycleValuesFor(const QJsonObject& property)
+    {
+        const QJsonValue enumValue = property.value("enum");
+        if (!enumValue.isArray())
+            return QString();
+
+        QStringList values;
+        for (const QJsonValue& value : enumValue.toArray())
+        {
+            const QString rendered = renderDefault(value);
+            if (!rendered.isEmpty())
+                values.append(rendered);
+        }
+
+        // The table stores the choices as one pipe-separated string, so a choice
+        // containing a pipe would silently become two. Those are dropped rather
+        // than allowed to corrupt the row.
+        values.removeIf([](const QString& value) { return value.contains('|'); });
+
+        return values.join("|");
+    }
+
+    // Every editable field in a manifest's schema, flattened.
+    //
+    // A CasparCG template's data is a flat set of key/value pairs, and an OGraf
+    // schema may nest objects, so a nested property becomes "parent.child". That
+    // is a real mapping decision rather than a shortcut: it keeps one row per
+    // editable thing, which is what the table is, and the dotted key is what a
+    // template author would write anyway.
+    inline QVector<Field> fieldsFor(const QJsonObject& schema, const QString& prefix = QString())
+    {
+        QVector<Field> fields;
+
+        const QJsonValue propertiesValue = schema.value("properties");
+        if (!propertiesValue.isObject())
+            return fields;
+
+        const QJsonObject properties = propertiesValue.toObject();
+
+        for (auto it = properties.constBegin(); it != properties.constEnd(); ++it)
+        {
+            if (!it.value().isObject())
+                continue;
+
+            const QJsonObject property = it.value().toObject();
+            const QString key = prefix.isEmpty() ? it.key() : (prefix + "." + it.key());
+
+            // An object with properties is a group of fields, not a field. One
+            // without properties is treated as a value, because there is nothing
+            // to descend into and a row is better than silently losing it.
+            if (property.value("type").toString() == "object" && property.value("properties").isObject())
+            {
+                fields += fieldsFor(property, key);
+                continue;
+            }
+
+            Field field;
+            field.key = key;
+            field.label = property.value("title").toString();
+            if (field.label.isEmpty())
+                field.label = it.key();
+
+            field.mode = modeFor(property);
+            field.cycleValues = cycleValuesFor(property);
+
+            if (property.contains("default"))
+            {
+                field.hasDefault = true;
+                field.value = renderDefault(property.value("default"));
+            }
+
+            fields.append(field);
+        }
+
+        return fields;
     }
 
     inline Manifest parse(const QByteArray& json)
@@ -235,5 +405,66 @@ namespace Ograf
         manifest.valid = true;
 
         return manifest;
+    }
+
+    // Where a graphic's manifest lives, given a template folder and the name an
+    // item carries. Two shapes are accepted because both are how people store
+    // them: the name pointing straight at "<name>.ograf.json", or the name being
+    // a folder that holds exactly one manifest.
+    //
+    // A folder holding several is left alone on purpose. The spec allows it, and
+    // it means several independent graphics sharing resources, so there is no
+    // single right answer and guessing one would preview the wrong graphic.
+    inline QString findManifest(const QString& templatePath, const QString& name)
+    {
+        if (templatePath.isEmpty() || name.isEmpty())
+            return QString();
+
+        QString baseName = name;
+        baseName.replace(QChar(0x5C), QChar('/'));
+
+        // The name comes off a rundown item, so it must not be able to reach out
+        // of the template folder.
+        if (baseName.contains("..") || baseName.startsWith('/') || baseName.contains(':'))
+            return QString();
+
+        const QString direct = QDir(templatePath).filePath(baseName + ".ograf.json");
+        if (QFileInfo::exists(direct))
+            return direct;
+
+        QDir folder(QDir(templatePath).filePath(baseName));
+        if (folder.exists())
+        {
+            QStringList manifests;
+            const QStringList entries = folder.entryList(QDir::Files, QDir::Name);
+            for (const QString& entry : entries)
+            {
+                if (isManifestFileName(entry))
+                    manifests.append(entry);
+            }
+
+            if (manifests.size() == 1)
+                return folder.filePath(manifests.first());
+        }
+
+        return QString();
+    }
+
+    // Reads and parses the manifest at this path.
+    inline Manifest load(const QString& manifestPath)
+    {
+        Manifest manifest;
+
+        QFile file(manifestPath);
+        if (!file.open(QIODevice::ReadOnly))
+        {
+            manifest.error = "The manifest could not be opened.";
+            return manifest;
+        }
+
+        const QByteArray content = file.readAll();
+        file.close();
+
+        return parse(content);
     }
 }

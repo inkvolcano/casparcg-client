@@ -20,6 +20,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QString>
 #include <QtCore/QTextStream>
+#include <QtCore/QVector>
 
 static int failures = 0;
 static int checks = 0;
@@ -277,6 +278,225 @@ static void vendorExtensionsAreIgnoredRatherThanRejected()
     same(manifest.id, "x", "and its own fields are unaffected");
 }
 
+// ---------------------------------------------------------------- fields ----
+//
+// The Inspector's key/value table has typed editors, chosen by an int stored on
+// each row. Until now the only thing that could set them was window.debugDataModes,
+// a convention this fork invented. OGraf says the same thing in JSON Schema plus
+// GDD's gddType, which is the version other tools already speak, so the mapping
+// between the two is what makes a graphic from anywhere editable here.
+
+static Ograf::Field fieldNamed(const QVector<Ograf::Field>& fields, const QString& key)
+{
+    foreach (const Ograf::Field& field, fields)
+    {
+        if (field.key == key)
+            return field;
+    }
+
+    return Ograf::Field();
+}
+
+static QVector<Ograf::Field> fieldsFromSchema(const char* json)
+{
+    return Ograf::fieldsFor(Ograf::parse(QByteArray(json)).schema);
+}
+
+static void everyGddTypeReachesTheRightEditor()
+{
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "headline":  { "type": "string",  "gddType": "single-line" },
+            "body":      { "type": "string",  "gddType": "multi-line" },
+            "logo":      { "type": "string",  "gddType": "file-path/image-path" },
+            "tint":      { "type": "string",  "gddType": "color-rrggbb" },
+            "tintAlpha": { "type": "string",  "gddType": "color-rrggbbaa" },
+            "score":     { "type": "integer" },
+            "holdMs":    { "type": "number",  "gddType": "duration-ms" },
+            "opacity":   { "type": "number",  "gddType": "percentage" },
+            "ratio":     { "type": "number" },
+            "onAir":     { "type": "boolean" },
+            "align":     { "type": "string",  "gddType": "select", "enum": ["left","center","right"] }
+        } }
+    })");
+
+    sameInt(fields.size(), 11, "every property became a field");
+
+    sameInt(fieldNamed(fields, "headline").mode, Ograf::Mode::Text, "a single-line string is text");
+    sameInt(fieldNamed(fields, "body").mode, Ograf::Mode::Text, "a multi-line string is text");
+    sameInt(fieldNamed(fields, "logo").mode, Ograf::Mode::Text, "a file path is text");
+    sameInt(fieldNamed(fields, "tint").mode, Ograf::Mode::Color, "color-rrggbb is a colour");
+    sameInt(fieldNamed(fields, "tintAlpha").mode, Ograf::Mode::Color, "color-rrggbbaa is a colour");
+    sameInt(fieldNamed(fields, "score").mode, Ograf::Mode::Integer, "an integer is an integer");
+    sameInt(fieldNamed(fields, "holdMs").mode, Ograf::Mode::Integer, "duration-ms is an integer");
+    sameInt(fieldNamed(fields, "opacity").mode, Ograf::Mode::Decimal, "a percentage is a decimal");
+    sameInt(fieldNamed(fields, "ratio").mode, Ograf::Mode::Decimal, "a number is a decimal");
+    sameInt(fieldNamed(fields, "onAir").mode, Ograf::Mode::Boolean, "a boolean is a boolean");
+    sameInt(fieldNamed(fields, "align").mode, Ograf::Mode::Cycle, "a select is a cycle");
+
+    same(fieldNamed(fields, "align").cycleValues, "left|center|right",
+         "and its choices are carried in the order the schema lists them");
+}
+
+static void anEnumIsAChoiceEvenWithoutGdd()
+{
+    // A plain JSON Schema enum, from a tool that never heard of GDD, is still a
+    // fixed set of choices and deserves the cycle editor rather than a text box.
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "side": { "type": "string", "enum": ["home","away"] }
+        } }
+    })");
+
+    sameInt(fieldNamed(fields, "side").mode, Ograf::Mode::Cycle, "a bare enum is a cycle");
+    same(fieldNamed(fields, "side").cycleValues, "home|away", "with its choices");
+}
+
+static void numericChoicesSurviveAsChoices()
+{
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "period": { "type": "integer", "gddType": "select", "enum": [1, 2, 3] }
+        } }
+    })");
+
+    // The type says integer but the enum says choice, and choice is the stronger
+    // statement: there are three valid values, not any integer.
+    sameInt(fieldNamed(fields, "period").mode, Ograf::Mode::Cycle, "a numeric select is still a cycle");
+    same(fieldNamed(fields, "period").cycleValues, "1|2|3", "and its numbers are rendered plainly");
+}
+
+static void aChoiceContainingAPipeIsDroppedRatherThanSplitting()
+{
+    // The table stores the choices as one pipe-separated string. A value with a
+    // pipe in it would silently become two choices, neither of which the graphic
+    // would accept.
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "layout": { "type": "string", "enum": ["a|b", "c", "d"] }
+        } }
+    })");
+
+    same(fieldNamed(fields, "layout").cycleValues, "c|d", "the pipe-carrying choice is dropped");
+}
+
+static void defaultsAreRenderedForATextTable()
+{
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "name":    { "type": "string",  "default": "John Doe" },
+            "onAir":   { "type": "boolean", "default": true },
+            "offAir":  { "type": "boolean", "default": false },
+            "score":   { "type": "integer", "default": 3 },
+            "ratio":   { "type": "number",  "default": 1.5 },
+            "whole":   { "type": "number",  "default": 2 },
+            "zero":    { "type": "integer", "default": 0 },
+            "blank":   { "type": "string",  "default": "" },
+            "none":    { "type": "string" }
+        } }
+    })");
+
+    same(fieldNamed(fields, "name").value, "John Doe", "a string default is itself");
+
+    // The table sends text to a template, so a boolean has to read as "true",
+    // not as "1" — a template testing for the string would never match.
+    same(fieldNamed(fields, "onAir").value, "true", "a true default renders as true");
+    same(fieldNamed(fields, "offAir").value, "false", "a false default renders as false");
+
+    same(fieldNamed(fields, "score").value, "3", "an integer renders plainly");
+    same(fieldNamed(fields, "ratio").value, "1.5", "a fraction keeps its point");
+
+    // JSON has one number type, so an integer default arrives as a double. A
+    // field showing "2" rather than "2.0" is what an operator expects.
+    same(fieldNamed(fields, "whole").value, "2", "a whole number loses its decimal point");
+
+    // The falsy ones are the easy ones to lose.
+    expectTrue(fieldNamed(fields, "zero").hasDefault, "a zero default counts as a default");
+    same(fieldNamed(fields, "zero").value, "0", "and renders as zero");
+    expectTrue(fieldNamed(fields, "blank").hasDefault, "an empty-string default counts as a default");
+    same(fieldNamed(fields, "blank").value, "", "and renders as empty");
+
+    expectTrue(!fieldNamed(fields, "none").hasDefault, "a field with no default says so");
+    same(fieldNamed(fields, "none").value, "", "and carries nothing");
+}
+
+static void titlesBecomeLabelsAndKeysAreTheFallback()
+{
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "f0":   { "type": "string", "title": "Presenter name" },
+            "bare": { "type": "string" }
+        } }
+    })");
+
+    same(fieldNamed(fields, "f0").label, "Presenter name", "a title becomes the label");
+    same(fieldNamed(fields, "bare").label, "bare", "and the key stands in when there is none");
+}
+
+static void nestedObjectsFlattenOntoRows()
+{
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "home": { "type": "object", "properties": {
+                "name":  { "type": "string",  "default": "Rovers" },
+                "score": { "type": "integer", "default": 0 }
+            } },
+            "clock": { "type": "string", "default": "00:00" }
+        } }
+    })");
+
+    // The key/value table is flat, so a group of fields becomes rows with dotted
+    // keys rather than one row holding an object nobody can edit.
+    sameInt(fields.size(), 3, "the group became rows, not a single row");
+    same(fieldNamed(fields, "home.name").value, "Rovers", "a nested field keeps its default");
+    sameInt(fieldNamed(fields, "home.score").mode, Ograf::Mode::Integer, "and its type");
+    same(fieldNamed(fields, "home.name").label, "name", "its label is the leaf, not the path");
+    same(fieldNamed(fields, "clock").value, "00:00", "a sibling at the top level is unaffected");
+}
+
+static void anObjectWithNoPropertiesIsStillARow()
+{
+    // Nothing to descend into. A row the operator can put JSON in beats losing
+    // the field without saying so.
+    QVector<Ograf::Field> fields = fieldsFromSchema(R"({
+        "id": "x", "main": "g.mjs",
+        "schema": { "type": "object", "properties": {
+            "extras": { "type": "object" }
+        } }
+    })");
+
+    sameInt(fields.size(), 1, "the opaque object still produced a field");
+    same(fieldNamed(fields, "extras").key, "extras", "under its own name");
+}
+
+static void aSchemaWithNothingInItProducesNothing()
+{
+    sameInt(fieldsFromSchema(R"({"id":"x","main":"g.mjs"})").size(), 0,
+            "a manifest with no schema has no fields");
+    sameInt(fieldsFromSchema(R"({"id":"x","main":"g.mjs","schema":{"type":"object"}})").size(), 0,
+            "a schema with no properties has no fields");
+    sameInt(fieldsFromSchema(R"({"id":"x","main":"g.mjs","schema":{"type":"object","properties":{}}})").size(), 0,
+            "an empty properties object has no fields");
+}
+
+static void theRealExampleProducesTheRightTwoRows()
+{
+    QVector<Ograf::Field> fields = Ograf::fieldsFor(Ograf::parse(realExample()).schema);
+
+    sameInt(fields.size(), 2, "the EBU example has two editable fields");
+    same(fieldNamed(fields, "name").value, "John Doe", "the name default");
+    same(fieldNamed(fields, "name").label, "Name", "and its title");
+    same(fieldNamed(fields, "title").value, "OGraf expert", "the title default");
+    sameInt(fieldNamed(fields, "name").mode, Ograf::Mode::Text, "both are plain text");
+}
+
 int main(int argc, char* argv[])
 {
     Q_UNUSED(argc);
@@ -294,6 +514,17 @@ int main(int argc, char* argv[])
     stepCountIsReadOrDefaulted();
     manifestFilesAreRecognisedByName();
     vendorExtensionsAreIgnoredRatherThanRejected();
+
+    everyGddTypeReachesTheRightEditor();
+    anEnumIsAChoiceEvenWithoutGdd();
+    numericChoicesSurviveAsChoices();
+    aChoiceContainingAPipeIsDroppedRatherThanSplitting();
+    defaultsAreRenderedForATextTable();
+    titlesBecomeLabelsAndKeysAreTheFallback();
+    nestedObjectsFlattenOntoRows();
+    anObjectWithNoPropertiesIsStillARow();
+    aSchemaWithNothingInItProducesNothing();
+    theRealExampleProducesTheRightTwoRows();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 

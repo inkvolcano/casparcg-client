@@ -1692,6 +1692,29 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 
 <p><b>A manifest is a file that arrives from somewhere else</b>, so <code>main</code> and every thumbnail path is refused rather than sanitised if it could reach outside the graphic's own folder, and an <code>id</code> containing a slash is refused outright. A graphic that fails to load says why, in the panel, with the error from the manifest or the stack from the module.</p>
 
+<h3>Key discovery reads OGraf too</h3>
+
+<p>The Inspector's <b>Load fields</b> already builds typed rows from a template's <code>window.debugData</code> and <code>window.debugDataModes</code>. That is a convention this fork invented and nothing else speaks. OGraf says the same thing in a standard way, so key discovery now reads that as well: point it at a graphic and it builds the same typed rows from the manifest's JSON Schema.</p>
+
+<p>Types come from the schema plus GDD's <code>gddType</code>, which is how OGraf says "this string is a colour" rather than leaving every field a text box:</p>
+
+<ul>
+<li><code>gddType: "color-rrggbb"</code> or <code>"color-rrggbbaa"</code> &rarr; colour picker</li>
+<li><code>gddType: "select"</code>, or any plain <code>enum</code> &rarr; cycle, with the choices in schema order</li>
+<li><code>type: "integer"</code>, <code>gddType: "duration-ms"</code> &rarr; integer</li>
+<li><code>type: "number"</code>, <code>gddType: "percentage"</code> &rarr; decimal</li>
+<li><code>type: "boolean"</code> &rarr; boolean</li>
+<li>everything else, including <code>single-line</code>, <code>multi-line</code> and file paths &rarr; text</li>
+</ul>
+
+<p>A plain JSON Schema <code>enum</code> is treated as a choice whether or not GDD named it one, so a graphic from a tool that never heard of GDD still gets its dropdown.</p>
+
+<p><b>Nested groups flatten onto rows.</b> A CasparCG template's data is a flat set of key/value pairs and an OGraf schema may nest, so <code>home: { score }</code> becomes a row keyed <code>home.score</code>. The schema's <code>title</code> becomes the row's tooltip, which is worth having once keys are dotted paths.</p>
+
+<p><b>Defaults are rendered for a text table</b>, so a boolean arrives as <code>true</code>, not as <code>1</code>, and a whole number as <code>2</code> rather than <code>2.0</code>. A default of <code>""</code>, <code>0</code> or <code>false</code> is kept &mdash; those are real values a graphic may rely on.</p>
+
+<p><b>Rows are merged, not replaced.</b> A key already in the table keeps its row and whatever has been typed into it; only its declared type is refreshed, because the manifest is the authority on that and nothing else is.</p>
+
 <h3>Two limits worth knowing</h3>
 
 <p><b>It needs Qt WebEngine</b>, like the template preview it is built on. A build without it says so in the panel and everything else works.</p>

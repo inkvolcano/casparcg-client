@@ -115,6 +115,10 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         Q_SLOT void autoLoopChanged(int);
         Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);
+        // Builds the key/value rows from an EBU OGraf manifest's JSON Schema,
+        // the standard equivalent of this fork's window.debugData convention.
+        void loadOgrafFields(const QString& manifestPath);
+
         Q_SLOT void loadDebugData();
         Q_SLOT void sheetRowsReady(const QString& requestId, const QList<SheetRow>& rows,
                                    const SheetRowsOrigin& origin);

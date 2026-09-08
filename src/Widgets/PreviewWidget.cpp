@@ -488,37 +488,10 @@ QString PreviewWidget::resolveTemplateFile(const QString& deviceName, const QStr
 QString PreviewWidget::resolveOgrafManifest(const QString& deviceName, const QString& graphicName) const
 {
     DeviceModel device = DatabaseManager::getInstance().getDeviceByName(deviceName);
-    QString templatePath = device.getTemplatePath();
 
-    if (templatePath.isEmpty() || graphicName.isEmpty())
-        return QString();
-
-    QString baseName = graphicName;
-    baseName.replace('\\', '/');
-
-    // Two shapes are accepted, because both are how people actually store them:
-    // the name pointing straight at a manifest, and the name being the folder
-    // that holds one. The spec allows several manifests in a folder, so a folder
-    // is only unambiguous when it holds exactly one.
-    QString direct = QDir(templatePath).filePath(baseName + ".ograf.json");
-    if (QFileInfo::exists(direct))
-        return direct;
-
-    QDir folder(QDir(templatePath).filePath(baseName));
-    if (folder.exists())
-    {
-        QStringList manifests;
-        foreach (const QString& entry, folder.entryList(QDir::Files, QDir::Name))
-        {
-            if (Ograf::isManifestFileName(entry))
-                manifests.append(entry);
-        }
-
-        if (manifests.size() == 1)
-            return folder.filePath(manifests.first());
-    }
-
-    return QString();
+    // The Inspector resolves the same name the same way, so a graphic that shows
+    // its fields in one place cannot fail to preview in the other.
+    return Ograf::findManifest(device.getTemplatePath(), graphicName);
 }
 
 QString PreviewWidget::ogrenderHostPage(const QString& manifestPath)
