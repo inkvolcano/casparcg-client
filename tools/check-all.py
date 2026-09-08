@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are fourteen test suites and a syntax checker. Fourteen commands that each take a
+There are fifteen test suites and a syntax checker. Fifteen commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -37,6 +37,7 @@ SUITES = [
     ('test-ograf',   False, 'EBU OGraf manifests: what loads, what is refused, and the default data'),
     ('test-layoutpreset', False, 'named layouts: which settings a preset owns, and the round trip'),
     ('test-mediacheck', False, 'missing media: when it is claimed, and when nothing is claimed'),
+    ('test-droprules', False, 'whether a rundown accepts a drop, including into a locked one'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

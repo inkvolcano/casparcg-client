@@ -1761,6 +1761,27 @@ two hundred queries every time one is opened.
 
 ---
 
+## Dragging between two rundowns, and the lock that was not there
+
+Two rundowns can sit side by side in split view, and items can be dragged from
+one into the other. **That already worked** — it arrived with split view itself.
+What did not arrive with it was the other half of the lock.
+
+A locked rundown — a repository rundown, whose content belongs to somebody else —
+refuses key presses and refuses to be dragged *from*. Nothing refused a drop
+*into* one. The lock held every door but that one, and the second pane put a new
+door right beside it: drag a few items across and they went straight in.
+
+Now a locked rundown refuses them, and **says so** rather than quietly doing
+nothing. The cursor refuses on the way in too: a "yes" cursor over a target that
+then ignores the drop reads as the client having lost the drag.
+
+A drag from another application is still ignored in silence, locked or not.
+Dragging a file across the window is not something to interrupt an operator
+about.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#drag-lock">Drag Between Rundowns</a><br>
 <a href="#missing-media">Missing Media Warnings</a><br>
 <a href="#named-layouts">Named Layouts</a><br>
 <a href="#ograf">OGraf Graphics</a><br>
@@ -1766,6 +1767,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>How it is built</h3>
 
 <p>The marker is added from outside the item widgets rather than inside them &mdash; every rundown item already has a frame to hang it on &mdash; so no item type needed changing and a type added later gets this for free. The library is read once per sweep rather than once per item, because a two hundred row rundown would otherwise be two hundred queries every time one is opened.</p>
+
+<h2 id="drag-lock">Dragging between two rundowns, and the lock that was not there</h2>
+
+<p>Two rundowns can sit side by side in split view, and items can be dragged from one into the other. <b>That already worked</b> &mdash; it arrived with split view itself. What did not arrive with it was the other half of the lock.</p>
+
+<p>A locked rundown &mdash; a repository rundown, whose content belongs to somebody else &mdash; refuses key presses and refuses to be dragged <i>from</i>. Nothing refused a drop <i>into</i> one. The lock held every door but that one, and the second pane put a new door right beside it: drag a few items across and they went straight in.</p>
+
+<p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
+
+<p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

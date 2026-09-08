@@ -1,4 +1,6 @@
 #include "RundownTreeBaseWidget.h"
+
+#include "DropRules.h"
 #include "RundownItemFactory.h"
 #include "RundownGroupWidget.h"
 #include "RundownUndoCommands.h"
@@ -1779,11 +1781,28 @@ QStringList RundownTreeBaseWidget::mimeTypes() const
 
 void RundownTreeBaseWidget::dragEnterEvent(QDragEnterEvent* event)
 {
+    // The cursor has to agree with what the drop will actually do. Accepting
+    // here and refusing later gives a "yes" cursor over a target that then does
+    // nothing, which reads as the client having lost the drag.
+    if (this->lock)
+    {
+        event->ignore();
+        return;
+    }
+
     event->acceptProposedAction();
 }
 
 void RundownTreeBaseWidget::dragMoveEvent(QDragMoveEvent* event)
 {
+    if (this->lock)
+    {
+        this->m_showDropIndicator = false;
+        viewport()->update();
+        event->ignore();
+        return;
+    }
+
     QTreeWidget::dragMoveEvent(event);
 
     QModelIndex idx = indexAt(event->position().toPoint());
@@ -1832,8 +1851,20 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
     Q_UNUSED(index);
     Q_UNUSED(action);
 
-    if (!mimeData->hasFormat("application/library-item") && !mimeData->hasFormat("application/rundown-item"))
+    const bool hasLibraryItem = mimeData->hasFormat("application/library-item");
+    const bool hasRundownItem = mimeData->hasFormat("application/rundown-item");
+
+    if (!DropRules::accepts(this->lock, hasLibraryItem, hasRundownItem))
+    {
+        // A locked rundown already refuses key presses and refuses to be dragged
+        // from. Nothing refused a drop into one, so the lock held every door but
+        // this one — and dragging from the other pane went straight through it.
+        const QString reason = DropRules::refusalReason(this->lock, hasLibraryItem, hasRundownItem);
+        if (!reason.isEmpty())
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(reason));
+
         return false;
+    }
 
     if (mimeData->hasFormat("application/library-item"))
     {
