@@ -72,6 +72,10 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         void setUsed(bool used);
         void setAllUsed(bool used);
 
+        // Sweeps the rundown for items pointing at media that is not there and
+        // marks them. Safe to call at any time; does nothing when switched off.
+        void checkMissingMedia();
+
         bool checkForSave() const;
 
         // The rundown as it would be written to disk. saveRundown() writes this,

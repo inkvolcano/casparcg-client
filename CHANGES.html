@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#missing-media">Missing Media Warnings</a><br>
 <a href="#named-layouts">Named Layouts</a><br>
 <a href="#ograf">OGraf Graphics</a><br>
 <a href="#preview-panel">Preview Panel</a><br>
@@ -1739,6 +1740,32 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>One limit</h3>
 
 <p>Panel sizing keys are not separated by mode in this client &mdash; Simple Mode reads the same <code>PanelSizeMode_</code>, <code>PanelSpan_</code> and height settings as the normal layout. So they belong to the <b>normal</b> layout, and a Simple Mode preset carries the column arrangement and the button grid rather than panel sizing. Separating them would be a change reaching well past this feature.</p>
+
+<h2 id="missing-media">Missing media is marked in the rundown</h2>
+
+<p>The stock client half-told you this: open a broken item and the Inspector's target field is blank, because the name it holds matches nothing. That only helps if you open the item. A rundown of two hundred rows can carry a handful pointing at clips that were renamed on the server last week, and nothing on screen said so until one of them went to air.</p>
+
+<p><b>Opening a rundown now sweeps it</b>, and any item whose media was not found gets a <b>warning mark</b> on its row. Hover it and it says what was not found and where it looked.</p>
+
+<p>Movies, stills, audio, templates and image scrollers are checked, under the media path or the template path as appropriate, trying the extensions a server would have accepted since CasparCG names carry none. Everything else &mdash; gateways, mixer items, playout commands &mdash; names no file and is never marked.</p>
+
+<h3>The part that decides whether it is worth having</h3>
+
+<p>A marker that appears on rows which are perfectly fine teaches you to ignore it, and then it is worse than nothing. So the question this asks is not "does the file exist" but <b>"do we know enough to say it does not"</b>:</p>
+
+<ul>
+<li><b>Two sources can vouch for an item</b> &mdash; the server's library, and the media or template folder on this machine. <b>Either one is enough.</b> They disagree constantly and legitimately: a library scanned before a file was added, or media that lives somewhere only the server can see.</li>
+<li><b>When neither source could have known, nothing is claimed.</b> A client that has never connected to a server has an empty library; a media path pointing at the server's own <code>C:\</code> means nothing on a different machine. Neither counts as having looked, so those items are left unmarked rather than all flagged.</li>
+<li><b>An item nobody has filled in yet is not broken</b>, so a freshly dragged-in row with no name is never marked.</li>
+</ul>
+
+<p>The status bar says how many of how many were found wanting, once, on load.</p>
+
+<p><b>Settings &rarr; General &rarr; Rundown &rarr; Mark items whose media is missing when a rundown opens</b> turns it off.</p>
+
+<h3>How it is built</h3>
+
+<p>The marker is added from outside the item widgets rather than inside them &mdash; every rundown item already has a frame to hang it on &mdash; so no item type needed changing and a type added later gets this for free. The library is read once per sweep rather than once per item, because a two hundred row rundown would otherwise be two hundred queries every time one is opened.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

@@ -1712,6 +1712,55 @@ would be a change reaching well past this feature.
 
 ---
 
+## Missing media is marked in the rundown
+
+The stock client half-told you this: open a broken item and the Inspector's
+target field is blank, because the name it holds matches nothing. That only helps
+if you open the item. A rundown of two hundred rows can carry a handful pointing
+at clips that were renamed on the server last week, and nothing on screen said so
+until one of them went to air.
+
+**Opening a rundown now sweeps it**, and any item whose media was not found gets
+a **warning mark** on its row. Hover it and it says what was not found and where
+it looked.
+
+Movies, stills, audio, templates and image scrollers are checked, under the media
+path or the template path as appropriate, trying the extensions a server would
+have accepted since CasparCG names carry none. Everything else — gateways, mixer
+items, playout commands — names no file and is never marked.
+
+### The part that decides whether it is worth having
+
+A marker that appears on rows which are perfectly fine teaches you to ignore it,
+and then it is worse than nothing. So the question this asks is not "does the
+file exist" but **"do we know enough to say it does not"**:
+
+- **Two sources can vouch for an item** — the server's library, and the media or
+  template folder on this machine. **Either one is enough.** They disagree
+  constantly and legitimately: a library scanned before a file was added, or
+  media that lives somewhere only the server can see.
+- **When neither source could have known, nothing is claimed.** A client that has
+  never connected to a server has an empty library; a media path pointing at the
+  server's own `C:\` means nothing on a different machine. Neither counts as
+  having looked, so those items are left unmarked rather than all flagged.
+- **An item nobody has filled in yet is not broken**, so a freshly dragged-in row
+  with no name is never marked.
+
+The status bar says how many of how many were found wanting, once, on load.
+
+**Settings → General → Rundown → Mark items whose media is missing when a rundown
+opens** turns it off.
+
+### How it is built
+
+The marker is added from outside the item widgets rather than inside them — every
+rundown item already has a frame to hang it on — so no item type needed changing
+and a type added later gets this for free. The library is read once per sweep
+rather than once per item, because a two hundred row rundown would otherwise be
+two hundred queries every time one is opened.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

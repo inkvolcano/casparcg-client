@@ -1082,6 +1082,14 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->spinBoxAutoSaveMinutes, row, 1);
     row++;
 
+    this->checkBoxWarnMissingMedia = new QCheckBox("Mark items whose media is missing when a rundown opens");
+    this->checkBoxWarnMissingMedia->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxWarnMissingMedia->setToolTip("Checks each item against the server's library and the configured media "
+                                                "and template folders.\n"
+                                                "Nothing is marked when neither source could have known.");
+    grid->addWidget(this->checkBoxWarnMissingMedia, row, 1, 1, 3);
+    row++;
+
     this->checkBoxAllowShellCommands = new QCheckBox("Allow Shell Command items to run");
     this->checkBoxAllowShellCommands->setFocusPolicy(Qt::NoFocus);
     this->checkBoxAllowShellCommands->setToolTip("Shell Command items run a program on this machine.\n"
@@ -1455,6 +1463,7 @@ void SettingsDialog::setupGeneralTab()
     wireCheckBox(this->checkBoxShowBankIcons, "ShowBankIcons");
     wireCheckBox(this->checkBoxHttpLogLastOnly, "HttpLogLastOnly");
     wireCheckBox(this->checkBoxAutoSaveEnabled, "AutoSaveEnabled");
+    wireCheckBox(this->checkBoxWarnMissingMedia, "WarnMissingMedia");
     wireCheckBox(this->checkBoxShowLastAction, "ShowLastAction");
     wireCheckBox(this->checkBoxActiveIndicatorPerChannel, "ActiveIndicatorPerChannel");
 

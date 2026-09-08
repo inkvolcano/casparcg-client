@@ -72,6 +72,7 @@
 #include "Events/Rundown/ReloadRundownMenuEvent.h"
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
+#include "MissingMediaScanner.h"
 
 #include "AutoSaveNaming.h"
 
@@ -1453,6 +1454,10 @@ void RundownTreeWidget::openRundown(const QString& path)
         if (!this->suppressOpenRecent)
             DatabaseManager::getInstance().insertOpenRecent(path);
 
+        // The rundown is on screen now, so anything pointing at media that is
+        // not there can be marked before it is played rather than after.
+        checkMissingMedia();
+
         qDebug("RundownTreeWidget::openRundown %lld msec (%d items)", time.elapsed(), this->treeWidgetRundown->invisibleRootItem()->childCount());
     }
 
@@ -1698,6 +1703,26 @@ bool RundownTreeWidget::openAutoSaveCopy(const QString& autoSavePath, const QStr
     EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
 
     return true;
+}
+
+void RundownTreeWidget::checkMissingMedia()
+{
+    if (!MissingMediaScanner::isEnabled())
+        return;
+
+    // Deferred by a turn of the event loop: on load the item widgets are still
+    // being built, and a sweep now would walk a tree that is not finished.
+    QTimer::singleShot(0, this, [this]() {
+        MissingMediaScanner scanner;
+        MissingMediaScanner::Result result = scanner.scan(this->treeWidgetRundown);
+
+        if (result.missing == 0)
+            return;
+
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("%1 of %2 item%3 point at media that was not found - hover a warning mark to see why")
+                .arg(result.missing).arg(result.checked).arg(result.checked == 1 ? "" : "s")));
+    });
 }
 
 bool RundownTreeWidget::checkForSave() const
