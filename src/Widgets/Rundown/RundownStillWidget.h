@@ -22,6 +22,7 @@
 #include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/LibraryModel.h"
 #include "Utils/ItemScheduler.h"
+#include "Utils/AutoLoopController.h"
 
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QString>
@@ -59,6 +60,7 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;
@@ -87,6 +89,7 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         OscSubscription* clearChannelControlSubscription;
 
         ItemScheduler itemScheduler;
+        AutoLoopController autoLoopController;
 
         QTimer* progressTimer = nullptr;
         QElapsedTimer progressElapsed;
@@ -111,6 +114,8 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         Q_SLOT void delayChanged(int);
         Q_SLOT void durationChanged(int);
         Q_SLOT void autoPlayChanged(bool);
+        Q_SLOT void autoLoopChanged(bool);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void allowGpiChanged(bool);
         Q_SLOT void remoteTriggerIdChanged(const QString&);
         Q_SLOT void gpiConnectionStateChanged(bool, GpiDevice*);

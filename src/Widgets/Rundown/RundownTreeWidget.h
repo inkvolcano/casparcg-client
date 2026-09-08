@@ -35,6 +35,7 @@
 
 #include <QtCore/QEvent>
 #include <QtCore/QMap>
+#include <QtCore/QSet>
 #include <QtCore/QObject>
 #include <QtCore/QPair>
 #include <QtCore/QString>
@@ -73,6 +74,30 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         bool checkForSave() const;
 
+        // The rundown as it would be written to disk. saveRundown() writes this,
+        // checkForSave() hashes it, and the auto-save copy is the same bytes — so
+        // a recovered rundown is byte-identical to one the user had saved.
+        QByteArray serialiseRundown() const;
+
+        // Writes a recovery copy into directory, named after the rundown it came
+        // from. Returns false when there is nothing worth recovering (an empty
+        // rundown, a repository rundown, or a failed write).
+        bool writeAutoSaveCopy(const QString& directory) const;
+
+        // The filename stem a recovery copy gets for a rundown at this path. The
+        // path is whatever the rundown was opened from, so this has to be unable
+        // to produce anything that walks out of the recovery folder.
+        static QString autoSaveStemFor(const QString& activeRundown);
+
+        // The file this rundown was opened from or last saved to, or
+        // Rundown::DEFAULT_NAME when it has never been given one.
+        const QString& getActiveRundown() const;
+
+        // Loads a recovery copy and points it back at the file it was recovered
+        // for, leaving it marked unsaved so the operator decides whether it wins.
+        // The rundown's own file is never touched by this.
+        bool openAutoSaveCopy(const QString& autoSavePath, const QString& originalPath);
+
         bool getAllowRemoteTriggering() const;
         bool isLocked() const;
         void setLocked(bool locked);
@@ -108,6 +133,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QList<GatewayExitLocation> findAllGatewayExitsInTree(const QString& gatewayId) const;
         bool active;
         bool enterPressed;
+        // Set only while a recovery copy is being loaded through openRundown(),
+        // so the scratch file it reads from never reaches the Open Recent list.
+        bool suppressOpenRecent = false;
         bool allowRemoteRundownTriggering;
         bool repositoryRundown;
 
@@ -122,6 +150,13 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QMenu* contextMenuOther;
         QMenu* contextMenuLibrary;
         QMenu* contextMenuRundown;
+        QMenu* contextMenuAutoLoop;
+        QAction* actionAutoLoopEnable;
+        QAction* actionAutoLoopDelay5;
+        QAction* actionAutoLoopDelay10;
+        QAction* actionAutoLoopDelay30;
+        QAction* actionAutoLoopDelay60;
+        QAction* actionAutoLoopDelayCustom;
         QAction* addGatewayExitAction;
 
         QMap<int, Playout::PlayoutType> gpiBindings;
@@ -131,6 +166,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         QTreeWidgetItem* copyItem;
         QMap<int, QTreeWidgetItem*> currentPlayingItems;  // Per-channel tracking of last fired items
+        // Preview layers this client lit, keyed "device|previewChannel|videolayer".
+        // Taking an item to program clears only its own preview layer.
+        QSet<QString> previewedLayers;
         QTreeWidgetItem* currentPlayingAutoStepItem;
         QTreeWidgetItem* currentAutostepHighlightItem;
         QList<QTreeWidgetItem*> previousSelectedItems;
@@ -173,12 +211,14 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         void setAutoPlayHighlight(AbstractRundownWidget* widget, bool highlight);
         void setAutostepHighlight(QTreeWidgetItem* item, bool highlight);
         bool shouldPreviewRedirect() const;
+        void updatePreviewChannelBadgeForSelection(bool showPreview);
 
         Q_SLOT void addPlayoutCommandItem();
         Q_SLOT void addCustomCommandItem();
         Q_SLOT void addChromaKeyItem();
         Q_SLOT void addPrintItem();
         Q_SLOT void addSeparatorItem();
+        Q_SLOT void addStopAutoLoopsItem();
         Q_SLOT void addFileRecorderItem();
         Q_SLOT void addImageScrollerItem();
         Q_SLOT void addAudioItem();
@@ -208,6 +248,7 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addAnchorItem();
         Q_SLOT void addHttpGetItem();
         Q_SLOT void addHttpPostItem();
+        Q_SLOT void addShellCommandItem();
         Q_SLOT void addResetItem();
         Q_SLOT void addHtmlItem();
         Q_SLOT void addRouteChannelItem();
@@ -221,6 +262,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addGatewayExit();
         Q_SLOT void contextMenuColorTriggered(QAction*);
         Q_SLOT void contextMenuRundownTriggered(QAction*);
+        Q_SLOT void autoLoopEnableTriggered();
+        Q_SLOT void autoLoopDelayPresetTriggered(int seconds);
+        Q_SLOT void autoLoopDelayCustomTriggered();
         Q_SLOT void customContextMenuRequested(const QPoint&);
         Q_SLOT void gpiPortTriggered(int, GpiDevice*);
         Q_SLOT void currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*);

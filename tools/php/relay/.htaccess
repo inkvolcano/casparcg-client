@@ -1,0 +1,11 @@
+# The same thing again for Apache with mod_php, which does not read .user.ini.
+# Guarded, because php_flag on a server without mod_php is a 500 rather than a
+# no-op, and a relay that will not load at all is worse than one that is chatty.
+<IfModule mod_php.c>
+    php_flag display_errors off
+    php_flag log_errors on
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag display_errors off
+    php_flag log_errors on
+</IfModule>

@@ -20,6 +20,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QString>
 
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutputWidget
@@ -36,6 +37,7 @@ class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutput
         QString delayType;
         QString libraryFilter;
         bool forceMilliseconds;
+
 
         void checkEmptyDevice();
         void checkEmptyTarget();

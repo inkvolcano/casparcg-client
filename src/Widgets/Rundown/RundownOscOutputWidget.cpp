@@ -53,6 +53,7 @@ RundownOscOutputWidget::RundownOscOutputWidget(const LibraryModel& model, QWidge
 
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
 
@@ -202,6 +203,7 @@ void RundownOscOutputWidget::setUsed(bool used)
 
 bool RundownOscOutputWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (type == Playout::PlayoutType::Stop)
         executeStop();
     else if ((type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext()) || type == Playout::PlayoutType::Update)
@@ -463,4 +465,9 @@ void RundownOscOutputWidget::clearChannelControlSubscriptionReceived(const QStri
         executeCommand(Playout::PlayoutType::ClearChannel);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
     }
+}
+
+void RundownOscOutputWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

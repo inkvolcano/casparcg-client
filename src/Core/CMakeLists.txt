@@ -36,6 +36,7 @@ qt_add_library(core
     Commands/GroupCommand.cpp Commands/GroupCommand.h
     Commands/HtmlCommand.cpp Commands/HtmlCommand.h
     Commands/HttpGetCommand.cpp Commands/HttpGetCommand.h
+    Commands/ShellCommand.cpp Commands/ShellCommand.h
     Commands/HttpPostCommand.cpp Commands/HttpPostCommand.h
     Commands/ImageScrollerCommand.cpp Commands/ImageScrollerCommand.h
     Commands/KeyerCommand.cpp Commands/KeyerCommand.h
@@ -94,6 +95,8 @@ qt_add_library(core
     Events/Rundown/BankAssignmentChangedEvent.cpp Events/Rundown/BankAssignmentChangedEvent.h
     Events/Rundown/PlaybackProgressEvent.cpp Events/Rundown/PlaybackProgressEvent.h
     Events/Rundown/ChannelActivityEvent.cpp Events/Rundown/ChannelActivityEvent.h
+    Events/Rundown/AutoLoopCountdownEvent.cpp Events/Rundown/AutoLoopCountdownEvent.h
+    Commands/StopAutoLoopsCommand.cpp Commands/StopAutoLoopsCommand.h
     Events/Rundown/ActiveRundownChangedEvent.cpp Events/Rundown/ActiveRundownChangedEvent.h
     Events/Rundown/AddRudnownItemEvent.cpp Events/Rundown/AddRudnownItemEvent.h
     Events/Rundown/AllowRemoteTriggeringEvent.cpp Events/Rundown/AllowRemoteTriggeringEvent.h

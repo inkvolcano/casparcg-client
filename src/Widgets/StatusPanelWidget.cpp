@@ -4,6 +4,8 @@
 #include "PanelHelper.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
+#include "RelayClient.h"
+#include "SheetCacheServer.h"
 #include "TriggerBankRegistry.h"
 #include "Timecode.h"
 #include "Rundown/AbstractRundownWidget.h"
@@ -19,6 +21,7 @@
 #include <QtCore/QSet>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGridLayout>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QTreeWidget>
 
@@ -95,6 +98,14 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(channelActivity(const ChannelActivityEvent&)),
                      this, SLOT(channelActivity(const ChannelActivityEvent&)));
 
+    // Connect auto-loop countdown event.
+    QObject::connect(&EventManager::getInstance(), SIGNAL(autoLoopCountdown(const AutoLoopCountdownEvent&)),
+                     this, SLOT(autoLoopCountdown(const AutoLoopCountdownEvent&)));
+
+    // Clear CH / Clear VL / Clear Output wipe every row on the affected channel(/layer).
+    QObject::connect(&EventManager::getInstance(), &EventManager::channelCleared,
+                     this, &StatusPanelWidget::channelCleared);
+
     // Connect bank assignment changed event.
     QObject::connect(&EventManager::getInstance(), SIGNAL(bankAssignmentChanged(const BankAssignmentChangedEvent&)),
                      this, SLOT(bankAssignmentChanged(const BankAssignmentChangedEvent&)));
@@ -106,6 +117,8 @@ StatusPanelWidget::StatusPanelWidget(QWidget* parent)
                      this, SLOT(deviceRemoved()));
     QObject::connect(&DeviceManager::getInstance(), SIGNAL(channelLockChanged(const QString&, int, bool)),
                      this, SLOT(channelLockChanged(const QString&, int, bool)));
+    QObject::connect(&DeviceManager::getInstance(), SIGNAL(timedLockTick(const QString&, int, int)),
+                     this, SLOT(timedLockTick(const QString&, int, int)));
 
     // Connect preview mode changed signal.
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModeChanged(bool)),
@@ -162,7 +175,212 @@ void StatusPanelWidget::setupServerPanel()
     });
     serverOuterLayout->addWidget(this->autostepModeButton);
 
+    setupCacheRow(serverOuterLayout);
+    setupRelayRow(serverOuterLayout);
+
     serverOuterLayout->addStretch();
+}
+
+// Same shape as a server row \xe2\x80\x94 name, light, button \xe2\x80\x94 because it answers the same
+// question: is this thing responding right now, and can I change that from here.
+void StatusPanelWidget::setupCacheRow(QVBoxLayout* serverOuterLayout)
+{
+    this->cacheRow = new QWidget(this->widgetServer);
+    QHBoxLayout* rowLayout = new QHBoxLayout(this->cacheRow);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(6);
+
+    this->cacheLabel = new QLabel(this->cacheRow);
+    this->cacheLabel->setStyleSheet("font-size: 10px; color: rgba(200, 200, 200, 200);");
+    this->cacheLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(this->cacheLabel, 1);
+
+    this->cacheDot = new QLabel(this->cacheRow);
+    this->cacheDot->setFixedSize(12, 12);
+    rowLayout->addWidget(this->cacheDot, 0);
+
+    // The switch sits where the light is, so throwing it does not mean going
+    // looking for a menu mid-show.
+    this->cacheBypassButton = new QPushButton(this->cacheRow);
+    this->cacheBypassButton->setFixedHeight(20);
+    this->cacheBypassButton->setFocusPolicy(Qt::NoFocus);
+    this->cacheBypassButton->setStyleSheet(
+        "QPushButton { font-size: 9px; padding: 1px 8px; border-radius: 3px; "
+        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
+        "QPushButton:hover { background-color: rgba(80, 80, 80, 200); }");
+    QObject::connect(this->cacheBypassButton, &QPushButton::clicked, this, [this]() {
+        SheetCacheServer::setBypassing(!SheetCacheServer::isBypassing());
+        updateCacheStatus();
+    });
+    rowLayout->addWidget(this->cacheBypassButton, 0);
+
+    serverOuterLayout->addWidget(this->cacheRow);
+    this->cacheRow->setVisible(false);
+
+    // Bypass can be thrown from the menu, the settings or over HTTP, so the light
+    // is read from the server rather than remembered from the last click here.
+    QObject::connect(&this->cacheStatusTimer, &QTimer::timeout, this, &StatusPanelWidget::updateCacheStatus);
+    this->cacheStatusTimer.start(2000);
+
+    updateCacheStatus();
+}
+
+void StatusPanelWidget::updateCacheStatus()
+{
+    if (this->cacheRow == nullptr)
+        return;
+
+    // Nothing to report for a client that is not hosting; the row stays out of the way.
+    if (!SheetCacheServer::isEnabled())
+    {
+        this->cacheRow->setVisible(false);
+        return;
+    }
+
+    this->cacheRow->setVisible(true);
+
+    bool listening = SheetCacheServer::getInstance().isRunning();
+    bool bypassing = SheetCacheServer::isBypassing();
+    int port = SheetCacheServer::configuredPort();
+
+    const QString green = "background-color: rgb(76, 175, 80); border-radius: 6px;";
+    const QString amber = "background-color: rgb(230, 160, 30); border-radius: 6px;";
+    const QString red = "background-color: rgb(198, 40, 40); border-radius: 6px;";
+
+    if (!listening)
+    {
+        // Enabled but not answering: almost always the port already belongs to
+        // something else, which is worth saying rather than leaving as a dark light.
+        this->cacheDot->setStyleSheet(red);
+        this->cacheLabel->setText(QString("Cache %1").arg(port));
+        this->cacheRow->setToolTip(QString(
+            "The sheet cache is enabled but not listening on port %1.\n"
+            "Another service probably has the port \xe2\x80\x94 the PHP server uses 3000 too.").arg(port));
+        this->cacheBypassButton->setText("Off");
+        this->cacheBypassButton->setEnabled(false);
+        return;
+    }
+
+    this->cacheBypassButton->setEnabled(true);
+
+    if (bypassing)
+    {
+        // Amber, not red: it is doing exactly what was asked of it. A red light here
+        // would read as a fault every time somebody deliberately went live.
+        this->cacheDot->setStyleSheet(amber);
+        this->cacheLabel->setText(QString("Cache %1  bypass").arg(port));
+        this->cacheRow->setToolTip(QString(
+            "Serving nothing on purpose: reads answer 404 so graphics go live to the sheet,\n"
+            "while writes still land and keep the cache warm.\n"
+            "Listening on port %1.").arg(port));
+        this->cacheBypassButton->setText("Serve");
+        return;
+    }
+
+    this->cacheDot->setStyleSheet(green);
+    this->cacheLabel->setText(QString("Cache %1").arg(port));
+    this->cacheRow->setToolTip(QString(
+        "Serving cached sheet rows on port %1.\n"
+        "Templates pointed here (local = true) read from the cache first.").arg(port));
+    this->cacheBypassButton->setText("Bypass");
+}
+
+
+// The same shape again, for the same reason: an operator at a venue should be able
+// to see whether templates are arriving without opening a settings dialog mid-show.
+void StatusPanelWidget::setupRelayRow(QVBoxLayout* serverOuterLayout)
+{
+    this->relayRow = new QWidget(this->widgetServer);
+    QHBoxLayout* rowLayout = new QHBoxLayout(this->relayRow);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(6);
+
+    this->relayLabel = new QLabel(this->relayRow);
+    this->relayLabel->setStyleSheet("font-size: 10px; color: rgba(200, 200, 200, 200);");
+    this->relayLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(this->relayLabel, 1);
+
+    this->relayDot = new QLabel(this->relayRow);
+    this->relayDot->setFixedSize(12, 12);
+    rowLayout->addWidget(this->relayDot, 0);
+
+    this->relayCheckButton = new QPushButton("Check", this->relayRow);
+    this->relayCheckButton->setFixedHeight(20);
+    this->relayCheckButton->setFocusPolicy(Qt::NoFocus);
+    this->relayCheckButton->setStyleSheet(
+        "QPushButton { font-size: 9px; padding: 1px 8px; border-radius: 3px; "
+        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
+        "QPushButton:hover { background-color: rgba(80, 80, 80, 200); }");
+    QObject::connect(this->relayCheckButton, &QPushButton::clicked, this, []() {
+        RelayClient::getInstance().checkNow();
+    });
+    rowLayout->addWidget(this->relayCheckButton, 0);
+
+    serverOuterLayout->addWidget(this->relayRow);
+    this->relayRow->setVisible(false);
+
+    // Shares the cache row's timer: both answer "is this working right now", and a
+    // second timer for the same question would be a second thing to keep in step.
+    QObject::connect(&this->cacheStatusTimer, &QTimer::timeout, this, &StatusPanelWidget::updateRelayStatus);
+
+    updateRelayStatus();
+}
+
+void StatusPanelWidget::updateRelayStatus()
+{
+    if (this->relayRow == nullptr)
+        return;
+
+    // A client that does not pull has nothing to report; the row stays out of the way.
+    if (!RelayClient::isEnabled())
+    {
+        this->relayRow->setVisible(false);
+        return;
+    }
+
+    this->relayRow->setVisible(true);
+
+    const QString green = "background-color: rgb(76, 175, 80); border-radius: 6px;";
+    const QString amber = "background-color: rgb(230, 160, 30); border-radius: 6px;";
+    const QString red = "background-color: rgb(198, 40, 40); border-radius: 6px;";
+    const QString grey = "background-color: rgb(90, 90, 90); border-radius: 6px;";
+
+    RelayClient& relay = RelayClient::getInstance();
+
+    if (relay.isBusy())
+    {
+        this->relayDot->setStyleSheet(amber);
+        this->relayLabel->setText(QString("%1 checking").arg(RelayClient::isGitHub() ? "GitHub" : "Relay"));
+        this->relayRow->setToolTip("Reading the source now.");
+        this->relayCheckButton->setEnabled(false);
+        return;
+    }
+
+    this->relayCheckButton->setEnabled(true);
+
+    QDateTime ran = relay.lastRun();
+    if (!ran.isValid())
+    {
+        // Enabled but never run: grey rather than red, because nothing has gone
+        // wrong yet and a red light on startup would be read as a fault.
+        this->relayDot->setStyleSheet(grey);
+        this->relayLabel->setText(QString("%1 not checked yet").arg(RelayClient::isGitHub() ? "GitHub" : "Relay"));
+        this->relayRow->setToolTip(QString("Pulling from %1.\nNothing has been checked since this client started.")
+            .arg(RelayClient::sourceLabel()));
+        return;
+    }
+
+    // Relative, because "nine minutes ago" answers the question and a timestamp
+    // makes the reader do the subtraction.
+    qint64 seconds = ran.secsTo(QDateTime::currentDateTime());
+    QString ago = (seconds < 60) ? QString("just now")
+                : (seconds < 3600) ? QString("%1m ago").arg(seconds / 60)
+                : QString("%1h ago").arg(seconds / 3600);
+
+    this->relayDot->setStyleSheet(relay.lastCheckOk() ? green : red);
+    this->relayLabel->setText(QString("%1 %2").arg(RelayClient::isGitHub() ? "GitHub" : "Relay", ago));
+    this->relayRow->setToolTip(QString("Pulling from %1.\nLast check %2: %3.")
+        .arg(RelayClient::sourceLabel(), ago, relay.lastSummary()));
 }
 
 void StatusPanelWidget::setupActivityPanel()
@@ -548,6 +766,113 @@ void StatusPanelWidget::channelActivity(const ChannelActivityEvent& event)
     rowLayout->addWidget(entry.labelInfo, 1);
 
     // Layer label (badge showing channel-layer)
+    QSize slSz = this->bigBoldMode ? QSize(48, 30) : QSize(36, 24);
+    entry.labelLayer = new QLabel(entry.row);
+    entry.labelLayer->setText(QString("%1-%2").arg(event.getChannel()).arg(event.getVideolayer()));
+    entry.labelLayer->setStyleSheet(channelColorStyle(event.getChannel()));
+    entry.labelLayer->setAlignment(Qt::AlignCenter);
+    entry.labelLayer->setFixedSize(slSz);
+    rowLayout->addWidget(entry.labelLayer, 0);
+
+    this->activityLayout->addWidget(entry.row);
+    this->activityEntries[key] = entry;
+
+    reorderActivity();
+}
+
+void StatusPanelWidget::channelCleared(const QString& deviceName, int channel, int videolayer)
+{
+    Q_UNUSED(deviceName); // activity entries are keyed by channel/layer only
+
+    // Remove every row on the cleared channel (or the exact layer when given) —
+    // play rows, progress rows and auto-loop countdown rows alike.
+    QStringList clearedKeys;
+    for (auto it = this->activityEntries.constBegin(); it != this->activityEntries.constEnd(); ++it)
+    {
+        if (it.value().channel == channel && (videolayer == -1 || it.value().videolayer == videolayer))
+            clearedKeys.append(it.key());
+    }
+
+    for (const QString& key : clearedKeys)
+        removeActivityEntry(key);
+
+    if (!clearedKeys.isEmpty())
+        reorderActivity();
+}
+
+void StatusPanelWidget::autoLoopCountdown(const AutoLoopCountdownEvent& event)
+{
+    // Use a distinct key so this row doesn't collide with the regular play activity row
+    // for the same channel/videolayer.
+    QString key = QString("autoloop:%1:%2").arg(event.getChannel()).arg(event.getVideolayer());
+
+    if (!event.getActive())
+    {
+        if (this->activityEntries.contains(key))
+        {
+            removeActivityEntry(key);
+            reorderActivity();
+        }
+        return;
+    }
+
+    int remaining = event.getRemainingSeconds();
+    int total = event.getTotalSeconds();
+    if (total < 1) total = 1;
+
+    if (this->activityEntries.contains(key))
+    {
+        ActivityEntry& e = this->activityEntries[key];
+        e.lastUpdate = QDateTime::currentMSecsSinceEpoch();
+        if (e.progressBar != nullptr)
+        {
+            e.progressBar->setRange(0, total);
+            e.progressBar->setValue(remaining);
+            e.progressBar->setFormat(QString("%1s").arg(remaining));
+        }
+        if (e.labelInfo != nullptr)
+            e.labelInfo->setText(event.getLabel());
+        return;
+    }
+
+    ActivityEntry entry;
+    entry.isStatic = false; // Progress-style entry so cleanup can remove stale rows if events stop.
+    entry.itemType = event.getItemType();
+    entry.channel = event.getChannel();
+    entry.videolayer = event.getVideolayer();
+    entry.label = event.getLabel();
+    entry.lastUpdate = QDateTime::currentMSecsSinceEpoch();
+
+    entry.row = new QWidget(this->widgetActivity);
+    QHBoxLayout* rowLayout = new QHBoxLayout(entry.row);
+    rowLayout->setContentsMargins(0, 2, 0, 2);
+    rowLayout->setSpacing(4);
+
+    int sbFS = this->bigBoldMode ? 13 : 9;
+    int sbH  = this->bigBoldMode ? 22 : 16;
+    entry.labelTypeBadge = new QLabel(entry.row);
+    entry.labelTypeBadge->setText(tr("LOOP"));
+    // Distinct color for loop badges — dark cyan/teal.
+    entry.labelTypeBadge->setStyleSheet(QString("background-color: #008b8b; color: white; border-radius: 3px; font-size: %1px; font-weight: bold; padding: 1px 4px;").arg(sbFS));
+    entry.labelTypeBadge->setFixedHeight(sbH);
+    rowLayout->addWidget(entry.labelTypeBadge, 0);
+
+    int siFS = this->bigBoldMode ? 14 : 11;
+    entry.labelInfo = new QLabel(entry.row);
+    entry.labelInfo->setText(event.getLabel());
+    entry.labelInfo->setStyleSheet(QString("font-size: %1px; color: white;").arg(siFS));
+    entry.labelInfo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    rowLayout->addWidget(entry.labelInfo, 1);
+
+    entry.progressBar = new QProgressBar(entry.row);
+    entry.progressBar->setRange(0, total);
+    entry.progressBar->setValue(remaining);
+    entry.progressBar->setFormat(QString("%1s").arg(remaining));
+    entry.progressBar->setTextVisible(true);
+    entry.progressBar->setFixedWidth(this->bigBoldMode ? 90 : 70);
+    entry.progressBar->setFixedHeight(sbH);
+    rowLayout->addWidget(entry.progressBar, 0);
+
     QSize slSz = this->bigBoldMode ? QSize(48, 30) : QSize(36, 24);
     entry.labelLayer = new QLabel(entry.row);
     entry.labelLayer->setText(QString("%1-%2").arg(event.getChannel()).arg(event.getVideolayer()));
@@ -1482,6 +1807,7 @@ void StatusPanelWidget::rebuildChannelLockGrid()
         this->channelLockGrid = nullptr;
     }
     this->lockButtons.clear();
+    this->timerButtons.clear();
     this->globalLockButtons.clear();
 
     if (this->maxChannels <= 0 || this->serverEntries.isEmpty())
@@ -1518,24 +1844,52 @@ void StatusPanelWidget::rebuildChannelLockGrid()
 
         for (int ch = 1; ch <= this->maxChannels; ch++)
         {
-            QPushButton* btn = new QPushButton(this->channelLockGrid);
-            btn->setFixedSize(28, 20);
-            btn->setCheckable(true);
-            bool locked = DeviceManager::getInstance().isChannelLocked(deviceName, ch);
-            btn->setChecked(locked);
-            updateLockButtonStyle(btn, locked);
+            // Container widget with lock button on top, stopwatch button below.
+            QWidget* cellWidget = new QWidget(this->channelLockGrid);
+            QVBoxLayout* cellLayout = new QVBoxLayout(cellWidget);
+            cellLayout->setContentsMargins(0, 0, 0, 0);
+            cellLayout->setSpacing(1);
+            cellLayout->setAlignment(Qt::AlignCenter);
 
-            QObject::connect(btn, &QPushButton::clicked, [deviceName, ch]() {
+            // Lock button (top).
+            QPushButton* lockBtn = new QPushButton(cellWidget);
+            lockBtn->setFixedSize(28, 20);
+            lockBtn->setCheckable(true);
+            bool locked = DeviceManager::getInstance().isChannelLocked(deviceName, ch);
+            bool timed = DeviceManager::getInstance().isTimedLock(deviceName, ch);
+            int remaining = DeviceManager::getInstance().getRemainingLockSeconds(deviceName, ch);
+            lockBtn->setChecked(locked);
+            updateLockButtonStyle(lockBtn, locked, timed, remaining);
+
+            QObject::connect(lockBtn, &QPushButton::clicked, [deviceName, ch]() {
                 DeviceManager::getInstance().toggleChannelLock(deviceName, ch);
             });
 
-            grid->addWidget(btn, row, ch);
-            this->lockButtons[deviceName][ch] = btn;
+            // Stopwatch button (⏱) below.
+            QPushButton* timerBtn = new QPushButton(QString::fromUtf8("\xe2\x8f\xb1"), cellWidget);
+            timerBtn->setFixedSize(28, 16);
+            updateTimerButtonStyle(timerBtn, timed);
+
+            QObject::connect(timerBtn, &QPushButton::clicked, [this, deviceName, ch]() {
+                bool ok;
+                int minutes = QInputDialog::getInt(this, "Timed Channel Lock",
+                    QString("Lock Ch%1 for how many minutes?").arg(ch),
+                    5, 1, 120, 1, &ok);
+                if (ok)
+                    DeviceManager::getInstance().setTimedChannelLock(deviceName, ch, minutes * 60);
+            });
+
+            cellLayout->addWidget(lockBtn, 0, Qt::AlignCenter);
+            cellLayout->addWidget(timerBtn, 0, Qt::AlignCenter);
+
+            grid->addWidget(cellWidget, row, ch, Qt::AlignCenter);
+            this->lockButtons[deviceName][ch] = lockBtn;
+            this->timerButtons[deviceName][ch] = timerBtn;
         }
         row++;
     }
 
-    // "All" row (global locks).
+    // "All" row (global locks) — no timed lock for global row.
     if (deviceNames.size() > 1)
     {
         QLabel* allLabel = new QLabel("All", this->channelLockGrid);
@@ -1564,9 +1918,20 @@ void StatusPanelWidget::rebuildChannelLockGrid()
     this->channelLockGrid->setVisible(this->showChannelLocks);
 }
 
-void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked)
+void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked, bool timed, int remainingSecs)
 {
-    if (locked)
+    if (locked && timed && remainingSecs > 0)
+    {
+        // Timed lock: amber with countdown.
+        int mins = remainingSecs / 60;
+        int secs = remainingSecs % 60;
+        button->setText(QString("%1:%2").arg(mins).arg(secs, 2, 10, QChar('0')));
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(200, 150, 30, 200); color: white; border-radius: 3px; "
+            "font-size: 8px; font-weight: bold; border: 1px solid rgba(220, 170, 50, 200); }"
+            "QPushButton:hover { background-color: rgba(220, 170, 50, 200); }");
+    }
+    else if (locked)
     {
         button->setStyleSheet(
             "QPushButton { background-color: rgba(198, 40, 40, 200); color: white; border-radius: 3px; "
@@ -1581,6 +1946,24 @@ void StatusPanelWidget::updateLockButtonStyle(QPushButton* button, bool locked)
             "font-size: 9px; border: 1px solid rgba(70, 70, 70, 200); }"
             "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
         button->setText(QString::fromUtf8("\xf0\x9f\x94\x93")); // unlock emoji
+    }
+}
+
+void StatusPanelWidget::updateTimerButtonStyle(QPushButton* button, bool active)
+{
+    if (active)
+    {
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(200, 150, 30, 180); color: white; border-radius: 3px; "
+            "font-size: 10px; border: 1px solid rgba(220, 170, 50, 200); }"
+            "QPushButton:hover { background-color: rgba(220, 170, 50, 200); }");
+    }
+    else
+    {
+        button->setStyleSheet(
+            "QPushButton { background-color: rgba(50, 50, 50, 180); color: rgba(120, 120, 120, 200); border-radius: 3px; "
+            "font-size: 10px; border: 1px solid rgba(70, 70, 70, 200); }"
+            "QPushButton:hover { background-color: rgba(70, 70, 70, 200); }");
     }
 }
 
@@ -1602,10 +1985,25 @@ void StatusPanelWidget::channelLockChanged(const QString& deviceName, int channe
         if (this->lockButtons.contains(deviceName) && this->lockButtons[deviceName].contains(channel))
         {
             bool effectiveLocked = DeviceManager::getInstance().isChannelLocked(deviceName, channel);
+            bool timed = DeviceManager::getInstance().isTimedLock(deviceName, channel);
+            int remaining = DeviceManager::getInstance().getRemainingLockSeconds(deviceName, channel);
             QPushButton* btn = this->lockButtons[deviceName][channel];
             btn->setChecked(effectiveLocked);
-            updateLockButtonStyle(btn, effectiveLocked);
+            updateLockButtonStyle(btn, effectiveLocked, timed, remaining);
+
+            // Update stopwatch button style.
+            if (this->timerButtons.contains(deviceName) && this->timerButtons[deviceName].contains(channel))
+                updateTimerButtonStyle(this->timerButtons[deviceName][channel], timed);
         }
+    }
+}
+
+void StatusPanelWidget::timedLockTick(const QString& deviceName, int channel, int remainingSecs)
+{
+    if (this->lockButtons.contains(deviceName) && this->lockButtons[deviceName].contains(channel))
+    {
+        QPushButton* btn = this->lockButtons[deviceName][channel];
+        updateLockButtonStyle(btn, true, true, remainingSecs);
     }
 }
 

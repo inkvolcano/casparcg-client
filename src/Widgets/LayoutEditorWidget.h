@@ -13,12 +13,16 @@ class WIDGETS_EXPORT LayoutEditorWidget : public QWidget
     Q_OBJECT
 
     public:
-        explicit LayoutEditorWidget(QWidget* parent = nullptr);
+        // keyPrefix prepends every config key ("Simple" -> SimpleLayoutColumnOrder,
+        // SimpleLayoutPanel1, ...) so a second instance can edit an independent layout.
+        explicit LayoutEditorWidget(QWidget* parent = nullptr, const QString& keyPrefix = QString());
 
         void loadFromConfig();
         void saveToConfig();
 
     private:
+        QString keyPrefix;
+
         static const QStringList allWidgetIds;
         static QString widgetDisplayName(const QString& id);
         static QString columnDisplayName(const QString& id);

@@ -45,6 +45,17 @@ else()
 endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Multimedia Network Sql WebSockets Widgets Core5Compat)
+
+# Qt WebEngine renders HTML templates in the Preview panel. It is deliberately
+# optional: it is a large component that minimal Qt installs and the CI images do
+# not carry, and everything else in the client works without it. When it is
+# missing the Preview panel says so in place of the template and carries on.
+find_package(Qt6 QUIET COMPONENTS WebEngineWidgets)
+if (Qt6WebEngineWidgets_FOUND)
+    message(STATUS "Qt WebEngine found - template preview enabled")
+else()
+    message(STATUS "Qt WebEngine not found - template preview disabled (everything else builds)")
+endif()
 if (MSVC OR APPLE)
     qt_standard_project_setup()
 endif()
@@ -61,3 +72,4 @@ add_subdirectory(Ndi)
 add_subdirectory(Widgets)
 add_subdirectory(Tests)
 add_subdirectory(Shell)
+add_subdirectory(Push)

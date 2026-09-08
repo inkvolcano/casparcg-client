@@ -38,6 +38,7 @@ RundownFocusGatewayWidget::RundownFocusGatewayWidget(const LibraryModel& model, 
     RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, 0);
     QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
     QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
         RundownWidgetHelper::updateBankBadge(bankBadge, bank);
         RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
     });
@@ -297,6 +298,7 @@ void RundownFocusGatewayWidget::setInGroup(bool inGroup)
 
 bool RundownFocusGatewayWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     Q_UNUSED(type);
 
     if (this->active)
@@ -306,4 +308,9 @@ bool RundownFocusGatewayWidget::executeCommand(Playout::PlayoutType type)
     }
 
     return false;
+}
+
+void RundownFocusGatewayWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

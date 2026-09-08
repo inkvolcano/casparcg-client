@@ -54,6 +54,7 @@ class WIDGETS_EXPORT RundownChromaWidget : public QWidget, Ui::RundownChromaWidg
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

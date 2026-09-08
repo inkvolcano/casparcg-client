@@ -53,6 +53,7 @@ class WIDGETS_EXPORT RundownCustomCommandWidget : public QWidget, Ui::RundownCus
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

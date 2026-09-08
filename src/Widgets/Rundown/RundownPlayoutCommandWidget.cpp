@@ -50,6 +50,7 @@ RundownPlayoutCommandWidget::RundownPlayoutCommandWidget(const LibraryModel& mod
 
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
 
@@ -192,6 +193,7 @@ void RundownPlayoutCommandWidget::setUsed(bool used)
 
 bool RundownPlayoutCommandWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (type == Playout::PlayoutType::Play)
     {
         if (this->command.getDelay() < 0)
@@ -334,4 +336,9 @@ void RundownPlayoutCommandWidget::playNowControlSubscriptionReceived(const QStri
         executeCommand(Playout::PlayoutType::PlayNow);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PlayNow);
     }
+}
+
+void RundownPlayoutCommandWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

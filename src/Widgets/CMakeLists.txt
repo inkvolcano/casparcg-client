@@ -40,6 +40,7 @@ qt_add_library(widgets
     Inspector/InspectorGroupWidget.cpp Inspector/InspectorGroupWidget.h Inspector/InspectorGroupWidget.ui
     Inspector/InspectorHtmlWidget.cpp Inspector/InspectorHtmlWidget.h Inspector/InspectorHtmlWidget.ui
     Inspector/InspectorHttpGetWidget.cpp Inspector/InspectorHttpGetWidget.h Inspector/InspectorHttpGetWidget.ui
+    Inspector/InspectorShellCommandWidget.cpp Inspector/InspectorShellCommandWidget.h Inspector/InspectorShellCommandWidget.ui
     Inspector/InspectorHttpPostWidget.cpp Inspector/InspectorHttpPostWidget.h Inspector/InspectorHttpPostWidget.ui
     Inspector/InspectorImageScrollerWidget.cpp Inspector/InspectorImageScrollerWidget.h Inspector/InspectorImageScrollerWidget.ui
     Inspector/InspectorKeyerWidget.cpp Inspector/InspectorKeyerWidget.h Inspector/InspectorKeyerWidget.ui
@@ -62,9 +63,11 @@ qt_add_library(widgets
     Inspector/InspectorStillWidget.cpp Inspector/InspectorStillWidget.h Inspector/InspectorStillWidget.ui
     Inspector/InspectorTemplateWidget.cpp Inspector/InspectorTemplateWidget.h Inspector/InspectorTemplateWidget.ui
     Inspector/InspectorTransformWidget.cpp Inspector/InspectorTransformWidget.h
+    Inspector/InspectorSimpleModeWidget.cpp Inspector/InspectorSimpleModeWidget.h
     Inspector/NumericValueDelegate.cpp Inspector/NumericValueDelegate.h
     Inspector/InspectorVolumeWidget.cpp Inspector/InspectorVolumeWidget.h Inspector/InspectorVolumeWidget.ui
     Inspector/InspectorWidget.cpp Inspector/InspectorWidget.h Inspector/InspectorWidget.ui
+    Inspector/DialogPosition.h
     Inspector/KeyValueDialog.cpp Inspector/KeyValueDialog.h Inspector/KeyValueDialog.ui
     Inspector/TargetComboBaseWidget.cpp Inspector/TargetComboBaseWidget.h
     Inspector/TemplateDataTreeBaseWidget.cpp Inspector/TemplateDataTreeBaseWidget.h
@@ -86,13 +89,15 @@ qt_add_library(widgets
     NdiViewerWidget.cpp NdiViewerWidget.h
     PerformancePanelWidget.cpp PerformancePanelWidget.h PerformancePanelWidget.ui
     PanelHelper.h
+    WheelGuard.h
     PanelResizeHandle.cpp PanelResizeHandle.h
     OscOutputDialog.cpp OscOutputDialog.h OscOutputDialog.ui
     OscTimeWidget.cpp OscTimeWidget.h OscTimeWidget.ui
     PresetDialog.cpp PresetDialog.h PresetDialog.ui
     PreviewContentWidget.cpp PreviewContentWidget.h
+    PreviewAudioAnalyser.cpp PreviewAudioAnalyser.h
     PreviewWidget.cpp PreviewWidget.h PreviewWidget.ui
-    Rundown/AbstractRundownWidget.h
+    Rundown/AbstractRundownWidget.cpp Rundown/AbstractRundownWidget.h
     Rundown/OpenRundownFromUrlDialog.cpp Rundown/OpenRundownFromUrlDialog.h Rundown/OpenRundownFromUrlDialog.ui
     Rundown/RundownAnchorWidget.cpp Rundown/RundownAnchorWidget.h Rundown/RundownAnchorWidget.ui
     Rundown/RundownAutoPlayGatewayWidget.cpp Rundown/RundownAutoPlayGatewayWidget.h Rundown/RundownAutoPlayGatewayWidget.ui
@@ -117,6 +122,7 @@ qt_add_library(widgets
     Rundown/RundownGroupWidget.cpp Rundown/RundownGroupWidget.h Rundown/RundownGroupWidget.ui
     Rundown/RundownHtmlWidget.cpp Rundown/RundownHtmlWidget.h Rundown/RundownHtmlWidget.ui
     Rundown/RundownHttpGetWidget.cpp Rundown/RundownHttpGetWidget.h Rundown/RundownHttpGetWidget.ui
+    Rundown/RundownShellCommandWidget.cpp Rundown/RundownShellCommandWidget.h Rundown/RundownShellCommandWidget.ui
     Rundown/RundownHttpPostWidget.cpp Rundown/RundownHttpPostWidget.h Rundown/RundownHttpPostWidget.ui
     Rundown/RundownImageScrollerWidget.cpp Rundown/RundownImageScrollerWidget.h Rundown/RundownImageScrollerWidget.ui
     Rundown/RundownItemFactory.cpp Rundown/RundownItemFactory.h
@@ -134,6 +140,7 @@ qt_add_library(widgets
     Rundown/RundownRouteVideolayerWidget.cpp Rundown/RundownRouteVideolayerWidget.h Rundown/RundownRouteVideolayerWidget.ui
     Rundown/RundownSaturationWidget.cpp Rundown/RundownSaturationWidget.h Rundown/RundownSaturationWidget.ui
     Rundown/RundownSeparatorWidget.cpp Rundown/RundownSeparatorWidget.h Rundown/RundownSeparatorWidget.ui
+    Rundown/RundownStopAutoLoopsWidget.cpp Rundown/RundownStopAutoLoopsWidget.h Rundown/RundownStopAutoLoopsWidget.ui
     Rundown/RundownSolidColorWidget.cpp Rundown/RundownSolidColorWidget.h Rundown/RundownSolidColorWidget.ui
     Rundown/RundownStillWidget.cpp Rundown/RundownStillWidget.h Rundown/RundownStillWidget.ui
     Rundown/RundownTemplateWidget.cpp Rundown/RundownTemplateWidget.h Rundown/RundownTemplateWidget.ui
@@ -148,6 +155,17 @@ qt_add_library(widgets
     WhatsNewDialog.cpp WhatsNewDialog.h
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
+    Utils/AutoLoopController.cpp Utils/AutoLoopController.h
+    SheetsPanelWidget.cpp SheetsPanelWidget.h SheetsPanelWidget.ui
+    SheetsProjectRegistry.cpp SheetsProjectRegistry.h
+    SheetCacheServer.cpp SheetCacheServer.h
+    TemplateInstaller.cpp TemplateInstaller.h
+    RelayClient.cpp RelayClient.h
+    SheetDataResolver.cpp SheetDataResolver.h
+    SheetsActionsDialog.cpp SheetsActionsDialog.h
+    SimpleModeWidget.cpp SimpleModeWidget.h
+    SimpleInspectorWidget.cpp SimpleInspectorWidget.h
+    SimpleIconDialog.cpp SimpleIconDialog.h
 )
 target_include_directories(widgets PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/../Common
@@ -189,6 +207,14 @@ target_link_libraries(widgets PUBLIC
 
     $<$<PLATFORM_ID:Windows>:psapi>
 )
+
+# Template preview, when this machine has Qt WebEngine. The define is what
+# PreviewWidget.cpp switches on; without it that file compiles to a panel that
+# explains the template cannot be rendered.
+if (Qt6WebEngineWidgets_FOUND)
+    target_link_libraries(widgets PUBLIC Qt::WebEngineWidgets)
+    target_compile_definitions(widgets PUBLIC CASPARCG_HAS_WEBENGINE)
+endif()
 
 # Resources:
 set(Widgets_resource_files

@@ -10,15 +10,19 @@
 class UndoScope
 {
     public:
+        // A null tree is tolerated so callers that may not have one — Simple Mode
+        // can be open with no active rundown — do not each need the same guard.
         UndoScope(RundownTreeBaseWidget* tree, const QString& description)
             : m_tree(tree)
         {
-            tree->beginUndoSnapshot(description);
+            if (m_tree != nullptr)
+                m_tree->beginUndoSnapshot(description);
         }
 
         ~UndoScope()
         {
-            m_tree->endUndoSnapshot();
+            if (m_tree != nullptr)
+                m_tree->endUndoSnapshot();
         }
 
     private:

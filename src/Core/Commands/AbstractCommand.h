@@ -29,6 +29,15 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual QString getStoryId() const;
         virtual int getTriggerBank() const;
         virtual QString getCloneGroupId() const;
+        virtual bool getDisabled() const;
+        virtual bool getShowInSimpleMode() const;
+        virtual int getSimpleModeSlot() const;
+        virtual bool getSimpleModeNextButton() const;
+        virtual bool getSimpleModeGroupInvokes() const;
+        virtual int getSimpleModeWidth() const;
+        virtual int getSimpleModeHeight() const;
+        virtual int getSimpleModeLabelSize() const;
+        virtual QString getSimpleModeIcon() const;
 
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
@@ -40,6 +49,15 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual void setStoryId(const QString& storyId);
         virtual void setTriggerBank(int triggerBank);
         virtual void setCloneGroupId(const QString& cloneGroupId);
+        virtual void setDisabled(bool disabled);
+        virtual void setShowInSimpleMode(bool showInSimpleMode);
+        virtual void setSimpleModeSlot(int slot);
+        virtual void setSimpleModeNextButton(bool enabled);
+        virtual void setSimpleModeGroupInvokes(bool enabled);
+        virtual void setSimpleModeWidth(int columns);
+        virtual void setSimpleModeHeight(int rows);
+        virtual void setSimpleModeLabelSize(int size);
+        virtual void setSimpleModeIcon(const QString& icon);
 
         // Temporary channel override for preview mode. Does not emit signals.
         // Use getBaseChannel() when you need the configured channel (e.g. inspector display).
@@ -65,6 +83,15 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         bool allowRemoteTriggering = Output::DEFAULT_ALLOW_REMOTE_TRIGGERING;
         int triggerBank = 0;
         QString cloneGroupId;
+        bool disabled = false;
+        bool showInSimpleMode = false;
+        int simpleModeSlot = -1;   // -1 = auto (next free slot in rundown order)
+        bool simpleModeNextButton = false;
+        bool simpleModeGroupInvokes = false;   // surface this item's invokes on its group's button
+        int simpleModeWidth = 1;               // key width in grid slots
+        int simpleModeHeight = 0;              // key height in slots; 0 = auto-fit to content
+        int simpleModeLabelSize = 0;      // 0 = default size
+        QString simpleModeIcon;           // glyph/emoji shown on the button, empty = none
 
     signals:
         void channelChanged(int);
@@ -77,5 +104,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         void storyIdChanged(const QString&);
         void triggerBankChanged(int);
         void cloneGroupIdChanged(const QString&);
+        void disabledChanged(bool);
+        void showInSimpleModeChanged(bool);
         void propertyChanged();
 };

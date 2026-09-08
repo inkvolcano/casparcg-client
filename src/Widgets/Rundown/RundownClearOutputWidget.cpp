@@ -56,6 +56,7 @@ RundownClearOutputWidget::RundownClearOutputWidget(const LibraryModel& model, QW
     QObject::connect(&this->command, SIGNAL(channelChanged(int)), this, SLOT(channelChanged(int)));
     QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
     QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
     QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
@@ -246,6 +247,7 @@ void RundownClearOutputWidget::setUsed(bool used)
 
 bool RundownClearOutputWidget::executeCommand(Playout::PlayoutType type)
 {
+    if (this->command.getDisabled()) return true;
     if (type == Playout::PlayoutType::Stop)
         executeStop();
     else if ((type == Playout::PlayoutType::Play && !this->command.getTriggerOnNext()) ||
@@ -336,6 +338,8 @@ void RundownClearOutputWidget::executeClearVideolayer()
             deviceShadow->clearVideolayer(this->command.getChannel(), this->command.getVideolayer());
     }
 
+    EventManager::getInstance().fireChannelClearedEvent(this->model.getDeviceName(), this->command.getChannel(), this->command.getVideolayer());
+
     if (this->markUsedItems)
         setUsed(true);
 }
@@ -364,6 +368,8 @@ void RundownClearOutputWidget::executeClearChannel()
             deviceShadow->clearMixerChannel(this->command.getChannel());
         }
     }
+
+    EventManager::getInstance().fireChannelClearedEvent(this->model.getDeviceName(), this->command.getChannel(), -1);
 
     if (this->markUsedItems)
         setUsed(true);
@@ -627,4 +633,9 @@ void RundownClearOutputWidget::clearChannelControlSubscriptionReceived(const QSt
         executeCommand(Playout::PlayoutType::ClearChannel);
         RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
     }
+}
+
+void RundownClearOutputWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
 }

@@ -7,6 +7,7 @@
 
 #include "Events/Rundown/BankAssignmentChangedEvent.h"
 #include "Events/Rundown/ChannelActivityEvent.h"
+#include "Events/Rundown/AutoLoopCountdownEvent.h"
 #include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Models/CasparMedia.h"
 
@@ -41,6 +42,24 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         bool serverCollapsed;
         bool activityCollapsed;
         bool banksCollapsed;
+
+        // The hosted sheet cache, shown beside the playout servers because it is one
+        // more thing that is either answering or not while a show is on.
+        QWidget* cacheRow = nullptr;
+        QLabel* cacheDot = nullptr;
+        QLabel* cacheLabel = nullptr;
+        QPushButton* cacheBypassButton = nullptr;
+        QTimer cacheStatusTimer;
+
+        void setupCacheRow(QVBoxLayout* serverOuterLayout);
+        Q_SLOT void updateCacheStatus();
+
+        QWidget* relayRow = nullptr;
+        QLabel* relayDot = nullptr;
+        QLabel* relayLabel = nullptr;
+        QPushButton* relayCheckButton = nullptr;
+        void setupRelayRow(QVBoxLayout* serverOuterLayout);
+        Q_SLOT void updateRelayStatus();
 
         QToolButton* serverMenuButton = nullptr;
         QToolButton* activityMenuButton = nullptr;
@@ -134,6 +153,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         // Channel lock grid
         QWidget* channelLockGrid;
         QMap<QString, QMap<int, QPushButton*>> lockButtons;  // deviceName -> (channel -> button)
+        QMap<QString, QMap<int, QPushButton*>> timerButtons; // deviceName -> (channel -> ⏱ button)
         QMap<int, QPushButton*> globalLockButtons;           // channel -> button
         int maxChannels;
         QPushButton* previewModeButton;
@@ -146,7 +166,8 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         void setupActivityPanel();
         void setupBanksPanel();
         void rebuildChannelLockGrid();
-        void updateLockButtonStyle(QPushButton* button, bool locked);
+        void updateLockButtonStyle(QPushButton* button, bool locked, bool timed = false, int remainingSecs = 0);
+        void updateTimerButtonStyle(QPushButton* button, bool active);
         void reorderActivity();
         void removeActivityEntry(const QString& key);
         void updateNoActivityLabel();
@@ -164,6 +185,8 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         Q_SLOT void toggleBanksCollapse();
         Q_SLOT void channelActivity(const ChannelActivityEvent&);
         Q_SLOT void playbackProgress(const PlaybackProgressEvent&);
+        Q_SLOT void autoLoopCountdown(const AutoLoopCountdownEvent&);
+        Q_SLOT void channelCleared(const QString& deviceName, int channel, int videolayer);
         Q_SLOT void cleanupStaleEntries();
         Q_SLOT void bankAssignmentChanged(const BankAssignmentChangedEvent&);
         Q_SLOT void deviceAdded(CasparDevice&);
@@ -171,6 +194,7 @@ class WIDGETS_EXPORT StatusPanelWidget : public QWidget, Ui::StatusPanelWidget
         Q_SLOT void deviceConnectionStateChanged(CasparDevice&);
         Q_SLOT void deviceMediaChanged(const QList<CasparMedia>&, CasparDevice&);
         Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
+        Q_SLOT void timedLockTick(const QString& deviceName, int channel, int remainingSecs);
         Q_SLOT void previewModeChanged(bool active);
         Q_SLOT void previewModifierHeld(bool held);
         Q_SLOT void autostepModeChanged(bool active);

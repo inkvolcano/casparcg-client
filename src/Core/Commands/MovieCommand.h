@@ -35,6 +35,8 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         int getSeek() const;
         int getLength() const;
         bool getAutoPlay() const;
+        bool getAutoLoop() const;
+        int getAutoLoopDelay() const;
 
         void setVideoName(const QString& videoName);
         void setTransition(const QString& transition);
@@ -47,6 +49,8 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         void setSeek(int seek);
         void setLength(int length);
         void setAutoPlay(bool autoPlay);
+        void setAutoLoop(bool autoLoop);
+        void setAutoLoopDelay(int autoLoopDelay);
 
         TransformData& getTransform();
         const TransformData& getTransform() const;
@@ -63,6 +67,8 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         int seek = Movie::DEFAULT_SEEK;
         int length = Movie::DEFAULT_LENGTH;
         bool autoPlay = Movie::DEFAULT_AUTO_PLAY;
+        bool autoLoop = Movie::DEFAULT_AUTO_LOOP;
+        int autoLoopDelay = Movie::DEFAULT_AUTO_LOOP_DELAY;
         TransformData m_transform;
 
         Q_SIGNAL void videoNameChanged(const QString&);
@@ -76,4 +82,6 @@ class CORE_EXPORT MovieCommand : public AbstractCommand
         Q_SIGNAL void seekChanged(int);
         Q_SIGNAL void lengthChanged(int);
         Q_SIGNAL void autoPlayChanged(bool);
+        Q_SIGNAL void autoLoopChanged(bool);
+        Q_SIGNAL void autoLoopDelayChanged(int);
 };

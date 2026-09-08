@@ -30,12 +30,16 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QFrame>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QWidget>
 
 class ClockWidget;
 class HttpResponsePanelWidget;
 class NdiPanelWidget;
 class PerformancePanelWidget;
+class SheetsPanelWidget;
+class SimpleInspectorWidget;
+class SimpleModeWidget;
 class StatusBarWidget;
 
 class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
@@ -59,6 +63,9 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         NdiPanelWidget* widgetNdi;
         PerformancePanelWidget* widgetPerformance;
         HttpResponsePanelWidget* widgetHttpLog;
+        SheetsPanelWidget* widgetSheets;
+        SimpleModeWidget* widgetSimpleMode;
+        SimpleInspectorWidget* widgetSimpleInspector;
 
         QMenu* fileMenu;
         QMenu* editMenu;
@@ -68,6 +75,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QMenu* markMenu;
         QMenu* playoutMenu;
         QMenu* otherMenu;
+        QAction* sheetCacheBypassAction = nullptr;
         QMenu* helpMenu;
         QMenu* openRecentMenu;
         QMenuBar* menuBar;
@@ -96,6 +104,15 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         void loadHotkeys();
         void rebuildLayout();
         void constrainToScreen();
+
+        // Offers back any auto-saved rundowns left behind by a session that did
+        // not shut down cleanly. Does nothing when there are none.
+        void offerAutoSaveRecovery();
+
+
+        // The usable height of the screen this window is on, or 0 when that cannot
+        // be determined, which means "do not clamp".
+        int availableScreenHeight() const;
         QWidget* widgetById(const QString& id);
 
         Q_SLOT void openRecentMenuActionTriggered(QAction*);
@@ -158,12 +175,16 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void toggleAutostepMode();
         Q_SLOT void previewModeActivated(bool active);
         Q_SLOT void previewModifierActivated(bool held);
+        Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
         void updatePreviewBorder();
+        void updateLockBorder();
         bool showPreviewBorder;
         bool previewModeActive;
         bool previewModifierHeld;
         QString previewModifierKey;
         QFrame* previewBorderOverlay = nullptr;
+        QFrame* lockBorderOverlay = nullptr;
+        QLabel* lockBorderLabel = nullptr;
 
         QElapsedTimer m_panicTimer;
         bool m_panicArmed = false;

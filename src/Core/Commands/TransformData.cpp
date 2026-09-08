@@ -18,18 +18,24 @@ void TransformData::applyDeferred(CasparDevice* device, int channel, int videola
     if (device == nullptr)
         return;
 
+    // Each property is either applied from the embedded value or reset to its
+    // CasparCG default.  This prevents stale MIXER state from a previous item
+    // leaking into the next one on the same layer.
+
     if (fill.has_value())
-    {
-        device->setFill(channel, videolayer,
-                        fill->x, fill->y, fill->scaleX, fill->scaleY,
-                        0, "Linear", true, fill->mipmap);
-    }
+        device->setFill(channel, videolayer, fill->x, fill->y, fill->scaleX, fill->scaleY, 0, "Linear", true, fill->mipmap);
+    else
+        device->setFill(channel, videolayer, 0, 0, 1, 1, 0, "Linear", true, false);
 
     if (clip.has_value())
         device->setClipping(channel, videolayer, clip->x, clip->y, clip->width, clip->height, true);
+    else
+        device->setClipping(channel, videolayer, 0, 0, 1, 1, true);
 
     if (crop.has_value())
         device->setCrop(channel, videolayer, crop->left, crop->top, crop->right, crop->bottom, true);
+    else
+        device->setCrop(channel, videolayer, 0, 0, 1, 1, true);
 
     // Anchor must be sent before rotation — it sets the pivot point.
     // If rotation is set but anchor isn't, default to center (0.5, 0.5).
@@ -37,41 +43,56 @@ void TransformData::applyDeferred(CasparDevice* device, int channel, int videola
         device->setAnchor(channel, videolayer, anchor->x, anchor->y, true);
     else if (rotation.has_value())
         device->setAnchor(channel, videolayer, 0.5f, 0.5f, true);
+    else
+        device->setAnchor(channel, videolayer, 0, 0, true);
 
     if (rotation.has_value())
         device->setRotation(channel, videolayer, *rotation, true);
+    else
+        device->setRotation(channel, videolayer, 0, true);
 
     if (perspective.has_value())
-    {
         device->setPerspective(channel, videolayer,
                                perspective->ulX, perspective->ulY,
                                perspective->urX, perspective->urY,
                                perspective->lrX, perspective->lrY,
                                perspective->llX, perspective->llY,
                                true, perspective->mipmap);
-    }
+    else
+        device->setPerspective(channel, videolayer, 0, 0, 1, 0, 1, 1, 0, 1, true, false);
 
     if (opacity.has_value())
         device->setOpacity(channel, videolayer, *opacity, true);
+    else
+        device->setOpacity(channel, videolayer, 1, true);
 
     if (brightness.has_value())
         device->setBrightness(channel, videolayer, *brightness, true);
+    else
+        device->setBrightness(channel, videolayer, 1, true);
 
     if (contrast.has_value())
         device->setContrast(channel, videolayer, *contrast, true);
+    else
+        device->setContrast(channel, videolayer, 1, true);
 
     if (saturation.has_value())
         device->setSaturation(channel, videolayer, *saturation, true);
+    else
+        device->setSaturation(channel, videolayer, 1, true);
 
     if (volume.has_value())
         device->setVolume(channel, videolayer, *volume, true);
+    else
+        device->setVolume(channel, videolayer, 1, true);
 
     if (levels.has_value())
         device->setLevels(channel, videolayer, levels->minIn, levels->maxIn, levels->gamma, levels->minOut, levels->maxOut, true);
+    else
+        device->setLevels(channel, videolayer, 0, 1, 1, 0, 1, true);
 
     if (blendMode.has_value())
     {
-        // BlendMode is sent as a string name. Map int to known blend mode names.
         static const QStringList blendNames = {
             "Normal", "Lighten", "Darken", "Multiply", "Average",
             "Add", "Subtract", "Difference", "Negation", "Exclusion",
@@ -84,9 +105,15 @@ void TransformData::applyDeferred(CasparDevice* device, int channel, int videola
         if (idx >= 0 && idx < blendNames.size())
             device->setBlendMode(channel, videolayer, blendNames[idx]);
     }
+    else
+    {
+        device->setBlendMode(channel, videolayer, "Normal");
+    }
 
     if (keyer.has_value())
         device->setKeyer(channel, videolayer, *keyer ? 1 : 0, true);
+    else
+        device->setKeyer(channel, videolayer, 0, true);
 }
 
 void TransformData::commit(CasparDevice* device, int channel)

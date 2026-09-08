@@ -52,6 +52,7 @@ class WIDGETS_EXPORT RundownHttpPostWidget : public QWidget, Ui::RundownHttpPost
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     protected:
         virtual bool eventFilter(QObject* target, QEvent* event);
@@ -79,7 +80,6 @@ class WIDGETS_EXPORT RundownHttpPostWidget : public QWidget, Ui::RundownHttpPost
         HttpRequest request;
 
         void checkGpiConnection();
-        void checkDeviceConnection();
         void configureOscSubscriptions();
 
         Q_SLOT void executeStop();

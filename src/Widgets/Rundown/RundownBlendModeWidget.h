@@ -58,6 +58,7 @@ class WIDGETS_EXPORT RundownBlendModeWidget : public QWidget, Ui::RundownBlendMo
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

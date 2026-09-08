@@ -11,8 +11,11 @@
 #include "Events/Rundown/AllowRemoteTriggeringEvent.h"
 #include "Events/Rundown/InsertRepositoryChangesEvent.h"
 
+#include "AutoSaveNaming.h"
+
 #include <QtCore/QDir>
 #include <QtCore/QDebug>
+#include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTimer>
 #include <QtCore/QUuid>
@@ -41,7 +44,7 @@ RundownWidget::RundownWidget(QWidget* parent)
     this->splitterRundown = new QSplitter(Qt::Horizontal, this);
     this->verticalLayout->removeWidget(this->tabWidgetRundown);
     this->splitterRundown->addWidget(this->tabWidgetRundown);
-    this->verticalLayout->addWidget(this->splitterRundown);
+    this->verticalLayout->addWidget(this->splitterRundown, 1); // stretch=1: splitter takes all remaining space
 
     this->focusedTabWidget = this->tabWidgetRundown;
     this->tabWidgetRundown->setProperty("focused", true);
@@ -139,6 +142,123 @@ RundownWidget::RundownWidget(QWidget* parent)
     QObject::connect(&EventManager::getInstance(), SIGNAL(markAllItemsAsUsed(const MarkAllItemsAsUsedEvent&)), this, SLOT(markAllItemsAsUsed(const MarkAllItemsAsUsedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(markAllItemsAsUnused(const MarkAllItemsAsUnusedEvent&)), this, SLOT(markAllItemsAsUnused(const MarkAllItemsAsUnusedEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(reloadRundownMenu(const ReloadRundownMenuEvent&)), this, SLOT(reloadRundownMenu(const ReloadRundownMenuEvent&)));
+
+    this->autoSaveTimer = new QTimer(this);
+    QObject::connect(this->autoSaveTimer, SIGNAL(timeout()), this, SLOT(autoSaveTick()));
+    applyAutoSaveSettings();
+}
+
+QString RundownWidget::autoSaveDirectory()
+{
+    return QString("%1/.CasparCG/Client/AutoSave").arg(QDir::homePath());
+}
+
+bool RundownWidget::autoSaveEnabled()
+{
+    // On unless it has been turned off. A recovery copy costs nothing and never
+    // touches the rundown's own file, so the safe default is the helpful one.
+    return DatabaseManager::getInstance().getConfigurationByName("AutoSaveEnabled").getValue() != "false";
+}
+
+int RundownWidget::autoSaveMinutes()
+{
+    int minutes = DatabaseManager::getInstance().getConfigurationByName("AutoSaveMinutes").getValue().toInt();
+    if (minutes < 1)
+        minutes = 3;
+    if (minutes > 60)
+        minutes = 60;
+
+    return minutes;
+}
+
+void RundownWidget::applyAutoSaveSettings()
+{
+    if (this->autoSaveTimer == nullptr)
+        return;
+
+    if (!autoSaveEnabled())
+    {
+        this->autoSaveTimer->stop();
+
+        // Turning it off leaves nothing behind to be offered at the next launch.
+        clearAutoSaves();
+        return;
+    }
+
+    this->autoSaveTimer->start(autoSaveMinutes() * 60 * 1000);
+}
+
+QStringList RundownWidget::pendingAutoSaves()
+{
+    QDir directory(autoSaveDirectory());
+    if (!directory.exists())
+        return QStringList();
+
+    QStringList paths;
+    foreach (const QString& name, directory.entryList(QStringList("*.xml"), QDir::Files, QDir::Name))
+        paths.append(directory.filePath(name));
+
+    return paths;
+}
+
+QString RundownWidget::autoSaveOriginalPath(const QString& autoSavePath)
+{
+    QFile file(autoSavePath);
+    if (!file.open(QFile::ReadOnly))
+        return QString();
+
+    // The marker is the first line, so there is no reason to read a whole
+    // rundown to answer this.
+    QByteArray firstLine = file.readLine(4096);
+    file.close();
+
+    return AutoSaveNaming::originalPathFromLine(firstLine);
+}
+
+void RundownWidget::clearAutoSaves()
+{
+    QDir directory(autoSaveDirectory());
+    if (!directory.exists())
+        return;
+
+    // .part files are half-written copies from a crash mid-write; they go too.
+    foreach (const QString& name, directory.entryList(QStringList() << "*.xml" << "*.xml.part", QDir::Files))
+        directory.remove(name);
+}
+
+void RundownWidget::autoSaveTick()
+{
+    if (!autoSaveEnabled())
+        return;
+
+    QString directory = autoSaveDirectory();
+
+    QList<QTabWidget*> panes;
+    panes << this->tabWidgetRundown;
+    if (this->tabWidgetRundownSecondary != nullptr)
+        panes << this->tabWidgetRundownSecondary;
+
+    int written = 0;
+    for (QTabWidget* pane : panes)
+    {
+        for (int i = 0; i < pane->count(); i++)
+        {
+            RundownTreeWidget* tab = dynamic_cast<RundownTreeWidget*>(pane->widget(i));
+            if (tab == nullptr)
+                continue;
+
+            if (tab->writeAutoSaveCopy(directory))
+                written++;
+        }
+    }
+
+    // Only say something when something happened. A tick that found every rundown
+    // already saved should not be putting messages in front of an operator.
+    if (written > 0)
+    {
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("Auto-saved %1 rundown%2").arg(written).arg(written == 1 ? "" : "s")));
+    }
 }
 
 void RundownWidget::setupTabWidget(QTabWidget* tabWidget)
@@ -648,6 +768,17 @@ void RundownWidget::clearOpenRecent()
    DatabaseManager::getInstance().deleteOpenRecent();
 }
 
+RundownTreeWidget* RundownWidget::activeTreeWidget() const
+{
+    QTabWidget* pane = this->focusedTabWidget;
+    if (pane == nullptr)
+        pane = this->tabWidgetRundown;
+    if (pane == nullptr || pane->count() == 0)
+        return nullptr;
+
+    return dynamic_cast<RundownTreeWidget*>(pane->currentWidget());
+}
+
 bool RundownWidget::checkForSaveBeforeQuit()
 {
     // Check both panes.
@@ -683,6 +814,11 @@ bool RundownWidget::checkForSaveBeforeQuit()
             }
         }
     }
+
+    // Every unsaved rundown has now been offered and either saved or knowingly
+    // abandoned, so the recovery copies have nothing left to recover. Leaving them
+    // would make the next launch offer back work the operator just chose to drop.
+    clearAutoSaves();
 
     return true;
 }
@@ -1172,7 +1308,8 @@ void RundownWidget::handleCrossTabFocusGateway(const QString& gatewayId, bool fr
 void RundownWidget::setupSearchBar()
 {
     this->searchBar = new QWidget(this);
-    this->searchBar->setVisible(false);
+    this->searchBar->setFixedHeight(26);
+    this->searchBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QHBoxLayout* layout = new QHBoxLayout(this->searchBar);
     layout->setContentsMargins(4, 2, 4, 2);
@@ -1181,35 +1318,33 @@ void RundownWidget::setupSearchBar()
     this->searchLineEdit = new QLineEdit(this->searchBar);
     this->searchLineEdit->setPlaceholderText("Find in all rundowns...");
     this->searchLineEdit->setClearButtonEnabled(true);
+    this->searchLineEdit->setFixedHeight(20);
 
     this->searchPrevButton = new QPushButton(QString::fromUtf8("\xe2\x96\xb2"), this->searchBar);
-    this->searchPrevButton->setFixedSize(28, 22);
+    this->searchPrevButton->setFixedSize(28, 20);
     this->searchNextButton = new QPushButton(QString::fromUtf8("\xe2\x96\xbc"), this->searchBar);
-    this->searchNextButton->setFixedSize(28, 22);
+    this->searchNextButton->setFixedSize(28, 20);
 
     this->searchCountLabel = new QLabel("", this->searchBar);
-    this->searchCountLabel->setFixedWidth(70);
+    this->searchCountLabel->setFixedSize(70, 20);
     this->searchCountLabel->setAlignment(Qt::AlignCenter);
-
-    this->searchCloseButton = new QPushButton(QString::fromUtf8("\xe2\x9c\x95"), this->searchBar);
-    this->searchCloseButton->setFixedSize(22, 22);
 
     layout->addWidget(this->searchLineEdit, 1);
     layout->addWidget(this->searchPrevButton);
     layout->addWidget(this->searchNextButton);
     layout->addWidget(this->searchCountLabel);
-    layout->addWidget(this->searchCloseButton);
 
-    // Insert at top of vertical layout (before splitter).
-    this->verticalLayout->insertWidget(0, this->searchBar);
+    // Insert at top of vertical layout (before splitter) with zero stretch.
+    this->verticalLayout->insertWidget(0, this->searchBar, 0);
 
+    // Ctrl+F focuses the search field.
     QShortcut* findShortcut = new QShortcut(QKeySequence::Find, this);
     QObject::connect(findShortcut, &QShortcut::activated, this, &RundownWidget::showSearch);
 
+    // Escape returns focus to the rundown tree.
     QShortcut* escShortcut = new QShortcut(Qt::Key_Escape, this->searchLineEdit);
     QObject::connect(escShortcut, &QShortcut::activated, this, &RundownWidget::hideSearch);
 
-    QObject::connect(this->searchCloseButton, &QPushButton::clicked, this, &RundownWidget::hideSearch);
     QObject::connect(this->searchLineEdit, &QLineEdit::textChanged, this, &RundownWidget::searchTextChanged);
     QObject::connect(this->searchLineEdit, &QLineEdit::returnPressed, this, &RundownWidget::searchNext);
     QObject::connect(this->searchNextButton, &QPushButton::clicked, this, &RundownWidget::searchNext);
@@ -1218,14 +1353,13 @@ void RundownWidget::setupSearchBar()
 
 void RundownWidget::showSearch()
 {
-    this->searchBar->setVisible(true);
     this->searchLineEdit->setFocus();
     this->searchLineEdit->selectAll();
 }
 
 void RundownWidget::hideSearch()
 {
-    this->searchBar->setVisible(false);
+    this->searchLineEdit->clear();
     this->searchResults.clear();
     this->searchCurrentIndex = -1;
     this->searchCountLabel->setText("");

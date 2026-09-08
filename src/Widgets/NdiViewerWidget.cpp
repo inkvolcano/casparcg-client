@@ -29,6 +29,15 @@ NdiViewerWidget::NdiViewerWidget(QWidget* parent)
     this->muteAction = this->contextMenu->addAction("Mute");
     this->muteAction->setCheckable(true);
 
+    // Auto-hide timer for the source-name overlay in multi-viewer grids.
+    this->labelHideTimer = new QTimer(this);
+    this->labelHideTimer->setSingleShot(true);
+    this->labelHideTimer->setInterval(5000);
+    QObject::connect(this->labelHideTimer, &QTimer::timeout, this, [this]() {
+        if (this->labelAutoHide_ && this->connected_)
+            this->overlayLabel->hide();
+    });
+
     QObject::connect(this->sourceMenu, &QMenu::aboutToShow, this, &NdiViewerWidget::setupSourceMenu);
     QObject::connect(this->disconnectAction, &QAction::triggered, this, &NdiViewerWidget::disconnectSource);
     QObject::connect(this->muteAction, &QAction::toggled, this, [this](bool checked) {
@@ -63,6 +72,7 @@ void NdiViewerWidget::connectToSource(const NdiSourceInfo& source)
     setOverlayStyle(false);
     this->overlayLabel->adjustSize();
     updateOverlayPosition();
+    restartLabelHide();
 
     startReceiver();
     emit sourceChanged();
@@ -78,10 +88,26 @@ void NdiViewerWidget::disconnectSource()
     setOverlayStyle(false);
     this->overlayLabel->adjustSize();
     updateOverlayPosition();
+    restartLabelHide();
     this->videoLabel->clear();
     this->videoLabel->setStyleSheet("QLabel { background-color: black; }");
 
     emit sourceChanged();
+}
+
+void NdiViewerWidget::setLabelAutoHide(bool enabled)
+{
+    this->labelAutoHide_ = enabled;
+    restartLabelHide();
+}
+
+// Show the overlay and (re)arm the hide countdown; error states stay visible.
+void NdiViewerWidget::restartLabelHide()
+{
+    this->overlayLabel->show();
+    this->labelHideTimer->stop();
+    if (this->labelAutoHide_ && this->connected_)
+        this->labelHideTimer->start();
 }
 
 void NdiViewerWidget::setMuted(bool muted)
@@ -211,6 +237,7 @@ void NdiViewerWidget::onVideoFrame(const QImage& image)
         setOverlayStyle(false);
         this->overlayLabel->adjustSize();
         updateOverlayPosition();
+        restartLabelHide();
     }
 
     QPixmap pixmap = QPixmap::fromImage(image);
@@ -227,6 +254,7 @@ void NdiViewerWidget::onConnectionStateChanged(bool connected)
         setOverlayStyle(true);
         this->overlayLabel->adjustSize();
         updateOverlayPosition();
+        restartLabelHide(); // error state: shown and kept visible
     }
 }
 

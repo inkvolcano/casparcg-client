@@ -13,6 +13,8 @@ int runCommandSerializationTest(int argc, char* argv[]);
 int runGatewayCommandTest(int argc, char* argv[]);
 int runTemplateCommandTest(int argc, char* argv[]);
 int runDeviceManagerLockingTest(int argc, char* argv[]);
+int runShellCommandTest(int argc, char* argv[]);
+int runAutoSaveTest(int argc, char* argv[]);
 
 int main(int argc, char* argv[])
 {
@@ -31,6 +33,8 @@ int main(int argc, char* argv[])
     status |= runGatewayCommandTest(argc, argv);
     status |= runTemplateCommandTest(argc, argv);
     status |= runDeviceManagerLockingTest(argc, argv);
+    status |= runShellCommandTest(argc, argv);
+    status |= runAutoSaveTest(argc, argv);
 
     return status;
 }

@@ -34,5 +34,13 @@
         <file>Sql/ChangeScript-238.sql</file>
         <file>Sql/ChangeScript-239.sql</file>
         <file>Sql/ChangeScript-240.sql</file>
+        <file>Sql/ChangeScript-241.sql</file>
+        <file>Sql/ChangeScript-242.sql</file>
+        <file>Sql/ChangeScript-243.sql</file>
+        <file>Sql/ChangeScript-244.sql</file>
+        <file>Sql/ChangeScript-245.sql</file>
+        <file>Sql/ChangeScript-246.sql</file>
+        <file>Sql/ChangeScript-247.sql</file>
+        <file>Sql/ChangeScript-248.sql</file>
     </qresource>
 </RCC>

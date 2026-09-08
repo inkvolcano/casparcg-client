@@ -54,6 +54,7 @@ class WIDGETS_EXPORT RundownBrightnessWidget : public QWidget, Ui::RundownBright
         virtual void clearDelayedCommands();
         virtual void setUsed(bool used);
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;
@@ -77,7 +78,6 @@ class WIDGETS_EXPORT RundownBrightnessWidget : public QWidget, Ui::RundownBright
 
         ItemScheduler itemScheduler;
 
-        void loadEasing();
         void checkEmptyDevice();
         void checkGpiConnection();
         void checkDeviceConnection();

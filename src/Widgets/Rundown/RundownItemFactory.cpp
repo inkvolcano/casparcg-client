@@ -43,6 +43,8 @@
 #include "RundownAutoPlayGatewayWidget.h"
 #include "RundownFocusGatewayWidget.h"
 #include "RundownCommandGatewayWidget.h"
+#include "RundownShellCommandWidget.h"
+#include "RundownStopAutoLoopsWidget.h"
 
 Q_GLOBAL_STATIC(RundownItemFactory, rundownItemFactory)
 
@@ -95,6 +97,8 @@ AbstractRundownWidget* RundownItemFactory::createWidget(const LibraryModel& mode
     else if (model.getType() == Rundown::AUTOPLAYGATEWAY) return new RundownAutoPlayGatewayWidget(model, this);
     else if (model.getType() == Rundown::FOCUSGATEWAY) return new RundownFocusGatewayWidget(model, this);
     else if (model.getType() == Rundown::COMMANDGATEWAY) return new RundownCommandGatewayWidget(model, this);
+    else if (model.getType() == Rundown::STOPAUTOLOOPS) return new RundownStopAutoLoopsWidget(model, this);
+    else if (model.getType() == Rundown::SHELLCOMMAND) return new RundownShellCommandWidget(model, this);
 
     return NULL;
 }

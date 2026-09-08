@@ -131,6 +131,11 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#ograf">OGraf Graphics</a><br>
+<a href="#preview-panel">Preview Panel</a><br>
+<a href="#auto-save">Auto-save and Crash Recovery</a><br>
+<a href="#shell-command">Shell Command Items</a><br>
+<a href="#preview-plays">Preview That Plays</a><br>
 <a href="#stability">Stability Fixes</a>
 </div>
 
@@ -226,6 +231,581 @@ hr {
 
 <h3>Live Loop Toggle</h3>
 <p>Toggling loop on a playing movie sends a live CALL LOOP command to CasparCG &mdash; no need to stop and restart.</p>
+
+<h3>Per-Item Auto-Loop with Countdown</h3>
+<p>Movies, stills, templates, and groups now have a per-item Auto-Loop toggle. When enabled, the item fires, then re-fires after a configurable delay (in seconds), and continues looping until the toggle is turned off. Auto-looping a group re-plays the whole group (including its AutoPlay chain) each cycle.</p>
+<ul>
+    <li>Set delay and toggle Auto-Loop in the item's inspector, or right-click the item &rarr; <b>Auto-Loop</b> for quick presets (5s / 10s / 30s / 60s / Custom&hellip;).</li>
+    <li>Each item runs its own countdown &mdash; multiple items can loop independently.</li>
+    <li>A distinct <b>LOOP</b> row appears in the Activity panel per looping item, with a progress bar counting down to the next fire.</li>
+    <li>Delay and enabled state are saved with the rundown.</li>
+    <li>The loop cancels on any manual Stop or Clear of the item, on disabling the item, and when a Clear Output item wipes its channel &mdash; it never re-fires after you've stopped it.</li>
+    <li>New <b>Stop All Auto-Loops</b> tool item (Library &rarr; Tools, or right-click &rarr; Other): fire it to instantly kill every running auto-loop countdown in one go &mdash; a panic button for loops. It fires immediately, ignoring any item delay.</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="simple-mode">Simple Mode</h2>
+
+<p>A new operator-focused interface, toggled via <b>View &rarr; Simple Mode</b>, aimed at prebuilt projects where the full rundown UI is more than the operator needs.</p>
+
+<h3>Button Grid Instead of the Rundown</h3>
+<ul>
+    <li>The center area becomes a <b>streamdeck-style grid of buttons</b> &mdash; one per rundown item flagged with the new <b>"Show as button"</b> checkbox in the inspector&rsquo;s new <b>Simple Mode</b> section.</li>
+    <li>All the Simple Mode options live in one <b>Simple Mode</b> inspector section &mdash; &ldquo;Show as button&rdquo;, &ldquo;Show next button&rdquo;, &ldquo;Show invokes on group button&rdquo; and &ldquo;Treat as dropdown&rdquo; &mdash; collapsed by default like Embedded Transform, so it stays out of the way until you need it.</li>
+    <li><b>Square, Companion-style keys</b> in a fixed slot grid &mdash; empty slots render as numbered dashed placeholders; buttons with sub-buttons span extra slots vertically to stay grid-aligned. Cells size themselves to fill the panel width. Labels word-wrap to fill the key face; the selection border wraps the whole key including its controls.</li>
+    <li><b>Two-step move, Companion-style</b>: select a button, press <b>Move</b>, then click a free slot (free slots highlight blue) &mdash; buttons never overwrite or displace each other. <b>Remove</b> clears the button's flag; the rundown item itself is untouched. Slots are saved per item in the rundown XML, so arrangements travel with the rundown.</li>
+    <li>Per-item <b>Next</b> control on the button face (checkbox under "Show as button" in the inspector) alongside the readable &#9654;/&#9632; controls. The &#9654;/&#9632;/&#9197; controls are <b>true squares</b> &mdash; each control's height matches its share of the key width, so they read like real hardware keys.</li>
+    <li><b>Dropdown groups</b>: tick <b>&ldquo;Treat as dropdown&rdquo;</b> on a group (inspector &rarr; Simple Mode) and that group becomes a chooser instead of a container. Its Simple Mode key shows the group name, the <b>armed choice as a sub-label</b>, and a dropdown of the group&rsquo;s children, and <b>Play / F2 fires only the selected child</b> &mdash; as do Stop, Next and PVW. Build the list the normal way: make a group, put the items in it, tick the box. The selection is remembered in the rundown XML (<code>&lt;treatasdropdown&gt;</code>, <code>&lt;dropdownindex&gt;</code>), and picking from the dropdown also selects that key so the hotkeys land on it. The redirect happens in the central playout path, so it applies to hotkeys, buttons and OSC triggers alike.</li>
+<li><b>Preview (PVW) control</b> on each key, toggled in Settings &rarr; Simple Mode. It plays the item &mdash; or the whole group &mdash; on the device&rsquo;s <b>preview channel</b>, leaving program untouched. It sits in the same square control row as &#9654;/&#9632;/&#9197; and shrinks them evenly so every control stays square.</li>
+<li><b>Taking a previewed item to program clears its preview layer</b>: pressing Play (button or hotkey) on an item sitting on the preview channel clears <b>only that item&rsquo;s layer</b> there &mdash; other items parked on other preview layers stay up. The client tracks the preview layers it lit (per device/channel/layer), so nothing else on the preview channel is ever touched.</li>
+<li><b>Arrow-key grid cursor</b>: the arrow keys walk a cursor over the whole grid, empty slots included (Companion-style). Landing on a button selects it &mdash; same as clicking it, so the playout hotkeys immediately act on it; an empty slot under the cursor shows a light border. Clicking anywhere in the grid puts the cursor there too.</li>
+    <li>Clicking a button <b>selects</b> the item &mdash; all playout hotkeys (F1/F2/&hellip;) then act on it, exactly like the normal interface.</li>
+    <li>Keys only span a second slot when their content genuinely needs it: the row calculation mirrors the rendered key exactly &mdash; the same widgets, heights and spacing, with the label&rsquo;s wrapped height measured from the real text &mdash; instead of a padded estimate. Adding an <b>icon</b>, a dropdown or a couple of invoke sub-buttons no longer pushes a key to double height unless it truly doesn&rsquo;t fit.</li>
+<li><b>Explicit key size</b> in the button&rsquo;s right-click menu (<b>Button Size</b>): <b>Width</b> single or double, <b>Height</b> auto / single / double. Auto height grows only as far as the content needs; an explicit height is honoured exactly. Double-width keys occupy two columns and never straddle the grid edge or overlap a neighbour &mdash; moving one still refuses any placement that would overwrite. Persists per item in the rundown XML (<code>&lt;simplemodewidth&gt;</code>, <code>&lt;simplemodeheight&gt;</code>).</li>
+    <li>Optional <b>&#9654; / &#9632; controls</b> on each button face for mouse-only operation; <b>grid columns &times; rows</b> are set directly in the bottom bar (1&ndash;12 each, persisted) &mdash; cells scale dynamically so the configured grid fills the panel in both directions while staying square.</li>
+    <li>Item colors carry over as button colors; the selected button shows a green border.</li>
+</ul>
+
+<h3>Labeled Invokes as Sub-Buttons</h3>
+<p>The Invoke section in the normal inspector gains a <b>Label column</b> per invoke row. In Simple Mode, template buttons show a sub-button per <b>labeled</b> invoke &mdash; the label is what the operator sees; unlabeled invokes are hidden there.</p>
+<p>Each sub-button spans the <b>full width</b> of the key, so long labels stay readable; the key grows downward into extra slots to fit them.</p>
+<p><b>Invokes on group buttons</b>: a template inside a group can publish its labeled invokes onto the <i>group&rsquo;s</i> button via <b>&ldquo;Show invokes on group button&rdquo;</b> (inspector &rarr; Simple Mode). The group key then shows those invokes as sub-buttons, and firing one hits that child template on its own channel/layer &mdash; so an operator can drive a whole group from one key. Persists in the rundown XML (<code>&lt;simplemodegroupinvokes&gt;</code>); works for templates nested one group deep.</p>
+<p>Invoke rows in the inspector have a <b>drag handle</b> (grip at the left of each row) &mdash; drag a row up or down to reorder the invokes. The order is what Simple Mode&rsquo;s sub-buttons follow and what gets saved to the rundown XML; the F7 default marker stays with its row.</p>
+<p>A new <b>Discover Functions</b> button scans the template's HTML for its JavaScript function declarations (webcg lifecycle functions &mdash; play, stop, next, update, remove, init, data &mdash; are skipped) and offers them as <b>dropdown choices on each Function field</b> (still free-typeable) &mdash; no mass-filled rows on big templates. The dropdowns also refresh automatically for the selected item's template when switching rundown items.</p>
+
+<h3>Own Layout &amp; Simple Inspector</h3>
+<p>Simple Mode has a completely <b>independent panel layout</b>, edited in <b>Settings &rarr; Simple Mode</b> (empty by default). The new <b>Simple Inspector</b> panel shows only label, channel/videolayer and the template's key/values with an <b>Update</b> button that pushes edited values to the on-air template. Its header matches the full inspector (Update, + and &minus; right-aligned above the table; rows edited incl. mode via double-click), and it carries the standard panel menu (move, size mode, anchor, collapse). The full template inspector gains the same <b>Update</b> button in its Import Fields row.</p>
+
+<h3>Button Context Menu</h3>
+<p>Right-click any grid button for <b>Label Size</b> (Small &rarr; Huge), <b>Set Icon&hellip;</b> (glyph/emoji picker plus free text &mdash; stored as text in the rundown XML, so icons travel between clients) and <b>Remove from Grid</b>.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="dialog-positioning">Dialog Positioning Fix</h2>
+
+<p>The key/value add/edit dialogs (template data, HTTP GET/POST data) position themselves near the cursor &mdash; they are now clamped to the visible screen area, so they can no longer open off-screen when the inspector sits near a screen edge.</p>
+
+
+<hr>
+
+<h2>Sheet-Bound Templates</h2>
+<p>A template that lives off a Google Sheet row can now say so, and the inspector resolves it &mdash; the operator sees real names and numbers instead of the ids used to fetch them.</p>
+
+<h3>What a template declares</h3>
+<p>Alongside the two objects that already exist, a template adds three more. Same rules: flat, quoted strings, inline.</p>
+<pre><code>window.debugDataTab   = "LINEUP";                              // which tab
+window.debugDataKey   = "f0";                                  // column identifying a row
+window.debugDataMap   = { "name": "NAME", "number": "NUMBER" }; // template key &lt;- sheet column</code></pre>
+
+<h3>What the item stores</h3>
+<p>Only which row it is. The tab, key column and mapping all come from the template, so the same binding never has to be described twice. Persists in the rundown XML (<code>&lt;sheetrow&gt;</code>, <code>&lt;sheetresolvedat&gt;</code>).</p>
+
+<h3>In the inspector</h3>
+<ul>
+<li>A <b>Sheet</b> row appears &mdash; and only appears &mdash; for templates that declare a source. It shows the tab and key column, a row picker, a <b>Resolve</b> button, and when the values were last read.</li>
+<li>Resolve fills the mapped keys and stamps the time. The picker then lists every row, showing the id alongside the first mapped column so the list reads as names rather than ids.</li>
+<li><b>Bound values are read-only</b>, tinted and flagged, since the sheet owns them. Clearing the row binding hands them back for editing by hand.</li>
+<li>A missing row or a renamed column says so rather than sending blanks.</li>
+</ul>
+
+<h3>Sheets strain meter</h3>
+<p>The Performance panel gains a <b>Sheets</b> row whenever something touches a sheet: a meter showing reads in the last minute against the per-minute budget (60 by default, configurable). It counts this client&rsquo;s own reads exactly and estimates template reads from the plays it fires, since a sheet-driven template reads the sheet every time it renders and that traffic happens inside the graphic where the client cannot see it. Green under half, amber past half, red past three quarters; the tooltip splits the two figures. The row stays hidden on shows that never touch a sheet.</p>
+
+<h3>Publishing strain outward</h3>
+<p>One client can never see the whole picture: it counts its own reads exactly, but reads made inside a graphic happen where it cannot look. So it publishes what it does know and lets something with a wider view do the totalling.</p>
+<p>Set <b>Settings &rarr; Sheets &rarr; Report to URL</b> and the client POSTs a small JSON body every ten seconds, broken down per spreadsheet because the budget belongs to the API key rather than to the client:</p>
+<pre><code>{
+  "source": "casparcg-client",
+  "host": "GALLERY-PC",
+  "windowSeconds": 60,
+  "limitPerMinute": 60,
+  "sheets": [
+    { "spreadsheetId": "1AbC...", "clientReads": 3, "templateReadsEstimated": 9 }
+  ]
+}</code></pre>
+<p>Nothing is sent when the field is empty, or when no sheet has been read in the last minute. The same tab now also exposes the <b>cache service URL</b> and the <b>per-minute budget</b>, which previously had to be set in the database by hand.</p>
+<p>A collector to receive it (<code>strain_server.php</code>, sits beside <code>local_server.php</code>) accepts these reports, and also accepts a one-line tick from a template each time it reads the sheet:</p>
+<pre><code>GET strain_server.php?tick=1&amp;spreadsheetId=&lt;id&gt;&amp;source=&lt;template&gt;</code></pre>
+<p>Ticks are counted rather than inferred, so where templates report for themselves their own count <b>replaces</b> the client&rsquo;s guess about them instead of being added to it. <code>GET strain_server.php</code> then returns the total per spreadsheet, flagged <code>counted</code> or <code>estimated</code>, with stale sources listed but excluded &mdash; one URL for the Salvo connector to poll.</p>
+
+<h3>Hosting the cache in the client</h3>
+<p>The client can now be the cache service, so the PHP one beside it becomes optional. <b>Settings &rarr; Sheets &rarr; Host the cache in this client</b>, pick a port (3000 by default) and a folder.</p>
+<p>It answers on the parameters rather than on a path &mdash; any request carrying <code>spreadsheetId</code> and <code>sheetNumber</code> is a cache request &mdash; so a template still asking for <code>local_server.php</code> reaches it untouched. File names match the PHP service too, so an existing <code>sheets_data</code> folder can be used as it stands.</p>
+<ul>
+<li><code>GET &hellip;?spreadsheetId=X&amp;sheetNumber=N</code> &mdash; cached rows, or 404</li>
+<li><code>POST &hellip;?spreadsheetId=X&amp;sheetNumber=N</code> &mdash; store rows</li>
+<li><code>GET /strain</code> &mdash; reads in the last minute, totalled</li>
+<li><code>GET /strain?tick=1&amp;spreadsheetId=X</code> &mdash; a template reporting one read</li>
+<li><code>GET /bypass?on=1</code> or <code>?on=0</code> &mdash; throw the switch from anywhere</li>
+</ul>
+<p><b>Bypass</b> now lives where it is quick to reach: <b>Other &rarr; Sheet Cache Bypass</b>, the settings tab, or that URL. Reads answer 404 so graphics go live to the sheet; writes still land, so the cache stays warm for the moment it is switched back on.</p>
+<p>Because a template warming the cache has already paid Google for that read, a <code>POST</code> is counted as a read &mdash; which means <b>strain becomes counted rather than estimated with no change to any template</b>. The client&rsquo;s own warm writes carry <code>via=client</code> and are skipped, since the read behind them was already counted on the way in. Where counted reads exist for a spreadsheet they replace the play-based guess instead of adding to it.</p>
+<p><code>GET /strain</code> returns the same body the client POSTs outward, so the Salvo connector can either be pushed to or poll &mdash; whichever suits it.</p>
+
+<h3>Warming, driven by demand</h3>
+<p>Nothing is warmed on a schedule. A tab is refreshed because something asked for it &mdash; a template went to air, the inspector resolved a row, the cache came back empty &mdash; and then only if what is held has gone stale (30&nbsp;s by default). The traffic stays proportional to the show rather than to the clock, and a show that touches nothing generates nothing.</p>
+<p>A play is the strongest signal there is, so it refreshes the tab it used: not for the play that just happened, but for the next one.</p>
+<p>Refreshes read through the <b>keyless proxy</b> named as <code>mainurl</code> in the project&rsquo;s <code>project.js</code> &mdash; the client parses it now &mdash; so they cost nothing against the per-minute budget, and the rows come back already in the shape the cache holds. Without a proxy a refresh has to come out of the budget, so it is skipped once the budget is half spent: the show&rsquo;s own reads come first.</p>
+<p>Several tabs wanted at once trickle rather than burst, spaced 1.5&nbsp;s apart. Both numbers live in <b>Settings &rarr; Sheets &rarr; Warming</b>. Proxy reads are reported separately in the strain figures, as traffic that is not budget.</p>
+<p>Rows also stay in memory for ten seconds, so walking a list of them is not a request apiece.</p>
+
+<h3>A row picker built for Simple Mode</h3>
+<p>The full inspector&rsquo;s version is a data source with a resolve step. This one is a list of names: pick one and the values follow, in a single click. It appears only for bound templates, loads its list on selection without being asked, and shows the sheet and the last resolve time in its tooltip rather than spending a row on them. Values the sheet owns are tinted and not editable by hand, the same rule as the full inspector.</p>
+
+<h3>Duplicated items keep their settings</h3>
+<p><code>clone()</code> is written once per item type and only ever knew about that type&rsquo;s own command, so anything shared by every command had to be repeated forty-odd times &mdash; and was not. A duplicated item silently lost its Simple Mode button settings, and a template lost its sheet binding.</p>
+<p>Duplication now goes through one seam that carries those across, so the fix holds for properties added later too. The one thing deliberately not copied is the button&rsquo;s <b>slot</b>: a slot holds one item, so a copy settles into the first free place instead of fighting the original for its own.</p>
+
+<h3>Seeing what the sheet returned</h3>
+<p>The inspector shows only the columns a template declares, which is the right amount to work with and the wrong amount to debug with: a blank value could be a renamed column, an empty cell, or a row that resolved somewhere unexpected, and they all look the same.</p>
+<p>A <b>Data</b> button beside Resolve (and the same button in the Simple inspector) shows the whole row as it came back:</p>
+<ul>
+<li>Mapped columns first, in the order the template declares them, each with the template key it feeds</li>
+<li>Unmapped columns after, dimmed &mdash; what the template <i>could</i> read next</li>
+<li>A declared column the sheet does not have is marked in red as <b>(no such column)</b>, and a column that exists but is blank reads <b>(empty)</b> &mdash; the distinction that is otherwise invisible</li>
+<li><b>Copy</b> puts the row on the clipboard as JSON</li>
+</ul>
+<p>If nothing has been read yet the button reads the row first and opens on the answer, so it means the same thing whether or not you resolved.</p>
+
+<h3>Switching a project between cache and live, from inside the client</h3>
+<p><b>Settings &rarr; Sheets &rarr; Template Projects</b> lists every discovered project with a checkbox. Ticked writes <code>local = true</code> into that project&rsquo;s <code>project.js</code>, so its templates read the cache at localhost:3000; unticked writes <code>false</code>, which is a relative path that fails inside CasparCG and sends them straight to Google.</p>
+<p>The flag is written into the project&rsquo;s own <code>project.js</code> rather than kept as a second copy here, because that file is what the templates actually read. Only the value is rewritten &mdash; comments, spacing, line endings and the keyword in front of it are left exactly as they were. A project without a <code>local = true/false</code> line is listed but not switchable; nothing is invented in a file we do not own.</p>
+<p>Templates pick the change up the next time they load.</p>
+
+<h3>The key/value table sizes itself</h3>
+<p>It is now as tall as the keys in it plus one free row, so there is always somewhere obvious to add the next key and no empty space when there are only two. Applies however the rows arrived &mdash; typed, imported, resolved from a sheet, or undone. Past twenty rows it stops growing and scrolls, so a large template does not turn the inspector into one long scroll.</p>
+
+<h3>A light for the cache in the Server Status panel</h3>
+<p>The hosted cache now sits with the playout servers, in the same shape as a device row &mdash; name, light, button &mdash; because it answers the same question: is this thing responding right now, and can I change that from here.</p>
+<ul>
+<li><b>Green</b> &mdash; listening and serving. The button reads <b>Bypass</b>.</li>
+<li><b>Amber</b> &mdash; listening, bypassing. Deliberately serving nothing while writes still land, so it is amber rather than red: a red light here would read as a fault every time somebody went live on purpose. The button reads <b>Serve</b>.</li>
+<li><b>Red</b> &mdash; enabled but not listening, which almost always means the port already belongs to something else. The tooltip says so, and names the port.</li>
+</ul>
+<p>The row is hidden entirely when the client is not hosting the cache.</p>
+<p>The button is the bypass switch, so throwing it mid-show does not mean going looking for a menu. The light is read back from the server every couple of seconds rather than remembered from the last click, so it stays right when bypass is flipped from the menu, the settings or over HTTP.</p>
+
+<h3>Strain reporting works both ways</h3>
+<p>The client already published what it was spending. It now also accepts what other applications are spending, so whichever end does the adding up has the whole picture instead of its own corner of it.</p>
+<pre><code>POST /strain                                    a windowed report from another application
+GET  /strain?tick=1&amp;spreadsheetId=X[&amp;count=N]   one read, or N of them
+GET  /strain                                    everything, totalled</code></pre>
+<p>The body is the same one the client publishes, so a client can report to another client with no translation:</p>
+<pre><code>{ "source": "dataconnector", "host": "SALVO-PC", "windowSeconds": 60,
+  "sheets": [ { "spreadsheetId": "1AbC&hellip;", "reads": 12 } ] }</code></pre>
+<p><code>reads</code> is the plain way to say it; a report carrying <code>clientReads</code> and <code>templateReads</code> instead is added up the same way, which is what makes the client&rsquo;s own output valid input.</p>
+<p>Reported reads appear as <code>externalReads</code> per spreadsheet, counted into the total and kept separate as well, so it stays clear which part of a total was not seen first-hand. They also feed the Performance meter, whose tooltip names them only when somebody is reporting.</p>
+<p>A report describes a window, not a running tally, so a reporter that stops fades out after ninety seconds rather than holding a number up forever. <code>GET /strain</code> lists every reporter with its age and whether it has gone stale, so a total can be trusted or not on the evidence.</p>
+<p>The <code>?tick=</code> form now takes an optional <code>count</code>, so an application batching its own reads can say so in one request instead of one per read.</p>
+<p>Reports are read for numbers and identity and nothing else: no field of one reaches a file path, a URL or a command, source and host are length-capped, and a reporter that keeps renaming itself cannot grow the table without bound.</p>
+
+<h3>Clearing the cache</h3>
+<p><b>Settings &rarr; Sheets &rarr; Host the cache</b> gains a <b>Clear cache</b> button, which carries the count and size of what it would remove &mdash; so it states a fact about the cache rather than being a lever with an unknown effect. It disables itself and reads <i>(empty)</i> when there is nothing to clear, and re-counts when the folder is repointed.</p>
+<p>Clearing asks first, naming the folder and how many files. Nothing is lost that a read will not fetch again: each tab goes back to the sheet the next time something asks for it, so this costs reads rather than data &mdash; which the confirmation says.</p>
+<p>Only files named the way this service names them (<code>&lt;spreadsheetId&gt;_&lt;sheet&gt;.json</code>) are touched, because the folder is meant to be shared with the PHP service and with whatever else is kept beside it. A file that will not delete is reported by name rather than passed over quietly.</p>
+
+<h3>The Sheets panel joins the picture</h3>
+<p>The panel predates the resolver and was fetching the API directly with its own network stack, which meant two things nobody could see: its reads did not appear in the strain meter, and &mdash; because it polls, as often as every ten seconds &mdash; it was quietly the most regular reader in the client while showing as nothing at all.</p>
+<p>Both of its calls now declare themselves, so the meter counts them like any other read.</p>
+<p>More usefully, a poll now <b>warms the cache</b>. The call to Google was already paid for, so the rows are reshaped the way the cache holds them and written back on the way past. A panel left open on a tab keeps that tab warm for the templates and the inspector for free, and the warmer stops asking for what the panel is already fetching.</p>
+
+<h3>Expected result, and one declaration instead of two</h3>
+<p>A template that reads a sheet says so, in the form the templates already carry:</p>
+<pre><code>window.sheetConnection = { "tab": "LINEUP", "key": "homelineup" };</code></pre>
+<p><code>tab</code> is the sheet tab; <code>key</code> names the template&rsquo;s own data field whose value picks the row. That value is an <b>index into the rows</b>, not a column to match on, because <code>functions.js</code> resolves it as <code>data[key]</code> &mdash; the client resolves it exactly the same way, or it would answer confidently with the wrong row.</p>
+<p>Below the key/value table, any template that declares a connection gets an <b>expected result</b> box: headed <code>TAB &rarr; key</code>, showing how many rows came back and the resolved row column by column, with a <b>Refresh</b> that re-reads the tab on demand. <code>row = 4</code> is not an answer until you can see who row 4 is. It re-resolves as the key is typed &mdash; no read, it already holds the tab &mdash; and only goes back to the sheet when Refresh is pressed. A template that declares nothing gets no box rather than an empty one, and that silence is meaningful: the connector-driven templates have no sheet at all.</p>
+<p><b>The earlier declaration is gone.</b> <code>debugDataTab</code> / <code>debugDataKey</code> / <code>debugDataMap</code> described a different architecture &mdash; one where the client resolved a row and filled the template&rsquo;s fields, which is why bound values were read-only &mdash; and no template ever carried it. With it go the sheet row picker, the Resolve and Data buttons, the read-only field marking, the row dialog, and the <code>&lt;sheetrow&gt;</code> / <code>&lt;sheetresolvedat&gt;</code> item properties. One declaration, the one that is actually deployed, shared with what <code>preview.html</code> already reads.</p>
+
+<h3>Where the box&rsquo;s rows came from, and how old they are</h3>
+<p>The box was already filled from the cache &mdash; <code>fetchRows</code> reads the cache before it spends anything on the API &mdash; but silently, so a copy read a second ago and one left over from last week looked identical. Both facts are now on screen beside the row count:</p>
+<ul>
+<li><b>live</b> &mdash; straight from the sheet</li>
+<li><b>cache &middot; 4m old</b> &mdash; served from the cache, with the age of that copy</li>
+<li><b>proxy</b> &mdash; read through the keyless proxy</li>
+<li><b>cache &middot; age unknown</b> &mdash; a cache that does not say when it stored what it served</li>
+</ul>
+<p>Grey under an hour, amber past one, red past a day: a cached copy is the normal case and not a problem in itself, so the colour follows the <b>age</b> rather than the source. A day-old row may be describing last week&rsquo;s match.</p>
+<p>For the client to know the age, the cache has to say. The client&rsquo;s own service now sends both <code>Last-Modified</code> and an ISO <code>X-Sheet-Cached-At</code> on every cache read, taken from the file it is serving. The PHP service sends neither, and that reads as <i>age unknown</i> rather than as a guess.</p>
+<p>A memory hit reports the age of the underlying copy rather than the age of our copy of it, so glancing twice does not make stale rows look fresh.</p>
+
+<h3>Simple Mode first in the inspector</h3>
+<p>The <b>Simple Mode</b> section now sits at the top, above Output. It is the section reached for on every item while building a button surface, where the rest are reached for when something specific needs changing. Still collapsed by default, and the toggle still sticks for the session.</p>
+<p>Under the hood the section is still declared last, so the hundred and twenty places in the inspector that name a section by its declared index keep meaning what they say. A single helper resolves declaration order to display order &mdash; renumbering them by hand is how one missed line ends up quietly hiding the wrong section.</p>
+
+<h3>Undo works in Simple Mode</h3>
+<p>Moving, removing and resizing a button could not be taken back, while the rundown those buttons live in could. Every grid edit now goes on the rundown&rsquo;s own undo stack, reachable with <b>Ctrl+Z</b> from Simple Mode:</p>
+<ul>
+<li>Move a button &mdash; <i>Move Simple Mode Button</i></li>
+<li>Remove one, from the move bar or the right-click menu &mdash; <i>Remove From Simple Mode</i></li>
+<li>Change its width or height &mdash; <i>Change Button Size</i></li>
+<li>Change its label size or icon &mdash; <i>Change Label Size</i>, <i>Set Button Icon</i></li>
+</ul>
+<p>A grid edit is an edit to the rundown, so it belongs on the same stack rather than a private one: the snapshot the rundown already takes carries every Simple Mode property, because they are persisted with the item. Undo restores them and the grid redraws itself, which is what the structure-change notification added in build 128 was for.</p>
+<p>A move captures the positions of the <i>other</i> buttons too. Placing one is what fixes everything else in place, so undoing it has to put those back as well or the surface would come back subtly rearranged.</p>
+<p>The dropdown group&rsquo;s current selection is deliberately not undoable &mdash; it is an operational choice like selecting an item, not an edit to the surface.</p>
+
+<h3>NDI tiles come back on their sources</h3>
+<p>The panel already carried tile assignments across a layout change: it snapshots what each viewer is showing, rebuilds, and puts them back. That snapshot is taken from the live viewers, so at startup there is nothing to take it from &mdash; and although every change was written to <code>NdiOutputConfig</code>, nothing ever read it back. The grid returned in the right shape with every tile empty.</p>
+<p>It is read now, and the saved set stands in for the snapshot when there are no viewers to take one from.</p>
+<p>Discovery is the awkward part: it runs well after the panel is built, so a saved name almost never matches anything on the first attempt. Those names are held and applied as sources appear &mdash; <code>NdiManager::sourcesChanged</code> had no listener until now &mdash; and dropped once satisfied. A tile the operator has already filled by hand is left alone.</p>
+<p><b>Settings &rarr; NDI &rarr; Reconnect NDI sources on startup</b> turns it off. Reconnecting on launch is a decision about the network rather than about this window, so it is a switch rather than an assumption.</p>
+
+<h3>Fixed: the inspector handed every section the wrong widget</h3>
+<p>Moving Simple Mode to the top of the inspector in build 140 introduced a helper that maps a section&rsquo;s declared index onto its display row. The helper assumed Simple Mode already occupied row 0 &mdash; but it was inserted at the <i>end</i> of the constructor, long after all forty-one sections had been built through that helper.</p>
+<p>So during construction every section was handed its neighbour&rsquo;s widget, and the last one was handed nothing at all. On screen the section headers stacked at the top with their contents below them.</p>
+<p>Simple Mode is now inserted before the first use of the helper, which is what makes its assumption true. Present in 140 through 142.</p>
+
+<h3>One budget per API key</h3>
+<p>Each project reads with its own key, and Google&rsquo;s per-minute budget belongs to the key rather than to the spreadsheet &mdash; so two projects on separate keys are two budgets, and adding their reads together said &ldquo;60/60&rdquo; when neither was half spent.</p>
+<p>Strain now groups by key. The meter shows the key <b>closest to its own limit</b> and names the project it belongs to, because &ldquo;48/60&rdquo; is only an answer once you know whose sixty it is. A sheet whose project cannot be resolved is counted on its own rather than folded into somebody else&rsquo;s budget.</p>
+<p>The key itself is never published. <code>GET /strain</code> reports a <code>keyId</code> &mdash; six hex characters of a digest &mdash; which is enough to group sheets that share a budget and useless to anyone who does not already hold the key. Each sheet entry also carries its <code>project</code> name.</p>
+
+<h3>Editing a project&rsquo;s API key</h3>
+<p><b>Settings &rarr; Sheets &rarr; Template Projects</b> now shows each project&rsquo;s key beside its cache checkbox, and writes it into that project&rsquo;s <code>project.js</code> as you type. Only the value between the quotes is replaced; the declaration keyword, spacing and any comment around it are left as they were.</p>
+<p>As you type means as you type: a half-typed key is a half-typed key on disk, and a template loading mid-edit reads what is there. If the file refuses the write the field is outlined and the reason goes to the status bar, rather than the field quietly looking saved.</p>
+
+<h3>A meter per key</h3>
+<p>The Performance panel now draws one Sheets row per API key instead of one overall, since that is what the budget belongs to. Each row carries the project name, its own meter against its own sixty, and its own colour.</p>
+<p>Busiest key first, so the one nearest its limit is the one at the top. A row is created when its key is first seen and kept afterwards &mdash; a project that falls quiet shows zero rather than vanishing, because a panel that reshuffles itself every time something pauses is harder to read at a glance than one with a quiet row in it.</p>
+<p>A spreadsheet no discovered project claims still gets its own row, labelled with the key digest, rather than being folded into somebody else&rsquo;s budget.</p>
+<p><code>GET /strain</code> already carries <code>project</code> and <code>keyId</code> per sheet, so an outside collector can group the same way.</p>
+
+<h3>The expected-result box reads the declaration the templates actually carry</h3>
+<p>The box showed nothing for any template, and the reason was in the parser, not the data. All thirty-eight templates declare their sheet like this:</p>
+<pre><code>window.sheetConnection = { "tab": "LINEUP", "homelineup": "12", "awaylineup": "12" };</code></pre>
+<p><code>tab</code> is the tab; every other property names one of the template&rsquo;s own fields whose value picks a place in the sheet, and the number is <b>how many lines are read from there</b>, header line included. The calendar takes six, a lineup side twelve. The client was looking for a <code>"key"</code> property that none of them has, found nothing, and hid the box &mdash; silently.</p>
+<p>It now reads every field and its line count, accepts the documented <code>"key": "row"</code> form as one line, and shows <b>the whole block</b>, line by line. A block that comes back short is flagged in amber &mdash; <code>homelineup = 1 &middot; 11 of 12 lines</code> &mdash; because eleven names where twelve were asked for is a set the sheet has not finished, and that is worth seeing before air. A field the operator has not set is said so; one out of range is said so in red. The raw <code>f0</code> stands in for a named field, as the doc allows.</p>
+<p>Two things stop it going quiet again. A declaration that exists but has no <code>tab</code> is <b>shown as broken</b> rather than hidden. And <b>Refresh re-reads the declaration</b> as well as the rows, so a template corrected while the client is running does not need a restart to be believed.</p>
+<p>One honest limit, stated in the heading&rsquo;s tooltip: the client cannot run template code, so it never calls a template&rsquo;s <code>getNumberForRow()</code>; it always counts from the field&rsquo;s value as a row index. For a template whose set id is not its row number the block may start elsewhere than the preview stand shows. The stand stays the authority for those.</p>
+
+<h3>The box places a block the way the template does</h3>
+<p>Build 145 read the declaration correctly and then placed every block the same way &mdash; counting from the field&rsquo;s value as a row index &mdash; with a note that this could be wrong for templates that place sets by their own arithmetic. That note has been retired. Every template in both packs places a value one of three ways, and each is chosen from the declaration alone, so nothing has to run:</p>
+<ul>
+<li><b>One line, no <code>sets</code></b> &mdash; the row whose <code>ID</code> column equals the value, else the value as a 1-based position. This is the templates&rsquo; own <code>findRow()</code>, and it is what all fourteen single-line templates do. <code>row = 1</code> is the row with ID 1, not the second row.</li>
+<li><b>Several lines, no <code>sets</code></b> &mdash; base row <code>(value &minus; 1) &times; lines</code>. This is <code>getNumberForRow()</code>: calendar and results at 6, standings at 21. The stride was checked against each template&rsquo;s <code>ROWS_PER_SET</code> in both packs.</li>
+<li><b><code>sets</code> declared</b> &mdash; the value-th run of member rows, the row above the run being its header. This is <code>findTeams()</code>, which the lineups use, and it is the one case a count cannot express: the sets are only as long as their runs, and the lineup tab is found by looking, not by multiplying.</li>
+</ul>
+<p><code>sets</code> is a new declaration keyword naming the member-row test &mdash; <code>"NUMBER:digit"</code> for the lineup rule, <code>"COLUMN"</code> for a filled cell &mdash; and the heading&rsquo;s tooltip now says which rule is in use. The only templates that need it are the two <code>lineups_column.html</code>; the doc on the Desktop carries the exact line. Without it the client falls back to the stride rule for them and says so.</p>
+
+<h3>Fixed: the expected-result box was never built</h3>
+<p>Since build 138 the box under the key/value table had been declared, wired and documented &mdash; and never constructed. Its builder asked the table&rsquo;s parent widget for its layout and cast the result to a <code>QVBoxLayout</code>. The table sits in <code>verticalLayoutData</code>, which <i>is</i> a <code>QVBoxLayout</code>, but nested inside the section&rsquo;s grid; the parent widget&rsquo;s layout is the grid, the cast failed, and the builder returned before creating anything. Every later feature on the box &mdash; blocks, staleness, the placement families &mdash; was correct code attached to a widget that did not exist.</p>
+<p>The nested layout is generated by name, so it is now taken by name. Eight builds of &ldquo;does not give me the values back&rdquo; came down to one cast.</p>
+<p>Also gone: a stray <b>&ldquo;Sheet&rdquo;</b> label left behind when the earlier binding row was removed. It was created with the section as its parent and never placed in a layout, so it painted at the section&rsquo;s origin.</p>
+
+<h3>The expected-result box: sheet order, fallback keys, and where things sit</h3>
+<p>Four changes now that the box exists:</p>
+<ul>
+<li><b>Columns in the sheet&rsquo;s order.</b> <code>SheetRow</code> is a <code>QMap</code>, which sorts its keys, so the box showed ID, QUESTION, REFERENCE where the sheet says ID, REFERENCE, QUESTION. The header order now travels with the rows from wherever they were read &mdash; the API&rsquo;s header row, or the first object&rsquo;s key order read off the cache text, since <code>QJsonObject</code> sorts too.</li>
+<li><b>Fallback keys by position.</b> The doc says the raw <code>f0</code> stands in for the named field, and the box only ever looked at <code>f0</code>. The templates read them by position &mdash; lineups take <code>f0</code> as home and <code>f1</code> as away &mdash; so the <i>n</i>th declared field now falls back to <code>f(n&minus;1)</code>.</li>
+<li><b>Update and Import Fields sit between the table and the result</b>, where they act on the table they follow.</li>
+<li><b>The option rows moved below the result.</b> Use stored data, uppercase, trigger on next, send as JSON and newline behaviour are set once per template and left alone; the table and its result are what an operator works in. Auto-play and Auto-loop stay last.</li>
+</ul>
+
+<h3>The result answers a key the moment it is added</h3>
+<p>Adding a key through the <b>+</b> dialog inserts a finished row, so the table&rsquo;s model reports <code>rowsInserted</code> and never <code>dataChanged</code> &mdash; and the result box was only listening for the latter. A freshly added <code>row</code> key went unanswered until the item was reselected. Insert, remove and reset now re-resolve the box as an edit does, and the tree&rsquo;s own <code>itemChanged</code> is listened to as well, so an inline edit committed through the value delegate is caught even where the model signal is coalesced.</p>
+<p>The per-block header line is now shown only when it says something the status line does not: a set of several lines, a set that came back short, or a failure. A single line that resolved cleanly no longer spends a row repeating <code>row = 1</code>.</p>
+
+<h3>Template Settings, a section of its own</h3>
+<p>The option rows &mdash; use stored data, uppercase, trigger on next, send as JSON, newline behaviour, auto-play, auto-loop &mdash; are set once per template and then left alone. They now live in their own inspector section, <b>Template Settings</b>, directly under Template and <b>collapsed by default</b>, like Embedded Transform and Simple Mode. The Template section keeps what an operator works in: the key/value table, Update and Import Fields, and the expected result.</p>
+<p>Nothing about the controls changed. They are still owned and wired by the Template widget; it lays them out in a panel it hands to the inspector, which mounts the panel as the section. Shown and hidden together with Template, so a non-template item shows neither.</p>
+
+<h3>No more dead space in the Template section</h3>
+<p>The gaps above and below the result box were the section being taller than its content. An inspector row keeps the height it was first given, and the grid inside spreads any excess between its rows &mdash; so as the table shrank to fit its keys and the option rows moved out, the slack showed up as empty bands.</p>
+<p>The Template section now raises <code>contentChanged</code> whenever its height changes &mdash; the table resized, the result box shown, hidden or re-rendered &mdash; and the inspector re-reads its size hint on the next turn of the loop, the same arrangement the Invoke section already had. The result box is pinned to a fixed vertical policy so it cannot absorb slack, and whatever remains lands in an empty stretch row at the very bottom rather than between rows. The Template Settings row is sized from its panel the same way.</p>
+
+<h3>The last of the dead space</h3>
+<p>The Template section&rsquo;s <code>.ui</code> gave it a minimum height of 480&nbsp;px with a <code>MinimumExpanding</code> policy &mdash; fine when the table was a fixed 200&nbsp;px block and every option row lived inside, wrong once the table shrinks to its keys and the options have a section of their own. The section had to be at least 480&nbsp;px tall, and the grid inside had to put the difference somewhere.</p>
+<p>Where it put it was instructive. The result box carried a <code>Fixed</code> vertical policy, which only stops a layout <i>asking</i> a widget to grow; when a cell is forced taller regardless, the widget is still stretched into it, and the slack landed in the box&rsquo;s header row &mdash; a status line and a button centred in eighty pixels. The floor is gone from the <code>.ui</code>, so the section is now exactly as tall as its content and there is nothing to distribute.</p>
+<p>Three belts against it coming back: the box&rsquo;s layout is pinned with <code>SetFixedSize</code>, so the widget itself can never exceed its content; it is top-aligned in its cell; and the result tree&rsquo;s height is counted from the rows actually added, which removes the empty line that appeared under a single-line block once its header became lazy.</p>
+
+<h3>The result box is full width again</h3>
+<p><code>SetFixedSize</code> pins both dimensions to the size hint, so build 152 left the box exactly as wide as its longest value. The constraint is gone; the box expands to the row, and its <b>height</b> is pinned by hand at the same moments its content changes &mdash; shown, hidden, rendered, or a tab-only read &mdash; which is the half of <code>SetFixedSize</code> that was wanted.</p>
+
+<h3>Pushing template packs from a dev machine</h3>
+<p>A small tool, <b>CasparCG Template Push</b>, built beside the client. It holds a folder of packs, a list of clients, and a button. <b>Compare</b> asks each client what it has and reports what would change without writing anything; <b>Push</b> sends only the files that differ.</p>
+<p>The receiving half is two endpoints on the HTTP server the client already runs for the sheet cache, so there is no second service to start:</p>
+<pre><code>GET /templates                 the packs on that client
+GET /templates/&lt;PACK&gt;          every file with a digest, for comparing
+PUT /templates/&lt;PACK&gt;/&lt;path&gt;   install one file</code></pre>
+<p><b>It is off until switched on, and every request carries a token.</b> A template is HTML that CasparCG executes, so an open install endpoint on a playout machine is a way to run code on it. <b>Settings &rarr; Templates</b> has the switch, a Generate button for the token, and the folder to install into &mdash; left empty, that is the template path of the first device that has one. An unset token never matches, so turning the feature on without setting one leaves the endpoint shut rather than open.</p>
+<p><b><code>project.js</code> and <code>extensions.json</code> are never written by a push.</b> The client itself edits the first (the API key and the <code>local</code> flag) and the Sheets panel writes the second, so a push that replaced them would quietly undo operator settings. The rule is enforced on the client, not just avoided by the pusher.</p>
+<p>Paths are taken apart segment by segment and the result checked against the folder it must sit under, so nothing escapes a pack. Files are written whole or not at all: a template half-replaced while CasparCG has it open is worse than one that was not updated.</p>
+
+<h3>File-level review before anything is written</h3>
+<p>Push is now two steps and always in that order. <b>Compare</b> reads every ticked pack on every ticked client and lists each file with what it found; <b>Push ticked</b> sends the ones still ticked. Nothing is written until the list has been seen, which is the right default when the far end may be on air.</p>
+<p>Unchanged files were never being sent &mdash; both halves compared by digest from the start &mdash; but there was no way to see that. They are now listed too, dimmed and unticked, so the list is the evidence rather than a promise. New is green, changed is amber, and either can be unticked to hold it back; an unchanged one can be ticked to force it.</p>
+<p>A row says what happened to it after a push, and a sent file unticks itself so a second press cannot send it twice. <b>Tick all</b> and <b>Tick none</b> are there for a big pack.</p>
+<p>The templates-folder tooltip now says what it wants: the folder that <i>holds</i> the packs, not a pack itself. Pointing it at <code>...\templates\SEVILLE</code> would have read <code>webcg</code> and <code>font</code> as packs &mdash; and now the file list would show that before anything was written.</p>
+
+<h3>Push across networks: identify, deadlines, and keeping probes out</h3>
+<p>Groundwork for a pusher that is not on the same network as the client it is pushing to.</p>
+<p><b>Identify</b> asks each ticked client who it is &mdash; machine name, OS, where its packs live, how many it has &mdash; and answers the question a push should not be the first to ask: can I reach it, and is my token right. It writes nothing.</p>
+<p><b>Every request now has a deadline</b> of twenty seconds. On a local network that never fires. Across the internet it is the difference between a slow push and one that has silently died with the queue behind it.</p>
+<p><b>Repeated wrong tokens from one address are refused outright</b> for five minutes, because a wrong token is the shape a probe takes and an endpoint that can be reached from the internet will be probed. One correct token clears the count, so an operator who mistyped it four times and then got it right is not treated as an attack. The pusher names that refusal, along with a switched-off endpoint and a bad token, rather than reporting a transport error to decipher.</p>
+
+<h3>A relay, so the venue opens nothing</h3>
+<p>Pushing straight at a client works on one network and is the better option there. Across the internet it asks a playout machine to accept an inbound connection on an endpoint that writes HTML CasparCG will run, and that is not a port anyone should open at a venue.</p>
+<p>So the direction is turned around. <code>tools/php/relay/relay.php</code> is a single file that drops on any PHP host from 7.4 up. The dev machine uploads a pack to it; each client asks it what is there and fetches what it does not already have. Both ends make outbound connections only, and neither has to know where the other is.</p>
+<pre><code>  dev machine  --upload--&gt;   relay.php   &lt;--poll &amp; fetch--  client
+                             (your host)                    client</code></pre>
+<p><b>Two tokens, deliberately not the same one.</b> The dev machine holds the upload token; the clients hold the download token. A client that is stolen reads only what it was already going to install, and cannot put a template on the relay for the other clients to pick up.</p>
+<p><b>The pusher treats a relay as one more row.</b> Anything typed into Host : Port with a <code>://</code> in it is a relay rather than a client, so the table, Identify, Compare and Push all work unchanged and a relay and a direct client can be pushed to in the same pass. Identify says which relay answered and whether that token can actually upload, which is how the download token being pasted in the wrong box gets caught.</p>
+<p><b>Settings &rarr; Templates &rarr; Pull Packs From A Relay</b> is the receiving half. An address, the download token, how often to check, and optionally the packs this client owns so one relay can carry every venue while each client takes only its own. <b>Test</b> reaches the relay and writes nothing; <b>Check now</b> polls immediately. A client also checks a few seconds after it starts, because a machine that was switched off is the one most likely to be behind.</p>
+<p><b>A pull never deletes.</b> A file removed from the relay stays on every client that already has it. Taking a template off a machine that may be on air is not a decision worth making from the other side of the internet.</p>
+<p><b>The bytes are checked against what the manifest promised.</b> A client hashes what it fetched and refuses to install it if the digest does not match, so a body that changed in transit is never written where CasparCG would run it. <code>project.js</code> and <code>extensions.json</code> are refused by the relay <i>and</i> by the client, and paths are checked at both ends, so neither end depends on the other being careful.</p>
+<p><b>Put the relay behind HTTPS.</b> The tokens travel in a header and the templates travel as bytes. That is the one part the PHP file cannot do for itself, and <code>tools/php/relay/README.md</code> says so in the install steps.</p>
+
+<h3>Windows device names are refused as filenames</h3>
+<p><code>con.html</code>, <code>nul</code>, <code>lpt1.js</code> and the rest of the reserved names are device names on Windows with or without an extension, so writing one opens a console or a port instead of a file. Both the relay and the client&rsquo;s installer now refuse them by name, rather than leaving a confusing write failure to be discovered on a playout machine.</p>
+
+<h3>Retrying the failures that are worth retrying</h3>
+<p>Over the internet a dropped connection is the ordinary case, not the interesting one. A single blip used to fail a file outright: the pusher moved to the next one, and a client waited out the whole poll interval before trying again.</p>
+<p>Both ends now try a file three times, backing off two seconds and then four. <b>Only failures that could plausibly succeed next time are retried</b> &mdash; a connection that went away, or a 5xx from a host under load. A 401, 403, 409 or a throttle is an answer and will be the same answer next time, so retrying one would only waste the operator&rsquo;s time and hammer the far end. The log says which file is being retried, why, and which attempt it is on.</p>
+<p>The client retries its manifest read too, because the next poll may be a quarter of an hour away and a blip there costs the whole interval.</p>
+
+<h3>The relay has a light in the Server Status panel</h3>
+<p>Whether templates are arriving was only visible by opening Settings, which is not somewhere anyone goes mid-show. The relay now has a row next to the sheet cache, the same shape and the same reason: is this working right now, and can I do something about it from here.</p>
+<p>Green with how long ago it last checked, amber while it is checking, red if the last check failed, and grey when it has not run yet &mdash; grey rather than red on startup, because nothing has gone wrong. The tooltip carries the address and what the last check actually did. A <b>Check</b> button polls immediately. The row is hidden entirely on a client that does not pull.</p>
+
+<h3>The upload leg is checked too</h3>
+<p>A client already hashed what it fetched from the relay and refused to install anything that was not what the manifest promised. The other leg had no such check: whatever arrived at the relay, or at a client over a direct push, was written.</p>
+<p>The pusher now sends the digest of what it read off disk, and <b>both a relay and a client refuse a body that does not match it</b>, with a 422 and nothing written. An existing file is left exactly as it was rather than replaced by something that changed on the way. The header is optional, so an older sender still works, but the current one always sends it.</p>
+
+<h3>Files that exist only at the far end are visible now</h3>
+<p>Neither a push nor a pull deletes anything, which is the right default when the far end may be on air. The cost is drift: rename <code>calendar.html</code> to <code>schedule.html</code> and every client keeps the old one forever, and the relay keeps serving it.</p>
+<p>Compare now lists the other direction too. A file the far end has that the pack no longer does shows as <b>only there</b>, in its own colour, and the log says how many there are and what they mean. It is information first: nothing acts on those rows by itself.</p>
+<p><b>Clear</b> takes ticked &ldquo;only there&rdquo; files off a <b>relay</b>, and asks before it does. Clients are never touched by it &mdash; they have no delete endpoint on purpose, and a relay&rsquo;s own remove leaves whatever a client already installed exactly where it is. Ticking an &ldquo;only there&rdquo; row never sends anything either: Push skips them entirely, so the one checkbox cannot mean two things at once.</p>
+
+<h3>Templates from a private GitHub repository</h3>
+<p>A second way to reach clients on a network you do not control, and for most people the easier one. It costs nothing to run, does the authentication and the HTTPS for you, and keeps the history of every template you have shipped as a side effect. A bad template can be reverted.</p>
+<p>Write <code>github:owner/repo</code> where a relay address would go, on a client and in the push tool alike. Add <code>@branch</code> for anything other than the default. Each folder at the root of the repository is one pack; root files and dot folders are ignored.</p>
+<p><b>One request lists the whole repository with a digest per file.</b> Those digests are Git blob hashes, so a client hashes its own files the same way and fetches only what differs. A pack that has not changed costs a single request for the whole estate. Each file is then fetched <b>by its digest rather than its path</b>, so a branch that moves mid-poll cannot hand a client a different file than the one it was told about, and the bytes are hashed again on arrival.</p>
+<p><b>On the dev machine you may not need the tool at all.</b> Clone, copy the pack in, commit, push, and every client picks it up on its next poll. The push tool is there if you want the same review-before-you-send flow: Compare lists what differs, Push commits the ticked files one at a time with a message naming each, and Clear removes leftovers as commits, so nothing is ever really lost.</p>
+<p>Clients, relays and repositories sit in the same table and can be pushed to in one pass. Identify names the repository, its default branch, and says loudly if it is <b>public</b>, because templates in a public repository are readable by anyone.</p>
+<p>Tokens are fine-grained and scoped to the one repository: read-only on every client, read and write only in the push tool. A venue machine that goes missing cannot then change what the rest of the estate installs. <code>tools/php/relay/GITHUB.md</code> has the setup.</p>
+<p>A repository too large for a single tree listing is refused rather than guessed at, because a truncated listing looks exactly like a repository missing files and would be reported as &ldquo;up to date&rdquo; while being wrong.</p>
+
+<h3>The relay knows which clients have caught up</h3>
+<p>Uploading to a relay was uploading into a void: you heard that the relay took the file, and never learned whether the venue actually pulled it. Before a show that is the only question worth asking.</p>
+<p>Clients now check in after each poll, reporting their machine name and the version they have of each pack they follow. <code>?action=clients</code> answers with the estate, each machine marked current or behind and named per pack. A client&rsquo;s own token cannot ask that question &mdash; it reports about itself and nothing more &mdash; and a hostile machine name cannot escape the folder it is written into.</p>
+
+<p>That endpoint shipped in build 160 with nothing calling it on either side. Both ends exist now.</p>
+<p><b>A client reports after every poll</b>, naming each pack it follows and the version it reached. A pack that had a file fail is left out of the report rather than claimed: being absent is honest, being listed as current would not be. Nothing about the check-in is retried and nothing is said when it works, because bookkeeping for somebody else&rsquo;s benefit must never be the reason a poll looks failed.</p>
+<p><b>Identify now shows the estate.</b> Point it at a relay and, under the relay&rsquo;s own line, every machine that has checked in with when it last did and which packs it is behind on. Naming the pack matters: whether a stale MARSEILLE is a problem depends on tonight&rsquo;s show.</p>
+<p>It only reads that list when the token can upload, so a dev machine holding the wrong token is told that rather than shown an empty estate.</p>
+<p><b>The GitHub route deliberately has no equivalent.</b> A report back would mean giving every venue machine write access to the templates every other machine installs, which is a bad trade for a status line. <code>tools/php/relay/GITHUB.md</code> says so where somebody choosing between the two will read it.</p>
+
+<h3>Fixed: the client would not have compiled</h3>
+<p><code>RelayClient.h</code> declared a method taking a <code>QNetworkRequest&amp;</code> while only forward-declaring <code>QNetworkAccessManager</code>. Six errors, and the first thing a build of 154 through 161 would have hit. It is one line, and it had been sitting there since the GitHub work landed.</p>
+
+<h3>A syntax check, so a build break is found before the build</h3>
+<p><code>tools/syntax-check.py</code> parses and type-checks changed files without building anything: no object files, nothing written to the build folder, no linking. It is not a build and does not replace one.</p>
+<pre><code>python tools/syntax-check.py                 files changed since the last commit
+python tools/syntax-check.py a.cpp b.cpp     just these
+python tools/syntax-check.py --all-mine      everything changed on this branch</code></pre>
+<p>It runs uic over the .ui files and moc over every <code>Q_OBJECT</code> header the named sources need, and compiles the moc output too, which is where a signal with a type that does not exist shows up. Visual Studio, the Qt kit and the dependencies the build fetches for itself are all found by looking rather than by being told, so a version bump does not turn every check into a complaint about a missing header.</p>
+<p>It will not catch anything that only fails at link time, such as a slot declared and never defined.</p>
+
+<p>It does now. It reads each header for members declared and never given a body anywhere, which is the classic link error: the compiler is happy, moc connects the slot by name, and the link fails. Tuned against the real tree until it reported nothing on code that already links, then checked that it still catches a member deliberately left undefined.</p>
+
+<h3>The relay can check its own deployment</h3>
+<p><code>?action=selftest</code>, with the upload token. It asks the questions whose answers are silent when they are wrong.</p>
+<ul>
+<li>a token still on the shipped default, or both tokens the same, which collapses the read/write split</li>
+<li>storage sitting under the web root, which on nginx or IIS means every template is downloadable without a token, because the <code>.htaccess</code> beside it only binds Apache</li>
+<li>plain HTTP, where the token and the templates cross the network readable</li>
+<li>an upload limit smaller than the one the relay advertises</li>
+<li>errors that would be printed into responses</li>
+</ul>
+<p>It answers <code>200</code> when nothing is wrong and <code>500</code> when something is, so it can go in a monitor.</p>
+
+<h3>Two real faults it found immediately</h3>
+<p><b>PHP&rsquo;s <code>post_max_size</code> is 8 MB by default, under the 32 MB the relay advertised.</b> A body over that limit does not arrive short, it arrives empty, and the relay would have written an empty file over a working template and reported success. Uploads now compare what arrived against the declared <code>Content-Length</code> and refuse a body that did not come whole, naming <code>post_max_size</code> as the cause. <code>ping</code> reports the limit that actually applies rather than the one in the source.</p>
+<p><b>A PHP warning printed in front of a JSON answer breaks every client.</b> On a host with <code>display_errors</code> on, one deprecation notice is enough, and the symptom gives no hint of the cause. The relay now turns display errors off for itself and discards anything that reached the output buffer before it answered, including on the raw file download where a warning would have corrupted the bytes.</p>
+<p>That is not the whole fix: some warnings are emitted at request startup, before any code in the file runs. A <code>.user.ini</code> and an <code>.htaccess</code> now ship beside <code>relay.php</code> to cover that, and <b>they have to be deployed with it</b> &mdash; they are dotfiles, so check your upload tool is not hiding them. The self-test reports it as a problem if they were not.</p>
+
+<h3>A venue can now say why it is stuck</h3>
+<p>A client that falls behind was a phone call: nobody can open the log on a machine at someone else&rsquo;s venue, and &ldquo;behind on SEVILLE&rdquo; does not say whether the disk is full, the token is wrong, or a file will not write.</p>
+<p>The check-in now carries what the last poll actually did, and Identify prints it beside the machine that is behind. A client that is current is not made to repeat itself.</p>
+<p><b>A client reporting failures is never shown as current.</b> One that could install nothing reports no packs at all, so judging by the pack list alone called it up to date. It reads <b>FAILING</b> now, on both ends, and the reason comes with it. The reported text is capped, like everything else a client can send.</p>
+
+<h3>Measured: the network timeouts are inactivity timeouts</h3>
+<p>Both halves set a transfer timeout, and it mattered whether that is a deadline or a gap. If it were a deadline, a large template on a slow venue link would be killed while it was transferring perfectly well, and every retry would do the same.</p>
+<p>Measured against Qt 6.5.3 rather than assumed, because the documentation does not say. A transfer delivering a byte every two seconds for eighteen seconds completed under a five second timeout. A transfer that stopped delivering was cut at 5.0 seconds.</p>
+<p>So it is a gap, the current values are right, and neither needs raising for a big file. Both are now commented to say so, because raising them would only mean waiting longer to notice a dead connection.</p>
+
+<h3>The path rules are tested now, not argued about</h3>
+<p>Everything that reaches a client &mdash; a direct push, a relay, a GitHub repository &mdash; ends at the same function, and that function writes HTML CasparCG will execute. If a path could escape its pack, anyone who reached any of those routes could write anywhere the client can write. Until now that was a careful reading of the code rather than a fact.</p>
+<p><code>tools/test-paths.cpp</code> builds and runs against the real <code>TemplateInstaller</code>, with the three database calls stubbed because the rules under test never touch it. <b>60 checks, all passing.</b> Among them:</p>
+<ul>
+<li>parent traversal, plain and after a segment, forward slash and backslash</li>
+<li>absolute paths, drive letters, drive-relative paths, UNC paths</li>
+<li>NTFS alternate data streams, <code>a.html:hidden.exe</code> and <code>a.html::$DATA</code>, which hide a second file behind the first</li>
+<li>Windows device names with any extension, while <code>console.html</code> still installs normally</li>
+<li>trailing dots and spaces, which Windows strips, so two paths become one file</li>
+<li>embedded nulls, newlines, tabs, and a right-to-left override that makes a filename read backwards</li>
+<li>both protected files in every capitalisation, and near misses like <code>project.json</code> that must not be caught</li>
+<li>Git blob digests against values git itself produces, and that two files of the same length do not share one</li>
+</ul>
+<p><b>It was checked against a regression, not only against success.</b> Removing the device-name rule produced six failures; removing the backslash handling produced two. A suite that only ever passes proves nothing.</p>
+<p>That second one corrected a misunderstanding of my own. The backslash traversal cases had been passing for the wrong reason &mdash; the character allowlist rejects a backslash whatever else happens &mdash; so they were not testing the normalisation at all. The rule is what lets <code>css\site.css</code> install to the right place; it is not what stops <code>..\evil.html</code>. Two cases were added that actually exercise it.</p>
+
+<h3>Hardened: the second line of defence did not cover pack names</h3>
+<p><code>installFile</code> checks the finished path against the folder it must sit under, described in its own comment as being there because the rules &ldquo;should&rdquo; have made an escape impossible and should is not a guarantee. Testing it showed the backstop was narrower than that.</p>
+<p>It compared the destination against the <b>pack</b> folder, and the pack folder is built from the pack name. A pack name that climbed out of the templates folder took the prefix with it, so the check compared an escaped path against an escaped prefix and agreed with itself.</p>
+<p>This was never reachable: the pack-name rule refuses those names, and that rule is tested. But a backstop that only works while the thing it backs up is working is not a backstop. It now compares against the templates root as well.</p>
+<p><b>Measured both ways.</b> With the pack-name rule switched off, the old code let two files land outside the templates root entirely. With the same rule switched off and the new check in place, nothing escapes at all.</p>
+
+<h3>installFile is tested end to end</h3>
+<p><code>tools/test-install.cpp</code> runs the real function against a real folder, because between the rules and the disk sit a path join, a <code>cleanPath</code>, a prefix check and a <code>QSaveFile</code>, and any of those could undo the answer the rules gave. <b>30 checks.</b></p>
+<p>It installs plain, nested and Windows-style paths and reads the bytes back; replaces a file and confirms none of the old content survives; refuses traversal in the path and in the pack name, absolute paths, drive letters, device names and data streams; refuses both protected files in any capitalisation while letting a nested <code>webcg/project.js</code> through as ordinary template code; accepts a matching digest, refuses a wrong one, and confirms a refused write leaves the existing file untouched.</p>
+<p>Then it asks the question that actually matters. It sweeps the whole sandbox and asserts that <b>nothing landed outside the templates root</b>, and that the pack holds exactly the files it should and no others. That assertion, not the return codes, is what found the gap above.</p>
+
+<h3>The digest map and the throttle are tested too</h3>
+<p>Two more things the whole system leans on, neither of which had ever been run.</p>
+<p><b>The digest map is what every GitHub comparison is made against.</b> A client lists the repository, hashes its own files the same way, and fetches what differs. If the keys did not look exactly like the paths in a tree, nothing would ever compare equal and every client would re-download every file on every poll, forever, with no error to show for it. On Windows that is a plausible way to be wrong, so the keys are now asserted to use forward slashes, at every depth, with the git-style and plain digests each checked against the value they claim to be.</p>
+<p><b>The throttle is what stops an install endpoint being guessed at.</b> Blocking after five wrong tokens is the obvious property. The one that matters more is that it blocks the address that got them wrong and nobody else: keyed on the wrong thing, a single probe would lock every venue out of its own updates. Both are tested, along with a correct token clearing the count rather than the count carrying over.</p>
+<p><b>Both were checked by breaking them.</b> Native separators in the digest keys produced five failures. Pointing the throttle at one shared bucket instead of one per address produced three, the isolation check among them.</p>
+<p>That is 111 assertions across the two suites now, all passing.</p>
+
+<h3>The HTTP parser is driven over a real socket now</h3>
+<p>The sheet cache server is hand-rolled HTTP on a <code>QTcpServer</code>, and it is the one part of this that listens. Whatever arrives on that port arrives as bytes off a network, from something that may not be a client at all, and every request is taken apart by code written here rather than by a web server somebody else maintains. It was the last piece with no test at all.</p>
+<p><code>tools/test-server.cpp</code> starts the real server on a spare port, points the installer at a temporary folder, and connects real sockets to it. <b>25 checks.</b></p>
+<p>The ordinary path first, including a template installed over TCP and verified on disk, which is the whole direct-push route in one assertion. Then the token: wrong, missing, and a header name in the wrong case, because HTTP header names are case-insensitive and a client that sends one in lower case is not wrong.</p>
+<p>Then rubbish. An empty request, a request line with no target, one with no HTTP version, a header with no colon, binary noise, a negative content length, a length of 999999999, a length of the word banana, and a repeated token header. Each has to produce an answer or a refusal, and each is followed by a check that <b>the server is still listening</b>, because a crash here takes the client with it.</p>
+<p>Two behaviours turned out to be worth asserting on their own. A request split across two packets with a real gap between them must be held until the rest arrives rather than acted on half-read. And a body longer than its declared length must be cut to that length, or a sender could append to somebody else&rsquo;s file.</p>
+<p><b>Both were confirmed by breaking them.</b> Removing the truncation produced one failure; removing the wait for the rest of a split request produced five, including an ordinary request afterwards.</p>
+<p>That is 136 assertions across three suites. Every part of the template route that can be exercised without launching the client now is.</p>
+
+<h3>The pull route runs end to end</h3>
+<p>This is what the whole exercise was for: a client on one network fetching templates from a host on another, with nothing reaching in to it. Every piece of that had been tested except the piece that does it. <code>RelayClient</code> reads a manifest, works out what differs, fetches it, checks the bytes, installs them and reports back, and none of that had ever run.</p>
+<p><code>tools/test-pull.cpp</code> starts a real PHP relay on a spare port, seeds it with two packs, points the installer at a temporary folder, and pulls. <b>17 checks.</b> It needs PHP; without it the test says so and stops rather than pretending to have passed.</p>
+<ul>
+<li>a first pull installs a template and a nested one, with the bytes compared</li>
+<li>the pack this client does not follow is left where it is, which is what lets one relay carry every venue</li>
+<li>a second pull fetches nothing and says it is up to date</li>
+<li>a file changed at the relay is fetched again, and the new bytes replace the old</li>
+<li>the check-in reached the relay, named only the pack this client holds, and reads as current with nothing failed</li>
+<li>a wrong token is reported as a token problem rather than as a transport error</li>
+<li>a relay that has stopped ends the poll instead of hanging, does not claim to be up to date, and leaves everything already installed exactly where it is</li>
+</ul>
+<p><b>Confirmed by breaking it.</b> Ignoring the pack filter cost two checks, including the one that says a venue does not take another venue&rsquo;s packs. Never recognising a file as unchanged cost the check that a second poll is quiet, which is the difference between a client that costs one request an hour and one that re-downloads everything forever.</p>
+<p>That is 153 assertions across four suites. The route this was all built for now has a test that runs it.</p>
+
+<h3>GitHub Enterprise Server, and the test it made possible</h3>
+<p>A self-hosted GitHub answers the same API at its own address, usually <code>https://github.example.com/api/v3</code>. The client addressed <code>api.github.com</code> directly, so anyone on one could not reach their own repositories at all.</p>
+<p>The client takes a database setting, <code>RelayGitHubApi</code>. There is no field for it in Settings on purpose: almost nobody needs one, and empty means github.com. The push tool takes the whole thing in the address instead, <code>github:https://github.example.com/api/v3/owner/repo</code>.</p>
+<p>That also removed the reason the GitHub route had no test. It could only ever be checked against the live API for the shape of its answers; the logic that reads a tree, works out which pack a path belongs to, compares Git blob hashes and fetches by digest had never executed.</p>
+<p><code>tools/test-github.cpp</code> runs it against <code>tools/mock-github.php</code>, which answers the three calls a client makes in the shapes github.com actually uses, including the directory entries a real tree carries and the token and user-agent rules it enforces. <b>23 checks</b>: a first pull with the bytes compared, a pack this client does not follow left alone, a second pull that fetches nothing, a changed file fetched again, a truncated tree refused rather than guessed at, a refused token named as one, and an unreachable API that ends the poll without claiming to be up to date or disturbing what is installed.</p>
+<p><b>One of those checks was worthless until it was tested.</b> The assertion that a repository&rsquo;s own <code>.github</code> is not installed as a pack passed with the rule that prevents it switched off, because the pack filter was keeping it out anyway. A section that follows every pack was added, and only then did removing the rule produce a failure. Refusing a truncated tree cost two checks when switched off, one of them the client reporting itself up to date while being wrong.</p>
+<p>That is 176 assertions across five suites.</p>
+
+<h3>How an address is read, and every URL built from one</h3>
+<p>The push tool was the last part with no test at all. One text field decides whether a push goes to a client on the next rack, a relay on the internet, or a Git repository, and the three are told apart by how the address is written. Misread it and a push goes somewhere it was not meant to, carrying a token in a header the far end was not expecting.</p>
+<p><code>tools/test-target.cpp</code> runs that. <b>53 checks</b>, no network and no files.</p>
+<ul>
+<li><code>host:port</code> is a client, a missing port means 3000, and every endpoint on it is built from that</li>
+<li>an address with a scheme is a relay, so a URL is never split on the colon in <code>https:</code> and read as a host of &ldquo;https&rdquo;</li>
+<li>a relay URL that already carries a query gets its action added rather than a second question mark that would break it</li>
+<li><code>github:owner/repo</code>, with and without a branch and a trailing slash</li>
+<li><code>github:https://github.example.com/api/v3/owner/repo</code>, where only the last two segments are the repository, with and without a branch after it</li>
+<li>spaces are encoded in a path while the separators are not, on all three kinds</li>
+<li>each kind gets its own authentication and <b>not</b> the others&rsquo;: a client&rsquo;s push token never leaves as a bearer token, and a relay&rsquo;s upload token never goes out in a client&rsquo;s header</li>
+</ul>
+<p><b>Both address rules were checked by breaking them.</b> Not recognising an Enterprise address cost six checks; not telling a relay from a client cost fourteen.</p>
+
+<h3>One Git hash function instead of two</h3>
+<p>The push tool links Qt and nothing else of this project, so it carried its own copy of the Git blob hash. Two identical copies today are two copies that can disagree later, and the symptom would be every client deciding every file had changed, on every poll, with nothing to show for it but traffic.</p>
+<p>There is one now, in a header both include. It is the same function the tests already check against <code>git hash-object</code>.</p>
+<p>That is 229 assertions across six suites.</p>
+
+<h3>A push, driven through the buttons</h3>
+<p>Everything either side of a push had a test and the middle did not. Comparing a pack against a client, listing what would change, sending only the ticked rows, stamping each with the digest of what was read off disk, and the client checking that digest before writing: none of it had ever run together.</p>
+<p><code>tools/test-push.cpp</code> runs it the way an operator does. The window is built but never shown, the fields are filled in, and <b>Compare</b> and <b>Push ticked</b> are clicked. Nothing is invoked behind the interface, so the wiring is under test as much as the code. The receiving end is the real client server on a spare port with its templates in a temporary folder. <b>20 checks.</b></p>
+<ul>
+<li>Compare lists both files as new, and never offers <code>project.js</code> at all</li>
+<li>Push puts them on the client with the bytes compared, and the rows say sent</li>
+<li>Compare again lists them as unchanged rather than sending them twice</li>
+<li>an edit on the dev machine shows as changed while the file beside it stays unchanged, and pushing replaces the old bytes</li>
+<li>a wrong token lists nothing rather than guessing, and the client keeps what it already had</li>
+</ul>
+<p><b>The tool&rsquo;s saved settings are redirected to a temporary file before the window is built</b>, so running the test never touches the operator&rsquo;s own list of clients.</p>
+<p><b>Three ways of breaking it, three sets of failures.</b> Offering protected files cost the check that <code>project.js</code> stays put. Never recognising a file as unchanged cost three. Sending a wrong digest cost five, and those five are the interesting ones: the file simply never arrives, because the client refuses to write bytes that are not what the sender said they were. The two halves are genuinely checking each other rather than both assuming.</p>
+<p>That is 249 assertions across seven suites. Every part of this now has a test that runs it.</p>
+
+<h3>One command to check the lot</h3>
+<p>Seven suites and a syntax checker meant eight commands, each taking about a minute, and knowing which of them needed PHP. That is a thing nobody runs.</p>
+<pre><code>python tools/check-all.py           everything, about four minutes
+python tools/check-all.py --fast    no network needed, under a minute
+python tools/check-all.py --list    what it would run, and why</code></pre>
+<p>It type-checks what changed, builds and runs every suite, adds up the assertions and exits non-zero if anything failed, so it can sit in a hook or a task. Results print as each finishes rather than in a lump at the end, because a four-minute run that shows nothing looks like a hang. A suite that needs PHP and cannot find it is reported as <b>skipped</b>, never as passed.</p>
+<p><code>tools/README.md</code> says what each piece is for, and carries the two habits this work earned:</p>
+<p><b>Break the thing you are testing and watch the test fail.</b> Twice here a check passed for a reason that had nothing to do with what it claimed to cover. Once a character rule rejected the input before the rule under test saw it; once a filter was quietly keeping a file out. Both looked fine until the code they were meant to guard was switched off and nothing happened.</p>
+<p><b>Assert on the result, not the return code.</b> The check that found the worst problem in this work was not &ldquo;did that call return 400&rdquo;. It was a sweep of the whole sandbox asking whether any file had landed somewhere it should not have.</p>
+
+<h3>Fixed: the window could end up taller than the screen</h3>
+<p>Dragging a panel tall stores its height, and that height is applied as a fixed one, which a panel cannot shrink below. Stacked in a column those heights become a floor the whole window cannot go under. There was already a guard setting a maximum size, but in Qt a layout minimum always beats a maximum, so it did nothing: the window was taller than the display and could not be dragged back.</p>
+<p>It happened after dragging a panel tall on a large monitor and opening the client on a smaller screen, which is why it seemed to come and go.</p>
+<p>Each column is now measured before anything is given out, and if it does not fit, every panel in it is reduced by the same proportion so the relative sizes survive. Nothing is touched when the column already fits, and nothing is touched when the screen height cannot be read. On a 1080p screen a real layout gives up three to four per cent; above about 1200&nbsp;px nothing is reduced at all.</p>
+
+<h3>The NDI panel had two names for one setting</h3>
+<p>Everything about the panel is keyed <code>NDI</code>, except the header colour overrides, which said <code>Ndi</code>. Those two agreed with each other so the feature worked, but under a key nothing else in the panel system would look for. They now match, any colour already chosen is carried across, and a stale height setting left by an older build is cleared out.</p>
+
+<h3>Deciding centrally which machine gets which packs</h3>
+<p>One relay or repository already carried every project, and each machine took a subset. But that subset was set on the machine, so moving a project between venues meant getting to the venue.</p>
+<p>The source now carries the answer, and <b>Assignments...</b> in the push tool is a grid for it: machines down the side, packs across the top, a tick where one takes the other. The <code>*</code> row is what a machine gets when it is not listed, which is how a shared pack reaches an estate without naming every box in it.</p>
+<p>Rows come from three places, because none is complete on its own: machines that have checked in, machines already named in the file, and anything added by hand for a venue that does not exist yet. A machine named but never heard from is greyed, because a typo in a machine name looks exactly like a machine that is switched off.</p>
+<p><b>Nothing is written until Save</b>, and Save asks first when a row has nothing ticked, because that means those machines take nothing and it is one tick away from a venue quietly never updating again.</p>
+<p>Precedence: a machine set to decide for itself always does, then the source when it names that machine, then the machine&rsquo;s own Packs field. A source that says nothing about a machine cannot change what that machine already does, so turning this on breaks nothing that already works. <b>Ignore what this machine is assigned</b> in a client&rsquo;s own settings takes that one machine back out of central control.</p>
+
+<h3>Settings that are not squashed together</h3>
+<p>The group boxes built in code set four pixels between rows and no margins, so the first row of each started where the title already was and the two crowded each other. All nine now have room under the title and air between rows.</p>
+<p>The Templates tab also says where a GitHub token comes from, under the Token field rather than in a tooltip nobody hovers, including that a client wants a read-only one and the push tool a second one with write.</p>
+
+<h3>Somewhere to start</h3>
+<p><code>tools/php/SETUP.md</code> is a walkthrough from nothing to a template arriving at a venue, for somebody who has not done this before. It picks a route, goes step by step, and every step ends with what you should see, so a step that quietly did not work is found there rather than five steps later. It ends with a table of symptoms and what each usually means.</p>
+<p>The README also has a Getting started section for a fresh install: what a server is, where its media and template paths come from, and why the client has to be told the same two folders.</p>
+
+<h3>Two panels that had never been written down</h3>
+<p>Both have been in the client since the panel system landed, and neither was ever described here. An audit of every commit since the fork against this document found them.</p>
+<p><b>The Http Log panel</b> shows what came back. Every HTTP GET and POST item the rundown fires is listed with its method, the address, the status code and the body that came back, and every playout action beside them with its device, channel and layer. When a template does not appear, this is where you find out whether the request went out, what answered, and what it said. It is a panel like any other: add it from the layout settings.</p>
+<p><b>Timed channel locks.</b> A locked channel refuses playout, which is what you want while somebody is working on air. A timed lock is the same thing with an end: set a duration and the channel unlocks itself when it runs out, counting down on the button so anyone looking at it can see how long is left. It saves the mistake that matters, which is locking a channel to protect a segment and then leaving it locked into the next one.</p>
+<p>Every source touched between builds 154 and 161 now passes it, along with the generated moc for each.</p>
+<p><code>/templates/info</code> sits behind the same token as everything else: it says where templates are installed on that machine, which is not something to hand out unauthenticated.</p>
+
+<h3>Where the data comes from</h3>
+<p>The resolver reads the <b>local cache service first</b> &mdash; the same one the templates race against &mdash; and falls back to the Sheets API when the cache has nothing, which is exactly what a cache miss means there. Any answer it gets from the API is written back to the cache in the shape the templates expect, so a resolve leaves the cache warmer than it found it. The project is inferred from the template's own folder, so there is nothing to configure.</p>
+
+<hr>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<h2 id="sheets-panel">Google Sheets Panel</h2>
+
+<p>A new <b>Google Sheets</b> panel (add it via the layout editor) connects to the same spreadsheets your standalone HTML templates use &mdash; and turns sheet data into operator buttons.</p>
+
+<h3>Connection</h3>
+<ul>
+    <li>Scans every device's template path (and direct subfolders) for <code>project.js</code> &mdash; the same connection file the templates use. Each folder found becomes a selectable project.</li>
+    <li>Lists all tabs of the connected spreadsheet; opening a tab shows its actual rows &mdash; the operator sees real data (player names, numbers), not row ids.</li>
+    <li>Manual refresh plus a selectable auto-refresh interval in the toolbar (10s / 30s / 1m / 2m / 5m / Off, persisted); the status label shows the last fetch time.</li>
+<li><b>Show/hide columns per tab</b> (hamburger &rarr; <b>Columns</b>): tick the columns you want visible for the selected tab. Each project+tab keeps its own selection, so a wide sheet can show just the few columns the operator needs. Hiding is display-only &mdash; <code>{COLUMN}</code> placeholders in button data still resolve from hidden columns.</li>
+</ul>
+
+<h3>Field Modes from Templates</h3>
+<p>Import Fields in the template inspector now also reads an optional <code>window.debugDataModes = { "f0": "integer", "align": "cycle:left|center|right" }</code> object from the template HTML &mdash; imported rows arrive with their edit mode (integer / decimal / boolean / color / cycle) and cycle values already set, so the operator gets the right controls without configuring each row.</p>
+
+<h3>Operator Buttons</h3>
+<ul>
+    <li>Per-tab buttons are edited in the panel (hamburger &rarr; <b>Edit Actions&hellip;</b>) and stored in <code>extensions.json</code> next to <code>project.js</code> &mdash; they travel with the project folder.</li>
+    <li><b>Row buttons</b> appear next to every data row; <code>{COLUMN}</code> placeholders resolve per row &mdash; e.g. a card button per player sending <code>name={NAME},number={NUMBER},card=yellow</code>.</li>
+    <li><b>Standalone buttons</b> render once above the table &mdash; e.g. a VAR bar with <code>toggle</code> action (lit while on air).</li>
+    <li>Actions: <code>play</code>, <code>stop</code>, <code>update</code>, <code>toggle</code>. Buttons fire CG commands directly on the project's device and report into the Activity panel and playout log.</li>
+    <li>The action editor's Template field is a dropdown of the client's template library (still free-typeable), and the panel's size mode is configurable in Settings &rarr; Layout &rarr; Panel Sizing.</li>
+    <li>Toggles are exclusive per channel/layer: pressing a different row's toggle while one is on air <b>stops the current template first</b> (out animation plays) instead of overwriting it &mdash; press again to play the new one.</li>
+</ul>
 
 <hr>
 
@@ -668,6 +1248,7 @@ hr {
 </ul>
 
 <p>The interaction column is narrow (20px) and separate from the value text, so clicking never accidentally opens the edit dialog. The mode is saved per-row in the rundown file and is not sent to CasparCG.</p>
+<p><b>Import Fields merges instead of replacing</b>: importing from <code>window.debugData</code> keeps the rows you already have &mdash; existing keys keep their current value and position (declared modes refresh from the template), and only missing keys are appended. Deleting a key and importing again simply brings that key back.</p>
 
 <hr>
 
@@ -718,7 +1299,7 @@ hr {
 <p>Visual overlay indicators show the current connection state:</p>
 <ul>
 <li>"Connecting..." while waiting for the first frame from a source</li>
-<li>Source name overlay once video is received</li>
+<li>Source name overlay once video is received &mdash; it auto-hides after 5 seconds to keep the picture clean (status/error overlays always stay visible)</li>
 <li>"Signal Lost" with red background when the NDI source goes offline</li>
 <li>Automatic recovery when the source comes back &mdash; no need to reconnect manually</li>
 </ul>
@@ -787,7 +1368,7 @@ hr {
 
 <h3>How It Works</h3>
 <ul>
-<li>Select any content item and open the <b>Embedded Transform</b> section in the inspector</li>
+<li>Select any content item and open the <b>Embedded Transform</b> section in the inspector (it starts collapsed to keep the inspector compact &mdash; click its header to expand; the toggle sticks for the session)</li>
 <li>Check any transform property to enable it: Fill, Opacity, Rotation, Anchor, Crop, Clip, Brightness, Contrast, Saturation, Volume</li>
 <li>On play, all enabled transforms are sent as <code>MIXER ... DEFER</code> commands, then <code>MIXER COMMIT</code>, then the content plays &mdash; fully atomic, no visual jumps</li>
 <li>Optional <b>Entrance Animation</b>: animate a property (e.g. fade opacity from 0 to 1) after the content appears</li>
@@ -988,7 +1569,134 @@ hr {
 <li><b>Fixed device add dialog</b>: Adding a new CasparCG server no longer fails with "parameter count mismatch" when the database is missing the ServerPath column. A safety-net check now adds the column on startup if needed.</li>
 <li><b>Fixed preview channel override leak</b>: After using Shift+Play (preview mode), the preview channel override no longer leaks into the inspector display, saved rundown files, or OSC-triggered playback. The inspector shows the real channel, writeProperties saves the real channel, and OSC handlers clear the override before executing.</li>
 <li><b>Fixed OSC trigger channel override</b>: OSC-triggered and bank-triggered commands now clear any lingering preview channel override before executing, ensuring they always use the configured channel.</li>
+<li><b>Fixed crash editing template key/values after the item changed</b>: the template, HTTP GET/POST and Simple inspectors kept a raw pointer to the selected item's command; if that item was deleted or rebuilt (move, undo, reload), the next click in the key/value table dereferenced freed memory and crashed the client. All cached command pointers are now auto-nulling QPointers with guards on every write-back path.</li>
+<li><b>Fixed Activity panel keeping rows after Clear CH / Clear VL</b>: clearing a channel (F12) or videolayer (F11/F10) now broadcasts the clear, so the Activity panel removes every row on the affected channel/layer &mdash; play rows, progress rows and auto-loop countdowns alike. The same broadcast also stops other items' delayed auto-loops on the cleared channel, matching the Clear Output panic item's behavior.</li>
+<li><b>Fixed spanned panels not collapsing correctly</b>: a spanned panel's height lives on its layout-grid row, which never followed the panel's collapse. Collapse/expand on a spanned panel now rebuilds the layout: collapsed rows shrink to the compact header (resize handle hidden), expand restores the saved span height.</li>
+<li><b>Fixed a crash after deleting rundown items or pressing undo while Simple Mode is open.</b> The grid held pointers to tree items that had been destroyed &mdash; deletion frees them, and an undo rebuilds every item from scratch &mdash; so pressing a key could dereference freed memory. Both paths now tell the grid, which drops the stale pointers and rebuilds.</li>
+<li><b>Simple Mode keys hold their place.</b> Positions are written down as soon as a key is drawn, so removing a button &mdash; or deleting its item from the rundown &mdash; leaves every other key where it was instead of sliding up. Changing the grid width  translates saved positions through their row and column. A position is written only the first time a key is drawn, so a key temporarily displaced by a neighbour that grew keeps its saved home and returns to it.</li>
+<li><b>Each key carries a tally strip</b> along its top edge that lights while that key is the <b>last thing fired</b> on its channel &mdash; the same moment and the same per-channel rule the rundown uses for its own active marker, and the same active colour. The strip always occupies its height, so lighting up never moves anything on the key.</li>
+<li><b>Each key carries a channel badge</b> directly under its control row, showing channel and layer, using the same channel-colour logic as the rundown badges.</li>
+<li><b>Fixed invoke dropdowns showing the previous item's functions</b>: the Function dropdowns kept the functions discovered for the previously selected template. They now re-scan the selected item's own template on every selection.</li>
+<li><b>Wheel-safe inspector inputs</b>: spin boxes, dropdowns and sliders in the inspector (and the Simple Inspector) only react to the mouse wheel after being clicked &mdash; scrolling the inspector page no longer changes values by accident; the wheel scrolls the page instead.</li>
 </ul>
+
+<h2 id="auto-save">Auto-save and crash recovery</h2>
+
+<p>A rundown is a file, and nothing was ever written to it without being asked. A crash took whatever had not been saved with it.</p>
+
+<p>The client now keeps a <b>recovery copy</b> of every rundown with unsaved changes, in <code>~/.CasparCG/Client/AutoSave</code>, rewritten on a timer. It is offered back at the next launch only if the client did not shut down cleanly &mdash; a normal quit already asked about unsaved work, so the copies are thrown away with it.</p>
+
+<ul>
+<li><b>Your own rundown files are never written to by this.</b> A recovered rundown opens marked unsaved, pointing at the file it came from, and nothing reaches that file until you save.</li>
+<li>The restore prompt <b>names the rundowns</b> rather than counting them, so you can see whether the one you care about is in there before deciding.</li>
+<li>Declining is a decision, not a deferral: the copies go, and you are not asked again at every launch about work you already said you did not want.</li>
+<li>Each copy is written to a temporary name and renamed into place, so a crash during a write can never leave a half-written recovery file.</li>
+<li>Empty rundowns and repository rundowns are skipped &mdash; there is nothing in one to recover, and the other is not ours to save.</li>
+</ul>
+
+<p><b>Settings &rarr; General &rarr; Rundown</b>: turn it off, or change the interval (1&ndash;60 minutes, 3 by default).</p>
+
+<h2 id="shell-command">Shell Command items</h2>
+
+<p>A rundown item that runs a program on this machine. It is for the kit CasparCG does not talk to: a router, a projector shutter, a telnet box, a script that does the part no protocol covers.</p>
+
+<p>It behaves like any other item &mdash; delay, channel badge, trigger banks, GPI, OSC remote triggering, clone support &mdash; and adds four fields of its own:</p>
+
+<ul>
+<li><b>Command</b> &mdash; program and arguments, quoted the way you would in a terminal, so a path with a space in it works.</li>
+<li><b>Run in</b> &mdash; an optional working folder.</li>
+<li><b>Trigger on next</b> &mdash; fire on Next rather than Play.</li>
+<li><b>Wait for it</b> &mdash; hold the rundown until the program exits, with a timeout (1&ndash;300 s) after which it is killed. Off by default, because a rundown should not stall on a program that decides to take its time.</li>
+</ul>
+
+<p><b>Every run is logged to the Http Log panel</b> with its exit code and whatever the program printed, stdout and stderr together, so a program that failed can say why. Stop on a running item kills it.</p>
+
+<h3>It is off until you turn it on</h3>
+
+<p>A rundown is a file that gets shared, and one arriving from somewhere else should not be able to run a program on your machine by being opened. So:</p>
+
+<ul>
+<li><b>Shell Command items are refused unless this client has been told to allow them</b> &mdash; <code>Settings &rarr; General &rarr; Rundown &rarr; Allow Shell Command items to run</code>, off by default.</li>
+<li>A refused item <b>says so on the row and in the inspector</b> rather than failing silently at air time, and the refusal is logged like any other run.</li>
+<li>The gate is checked when the item fires, not when it is edited, so a rundown can be built and moved between machines and only the machine that has been told to allow it runs anything.</li>
+</ul>
+
+<h2 id="preview-plays">Preview that plays instead of freezing</h2>
+
+<p><i>(Built earlier; documented here because it was never written down.)</i></p>
+
+<p>The stock client's preview loads the first frame and stops. This fork sends <b>any playout hotkey to the preview channel</b> instead of the program channel, so what you get is the thing actually playing.</p>
+
+<ul>
+<li>Set a <b>Preview Channel</b> per server in <code>Settings &rarr; Servers</code>.</li>
+<li>Hold the <b>preview modifier</b> (<code>Settings &rarr; Hotkeys</code>: Shift, Ctrl, Alt or None) and press any playout key &mdash; F2, F7, whatever &mdash; and it goes to the preview channel.</li>
+<li>Or latch it with the <b>PVW</b> button in the Server Status panel, and every key goes to preview until you turn it off.</li>
+<li>The selected item's channel badge shows the preview channel while the modifier is held, so there is no guessing about where the next key will land.</li>
+<li>Taking an item to program clears only the preview layer that item lit.</li>
+</ul>
+
+<p><code>Settings &rarr; General &rarr; Preview</code> also has <b>Load template without playing on preview (F8)</b> for the old behaviour, and a preview-mode border you can turn off.</p>
+
+<h2 id="preview-panel">The Preview panel shows the thing, not a thumbnail of it</h2>
+
+<p>The panel used to show a small database thumbnail for stills, play the local file for movies, and nothing at all for anything else. It now previews what is actually selected, <b>with no CasparCG server running</b>: everything it needs comes off local disk, using the Media path and Template path already set per server.</p>
+
+<p><b>Images</b> load from the real file rather than the database thumbnail. The thumbnail is small, and it only exists once a server has scanned the media &mdash; this panel now works before that has ever happened.</p>
+
+<p><b>Videos</b> keep the timebar and gain a stop button. Drag the bar to scrub.</p>
+
+<p><b>Templates render.</b> The panel loads the template's own <code>.html</code> and shows it running, with four buttons that call what a CasparCG template understands:</p>
+
+<ul>
+<li><b>Play</b> &mdash; <code>update()</code> with the template's own <code>debugData</code>, then <code>play()</code></li>
+<li><b>Next</b> &mdash; <code>next()</code></li>
+<li><b>Update</b> &mdash; <code>update()</code> with the template's own <code>debugData</code></li>
+<li><b>Stop</b> &mdash; <code>stop()</code></li>
+</ul>
+
+<p>Update feeds the template the sample values it already carries in <code>window.debugData</code> &mdash; the same block the Inspector reads to build its typed fields &mdash; so the preview shows a populated graphic without anything being typed. A rundown item is previewed under the template name <b>on the item</b>, not the one it was dragged in with, so retyping it in the Inspector changes what you see.</p>
+
+<p><b>Audio meters</b> are drawn over the picture, one bar per channel. Qt cannot tap what the player is playing, so the levels are decoded from the file separately and held on a timeline the meter reads by position. That is better than metering the stream, not a workaround for it: the meters cannot drift out of sync, <b>scrubbing moves them</b>, and a paused frame keeps showing what that moment sounds like. Peaks are taken instantly and the fall is rate-limited, so a transient is never under-reported and the bars can still be read.</p>
+
+<h3>Settings &rarr; General &rarr; Preview</h3>
+
+<ul>
+<li><b>Start playing a video as soon as it is selected</b> &mdash; off, because selecting an item during a show should not start making noise on its own.</li>
+<li><b>Show audio meters over the picture</b> &mdash; on.</li>
+<li><b>Render templates in the Preview panel</b> &mdash; on, where the build can.</li>
+<li><b>Legacy preview (thumbnails only, as before)</b> &mdash; puts all of it back exactly as it was. The other three switch off with it.</li>
+</ul>
+
+<h3>One build note</h3>
+
+<p>Rendering a template needs <b>Qt WebEngine</b>, which is a large component that minimal Qt installs do not carry. It is optional on purpose: a build without it compiles and runs unchanged, and the panel says so where the template would be. Everything else here &mdash; images, video, the timebar, the meters &mdash; needs nothing extra.</p>
+
+<h2 id="ograf">OGraf graphics</h2>
+
+<p><a href="https://ograf.ebu.io/">OGraf</a> is the EBU's open specification for HTML broadcast graphics: a graphic is a folder holding a <code>*.ograf.json</code> manifest, a Javascript module whose default export is a Web Component, and its resources. Any compliant renderer can play any compliant graphic, which is the point of it.</p>
+
+<p><b>The Preview panel renders them.</b> Point a server's Template path at a folder of graphics and select one, and the panel loads the module the manifest names, puts the component in the page, and drives it through the spec's own API:</p>
+
+<ul>
+<li><b>Play</b> &mdash; <code>playAction({ goto: 0 })</code></li>
+<li><b>Next</b> &mdash; <code>playAction({ delta: 1 })</code>, the OGraf step model</li>
+<li><b>Update</b> &mdash; <code>updateAction({ data })</code></li>
+<li><b>Stop</b> &mdash; <code>stopAction({})</code></li>
+</ul>
+
+<p><code>load()</code> runs first with the graphic's initial state and is awaited before any action, which is how the spec says to avoid the race in load-then-play.</p>
+
+<p><b>A graphic previews populated, not empty.</b> OGraf carries sample values as JSON Schema <code>default</code>s in the manifest's <code>schema</code> field, and those are read and handed to the graphic. This is the standard version of the <code>window.debugData</code> convention this fork already reads for CasparCG templates &mdash; same idea, but one every OGraf tool speaks. A default of <code>""</code>, <code>0</code> or <code>false</code> is kept: those are real values a graphic may rely on, and dropping them is the easy bug here.</p>
+
+<p>Both shapes of storage are accepted: a name pointing straight at <code>&lt;name&gt;.ograf.json</code>, or a name that is a folder holding exactly one manifest. A folder with several manifests is ambiguous by design &mdash; the spec allows it, so those graphics have to be named individually.</p>
+
+<p><b>A manifest is a file that arrives from somewhere else</b>, so <code>main</code> and every thumbnail path is refused rather than sanitised if it could reach outside the graphic's own folder, and an <code>id</code> containing a slash is refused outright. A graphic that fails to load says why, in the panel, with the error from the manifest or the stack from the module.</p>
+
+<h3>Two limits worth knowing</h3>
+
+<p><b>It needs Qt WebEngine</b>, like the template preview it is built on. A build without it says so in the panel and everything else works.</p>
+
+<p><b>Browsing for graphics still needs a server.</b> The panel previews whatever is selected, and it needs no server to do it &mdash; but the Library that lists what you can select is still filled by a server scan. Graphics already in a saved rundown preview with nothing running.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

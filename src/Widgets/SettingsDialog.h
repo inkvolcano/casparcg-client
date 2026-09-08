@@ -74,11 +74,20 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxShowChannelHeaders;
         QCheckBox* checkBoxShowBankIcons;
         QCheckBox* checkBoxHttpLogLastOnly;
+        QCheckBox* checkBoxAutoSaveEnabled;
+        QCheckBox* checkBoxAllowShellCommands;
+        QCheckBox* checkBoxPreviewAutoPlayVideo;
+        QCheckBox* checkBoxPreviewAudioMeters;
+        QCheckBox* checkBoxPreviewTemplates;
+        QCheckBox* checkBoxPreviewLegacyMode;
+        QLabel* labelAutoSaveMinutes;
+        QSpinBox* spinBoxAutoSaveMinutes;
         QCheckBox* checkBoxShowLastAction;
         QCheckBox* checkBoxActiveIndicatorPerChannel;
         QComboBox* comboBoxDisconnectMode;
         QCheckBox* checkBoxActivityGrow;
         QSpinBox* spinBoxNdiOutputs;
+        QCheckBox* checkBoxNdiRestoreOutputs = nullptr;
         QComboBox* comboBoxNdiBandwidth;
         QComboBox* comboBoxNdiFpsLimit;
         QComboBox* comboBoxNdiScaling;
@@ -86,6 +95,41 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QComboBox* comboBoxTimezone1;
         QComboBox* comboBoxTimezone2;
         LayoutEditorWidget* layoutEditor;
+        LayoutEditorWidget* simpleLayoutEditor = nullptr;
+        QSpinBox* spinBoxSimpleColumns = nullptr;
+        QCheckBox* checkBoxSimplePlayStop = nullptr;
+        QCheckBox* checkBoxSimplePreview = nullptr;
+
+    // Sheets: where the cache lives, what the per-minute budget is, and where the
+    // strain figures are published so something outside can total them up.
+    QLineEdit* lineEditSheetsCacheUrl = nullptr;
+    QSpinBox* spinBoxSheetsQuota = nullptr;
+    QLineEdit* lineEditSheetsStrainUrl = nullptr;
+    QCheckBox* checkBoxHostSheetCache = nullptr;
+    QSpinBox* spinBoxSheetCachePort = nullptr;
+    QLineEdit* lineEditSheetCacheDir = nullptr;
+    QCheckBox* checkBoxSheetCacheBypass = nullptr;
+    QPushButton* buttonClearSheetCache = nullptr;
+    void refreshSheetCacheSize();
+    QSpinBox* spinBoxWarmStale = nullptr;
+    QSpinBox* spinBoxWarmSpacing = nullptr;
+
+    QCheckBox* checkBoxTemplatePush = nullptr;
+    QLineEdit* lineEditTemplatePushToken = nullptr;
+    QLineEdit* lineEditTemplatePushPath = nullptr;
+
+    QCheckBox* checkBoxRelayEnabled = nullptr;
+    QLineEdit* lineEditRelayUrl = nullptr;
+    QLineEdit* lineEditRelayToken = nullptr;
+    QSpinBox* spinBoxRelayPoll = nullptr;
+    QLineEdit* lineEditRelayPacks = nullptr;
+    QCheckBox* checkBoxRelayPacksLocal = nullptr;
+    QLabel* labelRelayStatus = nullptr;
+
+    // One checkbox per discovered template project, writing the `local` flag straight
+    // into that project's project.js.
+    QWidget* sheetProjectsBox = nullptr;
+    void buildSheetProjectsGroup();
 
         // Panel sizing combos (Layout tab).
         struct PanelSizingEntry {

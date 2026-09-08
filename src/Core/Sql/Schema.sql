@@ -149,6 +149,37 @@ INSERT INTO Configuration (Name, Value) VALUES('HotkeyBank9Alt', '');
 INSERT INTO Configuration (Name, Value) VALUES('ShowStatusPanel', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowPreviewBorder', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowPVWButton', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('NdiRestoreOutputs', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('TemplatePushEnabled', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('TemplatePushToken', '');
+INSERT INTO Configuration (Name, Value) VALUES('TemplatePushPath', '');
+
+-- Pulling template packs from a relay, so a dev machine on another network can
+-- reach this client without this client opening anything inbound. Off until an
+-- operator turns it on, and an empty token never matches.
+INSERT INTO Configuration (Name, Value) VALUES('RelayEnabled', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('RelayUrl', '');
+INSERT INTO Configuration (Name, Value) VALUES('RelayToken', '');
+INSERT INTO Configuration (Name, Value) VALUES('RelayPollMinutes', '15');
+-- Empty means every pack the relay carries; a list means only those.
+INSERT INTO Configuration (Name, Value) VALUES('RelayPacks', '');
+
+-- Where the GitHub API lives. Empty means github.com. A GitHub Enterprise
+-- Server has its own, usually https://github.example.com/api/v3, and without
+-- this a client on one could not reach its own repositories at all.
+INSERT INTO Configuration (Name, Value) VALUES('RelayGitHubApi', '');
+
+-- Normally the source decides which packs a machine takes, so one person can
+-- run the whole estate from one place. This is the way out of that for a single
+-- machine: set it and the Packs field on this client wins instead.
+INSERT INTO Configuration (Name, Value) VALUES('RelayPacksLocal', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('AutoSaveEnabled', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('AutoSaveMinutes', '3');
+INSERT INTO Configuration (Name, Value) VALUES('AllowShellCommands', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('PreviewLegacyMode', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('PreviewAutoPlayVideo', 'false');
+INSERT INTO Configuration (Name, Value) VALUES('PreviewAudioMeters', 'true');
+INSERT INTO Configuration (Name, Value) VALUES('PreviewTemplates', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');

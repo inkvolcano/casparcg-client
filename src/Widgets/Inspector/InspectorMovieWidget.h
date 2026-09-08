@@ -11,6 +11,8 @@
 #include <QtCore/QObject>
 #include <QtCore/QString>
 
+#include <QtWidgets/QCheckBox>
+#include <QtWidgets/QSpinBox>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT InspectorMovieWidget : public QWidget, Ui::InspectorMovieWidget
@@ -24,6 +26,9 @@ class WIDGETS_EXPORT InspectorMovieWidget : public QWidget, Ui::InspectorMovieWi
         LibraryModel* model;
         MovieCommand* command;
         bool enableOscInputControl;
+
+        QCheckBox* checkBoxAutoLoop = nullptr;
+        QSpinBox* spinBoxAutoLoopDelay = nullptr;
 
         void loadDirection();
         void loadTransition();
@@ -40,5 +45,7 @@ class WIDGETS_EXPORT InspectorMovieWidget : public QWidget, Ui::InspectorMovieWi
         Q_SLOT void seekChanged(int);
         Q_SLOT void lengthChanged(int);
         Q_SLOT void autoPlayChanged(int);
+        Q_SLOT void autoLoopChanged(int);
+        Q_SLOT void autoLoopDelayChanged(int);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
 };

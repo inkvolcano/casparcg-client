@@ -55,6 +55,7 @@ class WIDGETS_EXPORT RundownFocusGatewayWidget : public QWidget, Ui::RundownFocu
         virtual void clearDelayedCommands() {}
         virtual void setUsed(bool /* used */) {}
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
         void updateVisuals();
         void setTreeItem(QTreeWidgetItem* item);

@@ -6,6 +6,7 @@
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
+#include "Commands/TemplateCommand.h"
 #include "Commands/BlendModeCommand.h"
 #include "Commands/GridCommand.h"
 #include "Commands/BrightnessCommand.h"
@@ -50,6 +51,8 @@
 
 #include <QtCore/QtMath>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 
 InspectorOutputWidget::InspectorOutputWidget(QWidget *parent)
@@ -593,11 +596,9 @@ void InspectorOutputWidget::fillTargetCombo(const QString &type, QString deviceN
 
     if (deviceModel)
     {
-        QList<LibraryModel> models;
-        if (this->libraryFilter.isEmpty())
-            models = DatabaseManager::getInstance().getLibraryByDeviceId(deviceModel->getId());
-        else
-            models = DatabaseManager::getInstance().getLibraryByDeviceIdAndFilter(deviceModel->getId(), this->libraryFilter);
+        // Always use the unfiltered library list for the Inspector target combo.
+        // The library filter is for the Library panel display, not for the Inspector.
+        QList<LibraryModel> models = DatabaseManager::getInstance().getLibraryByDeviceId(deviceModel->getId());
 
         if (models.count() > 0)
         {
@@ -771,6 +772,9 @@ void InspectorOutputWidget::allowGpiChanged(int state)
     for (AbstractCommand* cmd : this->allCommands)
         cmd->setAllowGpi(checked);
 }
+
+
+
 
 void InspectorOutputWidget::allowRemoteTriggeringChanged(int state)
 {

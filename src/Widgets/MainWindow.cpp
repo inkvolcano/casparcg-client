@@ -1,13 +1,21 @@
 #include "MainWindow.h"
+
+#include "../Common/PanelFit.h"
+
+#include <QtGui/QScreen>
 #include "AboutDialog.h"
 #include "ClockWidget.h"
 #include "HelpDialog.h"
 #include "HttpResponsePanelWidget.h"
+#include "SheetsPanelWidget.h"
+#include "SimpleModeWidget.h"
+#include "SimpleInspectorWidget.h"
 #include "NdiPanelWidget.h"
 #include "PanelHelper.h"
 #include "PanelResizeHandle.h"
 #include "PerformancePanelWidget.h"
 #include "Rundown/RundownWidget.h"
+#include "Rundown/RundownTreeWidget.h"
 #include "SettingsDialog.h"
 #include "StatusBarWidget.h"
 #include "WhatsNewDialog.h"
@@ -16,6 +24,7 @@
 #include "Global.h"
 
 #include "EventManager.h"
+#include "SheetCacheServer.h"
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "Events/ExportPresetEvent.h"
@@ -45,11 +54,15 @@
 #include <QtCore/QDebug>
 #include <QtCore/QFileInfo>
 
+#include <QtCore/QSignalBlocker>
+
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QMouseEvent>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QMessageBox>
 #include <QtGui/QShortcut>
 #include <QtWidgets/QToolButton>
@@ -89,6 +102,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetNdi = new NdiPanelWidget(this);
     this->widgetPerformance = new PerformancePanelWidget(this);
     this->widgetHttpLog = new HttpResponsePanelWidget(this);
+    this->widgetSheets = new SheetsPanelWidget(this);
+    this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
+    this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
     rebuildLayout();
 
@@ -109,6 +125,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->previewBorderOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
     this->previewBorderOverlay->setFrameShape(QFrame::NoFrame);
     this->previewBorderOverlay->hide();
+
+    // Channel lock border overlay (red border + label showing locked channels).
+    this->lockBorderOverlay = new QFrame(Ui::MainWindow::centralWidget);
+    this->lockBorderOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
+    this->lockBorderOverlay->setFrameShape(QFrame::NoFrame);
+    this->lockBorderOverlay->hide();
+
+    this->lockBorderLabel = new QLabel(this->lockBorderOverlay);
+    this->lockBorderLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    this->lockBorderLabel->setStyleSheet(
+        "QLabel { background-color: rgba(198, 40, 40, 230); color: white; "
+        "padding: 3px 10px; font-size: 11px; font-weight: bold; "
+        "border: 0px; border-radius: 0px 0px 6px 6px; }");
+    this->lockBorderLabel->setAlignment(Qt::AlignCenter);
+    this->lockBorderLabel->hide();
+
+    QObject::connect(&DeviceManager::getInstance(),
+                     SIGNAL(channelLockChanged(const QString&, int, bool)),
+                     this, SLOT(channelLockChanged(const QString&, int, bool)));
 
     qApp->installEventFilter(this);
 
@@ -136,7 +171,72 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     // can never push the window beyond the screen (including when maximized).
     QTimer::singleShot(0, this, [this]() { constrainToScreen(); });
 
+    // Recovery copies only survive a launch that did not shut down cleanly, so
+    // finding any here means the last session ended badly. Asked after the window
+    // is up and before the What's New dialog, because losing work outranks news.
+    QTimer::singleShot(500, this, [this]() { offerAutoSaveRecovery(); });
+
     QTimer::singleShot(10000, this, [this]() { WhatsNewDialog::showOnStartupIfEnabled(this); });
+}
+
+void MainWindow::offerAutoSaveRecovery()
+{
+    QStringList pending = RundownWidget::pendingAutoSaves();
+    if (pending.isEmpty())
+        return;
+
+    // Name the rundowns rather than counting them: "Recover 2 rundowns?" does not
+    // tell an operator whether the one they care about is in there.
+    QStringList names;
+    foreach (const QString& path, pending)
+    {
+        QString original = RundownWidget::autoSaveOriginalPath(path);
+        names.append(original.isEmpty() ? QString("%1 (never saved)").arg(QFileInfo(path).completeBaseName())
+                                        : QFileInfo(original).fileName());
+    }
+
+    QMessageBox box(this);
+    box.setWindowTitle("Recover Rundowns");
+    box.setWindowIcon(QIcon(":/Graphics/Images/CasparCG.png"));
+    box.setIconPixmap(QPixmap(":/Graphics/Images/Attention.png"));
+    box.setText(QString("The client did not shut down cleanly. Unsaved changes were auto-saved for:\n\n%1\n\n"
+                        "Open them? Nothing is written to the original files until you save.")
+                    .arg(names.join("\n")));
+    box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    for (QAbstractButton* button : box.buttons())
+    {
+        button->setIcon(QIcon());
+        button->setFocusPolicy(Qt::NoFocus);
+    }
+
+    if (box.exec() != QMessageBox::Yes)
+    {
+        // Declining is a decision, not a deferral. Keeping them would ask again at
+        // every launch about work the operator has already said they do not want.
+        RundownWidget::clearAutoSaves();
+        return;
+    }
+
+    foreach (const QString& path, pending)
+    {
+        QString original = RundownWidget::autoSaveOriginalPath(path);
+
+        EventManager::getInstance().fireNewRundownEvent(NewRundownEvent());
+
+        RundownWidget* rundownWidget = findChild<RundownWidget*>();
+        if (rundownWidget == nullptr)
+            break;
+
+        RundownTreeWidget* tab = rundownWidget->activeTreeWidget();
+        if (tab == nullptr)
+            break;
+
+        tab->openAutoSaveCopy(path, original);
+    }
+
+    // The recovered work is on screen and marked unsaved, so the copies have done
+    // their job. Leaving them would offer the same rundowns again next launch.
+    RundownWidget::clearAutoSaves();
 }
 
 void MainWindow::setupMenu()
@@ -178,10 +278,21 @@ void MainWindow::setupMenu()
     this->compactViewAction = this->viewMenu->addAction("Compact View");
     this->compactViewAction->setCheckable(true);
     this->viewMenu->addSeparator();
+
+    // Simple Mode: streamdeck-style operator interface with its own layout.
+    QAction* simpleModeAction = this->viewMenu->addAction("Simple Mode");
+    simpleModeAction->setCheckable(true);
+    simpleModeAction->setChecked(DatabaseManager::getInstance().getConfigurationByName("SimpleMode").getValue() == "true");
+    QObject::connect(simpleModeAction, &QAction::toggled, this, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "SimpleMode", checked ? "true" : "false"));
+        EventManager::getInstance().fireRebuildLayout();
+    });
+    this->viewMenu->addSeparator();
     this->viewMenu->addAction("Split Horizontal", this->widgetRundown, SLOT(splitHorizontal()), QKeySequence::fromString("Ctrl+\\"));
     this->viewMenu->addAction("Split Vertical", this->widgetRundown, SLOT(splitVertical()), QKeySequence::fromString("Ctrl+Shift+\\"));
     this->viewMenu->addSeparator();
-    this->viewMenu->addAction("Toggle Fullscreen", this, SLOT(toggleFullscreen()), QKeySequence::fromString("Ctrl+F"));
+    this->viewMenu->addAction("Toggle Fullscreen", this, SLOT(toggleFullscreen()));
 
     this->libraryMenu = new QMenu(this);
     this->libraryMenu->addAction("Refresh Library", this, SLOT(refreshLibrary()), QKeySequence::fromString("Ctrl+R"));
@@ -240,6 +351,25 @@ void MainWindow::setupMenu()
     this->otherMenu->addSeparator();
     this->otherMenu->addAction("Disconnect Stream", []() {
         EventManager::getInstance().fireDisconnectStreamEvent();
+    });
+
+    // The switch that gets thrown mid-show: reads stop being answered so graphics go
+    // live to the sheet, while writes keep landing so the cache does not go cold.
+    this->otherMenu->addSeparator();
+    this->sheetCacheBypassAction = this->otherMenu->addAction("Sheet Cache Bypass");
+    this->sheetCacheBypassAction->setCheckable(true);
+    this->sheetCacheBypassAction->setChecked(SheetCacheServer::isBypassing());
+    this->sheetCacheBypassAction->setToolTip(
+        "Serve nothing, keep warming. Also reachable at /bypass?on=1 while the client hosts the cache.");
+    QObject::connect(this->sheetCacheBypassAction, &QAction::toggled, this, [](bool bypass) {
+        SheetCacheServer::setBypassing(bypass);
+    });
+
+    // It can be thrown from outside too, so read the real state as the menu opens.
+    QObject::connect(this->otherMenu, &QMenu::aboutToShow, this, [this]() {
+        QSignalBlocker blocker(this->sheetCacheBypassAction);
+        this->sheetCacheBypassAction->setChecked(SheetCacheServer::isBypassing());
+        this->sheetCacheBypassAction->setEnabled(SheetCacheServer::isEnabled());
     });
 
     this->helpMenu = new QMenu(this);
@@ -767,6 +897,11 @@ void MainWindow::showSettingsDialog()
     QObject::connect(dialog, SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
 
     dialog->exec();
+
+    // The auto-save settings live in that dialog, and an interval the operator
+    // just changed should take effect now rather than after the old one elapses.
+    if (this->widgetRundown != nullptr)
+        this->widgetRundown->applyAutoSaveSettings();
 }
 
 void MainWindow::toggleFullscreen()
@@ -838,13 +973,80 @@ void MainWindow::updatePreviewBorder()
     }
 }
 
+void MainWindow::channelLockChanged(const QString& deviceName, int channel, bool locked)
+{
+    Q_UNUSED(deviceName);
+    Q_UNUSED(channel);
+    Q_UNUSED(locked);
+    updateLockBorder();
+}
+
+void MainWindow::updateLockBorder()
+{
+    if (this->lockBorderOverlay == nullptr)
+        return;
+
+    // Collect all locked channels across devices and globals (deduped per channel).
+    QMap<int, QStringList> lockedByChannel; // channel -> list of device names ("All" for global)
+    foreach (const DeviceModel& dm, DeviceManager::getInstance().getDeviceModels())
+    {
+        QSet<int> chs = DeviceManager::getInstance().getLockedChannels(dm.getName());
+        foreach (int ch, chs)
+            lockedByChannel[ch].append(dm.getName());
+    }
+    foreach (int ch, DeviceManager::getInstance().getGlobalLockedChannels())
+    {
+        if (!lockedByChannel[ch].contains("All"))
+            lockedByChannel[ch].prepend("All");
+    }
+
+    if (lockedByChannel.isEmpty())
+    {
+        this->lockBorderOverlay->hide();
+        return;
+    }
+
+    // Build label text: "Locked: Ch1, Ch3, Ch5".
+    QStringList parts;
+    QList<int> channels = lockedByChannel.keys();
+    std::sort(channels.begin(), channels.end());
+    for (int ch : channels)
+        parts.append(QString("Ch%1").arg(ch));
+    QString labelText = QString::fromUtf8("\xf0\x9f\x94\x92 Locked: %1").arg(parts.join(", "));
+
+    this->lockBorderOverlay->setStyleSheet(
+        "background: transparent; border: 3px solid rgba(198, 40, 40, 230);");
+    this->lockBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+
+    this->lockBorderLabel->setText(labelText);
+    this->lockBorderLabel->adjustSize();
+    int labelW = this->lockBorderLabel->width();
+    int labelH = this->lockBorderLabel->height();
+    int borderW = this->lockBorderOverlay->width();
+    // Position at top-center, just below the top border line.
+    this->lockBorderLabel->setGeometry((borderW - labelW) / 2, 3, labelW, labelH);
+    this->lockBorderLabel->show();
+
+    this->lockBorderOverlay->raise();
+    this->lockBorderOverlay->show();
+}
+
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
-    // Keep the preview border overlay sized to centralWidget.
+    // Keep the preview/lock border overlays sized to centralWidget.
     if (obj == Ui::MainWindow::centralWidget && event->type() == QEvent::Resize)
     {
         if (this->previewBorderOverlay && this->previewBorderOverlay->isVisible())
             this->previewBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+        if (this->lockBorderOverlay && this->lockBorderOverlay->isVisible())
+        {
+            this->lockBorderOverlay->setGeometry(Ui::MainWindow::centralWidget->rect());
+            // Re-center the label.
+            int labelW = this->lockBorderLabel->width();
+            int labelH = this->lockBorderLabel->height();
+            int borderW = this->lockBorderOverlay->width();
+            this->lockBorderLabel->setGeometry((borderW - labelW) / 2, 3, labelW, labelH);
+        }
     }
 
     if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
@@ -912,6 +1114,8 @@ static int defaultPanelHeight(const QString& id)
     if (id == "Clock") return Panel::DEFAULT_CLOCK_HEIGHT;
     if (id == "Performance") return Panel::DEFAULT_PERFORMANCE_HEIGHT;
     if (id == "HttpLog") return Panel::DEFAULT_HTTPLOG_HEIGHT;
+    if (id == "Sheets") return Panel::DEFAULT_SHEETS_HEIGHT;
+    if (id == "SimpleInspector") return Panel::DEFAULT_SIMPLE_INSPECTOR_HEIGHT;
     return 0;
 }
 
@@ -923,6 +1127,7 @@ static int defaultCompactHeight(const QString& id)
     if (id == "Clock") return Panel::COMPACT_CLOCK_HEIGHT;
     if (id == "Performance") return Panel::COMPACT_PERFORMANCE_HEIGHT;
     if (id == "HttpLog") return Panel::COMPACT_HTTPLOG_HEIGHT;
+    if (id == "Sheets") return Panel::COMPACT_SHEETS_HEIGHT;
     if (id == "Library") return 25;
     if (id == "NDI") return 25;
     return 25; // fallback: just the tab header
@@ -936,6 +1141,11 @@ void MainWindow::rebuildLayout()
     // Bulk-load all configuration into a local cache (single DB query instead of 50+).
     QMap<QString, QString> cfg = DatabaseManager::getInstance().getAllConfigurations();
     auto cfgVal = [&cfg](const QString& key) -> QString { return cfg.value(key, QString()); };
+
+    // Simple Mode swaps the center for the button grid and uses its own
+    // independent column/panel assignment (Simple* config keys).
+    const bool simpleModeActive = cfgVal("SimpleMode") == "true";
+    const QString layoutKeyPrefix = simpleModeActive ? "Simple" : "";
 
     // Local equivalents of PanelHelper functions using the cache.
     auto localPanelMode = [&cfgVal](const QString& id) -> QString {
@@ -960,9 +1170,9 @@ void MainWindow::rebuildLayout()
     };
 
     // Read column order from cache.
-    QString orderStr = cfgVal("LayoutColumnOrder");
+    QString orderStr = cfgVal(layoutKeyPrefix + "LayoutColumnOrder");
     if (orderStr.isEmpty())
-        orderStr = "panel1,mainwindow,panel2";
+        orderStr = simpleModeActive ? "mainwindow" : "panel1,mainwindow,panel2";
     QStringList columns = orderStr.split(",", Qt::SkipEmptyParts);
 
     // Ensure mainwindow is always present.
@@ -1014,8 +1224,8 @@ void MainWindow::rebuildLayout()
     QList<QWidget*> movable = {
         widgetAudioLevels, widgetPreview, widgetLibrary,
         widgetDuration, serverTab, activityTab, banksTab,
-        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetInspector,
-        widgetStatusBar, widgetClock
+        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetSheets, widgetInspector,
+        widgetSimpleInspector, widgetStatusBar, widgetClock
     };
     for (auto* w : movable)
     {
@@ -1029,6 +1239,14 @@ void MainWindow::rebuildLayout()
     if (splitterHorizontal->parentWidget() && splitterHorizontal->parentWidget()->layout())
         splitterHorizontal->parentWidget()->layout()->removeWidget(splitterHorizontal);
     splitterHorizontal->setParent(this);
+    if (simpleModeActive)
+        splitterHorizontal->hide(); // Rundown stays alive (items, hotkey routing) but invisible.
+
+    // Detach the simple-mode grid the same way; it is re-added when active.
+    if (widgetSimpleMode->parentWidget() && widgetSimpleMode->parentWidget()->layout())
+        widgetSimpleMode->parentWidget()->layout()->removeWidget(widgetSimpleMode);
+    widgetSimpleMode->setParent(this);
+    widgetSimpleMode->hide();
 
     // Keep widgetStatusPanel alive — it owns the serverTab/activityTab/banksTab
     // sub-widgets. Without this, deleting layoutWidget3 (its .ui parent) would
@@ -1045,10 +1263,10 @@ void MainWindow::rebuildLayout()
 
     // DB key for each panel.
     QMap<QString, QString> panelDbKeys;
-    panelDbKeys["panel1"] = "LayoutPanel1";
-    panelDbKeys["panel2"] = "LayoutPanel2";
-    panelDbKeys["panel3"] = "LayoutPanel3";
-    panelDbKeys["panel4"] = "LayoutPanel4";
+    panelDbKeys["panel1"] = layoutKeyPrefix + "LayoutPanel1";
+    panelDbKeys["panel2"] = layoutKeyPrefix + "LayoutPanel2";
+    panelDbKeys["panel3"] = layoutKeyPrefix + "LayoutPanel3";
+    panelDbKeys["panel4"] = layoutKeyPrefix + "LayoutPanel4";
 
     QList<int> sizes;
     panelContainers.clear();
@@ -1061,6 +1279,34 @@ void MainWindow::rebuildLayout()
     {
         bool hasExpanding = false;
         bool hasAnchorDown = false;
+
+        // Measure the whole column before handing any of it out. Deciding each panel
+        // as it comes does not work: the first takes what it wants and the rest are
+        // left with a floor each, which still adds up past the screen.
+        int wantedTotal = 0;
+        foreach (const QString& measureId, widgetIds)
+        {
+            QString id = measureId.trimmed();
+            QWidget* w = widgetById(id);
+            if (w == nullptr)
+                continue;
+
+            QString mode = localPanelMode(id);
+            if (mode == "expanding")
+                continue;                       // takes what is left over, not a fixed share
+
+            if (mode == "resizable")
+            {
+                wantedTotal += cfgVal(id + "PanelHeight").toInt();
+                continue;
+            }
+
+            int h = w->property("panelFixedHeight").toInt();
+            wantedTotal += (h > 0) ? h : defaultPanelHeight(id);
+        }
+
+        double columnScale = panelColumnScale(wantedTotal, availableScreenHeight());
+
         for (int i = 0; i < widgetIds.size(); i++)
         {
             QString id = widgetIds[i].trimmed();
@@ -1101,7 +1347,12 @@ void MainWindow::rebuildLayout()
                 {
                     QString hStr = cfgVal(id + "PanelHeight");
                     if (!hStr.isEmpty())
-                        w->setFixedHeight(hStr.toInt());
+                    {
+                        // Reduced by the column's share, so a panel dragged tall on a
+                        // big monitor cannot leave the window impossible to fit on a
+                        // smaller one. Untouched whenever the column already fits.
+                        w->setFixedHeight(fitPanelHeight(hStr.toInt(), columnScale));
+                    }
                     layout->addWidget(w, 0);
 
                     auto* handle = new PanelResizeHandle(w, id, w->height(), container);
@@ -1113,7 +1364,7 @@ void MainWindow::rebuildLayout()
                     if (h <= 0)
                         h = defaultPanelHeight(id);
                     if (h > 0)
-                        w->setFixedHeight(h);
+                        w->setFixedHeight(fitPanelHeight(h, columnScale));
                     layout->addWidget(w, 0);
                 }
 
@@ -1296,13 +1547,23 @@ void MainWindow::rebuildLayout()
 
         if (col == "mainwindow")
         {
-            // Main window column: contains the rundown / action splitter.
+            // Main window column: the rundown/action splitter — or, in Simple
+            // Mode, the streamdeck-style button grid.
             QWidget* container = new QWidget();
             QVBoxLayout* layout = new QVBoxLayout(container);
             layout->setContentsMargins(0, 0, 0, 0);
             layout->setSpacing(4);
-            layout->addWidget(splitterHorizontal);
-            splitterHorizontal->show();
+            if (simpleModeActive)
+            {
+                layout->addWidget(widgetSimpleMode);
+                widgetSimpleMode->show();
+                widgetSimpleMode->refresh();
+            }
+            else
+            {
+                layout->addWidget(splitterHorizontal);
+                splitterHorizontal->show();
+            }
 
             splitterVertical->addWidget(container);
             this->mainWindowContainer = container;
@@ -1346,21 +1607,36 @@ void MainWindow::rebuildLayout()
 
                 if (isSpanWidget)
                 {
-                    // Span widgets: expanding inside cell + resize handle targets cell.
-                    w->setMinimumHeight(0);
-                    w->setMaximumHeight(QWIDGETSIZE_MAX);
-                    QSizePolicy sp = w->sizePolicy();
-                    sp.setVerticalPolicy(QSizePolicy::Preferred);
-                    w->setSizePolicy(sp);
-                    cellLayout->addWidget(w, 1);
+                    if (PanelHelper::isPanelCollapsed(wid))
+                    {
+                        // Collapsed: the panel manages its own compact height —
+                        // the cell hugs it. No saved span height, no resize handle
+                        // (collapse/expand triggers a rebuild, see setPanelCollapsed).
+                        cellLayout->addWidget(w, 0);
+                    }
+                    else
+                    {
+                        // Span widgets: expanding inside cell + resize handle targets cell.
+                        w->setMinimumHeight(0);
+                        w->setMaximumHeight(QWIDGETSIZE_MAX);
+                        QSizePolicy sp = w->sizePolicy();
+                        sp.setVerticalPolicy(QSizePolicy::Preferred);
+                        w->setSizePolicy(sp);
+                        cellLayout->addWidget(w, 1);
 
-                    auto* handle = new PanelResizeHandle(cell, wid, 300, cell);
-                    cellLayout->addWidget(handle);
+                        auto* handle = new PanelResizeHandle(cell, wid, 300, cell);
+                        cellLayout->addWidget(handle);
 
-                    // Restore saved span height on the cell container.
-                    QString hStr = cfgVal(wid + "PanelHeight");
-                    if (!hStr.isEmpty())
-                        cell->setFixedHeight(hStr.toInt());
+                        // Restore saved span height on the cell container, clamped
+                        // so one spanned row cannot outgrow the screen on its own.
+                        QString hStr = cfgVal(wid + "PanelHeight");
+                        if (!hStr.isEmpty())
+                        {
+                            int wanted = hStr.toInt();
+                            cell->setFixedHeight(fitPanelHeight(
+                                wanted, panelColumnScale(wanted, availableScreenHeight())));
+                        }
+                    }
                 }
                 else
                 {
@@ -1378,7 +1654,11 @@ void MainWindow::rebuildLayout()
                     {
                         QString hStr = cfgVal(wid + "PanelHeight");
                         if (!hStr.isEmpty())
-                            w->setFixedHeight(hStr.toInt());
+                        {
+                            int wanted = hStr.toInt();
+                            w->setFixedHeight(fitPanelHeight(
+                                wanted, panelColumnScale(wanted, availableScreenHeight())));
+                        }
                         cellLayout->addWidget(w, 0);
 
                         auto* handle = new PanelResizeHandle(w, wid, w->height(), cell);
@@ -1449,9 +1729,10 @@ void MainWindow::rebuildLayout()
                     if (cell)
                         gridLayout->addWidget(cell, gridRow, startCol, 1, colSpan);
 
-                    // Row stretch: auto-expand if no saved height.
+                    // Row stretch: auto-expand if no saved height — but never for a
+                    // collapsed panel, whose row must shrink to its compact height.
                     QString hStr = cfgVal(foundSpan->widgetId + "PanelHeight");
-                    if (hStr.isEmpty())
+                    if (hStr.isEmpty() && !PanelHelper::isPanelCollapsed(foundSpan->widgetId))
                     {
                         gridLayout->setRowStretch(gridRow, 1);
                         anyRowHasStretch = true;
@@ -1605,6 +1886,12 @@ void MainWindow::rebuildLayout()
     QTimer::singleShot(0, this, [this]() { constrainToScreen(); });
 }
 
+int MainWindow::availableScreenHeight() const
+{
+    QScreen* screen = this->screen();
+    return screen == nullptr ? 0 : screen->availableGeometry().height();
+}
+
 void MainWindow::constrainToScreen()
 {
     QScreen* screen = this->screen();
@@ -1613,7 +1900,11 @@ void MainWindow::constrainToScreen()
 
     QRect available = screen->availableGeometry();
 
-    // Set maximum size so Qt layouts can never push the window beyond the screen.
+    // A maximum alone does not do it. Qt settles a layout minimum against an
+    // explicit maximum by honouring the minimum, so a column of fixed-height panels
+    // taller than the screen would ignore this entirely. What keeps the window on
+    // the display is fitPanelHeight clamping those heights as the layout is built;
+    // this is the belt to that pair of braces.
     this->setMaximumSize(available.size());
 
     // Shrink if currently too large.
@@ -1643,6 +1934,8 @@ QWidget* MainWindow::widgetById(const QString& id)
     if (id == "NDI") return widgetNdi;
     if (id == "Performance") return widgetPerformance;
     if (id == "HttpLog") return widgetHttpLog;
+    if (id == "Sheets") return widgetSheets;
+    if (id == "SimpleInspector") return widgetSimpleInspector;
     if (id == "Inspector") return widgetInspector;
     if (id == "StatusBar") return widgetStatusBar;
     if (id == "Clock") return widgetClock;

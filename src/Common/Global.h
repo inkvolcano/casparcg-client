@@ -188,6 +188,7 @@ namespace Color
     static const QString DEFAULT_FOCUSGATEWAY_COLOR = "rgba(100, 80, 180, 128)";  // Purple
     static const QString DEFAULT_COMMANDGATEWAY_COLOR = "rgba(180, 100, 40, 128)"; // Burnt Orange
     static const QString DEFAULT_STORED_DATA_COLOR = "rgba(120, 70, 30, 140)";    // Brown
+    static const QString DEFAULT_SHELLCOMMAND_COLOR = "rgba(70, 80, 95, 150)";    // Slate
     static const QString DEFAULT_TRANSPARENT_COLOR = "Transparent";
     // Reds
     static const QString BRIGHT_RED_COLOR = "rgba(220, 50, 50, 128)";
@@ -271,6 +272,8 @@ namespace Movie
     static const bool DEFAULT_FREEZE_ON_LOAD = false;
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_AUTO_PLAY = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace Html
@@ -288,6 +291,8 @@ namespace Still
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_USE_AUTO = false;
     static const bool DEFAULT_AUTO_PLAY = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace ImageScroller
@@ -334,6 +339,8 @@ namespace Template
     static const bool DEFAULT_TRIGGER_ON_NEXT = false;
     static const bool DEFAULT_SEND_AS_JSON = false;
     static const int DEFAULT_NEWLINE_BEHAVIOR = 2;  // 0=Ignore, 1=innerText, 2=innerHTML
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace DeckLinkInput
@@ -397,6 +404,8 @@ namespace Group
     static const QString DEFAULT_NOTE = "";
     static const bool DEFAULT_AUTO_PLAY = false;
     static const bool DEFAULT_LOOP = false;
+    static const bool DEFAULT_AUTO_LOOP = false;
+    static const int DEFAULT_AUTO_LOOP_DELAY = 5;
 }
 
 namespace TriggerBank
@@ -569,7 +578,7 @@ namespace WidgetHeaderCSS
                 {"ServerStatus", {"tabWidgetServer", nullptr}},
                 {"Activity",     {"tabWidgetActivity", nullptr}},
                 {"TriggerBanks", {"tabWidgetBanks", nullptr}},
-                {"Ndi",          {"tabWidgetNdi", nullptr}},
+                {"NDI",          {"tabWidgetNdi", nullptr}},
                 {"Performance",  {"tabWidgetPerformance", nullptr}},
             };
             for (const auto& p : panels)
@@ -646,6 +655,8 @@ namespace Rundown
     static const QString AUTOPLAYGATEWAY = "AUTOPLAYGATEWAY";
     static const QString FOCUSGATEWAY = "FOCUSGATEWAY";
     static const QString COMMANDGATEWAY = "COMMANDGATEWAY";
+    static const QString STOPAUTOLOOPS = "STOPAUTOLOOPS";
+    static const QString SHELLCOMMAND = "SHELLCOMMAND";
     static const int MAX_NUMBER_OF_RUNDONWS = 10;
     static const QString DEFAULT_NAME = "New Rundown";
     static const QString DEFAULT_AUDIO_NAME = "Audio";
@@ -680,6 +691,9 @@ namespace Panel
     static const int COMPACT_PERFORMANCE_HEIGHT = 25;
     static const int DEFAULT_HTTPLOG_HEIGHT = 200;
     static const int COMPACT_HTTPLOG_HEIGHT = 25;
+    static const int DEFAULT_SHEETS_HEIGHT = 320;
+    static const int COMPACT_SHEETS_HEIGHT = 25;
+    static const int DEFAULT_SIMPLE_INSPECTOR_HEIGHT = 320;
 }
 
 namespace Action

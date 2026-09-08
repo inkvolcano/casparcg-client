@@ -57,6 +57,8 @@
 #include "DatabaseManager.h"
 #include "EventManager.h"
 #include "DeviceManager.h"
+#include "CasparDevice.h"
+#include "../SheetDataResolver.h"
 #include "CloneGroupRegistry.h"
 #include "TriggerBankRegistry.h"
 #include "Events/PresetChangedEvent.h"
@@ -71,8 +73,12 @@
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
 
+#include "AutoSaveNaming.h"
+
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QFileInfo>
 #include <QtCore/QPoint>
 #include <QtCore5Compat/QTextCodec>
 #include <QtCore/QElapsedTimer>
@@ -81,6 +87,8 @@
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QSet>
 
+#include <functional>
+
 #include <QtGui/QClipboard>
 #include <QtGui/QIcon>
 #include <QtGui/QKeyEvent>
@@ -88,6 +96,7 @@
 #include <QtGui/QAction>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QTreeWidgetItem>
@@ -130,6 +139,8 @@ RundownTreeWidget::RundownTreeWidget(QWidget* parent)
     QObject::connect(&TriggerBankRegistry::getInstance(), SIGNAL(bankTriggered(int)), this, SLOT(bankTriggered(int)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(autostepModeChanged(bool)), this, SLOT(autostepModeChanged(bool)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(unitSettingsChanged()), this, SLOT(refreshUnitLabels()));
+    QObject::connect(&EventManager::getInstance(), &EventManager::previewModifierHeld,
+                     this, [this](bool held) { updatePreviewChannelBadgeForSelection(held); });
 
     // Direct signal connections for drag-and-drop from library/preset.
     // These bypass the EventManager so drops work into any pane, not just the focused one.
@@ -198,11 +209,13 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HtmlSmall.png"), "HTML Page", this, SLOT(addHtmlItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HttpGetSmall.png"), "HTTP GET Request", this, SLOT(addHttpGetItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/HttpGetSmall.png"), "HTTP POST Request", this, SLOT(addHttpPostItem()));
+    this->contextMenuOther->addAction(QIcon(":/Graphics/Images/CustomCommandSmall.png"), "Shell Command", this, SLOT(addShellCommandItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/OscOutputSmall.png"), "OSC Output", this, SLOT(addOscOutputItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/PlayoutCommandSmall.png"), "Playout Command", this, SLOT(addPlayoutCommandItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/RouteChannelSmall.png"), "Route Channel", this, SLOT(addRouteChannelItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/RouteVideolayerSmall.png"), "Route Video Layer", this, SLOT(addRouteVideolayerItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/SeparatorSmall.png"), "Separator", this, SLOT(addSeparatorItem()));
+    this->contextMenuOther->addAction(QIcon(":/Graphics/Images/ClearSmall.png"), "Stop All Auto-Loops", this, SLOT(addStopAutoLoopsItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/SolidColorSmall.png"), "Solid Color", this, SLOT(addSolidColorItem()));
 
     this->contextMenuTools = new QMenu(this);
@@ -297,6 +310,31 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuRundown->addSeparator();
     this->contextMenuRundown->addMenu(this->contextMenuColor);
     this->contextMenuRundown->addSeparator();
+
+    // Auto-Loop submenu (visible only for Movie/Still/Template; see customContextMenuRequested).
+    this->contextMenuAutoLoop = new QMenu(tr("Auto-Loop"), this);
+    this->actionAutoLoopEnable = this->contextMenuAutoLoop->addAction(tr("Enable Auto-Loop"));
+    this->actionAutoLoopEnable->setCheckable(true);
+    QObject::connect(this->actionAutoLoopEnable, SIGNAL(triggered()), this, SLOT(autoLoopEnableTriggered()));
+    this->contextMenuAutoLoop->addSeparator();
+    this->actionAutoLoopDelay5 = this->contextMenuAutoLoop->addAction(tr("Every 5 seconds"));
+    this->actionAutoLoopDelay10 = this->contextMenuAutoLoop->addAction(tr("Every 10 seconds"));
+    this->actionAutoLoopDelay30 = this->contextMenuAutoLoop->addAction(tr("Every 30 seconds"));
+    this->actionAutoLoopDelay60 = this->contextMenuAutoLoop->addAction(tr("Every 60 seconds"));
+    this->actionAutoLoopDelay5->setCheckable(true);
+    this->actionAutoLoopDelay10->setCheckable(true);
+    this->actionAutoLoopDelay30->setCheckable(true);
+    this->actionAutoLoopDelay60->setCheckable(true);
+    QObject::connect(this->actionAutoLoopDelay5, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(5); });
+    QObject::connect(this->actionAutoLoopDelay10, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(10); });
+    QObject::connect(this->actionAutoLoopDelay30, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(30); });
+    QObject::connect(this->actionAutoLoopDelay60, &QAction::triggered, this, [this]() { autoLoopDelayPresetTriggered(60); });
+    this->contextMenuAutoLoop->addSeparator();
+    this->actionAutoLoopDelayCustom = this->contextMenuAutoLoop->addAction(tr("Custom Delay..."));
+    QObject::connect(this->actionAutoLoopDelayCustom, SIGNAL(triggered()), this, SLOT(autoLoopDelayCustomTriggered()));
+    this->contextMenuRundown->addMenu(this->contextMenuAutoLoop);
+    this->contextMenuRundown->addSeparator();
+
     this->contextMenuRundown->addAction(/*QIcon(":/Graphics/Images/PresetSmall.png"),*/ "Save as Preset...", this, SLOT(saveAsPreset()));
     this->contextMenuRundown->addSeparator();
     this->contextMenuRundown->addAction(/*QIcon(":/Graphics/Images/Remove.png"),*/ "Remove", this, SLOT(removeSelectedItems()));
@@ -715,6 +753,8 @@ void RundownTreeWidget::autoPlayChanged(const AutoPlayChangedEvent& event)
             dynamic_cast<MovieCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
         else if (dynamic_cast<StillCommand*>(childRundownWidget->getCommand()))
             dynamic_cast<StillCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
+        else if (dynamic_cast<TemplateCommand*>(childRundownWidget->getCommand()))
+            dynamic_cast<TemplateCommand*>(childRundownWidget->getCommand())->setAutoPlay(event.getAutoPlay());
 
         // Also sync inner group children.
         if (childRundownWidget->isGroup())
@@ -729,6 +769,8 @@ void RundownTreeWidget::autoPlayChanged(const AutoPlayChangedEvent& event)
                     mc->setAutoPlay(event.getAutoPlay());
                 else if (StillCommand* sc = dynamic_cast<StillCommand*>(gcRundown->getCommand()))
                     sc->setAutoPlay(event.getAutoPlay());
+                else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcRundown->getCommand()))
+                    tc->setAutoPlay(event.getAutoPlay());
             }
         }
     }
@@ -830,6 +872,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                             gcShouldQueue = mc->getAutoPlay();
                                         else if (StillCommand* sc = dynamic_cast<StillCommand*>(gc->getCommand()))
                                             gcShouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+                                        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gc->getCommand()))
+                                            gcShouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
                                         if (gcShouldQueue) { peekNextWidget = gc; break; }
                                     }
                                 }
@@ -846,6 +890,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 childShouldQueue = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(child->getCommand()))
                                 childShouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(child->getCommand()))
+                                childShouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
                             if (childShouldQueue)
                                 peekNextWidget = child;
                         }
@@ -884,6 +930,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 nextHasAutoPlay = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(nextRundown->getCommand()))
                                 nextHasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(nextRundown->getCommand()))
+                                nextHasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
 
                             if (nextHasAutoPlay)
                             {
@@ -995,6 +1043,10 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                     {
                         if (sc->getAutoPlay() && sc->getDuration() > 0) { hasPlayable = true; break; }
                     }
+                    else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(crw->getCommand()))
+                    {
+                        if (tc->getAutoPlay() && tc->getDuration() > 0) { hasPlayable = true; break; }
+                    }
                 }
                 if (!hasPlayable)
                 {
@@ -1025,6 +1077,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                 gsq = mc->getAutoPlay();
                             else if (StillCommand* sc = dynamic_cast<StillCommand*>(gcrw->getCommand()))
                                 gsq = sc->getAutoPlay() && sc->getDuration() > 0;
+                            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcrw->getCommand()))
+                                gsq = tc->getAutoPlay() && tc->getDuration() > 0;
                             else if (gcrw->getLibraryModel()->getType() == Rundown::AUTOPLAYGATEWAY)
                                 gsq = true;
                             if (gsq)
@@ -1044,6 +1098,8 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                     sq = mc->getAutoPlay();
                 else if (StillCommand* sc = dynamic_cast<StillCommand*>(crw->getCommand()))
                     sq = sc->getAutoPlay() && sc->getDuration() > 0;
+                else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(crw->getCommand()))
+                    sq = tc->getAutoPlay() && tc->getDuration() > 0;
                 else if (crw->getLibraryModel()->getType() == Rundown::AUTOPLAYGATEWAY)
                     sq = true;
                 if (sq)
@@ -1184,6 +1240,11 @@ void RundownTreeWidget::autoPlayRundownItem(const AutoPlayRundownItemEvent& even
                                             if (sc->getAutoPlay() && sc->getDuration() > 0)
                                                 triggerChild = gcRundown;
                                         }
+                                        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(gcRundown->getCommand()))
+                                        {
+                                            if (tc->getAutoPlay() && tc->getDuration() > 0)
+                                                triggerChild = gcRundown;
+                                        }
                                     }
                                 }
 
@@ -1303,9 +1364,8 @@ void RundownTreeWidget::setActive(bool active)
     {
         EventManager::getInstance().fireAllowRemoteTriggeringEvent(AllowRemoteTriggeringEvent(this->allowRemoteRundownTriggering));
         EventManager::getInstance().fireRepositoryRundownEvent(RepositoryRundownEvent(this->repositoryRundown));
+        EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
     }
-
-    EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
 
     QTreeWidgetItem* currentItem = this->treeWidgetRundown->currentItem();
     QWidget* currentItemWidget = this->treeWidgetRundown->itemWidget(currentItem, 0);
@@ -1390,7 +1450,8 @@ void RundownTreeWidget::openRundown(const QString& path)
 
         this->treeWidgetRundown->setFocus();
 
-        DatabaseManager::getInstance().insertOpenRecent(path);
+        if (!this->suppressOpenRecent)
+            DatabaseManager::getInstance().insertOpenRecent(path);
 
         qDebug("RundownTreeWidget::openRundown %lld msec (%d items)", time.elapsed(), this->treeWidgetRundown->invisibleRootItem()->childCount());
     }
@@ -1544,21 +1605,7 @@ void RundownTreeWidget::saveRundown(bool saveAs)
 
         if (file.open(QFile::WriteOnly))
         {
-            QByteArray data;
-            QXmlStreamWriter writer(&data);
-
-            writer.setAutoFormatting(XmlFormatting::ENABLE_FORMATTING);
-            writer.setAutoFormattingIndent(XmlFormatting::NUMBER_OF_SPACES);
-
-            writer.writeStartDocument();
-            writer.writeStartElement("items");
-            writer.writeTextElement("allowremotetriggering", (this->allowRemoteRundownTriggering == true) ? "true" : "false");
-
-            for (int i = 0; i < this->treeWidgetRundown->invisibleRootItem()->childCount(); i++)
-                this->treeWidgetRundown->writeProperties(this->treeWidgetRundown->invisibleRootItem()->child(i), writer);
-
-            writer.writeEndElement();
-            writer.writeEndDocument();
+            QByteArray data = serialiseRundown();
 
             this->hexHash = QString(QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex());
             qDebug("Hash is %s", qPrintable(this->hexHash));
@@ -1577,16 +1624,8 @@ void RundownTreeWidget::saveRundown(bool saveAs)
     }
 }
 
-bool RundownTreeWidget::checkForSave() const
+QByteArray RundownTreeWidget::serialiseRundown() const
 {
-    // Don't save empty rundowns.
-    if (this->treeWidgetRundown->invisibleRootItem()->childCount() == 0)
-        return false;
-
-    // We can't save repository rundowns.
-    if (this->repositoryRundown)
-        return false;
-
     QByteArray data;
     QXmlStreamWriter writer(&data);
 
@@ -1603,13 +1642,139 @@ bool RundownTreeWidget::checkForSave() const
     writer.writeEndElement();
     writer.writeEndDocument();
 
-    QString hexHash = QString(QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex());
-    qDebug("Hash is %s", qPrintable(hexHash));
+    return data;
+}
+
+const QString& RundownTreeWidget::getActiveRundown() const
+{
+    return this->activeRundown;
+}
+
+bool RundownTreeWidget::openAutoSaveCopy(const QString& autoSavePath, const QString& originalPath)
+{
+    QFile source(autoSavePath);
+    if (!source.open(QFile::ReadOnly))
+        return false;
+
+    QByteArray content = source.readAll();
+    source.close();
+
+    // Drop the marker line the auto-save writer put in front of the rundown; what
+    // follows is ordinary rundown XML and has to reach the parser as such.
+    if (content.startsWith(AutoSaveNaming::marker()))
+    {
+        int newline = content.indexOf('\n');
+        if (newline < 0)
+            return false;
+
+        content = content.mid(newline + 1);
+    }
+
+    // openRundown() reads from a path, so the stripped copy needs one. It goes
+    // beside the recovery file rather than in the user's way, and is removed
+    // whether or not the load worked.
+    QString scratchPath = autoSavePath + ".restoring";
+
+    QFile scratch(scratchPath);
+    if (!scratch.open(QFile::WriteOnly | QFile::Truncate))
+        return false;
+
+    scratch.write(content);
+    scratch.close();
+
+    this->suppressOpenRecent = true;
+    openRundown(scratchPath);
+    this->suppressOpenRecent = false;
+
+    QFile::remove(scratchPath);
+
+    // openRundown() left this pointing at the scratch file and recorded its hash
+    // as the saved state. Both are wrong for a recovered rundown: it belongs to
+    // the file it was recovered for, and it is emphatically unsaved. Clearing the
+    // hash is what makes Ctrl+S and the quit prompt treat it as such.
+    this->activeRundown = originalPath.isEmpty() ? Rundown::DEFAULT_NAME : originalPath;
+    this->hexHash.clear();
+
+    EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
+
+    return true;
+}
+
+bool RundownTreeWidget::checkForSave() const
+{
+    // Don't save empty rundowns.
+    if (this->treeWidgetRundown->invisibleRootItem()->childCount() == 0)
+        return false;
+
+    // We can't save repository rundowns.
+    if (this->repositoryRundown)
+        return false;
+
+    QString hexHash = QString(QCryptographicHash::hash(serialiseRundown(), QCryptographicHash::Md5).toHex());
 
     if (hexHash != this->hexHash)
         return true;
 
     return false;
+}
+
+QString RundownTreeWidget::autoSaveStemFor(const QString& activeRundown)
+{
+    // Rundown::DEFAULT_NAME is this class's idea of "no file yet"; the naming
+    // rules themselves live in the header so they can be tested on their own.
+    if (activeRundown == Rundown::DEFAULT_NAME)
+        return AutoSaveNaming::stemFor(QString());
+
+    return AutoSaveNaming::stemFor(activeRundown);
+}
+
+bool RundownTreeWidget::writeAutoSaveCopy(const QString& directory) const
+{
+    // Only rundowns with something in them and something changed. checkForSave()
+    // already rules out empty and repository rundowns, so a copy is only ever made
+    // of work that would otherwise be lost.
+    if (!checkForSave())
+        return false;
+
+    QDir().mkpath(directory);
+
+    QString safeStem = autoSaveStemFor(this->activeRundown);
+
+    // The original path travels inside the file rather than in its name, so a
+    // restore knows where the rundown belongs without encoding a path in a
+    // filename. The rundown itself is written unchanged after this line.
+    QByteArray payload;
+    payload.append(AutoSaveNaming::marker());
+    payload.append(this->activeRundown.toUtf8().toPercentEncoding());
+    payload.append(" -->\n");
+    payload.append(serialiseRundown());
+
+    // Written to a temporary name and renamed into place, so a recovery file is
+    // never a half-written one: the crash this protects against can land here.
+    QString finalPath = QString("%1/%2.xml").arg(directory, safeStem);
+    QString partPath = finalPath + ".part";
+
+    QFile part(partPath);
+    if (!part.open(QFile::WriteOnly | QFile::Truncate))
+        return false;
+
+    if (part.write(payload) != payload.size())
+    {
+        part.close();
+        part.remove();
+        return false;
+    }
+
+    part.close();
+
+    QFile::remove(finalPath);
+    if (!QFile::rename(partPath, finalPath))
+    {
+        QFile::remove(partPath);
+        return false;
+    }
+
+    return true;
 }
 
 void RundownTreeWidget::colorizeItems(const QString& color)
@@ -1631,6 +1796,27 @@ void RundownTreeWidget::gpiPortTriggered(int gpiPort, GpiDevice* device)
 void RundownTreeWidget::gpiBindingChanged(int gpiPort, Playout::PlayoutType binding)
 {
     gpiBindings[gpiPort] = binding;
+}
+
+namespace
+{
+    // Apply a functor to autoLoop-capable commands of every selected item.
+    template <typename F>
+    void forEachSelectedAutoLoopCommand(QTreeWidget* tree, F fn)
+    {
+        for (QTreeWidgetItem* item : tree->selectedItems())
+        {
+            QWidget* widget = tree->itemWidget(item, 0);
+            AbstractRundownWidget* rw = dynamic_cast<AbstractRundownWidget*>(widget);
+            if (rw == nullptr) continue;
+
+            AbstractCommand* cmd = rw->getCommand();
+            if (auto* mc = dynamic_cast<MovieCommand*>(cmd))          fn(mc);
+            else if (auto* sc = dynamic_cast<StillCommand*>(cmd))     fn(sc);
+            else if (auto* tc = dynamic_cast<TemplateCommand*>(cmd))  fn(tc);
+            else if (auto* gc = dynamic_cast<GroupCommand*>(cmd))     fn(gc);
+        }
+    }
 }
 
 void RundownTreeWidget::customContextMenuRequested(const QPoint& point)
@@ -1789,6 +1975,30 @@ void RundownTreeWidget::customContextMenuRequested(const QPoint& point)
             action->setVisible(!isGatewayItem);
     }
 
+    // Auto-Loop submenu: visible only if at least one Movie/Still/Template item is selected.
+    bool hasAutoLoopTarget = false;
+    bool firstAutoLoopEnabled = false;
+    int firstAutoLoopDelay = 5;
+    bool tookFirst = false;
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [&](auto* cmd) {
+        hasAutoLoopTarget = true;
+        if (!tookFirst)
+        {
+            firstAutoLoopEnabled = cmd->getAutoLoop();
+            firstAutoLoopDelay = cmd->getAutoLoopDelay();
+            tookFirst = true;
+        }
+    });
+    this->contextMenuAutoLoop->menuAction()->setVisible(hasAutoLoopTarget);
+    if (hasAutoLoopTarget)
+    {
+        this->actionAutoLoopEnable->setChecked(firstAutoLoopEnabled);
+        this->actionAutoLoopDelay5->setChecked(firstAutoLoopDelay == 5);
+        this->actionAutoLoopDelay10->setChecked(firstAutoLoopDelay == 10);
+        this->actionAutoLoopDelay30->setChecked(firstAutoLoopDelay == 30);
+        this->actionAutoLoopDelay60->setChecked(firstAutoLoopDelay == 60);
+    }
+
     this->contextMenuRundown->exec(this->treeWidgetRundown->mapToGlobal(point));
 }
 
@@ -1896,6 +2106,40 @@ void RundownTreeWidget::contextMenuRundownTriggered(QAction* action)
         this->treeWidgetRundown->ungroupItems();
 }
 
+void RundownTreeWidget::autoLoopEnableTriggered()
+{
+    bool enable = this->actionAutoLoopEnable->isChecked();
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [enable](auto* cmd) {
+        cmd->setAutoLoop(enable);
+    });
+}
+
+void RundownTreeWidget::autoLoopDelayPresetTriggered(int seconds)
+{
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [seconds](auto* cmd) {
+        cmd->setAutoLoopDelay(seconds);
+    });
+}
+
+void RundownTreeWidget::autoLoopDelayCustomTriggered()
+{
+    // Seed with the delay of the first selected supported item.
+    int seed = 5;
+    bool taken = false;
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [&seed, &taken](auto* cmd) {
+        if (!taken) { seed = cmd->getAutoLoopDelay(); taken = true; }
+    });
+
+    bool ok = false;
+    int val = QInputDialog::getInt(this, tr("Auto-Loop Delay"),
+                                   tr("Seconds between fires:"), seed, 1, 3600, 1, &ok);
+    if (!ok) return;
+
+    forEachSelectedAutoLoopCommand(this->treeWidgetRundown, [val](auto* cmd) {
+        cmd->setAutoLoopDelay(val);
+    });
+}
+
 void RundownTreeWidget::createLinkedClone()
 {
     if (this->treeWidgetRundown->selectedItems().count() != 1)
@@ -1921,8 +2165,8 @@ void RundownTreeWidget::createLinkedClone()
     if (sourceCommand->getCloneGroupId().isEmpty())
         sourceCommand->setCloneGroupId(QUuid::createUuid().toString(QUuid::WithoutBraces));
 
-    // Clone the item. The clone() method copies all command properties.
-    AbstractRundownWidget* cloneWidget = sourceRundownWidget->clone();
+    // Clone the item. cloneItem() adds the properties every command shares.
+    AbstractRundownWidget* cloneWidget = sourceRundownWidget->cloneItem();
     cloneWidget->getCommand()->setCloneGroupId(sourceCommand->getCloneGroupId());
 
     // Insert the clone after the source item in the tree.
@@ -2237,18 +2481,46 @@ void RundownTreeWidget::itemSelectionChanged()
 {
     QList<QTreeWidgetItem*> selected = this->treeWidgetRundown->selectedItems();
 
-    // Clear selected flag on items no longer in the selection.
-    // Validate pointers first — undo/redo can invalidate previousSelectedItems.
+    // Build a set of all currently-live items in the tree.  Undo/redo destroys
+    // and rebuilds items, leaving previousSelectedItems holding dangling
+    // pointers.  Calling indexFromItem() on those would crash inside Qt
+    // (QTreeWidgetItem::icon access violation).
+    QSet<QTreeWidgetItem*> liveItems;
+    std::function<void(QTreeWidgetItem*)> collectLive = [&](QTreeWidgetItem* parent) {
+        for (int i = 0; i < parent->childCount(); i++)
+        {
+            QTreeWidgetItem* item = parent->child(i);
+            liveItems.insert(item);
+            if (item->childCount() > 0)
+                collectLive(item);
+        }
+    };
+    collectLive(this->treeWidgetRundown->invisibleRootItem());
+
+    // Clear selected flag on items no longer in the selection, but only if
+    // they still exist in the tree.
     for (QTreeWidgetItem* prev : this->previousSelectedItems)
     {
+        if (!liveItems.contains(prev))
+            continue; // Dangling pointer; skip silently.
+
         if (!selected.contains(prev))
         {
-            // Verify the item is still in the tree before accessing it.
-            if (this->treeWidgetRundown->indexFromItem(prev).isValid())
+            QWidget* w = this->treeWidgetRundown->itemWidget(prev, 0);
+            if (w != NULL)
             {
-                QWidget* w = this->treeWidgetRundown->itemWidget(prev, 0);
-                if (w != NULL)
-                    dynamic_cast<AbstractRundownWidget*>(w)->setSelected(false);
+                dynamic_cast<AbstractRundownWidget*>(w)->setSelected(false);
+
+                // If this item was showing preview channel due to held modifier, revert to base.
+                AbstractRundownWidget* rw = dynamic_cast<AbstractRundownWidget*>(w);
+                if (rw != nullptr && rw->getCommand() != nullptr)
+                {
+                    QLabel* labelColor = w->findChild<QLabel*>("labelColor");
+                    if (labelColor != nullptr)
+                        RundownWidgetHelper::updateChannelBadge(labelColor,
+                            rw->getCommand()->getBaseChannel(),
+                            rw->getCommand()->getVideolayer());
+                }
             }
         }
     }
@@ -2260,6 +2532,11 @@ void RundownTreeWidget::itemSelectionChanged()
         if (w != NULL)
             dynamic_cast<AbstractRundownWidget*>(w)->setSelected(true);
     }
+
+    // If the preview modifier is currently held, refresh the new selection's
+    // channel badge to the preview channel.
+    if (shouldPreviewRedirect())
+        updatePreviewChannelBadgeForSelection(true);
 
     this->previousSelectedItems = selected;
 
@@ -2552,8 +2829,47 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
         rundownWidgetParent = dynamic_cast<AbstractRundownWidget*>(selectedWidgetParent);
     }
 
+    // Dropdown group: the group is a chooser, not a container to fire as a whole.
+    // Every action aimed at it (Play button, F2, OSC, preview) is redirected to
+    // the child currently selected in its dropdown.
+    if (rundownWidget != nullptr)
+    {
+        if (GroupCommand* dropdownGroup = dynamic_cast<GroupCommand*>(rundownWidget->getCommand()))
+        {
+            if (dropdownGroup->getTreatAsDropdown() && currentItem != nullptr && currentItem->childCount() > 0)
+            {
+                int selected = qBound(0, dropdownGroup->getDropdownIndex(), currentItem->childCount() - 1);
+                QTreeWidgetItem* chosen = currentItem->child(selected);
+                QWidget* chosenWidget = this->treeWidgetRundown->itemWidget(chosen, 0);
+                AbstractRundownWidget* chosenRundown = dynamic_cast<AbstractRundownWidget*>(chosenWidget);
+                if (chosenRundown != nullptr)
+                {
+                    currentItem = chosen;
+                    selectedWidget = chosenWidget;
+                    selectedWidgetParent = this->treeWidgetRundown->itemWidget(chosen->parent(), 0);
+                    rundownWidget = chosenRundown;
+                    rundownWidgetParent = dynamic_cast<AbstractRundownWidget*>(selectedWidgetParent);
+                }
+            }
+        }
+    }
+
     if (source == Action::ActionType::GpiPulse && !rundownWidget->getCommand()->getAllowGpi())
         return true; // Gpi pulses cannot trigger this item.
+
+    // Check disabled — block execution on disabled items or items inside a disabled group.
+    if (rundownWidget->getCommand() != nullptr && rundownWidget->getCommand()->getDisabled())
+        return true;
+    {
+        QTreeWidgetItem* p = currentItem ? currentItem->parent() : nullptr;
+        while (p != nullptr)
+        {
+            AbstractRundownWidget* pw = dynamic_cast<AbstractRundownWidget*>(this->treeWidgetRundown->itemWidget(p, 0));
+            if (pw != nullptr && pw->getCommand() != nullptr && pw->getCommand()->getDisabled())
+                return true;
+            p = p->parent();
+        }
+    }
 
     // Check channel lock — block execution on locked channels.
     // In preview mode, check the preview channel instead of the original.
@@ -2716,7 +3032,7 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
     };
 
     // Helper to fire channel activity events for the status panel.
-    auto fireActivityEvent = [&type](AbstractRundownWidget* widget) {
+    auto fireActivityEvent = [this, &type, previewActive](AbstractRundownWidget* widget) {
         if (widget == nullptr || widget->getCommand() == nullptr || widget->isGroup())
             return;
 
@@ -2761,6 +3077,50 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
                     ChannelActivityEvent(deviceModel->getPreviewChannel(), vl, label, itemType, false));
             }
         }
+
+        // A sheet-driven template reads the sheet itself every time it renders, so a
+        // play is API traffic the client cannot see. Count it for the strain meter.
+        if (type == Playout::PlayoutType::Play || type == Playout::PlayoutType::PlayNow)
+        {
+            if (TemplateCommand* sheetTemplate = dynamic_cast<TemplateCommand*>(widget->getCommand()))
+                SheetDataResolver::getInstance().noteTemplatePlayed(widget->getLibraryModel()->getDeviceName(),
+                                                                    sheetTemplate->getTemplateName());
+        }
+
+        // Preview bookkeeping: remember the preview layers we light, and when the
+        // item is taken to program clear ONLY its own preview layer — other items
+        // parked on other layers of the preview channel must stay up.
+        {
+            QString previewDevice = widget->getLibraryModel()->getDeviceName();
+            const QSharedPointer<DeviceModel> previewModel =
+                DeviceManager::getInstance().getDeviceModelByName(previewDevice);
+            if (previewModel != nullptr && previewModel->getPreviewChannel() > 0)
+            {
+                QString key = QString("%1|%2|%3").arg(previewDevice)
+                    .arg(previewModel->getPreviewChannel()).arg(vl);
+
+                if (type == Playout::PlayoutType::Preview || previewActive)
+                {
+                    this->previewedLayers.insert(key);
+                }
+                else if ((type == Playout::PlayoutType::Play || type == Playout::PlayoutType::PlayNow)
+                         && this->previewedLayers.remove(key))
+                {
+                    const QSharedPointer<CasparDevice> previewCasparDevice =
+                        DeviceManager::getInstance().getDeviceByName(previewDevice);
+                    if (previewCasparDevice != nullptr && previewCasparDevice->isConnected())
+                        previewCasparDevice->clearVideolayer(previewModel->getPreviewChannel(), vl);
+                }
+            }
+        }
+
+        // A clear wipes more than the executed item: broadcast it (same event the
+        // Clear Output panic item fires) so other items' auto-loops on the affected
+        // channel/layer stop and the Activity panel sweeps every matching row.
+        if (type == Playout::PlayoutType::ClearChannel)
+            EventManager::getInstance().fireChannelClearedEvent(widget->getLibraryModel()->getDeviceName(), ch, -1);
+        else if (type == Playout::PlayoutType::Clear || type == Playout::PlayoutType::ClearVideoLayer)
+            EventManager::getInstance().fireChannelClearedEvent(widget->getLibraryModel()->getDeviceName(), ch, vl);
     };
 
     if (type == Playout::PlayoutType::Next && rundownWidgetParent != nullptr && rundownWidgetParent->isGroup() && dynamic_cast<GroupCommand*>(rundownWidgetParent->getCommand())->getAutoPlay())
@@ -2801,6 +3161,10 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
         }
 
         dynamic_cast<AbstractRundownWidget*>(selectedWidget)->setActive(true);
+
+        // Same moment the rundown marks its active item — the Simple Mode grid uses
+        // this to light the tally on the matching key.
+        EventManager::getInstance().fireRundownItemFiredEvent(currentItem, channel);
 
         // For top-level movies with autoPlay, use Next (direct PLAY) instead of Play (LOADBG AUTO).
         // LOADBG AUTO on an empty CasparCG layer doesn't start playback.
@@ -3176,6 +3540,8 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
             hasAutoPlay = mc->getAutoPlay();
         else if (StillCommand* sc = dynamic_cast<StillCommand*>(rundownWidget->getCommand()))
             hasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
+        else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(rundownWidget->getCommand()))
+            hasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
 
         if (hasAutoPlay)
         {
@@ -3271,6 +3637,11 @@ void RundownTreeWidget::addHttpPostItem()
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::HTTPPOST);
 }
 
+void RundownTreeWidget::addShellCommandItem()
+{
+    EventManager::getInstance().fireAddRudnownItemEvent(Rundown::SHELLCOMMAND);
+}
+
 void RundownTreeWidget::addOscOutputItem()
 {
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::OSCOUTPUT);
@@ -3299,6 +3670,11 @@ void RundownTreeWidget::addFileRecorderItem()
 void RundownTreeWidget::addSeparatorItem()
 {
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::SEPARATOR);
+}
+
+void RundownTreeWidget::addStopAutoLoopsItem()
+{
+    EventManager::getInstance().fireAddRudnownItemEvent(Rundown::STOPAUTOLOOPS);
 }
 
 void RundownTreeWidget::addAutoPlayGatewayItem()
@@ -4424,6 +4800,10 @@ void RundownTreeWidget::chainToNextTopLevelItem(int queueIndex, AbstractRundownW
     {
         hasAutoPlay = sc->getAutoPlay() && sc->getDuration() > 0;
     }
+    else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(nextRundown->getCommand()))
+    {
+        hasAutoPlay = tc->getAutoPlay() && tc->getDuration() > 0;
+    }
 
     if (!hasAutoPlay)
         return;
@@ -4448,6 +4828,38 @@ bool RundownTreeWidget::shouldPreviewRedirect() const
         (modifier == "Alt" && (mods & Qt::AltModifier));
 
     return modifierHeld;
+}
+
+void RundownTreeWidget::updatePreviewChannelBadgeForSelection(bool showPreview)
+{
+    if (!this->active)
+        return;
+
+    QList<QTreeWidgetItem*> selected = this->treeWidgetRundown->selectedItems();
+    for (QTreeWidgetItem* item : selected)
+    {
+        AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(this->treeWidgetRundown->itemWidget(item, 0));
+        if (widget == nullptr || widget->getCommand() == nullptr || widget->getLibraryModel() == nullptr)
+            continue;
+
+        // Find this item's channel badge label.
+        QLabel* labelColor = dynamic_cast<QWidget*>(widget)->findChild<QLabel*>("labelColor");
+        if (labelColor == nullptr)
+            continue;
+
+        int videolayer = widget->getCommand()->getVideolayer();
+        int channelToShow = widget->getCommand()->getBaseChannel();
+
+        if (showPreview)
+        {
+            QString deviceName = widget->getLibraryModel()->getDeviceName();
+            const QSharedPointer<DeviceModel> dm = DeviceManager::getInstance().getDeviceModelByName(deviceName);
+            if (dm != nullptr && dm->getPreviewChannel() > 0)
+                channelToShow = dm->getPreviewChannel();
+        }
+
+        RundownWidgetHelper::updateChannelBadge(labelColor, channelToShow, videolayer);
+    }
 }
 
 RundownTreeWidget::GatewayExitLocation RundownTreeWidget::findGatewayExitInTree(const QString& gatewayId, const QString& exitLabel) const
@@ -4649,6 +5061,8 @@ bool RundownTreeWidget::startAutoPlayFromGatewayExit(const QString& gatewayId, c
                 shouldQueue = mc->getAutoPlay();
             else if (StillCommand* sc = dynamic_cast<StillCommand*>(rw->getCommand()))
                 shouldQueue = sc->getAutoPlay() && sc->getDuration() > 0;
+            else if (TemplateCommand* tc = dynamic_cast<TemplateCommand*>(rw->getCommand()))
+                shouldQueue = tc->getAutoPlay() && tc->getDuration() > 0;
 
             if (shouldQueue)
             {

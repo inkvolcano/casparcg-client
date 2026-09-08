@@ -42,7 +42,11 @@ NdiPanelWidget::NdiPanelWidget(QWidget* parent)
     this->gridLayout->setSpacing(2);
     this->gridLayout->setContentsMargins(0, 0, 0, 0);
 
-    // Center the gridContainer within its parent tab layout.
+    // Fixed size policy so the layout uses our setFixedSize() result.
+    // The .ui has "Ignored" which would make the widget greedy and defeat centering.
+    this->gridContainer->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+    // Center the gridContainer horizontally and vertically in its parent tab area.
     this->verticalLayoutTab->setAlignment(this->gridContainer, Qt::AlignCenter);
 
     // Try to initialize NDI.
@@ -67,6 +71,12 @@ NdiPanelWidget::NdiPanelWidget(QWidget* parent)
     // Restore configuration and build the grid.
     restoreConfig();
     rebuildGrid();
+
+    // The first build almost always runs before discovery has found anything, so a
+    // tile named in the saved set is filled when its source turns up.
+    QObject::connect(&NdiManager::getInstance(), &NdiManager::sourcesChanged,
+                     this, &NdiPanelWidget::applyPendingAssignments);
+    applyPendingAssignments();
 }
 
 NdiPanelWidget::~NdiPanelWidget()
@@ -241,10 +251,14 @@ void NdiPanelWidget::rebuildGrid()
     if (!ndiAvailable)
         return;
 
-    // Save current source assignments.
+    // Carry the live assignments across the rebuild. At startup there are no viewers
+    // to carry anything from, so the set restored from the last session stands in.
     QList<QPair<QString, bool>> savedAssignments;
     for (NdiViewerWidget* v : viewers)
         savedAssignments.append(qMakePair(v->sourceName(), v->isMuted()));
+
+    if (savedAssignments.isEmpty())
+        savedAssignments = this->pendingAssignments;
 
     // Remove existing viewers from grid.
     for (NdiViewerWidget* v : viewers)
@@ -254,10 +268,12 @@ void NdiPanelWidget::rebuildGrid()
     }
     viewers.clear();
 
-    // Create new viewers.
+    // Create new viewers. Source-name overlays auto-hide after 5 seconds to
+    // keep the video area clean; error states stay visible.
     for (int i = 0; i < outputCount_; i++)
     {
         NdiViewerWidget* viewer = new NdiViewerWidget(this->gridContainer);
+        viewer->setLabelAutoHide(true);
         QObject::connect(viewer, &NdiViewerWidget::sourceChanged, this, &NdiPanelWidget::onViewerSourceChanged);
         viewers.append(viewer);
     }
@@ -401,6 +417,61 @@ void NdiPanelWidget::saveConfig()
         ConfigurationModel(0, "NdiOutputConfig", json));
 }
 
+// Off by default for nobody: a restored tile is what an operator set up last time.
+// The switch exists because reconnecting on launch is a decision about the network,
+// not just about this window.
+bool NdiPanelWidget::restoreOutputsEnabled()
+{
+    QString value = DatabaseManager::getInstance().getConfigurationByName("NdiRestoreOutputs").getValue();
+    return value.isEmpty() || value == "true";
+}
+
+// Sources arrive after discovery has run, which is usually well after the grid is
+// built, so this is called again on every discovery until every tile it can satisfy
+// has been satisfied.
+void NdiPanelWidget::applyPendingAssignments()
+{
+    if (this->pendingAssignments.isEmpty())
+        return;
+
+    QList<NdiSourceInfo> currentSources = NdiManager::getInstance().getSources();
+    bool anyLeft = false;
+
+    for (int i = 0; i < qMin(this->pendingAssignments.size(), this->viewers.size()); i++)
+    {
+        const QString& wanted = this->pendingAssignments[i].first;
+        if (wanted.isEmpty())
+            continue;
+
+        // Never take a tile the operator has already filled by hand.
+        if (!this->viewers[i]->sourceName().isEmpty())
+        {
+            this->pendingAssignments[i].first.clear();
+            continue;
+        }
+
+        bool found = false;
+        for (const NdiSourceInfo& src : currentSources)
+        {
+            if (src.name == wanted)
+            {
+                this->viewers[i]->connectToSource(src);
+                this->viewers[i]->setMuted(this->pendingAssignments[i].second);
+                this->pendingAssignments[i].first.clear();
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            anyLeft = true;
+    }
+
+    // Nothing still waiting on a source that might yet appear.
+    if (!anyLeft)
+        this->pendingAssignments.clear();
+}
+
 void NdiPanelWidget::restoreConfig()
 {
     // Output count.
@@ -431,6 +502,27 @@ void NdiPanelWidget::restoreConfig()
         auto def = defaultLayoutForCount(outputCount_);
         gridCols = def.first;
         gridRows = def.second;
+    }
+
+    // Which source was in which tile. Written on every change and, until now, never
+    // read back, so the grid returned the right shape with every tile empty.
+    this->pendingAssignments.clear();
+    if (!restoreOutputsEnabled())
+        return;
+
+    QString json = DatabaseManager::getInstance().getConfigurationByName("NdiOutputConfig").getValue();
+    if (json.isEmpty())
+        return;
+
+    QJsonDocument document = QJsonDocument::fromJson(json.toUtf8());
+    if (!document.isArray())
+        return;
+
+    for (const QJsonValue& value : document.array())
+    {
+        QJsonObject entry = value.toObject();
+        this->pendingAssignments.append(qMakePair(entry.value("source").toString(),
+                                                  entry.value("muted").toBool()));
     }
 }
 
@@ -490,6 +582,15 @@ void NdiPanelWidget::updateGridSize()
     // Clamp grid width to never exceed available width (prevents pushing column wider).
     gridW = qMin(gridW, availW);
     this->gridContainer->setFixedSize(qMax(gridW, 1), qMax(gridH, 1));
+
+    // Force the parent layout to re-run alignment so the grid recenters
+    // when the panel is resized via the splitter/resize handle. Without
+    // this, the QVBoxLayout caches positions and the grid stays offset
+    // until something invalidates the layout (e.g., collapse/expand).
+    if (this->verticalLayoutTab != nullptr)
+        this->verticalLayoutTab->invalidate();
+    if (parent != nullptr)
+        parent->updateGeometry();
 }
 
 // ---- Collapse / expand ----

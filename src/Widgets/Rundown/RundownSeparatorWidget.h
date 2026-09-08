@@ -50,6 +50,7 @@ class WIDGETS_EXPORT RundownSeparatorWidget : public QWidget, Ui::RundownSeparat
         virtual void clearDelayedCommands() {}
         virtual void setUsed(bool /* used */) {}
         virtual void setSelected(bool selected);
+        virtual void setRundownDisabled(bool disabled);
 
     private:
         bool active;

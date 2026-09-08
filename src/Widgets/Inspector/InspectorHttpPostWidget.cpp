@@ -1,4 +1,5 @@
 #include "InspectorHttpPostWidget.h"
+#include "DialogPosition.h"
 #include "KeyValueDialog.h"
 
 #include "Global.h"
@@ -121,6 +122,10 @@ void InspectorHttpPostWidget::blockAllSignals(bool block)
 
 void InspectorHttpPostWidget::updateHttpDataModels()
 {
+    // The tree can outlive the selected command — never touch a gone command.
+    if (this->command.isNull())
+        return;
+
     QList<KeyValueModel> models;
     for (int i = 0; i < this->treeWidgetHttpData->invisibleRootItem()->childCount(); i++)
         models.push_back(KeyValueModel(this->treeWidgetHttpData->invisibleRootItem()->child(i)->text(0),
@@ -132,7 +137,7 @@ void InspectorHttpPostWidget::updateHttpDataModels()
 bool InspectorHttpPostWidget::addRow()
 {
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("New HTTP POST Data");
     if (dialog->exec() == QDialog::Accepted)
     {
@@ -153,7 +158,7 @@ bool InspectorHttpPostWidget::editRow()
         return true;
 
     KeyValueDialog* dialog = new KeyValueDialog(this);
-    dialog->move(QPoint(QCursor::pos().x() - dialog->width() + 40, QCursor::pos().y() - dialog->height() - 10));
+    DialogPosition::moveNearCursor(dialog);
     dialog->setTitle("Edit HTTP POST Data");
     dialog->setKey(this->treeWidgetHttpData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetHttpData->currentItem()->text(1));
@@ -232,6 +237,9 @@ void InspectorHttpPostWidget::itemDoubleClicked(QTreeWidgetItem* current, int in
 
 void InspectorHttpPostWidget::urlChanged(QString url)
 {
+    if (this->command.isNull())
+        return;
+
     this->command->setUrl(url);
 
     checkEmptyUrl();
@@ -239,6 +247,9 @@ void InspectorHttpPostWidget::urlChanged(QString url)
 
 void InspectorHttpPostWidget::triggerOnNextChanged(int state)
 {
+    if (this->command.isNull())
+        return;
+
     this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
 }
 

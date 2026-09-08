@@ -30,6 +30,8 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
+#include <QtCore/QStringList>
+#include <QtCore/QTimer>
 
 #include <QtGui/QKeyEvent>
 #include <QtGui/QShortcut>
@@ -57,6 +59,28 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         bool checkForSaveBeforeQuit();
         QUndoGroup* undoGroup() const { return m_undoGroup; }
 
+        // Where recovery copies live, and whether any are waiting. Static so the
+        // startup path can ask before a RundownWidget exists.
+        static QString autoSaveDirectory();
+        static QStringList pendingAutoSaves();
+        static bool autoSaveEnabled();
+        static int autoSaveMinutes();
+
+        // Reads the "autosave of:" comment a recovery file carries, so the restore
+        // prompt can name the rundown it came from. Empty for one never saved.
+        static QString autoSaveOriginalPath(const QString& autoSavePath);
+
+        // Discards every recovery copy. Called on a clean quit, because after one
+        // there is nothing to recover — anything unsaved was offered and declined.
+        static void clearAutoSaves();
+
+        // Re-reads the auto-save settings and starts, restarts or stops the timer.
+        void applyAutoSaveSettings();
+
+        // The tree of the currently focused/active rundown tab (nullptr if none).
+        // Used by Simple Mode to enumerate items and drive selection.
+        RundownTreeWidget* activeTreeWidget() const;
+
     protected:
         bool eventFilter(QObject* watched, QEvent* event) override;
 
@@ -79,6 +103,8 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         QAction* openRecentMenuAction;
 
         QUndoGroup* m_undoGroup = nullptr;
+
+        QTimer* autoSaveTimer = nullptr;
 
         // Split view
         QSplitter* splitterRundown;
@@ -106,7 +132,6 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         QLabel* searchCountLabel = nullptr;
         QPushButton* searchPrevButton = nullptr;
         QPushButton* searchNextButton = nullptr;
-        QPushButton* searchCloseButton = nullptr;
         QList<SearchResult> searchResults;
         int searchCurrentIndex = -1;
 
@@ -128,6 +153,7 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         Q_SLOT void handleCrossTabFocusGateway(const QString& gatewayId, bool fromIsExit, const QString& exitLabel);
         Q_SLOT void refreshOpenRecent();
         Q_SLOT void openRecentMenuActionTriggered(QAction*);
+        Q_SLOT void autoSaveTick();
         Q_SLOT void clearOpenRecent();
         Q_SLOT void openRundownFromDisk();
         Q_SLOT void openRundownFromRepo();

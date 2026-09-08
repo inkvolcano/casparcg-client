@@ -32,6 +32,8 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         bool getTriggerOnNext() const;
         bool getUseAuto() const;
         bool getAutoPlay() const;
+        bool getAutoLoop() const;
+        int getAutoLoopDelay() const;
 
         void setImageName(const QString& imageName);
         void setTransition(const QString& transition);
@@ -41,6 +43,8 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         void setTriggerOnNext(bool triggerOnNext);
         void setUseAuto(bool useAuto);
         void setAutoPlay(bool autoPlay);
+        void setAutoLoop(bool autoLoop);
+        void setAutoLoopDelay(int autoLoopDelay);
 
         TransformData& getTransform();
         const TransformData& getTransform() const;
@@ -54,6 +58,8 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         bool triggerOnNext = Still::DEFAULT_TRIGGER_ON_NEXT;
         bool useAuto = Still::DEFAULT_USE_AUTO;
         bool autoPlay = false;
+        bool autoLoop = Still::DEFAULT_AUTO_LOOP;
+        int autoLoopDelay = Still::DEFAULT_AUTO_LOOP_DELAY;
         TransformData m_transform;
 
         Q_SIGNAL void imageNameChanged(const QString&);
@@ -64,4 +70,6 @@ class CORE_EXPORT StillCommand : public AbstractCommand
         Q_SIGNAL void triggerOnNextChanged(bool);
         Q_SIGNAL void useAutoChanged(bool);
         Q_SIGNAL void autoPlayChanged(bool);
+        Q_SIGNAL void autoLoopChanged(bool);
+        Q_SIGNAL void autoLoopDelayChanged(int);
 };
