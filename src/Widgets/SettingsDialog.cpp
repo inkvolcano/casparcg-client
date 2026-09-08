@@ -1152,6 +1152,18 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxPreviewTemplates, row, 1, 1, 3);
     row++;
 
+    this->checkBoxOgrafEnabled = new QCheckBox("Enable OGraf graphics support");
+    this->checkBoxOgrafEnabled->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxOgrafEnabled->setToolTip(
+        "OGraf is the EBU open specification for HTML broadcast graphics.\n\n"
+        "On: graphics in a template folder appear in the Library, render in the Preview\n"
+        "panel, and fill the Inspector fields from their own manifest.\n\n"
+        "Off: none of that is looked for. The Library does not walk the template folder\n"
+        "and no manifest is ever read, so a client that does not use OGraf pays nothing.");
+
+    grid->addWidget(this->checkBoxOgrafEnabled, row, 1, 1, 3);
+    row++;
+
     this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview (thumbnails only, as before)");
     this->checkBoxPreviewLegacyMode->setFocusPolicy(Qt::NoFocus);
     this->checkBoxPreviewLegacyMode->setToolTip("Puts the panel back exactly as it was: a database thumbnail for "
@@ -1521,6 +1533,23 @@ void SettingsDialog::setupGeneralTab()
     // in the panel, so the dialog cannot suggest a combination that does nothing.
     wireCheckBox(this->checkBoxPreviewAudioMeters, "PreviewAudioMeters");
     wireCheckBox(this->checkBoxPreviewTemplates, "PreviewTemplates");
+
+    // Off unless switched on, so this cannot use wireCheckBox(), which treats an
+    // unset value as on.
+    QString ografOn = DatabaseManager::getInstance().getConfigurationByName("OgrafEnabled").getValue();
+    this->checkBoxOgrafEnabled->setChecked(ografOn == "true");
+    QObject::connect(this->checkBoxOgrafEnabled, &QCheckBox::toggled, [](bool checked) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "OgrafEnabled", checked ? "true" : "false"));
+    });
+
+    if (!PreviewWidget::templateRenderingAvailable())
+    {
+        this->checkBoxOgrafEnabled->setText("Enable OGraf graphics support (rendering needs Qt WebEngine)");
+        this->checkBoxOgrafEnabled->setToolTip(
+            "This client was built without Qt WebEngine, so a graphic cannot be rendered.\n"
+            "The Library and the Inspector still read manifests when this is on.");
+    }
 
     QString previewAutoPlay = DatabaseManager::getInstance().getConfigurationByName("PreviewAutoPlayVideo").getValue();
     this->checkBoxPreviewAutoPlayVideo->setChecked(previewAutoPlay == "true");

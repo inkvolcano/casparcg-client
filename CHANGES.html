@@ -131,6 +131,7 @@ hr {
 <a href="#ui-polish">UI Polish</a><br>
 <a href="#performance">Performance</a><br>
 <a href="#compatibility">Compatibility</a><br>
+<a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
@@ -1835,6 +1836,38 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <h3>It is not why the client got faster</h3>
 
 <p>Splitting files is a compile-time and maintainability change; the same objects would have done the same work. The speed-up in this release came from a separate finding the split turned up &mdash; see below.</p>
+
+<h2 id="ograf-switch">OGraf, as one switch</h2>
+
+<p>OGraf graphics rendered in the Preview panel and filled the Inspector's typed fields from their manifests, but there was no way to <b>find</b> one: the Library lists what a server scanned, and a server does not know what OGraf is.</p>
+
+<p><b>Settings &rarr; General &rarr; Preview &rarr; Enable OGraf graphics support</b> now turns the whole thing on, and it is <b>off by default</b>.</p>
+
+<p>With it on, each server's template folder is walked and every graphic found is added to the <b>Library's Templates list</b>, showing the graphic's own name from its manifest, with the path beside it and the description as a tooltip. Drag one into a rundown and the rest already worked: it is a template item whose name resolves to a manifest, so it previews as a graphic and the Inspector builds its fields from the manifest's schema.</p>
+
+<h3>Off means off</h3>
+
+<p>The switch is not a display option. With OGraf off:</p>
+
+<ul>
+<li>The Library does <b>no extra walking</b> of the template folder.</li>
+<li>The Preview panel does not look for a manifest.</li>
+<li>The Inspector does not look for a manifest.</li>
+</ul>
+
+<p>A client that does not use OGraf does none of that work, which is the point of the default.</p>
+
+<h3>When it is on, the walk is bounded</h3>
+
+<ul>
+<li><b>Two levels deep.</b> A graphic keeps its manifest at the root of its own folder; below that is somebody's asset tree.</li>
+<li><b>Five hundred graphics</b>, then it stops. A folder with more than that is a mistake somewhere, and hanging is worse than stopping.</li>
+<li><b><code>node_modules</code>, <code>lib</code>, <code>assets</code>, <code>fonts</code>, <code>images</code> and dot-folders are never entered.</b> That is where a graphic keeps its dependencies, not where another graphic lives.</li>
+</ul>
+
+<h3>One honest limit</h3>
+
+<p>A graphic dragged into a rundown <b>previews, and does not play</b>. CasparCG Server has no OGraf support yet &mdash; SuperFly.tv have said they are building it. Until that lands this is for building and checking graphics, not for playing them out.</p>
 
 <h2 id="compatibility">Compatibility</h2>
 

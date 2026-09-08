@@ -1884,6 +1884,53 @@ finding the split turned up — see below.
 
 ---
 
+## OGraf, as one switch
+
+OGraf graphics rendered in the Preview panel and filled the Inspector's typed
+fields from their manifests, but there was no way to **find** one: the Library
+lists what a server scanned, and a server does not know what OGraf is.
+
+**Settings -> General -> Preview -> Enable OGraf graphics support** now turns the
+whole thing on, and it is **off by default**.
+
+With it on, each server's template folder is walked and every graphic found is
+added to the **Library's Templates list**, showing the graphic's own name from its
+manifest, with the path beside it and the description as a tooltip. Drag one into
+a rundown and the rest already worked: it is a template item whose name resolves
+to a manifest, so it previews as a graphic and the Inspector builds its fields
+from the manifest's schema.
+
+### Off means off
+
+The switch is not a display option. With OGraf off:
+
+- The Library does **no extra walking** of the template folder.
+- The Preview panel does not look for a manifest.
+- The Inspector does not look for a manifest.
+
+A client that does not use OGraf does none of that work, which is the point of
+the default.
+
+### When it is on, the walk is bounded
+
+A template folder can be enormous and the Library refreshes on a timer, so:
+
+- **Two levels deep.** A graphic keeps its manifest at the root of its own folder;
+  below that is somebody's asset tree.
+- **Five hundred graphics**, then it stops. A folder with more than that is a
+  mistake somewhere, and hanging is worse than stopping.
+- **`node_modules`, `lib`, `assets`, `fonts`, `images` and dot-folders are never
+  entered.** That is where a graphic keeps its dependencies, not where another
+  graphic lives.
+
+### One honest limit
+
+A graphic dragged into a rundown **previews, and does not play**. CasparCG Server
+has no OGraf support yet — SuperFly.tv have said they are building it. Until that
+lands this is for building and checking graphics, not for playing them out.
+
+---
+
 ## Compatibility
 
 - All changes are backward-compatible with existing rundown XML files

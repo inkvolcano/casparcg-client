@@ -676,7 +676,10 @@ void InspectorTemplateWidget::loadDebugData()
         // its manifest, with GDD's gddType naming the editor. That is the version
         // other tools already speak, so it is tried before this fork's own
         // window.debugData convention.
-        QString manifestPath = Ograf::findManifest(templatePath, templateName);
+        const bool ografOn = Ograf::isEnabledIn(
+            DatabaseManager::getInstance().getConfigurationByName("OgrafEnabled").getValue());
+
+        QString manifestPath = ografOn ? Ograf::findManifest(templatePath, templateName) : QString();
         if (!manifestPath.isEmpty())
         {
             loadOgrafFields(manifestPath);

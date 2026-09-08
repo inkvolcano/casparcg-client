@@ -185,6 +185,7 @@ INSERT INTO Configuration (Name, Value) VALUES('PreviewTemplates', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('WarnMissingMedia', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('RelayCheckInUrl', '');
 INSERT INTO Configuration (Name, Value) VALUES('RelayCheckInToken', '');
+INSERT INTO Configuration (Name, Value) VALUES('OgrafEnabled', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('ShowSTEPButton', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostep', 'Ctrl+Shift+N');
 INSERT INTO Configuration (Name, Value) VALUES('HotkeyToggleAutostepAlt', '');

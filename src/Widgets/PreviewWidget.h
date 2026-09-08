@@ -47,6 +47,10 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         // panel says so plainly when it was built without it.
         static bool showTemplates();
 
+        // The OGraf master switch. Off by default; when off, no manifest is ever
+        // looked for.
+        static bool ografEnabled();
+
         // True when this build can render a template at all.
         static bool templateRenderingAvailable();
 

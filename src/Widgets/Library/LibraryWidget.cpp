@@ -1,4 +1,6 @@
 #include "LibraryWidget.h"
+#include "OgrafLibrary.h"
+#include "OgrafManifest.h"
 
 #include "Global.h"
 #include "../PanelHelper.h"
@@ -780,7 +782,102 @@ void LibraryWidget::templateChanged(const TemplateChangedEvent& event)
         }
     }
 
+    appendOgrafGraphics();
+
     this->toolBoxLibrary->setItemText(Library::TEMPLATE_PAGE_INDEX, QString("Templates (%1)").arg(this->treeWidgetTemplate->topLevelItemCount()));
+}
+
+void LibraryWidget::appendOgrafGraphics()
+{
+    // The switch is checked before anything else, so a client with OGraf off
+    // never walks a template folder.
+    if (!Ograf::isEnabledIn(DatabaseManager::getInstance().getConfigurationByName("OgrafEnabled").getValue()))
+        return;
+
+    const QString filter = this->lineEditFilter->text().trimmed();
+    int found = 0;
+
+    foreach (const DeviceModel& device, DeviceManager::getInstance().getDeviceModels())
+    {
+        const QString templatePath = device.getTemplatePath();
+        if (templatePath.isEmpty() || !QFileInfo(templatePath).isDir())
+            continue;
+
+        // Breadth-first to a fixed depth. A graphic keeps its manifest at the
+        // root of its own folder, so one level down is where they are; below
+        // that is somebody's asset tree.
+        QList<QPair<QString, int>> queue;
+        queue.append(qMakePair(templatePath, 0));
+
+        while (!queue.isEmpty() && found < OgrafLibrary::maxGraphics())
+        {
+            const QPair<QString, int> current = queue.takeFirst();
+            QDir directory(current.first);
+
+            foreach (const QString& entry, directory.entryList(QStringList("*.ograf.json"), QDir::Files, QDir::Name))
+            {
+                if (!Ograf::isManifestFileName(entry))
+                    continue;
+
+                const QString manifestPath = directory.filePath(entry);
+                const Ograf::Manifest manifest = Ograf::load(manifestPath);
+
+                // A manifest that does not parse is not offered as something to
+                // drag into a rundown; the Preview panel explains why if the
+                // operator goes looking.
+                if (!manifest.valid)
+                    continue;
+
+                const QString relative = QDir(templatePath).relativeFilePath(manifestPath);
+                const QString itemName = OgrafLibrary::itemNameFor(relative);
+                const QString display = OgrafLibrary::displayNameFor(manifest.name, relative);
+
+                if (!filter.isEmpty() && !display.contains(filter, Qt::CaseInsensitive)
+                    && !itemName.contains(filter, Qt::CaseInsensitive))
+                {
+                    continue;
+                }
+
+                // The name is what a rundown item will carry, and it has to be
+                // the string that finds this manifest again from the template
+                // path — otherwise an item dragged from here would not preview.
+                QTreeWidgetItem* widget = new QTreeWidgetItem(this->treeWidgetTemplate);
+                widget->setIcon(0, QIcon(":/Graphics/Images/TemplateSmall.png"));
+                widget->setText(0, display);
+                widget->setText(1, "0");
+                widget->setText(2, display);
+                widget->setText(3, device.getName());
+                widget->setText(4, Rundown::TEMPLATE);
+                widget->setText(5, "0");
+                widget->setText(6, "");
+
+                // The Library shows the graphic's own name; the rundown needs the
+                // path that resolves it. Column 0 is what the eye reads and the
+                // label carries the rest.
+                widget->setText(0, display == itemName ? display : QString("%1  -  %2").arg(display, itemName));
+                widget->setText(2, itemName);
+
+                widget->setToolTip(0, manifest.description.isEmpty()
+                    ? QString("OGraf graphic: %1").arg(itemName)
+                    : QString("%1\n\n%2").arg(itemName, manifest.description));
+
+                found++;
+                if (found >= OgrafLibrary::maxGraphics())
+                    break;
+            }
+
+            if (current.second + 1 >= OgrafLibrary::maxDepth())
+                continue;
+
+            foreach (const QString& sub, directory.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name))
+            {
+                if (OgrafLibrary::isIgnoredDirectory(sub))
+                    continue;
+
+                queue.append(qMakePair(directory.filePath(sub), current.second + 1));
+            }
+        }
+    }
 }
 
 void LibraryWidget::dataChanged(const DataChangedEvent& event)

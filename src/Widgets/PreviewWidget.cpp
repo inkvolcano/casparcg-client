@@ -140,6 +140,11 @@ bool PreviewWidget::showTemplates()
     return configIsTrue("PreviewTemplates", true);
 }
 
+bool PreviewWidget::ografEnabled()
+{
+    return configIsTrue("OgrafEnabled", false);
+}
+
 bool PreviewWidget::templateRenderingAvailable()
 {
 #ifdef CASPARCG_HAS_WEBENGINE
@@ -321,7 +326,8 @@ void PreviewWidget::setThumbnail()
         // OGraf first. A graphic and a template can sit in the same folder, and a
         // graphic that declares itself with a manifest is the more specific
         // answer, so it wins.
-        QString manifestPath = resolveOgrafManifest(deviceName, templateName);
+        // Nothing is looked up unless OGraf is switched on.
+        QString manifestPath = ografEnabled() ? resolveOgrafManifest(deviceName, templateName) : QString();
         if (!manifestPath.isEmpty())
         {
             loadOgraf(manifestPath);

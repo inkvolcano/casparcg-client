@@ -36,6 +36,17 @@
 
 namespace Ograf
 {
+    // The one switch. Off by default, and every entry point asks first: the
+    // Library walk, the Preview panel's lookup and the Inspector's field
+    // discovery. A client that does not use OGraf does none of that work.
+    //
+    // Declared here rather than in a widget because all three ask, and three
+    // copies of a default is how a feature ends up half-on.
+    inline bool isEnabledIn(const QString& settingValue)
+    {
+        return settingValue.trimmed() == "true";
+    }
+
     // A manifest file is identified by its name, not by its content: the spec
     // says the name MUST end with ".ograf.json", and a folder may hold several,
     // each a separate graphic sharing the folder's resources.

@@ -68,6 +68,12 @@ class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
         Q_SLOT void currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*);
         Q_SLOT void itemDoubleClicked(QTreeWidgetItem*, int);
         Q_SLOT void mediaChanged(const MediaChangedEvent&);
+        // Appends the OGraf graphics found under each device's template folder to
+        // the Templates list. Does nothing at all unless OGraf is switched on,
+        // which is what keeps a template folder off the refresh path for anyone
+        // who does not use it.
+        void appendOgrafGraphics();
+
         Q_SLOT void templateChanged(const TemplateChangedEvent&);
         Q_SLOT void dataChanged(const DataChangedEvent&);
         Q_SLOT void presetChanged(const PresetChangedEvent&);
