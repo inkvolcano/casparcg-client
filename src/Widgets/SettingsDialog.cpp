@@ -857,73 +857,33 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->checkBoxRelayPacksLocal->setChecked(RelayClient::packsDecidedLocally());
     relayGrid->addWidget(this->checkBoxRelayPacksLocal, 6, 1, 1, 3);
 
-    relayGrid->addWidget(new QLabel("Report to:", relayGroup), 7, 0);
-    this->lineEditRelayCheckInUrl = new QLineEdit(RelayClient::checkInUrl(), relayGroup);
-    this->lineEditRelayCheckInUrl->setPlaceholderText("optional - leave empty to report to the relay above");
-    this->lineEditRelayCheckInUrl->setToolTip(
-        "Where this machine says what it holds, when that is not where it pulls from.\n\n"
-        "A GitHub source has no check-in: the token here is read-only on purpose, and\n"
-        "writing into the templates repository would give every venue a token that can\n"
-        "push templates to every other venue. Point this at a relay instead and the\n"
-        "estate view fills in, with no token upgrade anywhere.\n\n"
-        "A relay used only for this holds no packs and needs no upload token.");
-    relayGrid->addWidget(this->lineEditRelayCheckInUrl, 7, 1, 1, 3);
-
-    relayGrid->addWidget(new QLabel("Report token:", relayGroup), 8, 0);
-    this->lineEditRelayCheckInToken = new QLineEdit(RelayClient::checkInToken(), relayGroup);
-    this->lineEditRelayCheckInToken->setPlaceholderText("required when pulling from GitHub");
-    this->lineEditRelayCheckInToken->setToolTip(
-        "That relay's DOWNLOAD token.\n\n"
-        "Left empty it falls back to the token above, which is right when this machine\n"
-        "pulls and reports to the same relay.\n\n"
-        "It never falls back when the source is GitHub: that token is a repository\n"
-        "credential and does not belong on someone else's host. Fill this in.");
-    relayGrid->addWidget(this->lineEditRelayCheckInToken, 8, 1, 1, 3);
-
-    // A check-in now goes out when what this machine holds actually changes. That
-    // answers "what does this venue have" and cannot answer "is it still there",
-    // so this is the second question, asked on a timer.
-    relayGrid->addWidget(new QLabel("Report at least every:", relayGroup), 9, 0);
-    this->spinBoxRelayHeartbeat = new QSpinBox(relayGroup);
-    this->spinBoxRelayHeartbeat->setRange(0, 10080);
-    this->spinBoxRelayHeartbeat->setSuffix(" minutes");
-    this->spinBoxRelayHeartbeat->setSpecialValueText("only when something changes");
-    this->spinBoxRelayHeartbeat->setValue(RelayClient::heartbeatMinutes());
-    this->spinBoxRelayHeartbeat->setToolTip(
-        "How long this machine may stay quiet before it reports anyway.\n\n"
-        "A check-in is sent as soon as anything changes - a template installed, or a\n"
-        "poll that started failing - so this is not how quickly you hear about a\n"
-        "problem. It is what separates a venue that is fine and idle from one that\n"
-        "fell off the internet a fortnight ago.\n\n"
-        "Zero reports only on change, and leaves that question unanswered.");
-    relayGrid->addWidget(this->spinBoxRelayHeartbeat, 9, 1);
 
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 12, 0, 1, 4);
+    relayGrid->addWidget(this->labelRelayStatus, 10, 0, 1, 4);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
     relayTest->setFocusPolicy(Qt::NoFocus);
     relayTest->setToolTip("Reach the source and say what it is. Writes nothing.");
-    relayGrid->addWidget(relayTest, 9, 2);
+    relayGrid->addWidget(relayTest, 7, 2);
 
     QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
     relayCheck->setFixedHeight(22);
     relayCheck->setFocusPolicy(Qt::NoFocus);
     relayCheck->setToolTip("Check now and install anything that differs.");
-    relayGrid->addWidget(relayCheck, 9, 3);
+    relayGrid->addWidget(relayCheck, 7, 3);
 
     relayGrid->addWidget(new QLabel(
         "The same packs as a push, fetched instead of received, so nothing inbound has to be\n"
         "opened at the venue. A relay is a PHP file you host; GitHub costs nothing to run and\n"
         "keeps the history of every template. Either works - the address says which.\n\n"
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
-        "alone here exactly as they are during a push.", relayGroup), 11, 0, 1, 4);
+        "alone here exactly as they are during a push.", relayGroup), 9, 0, 1, 4);
 
     relayGrid->addWidget(new QLabel(
-        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 10, 0, 1, 4);
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 8, 0, 1, 4);
 
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.
@@ -954,6 +914,63 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     });
 
     templatesVBox->addWidget(relayGroup);
+
+    // Reporting back, which is not the same question as where templates come from
+    // and was sitting inside the box that answers it. The two were joined only
+    // because a relay happens to answer both, and a venue pulling from GitHub has
+    // to be told where to report because a repository has nowhere to report to.
+    QGroupBox* checkInGroup = new QGroupBox("Report Back To A Relay", templatesContent);
+    QGridLayout* checkInGrid = new QGridLayout(checkInGroup);
+    spaceOutGroup(checkInGrid);
+    checkInGrid->setColumnStretch(1, 1);
+
+    checkInGrid->addWidget(new QLabel("Report to:", checkInGroup), 0, 0);
+    this->lineEditRelayCheckInUrl = new QLineEdit(RelayClient::checkInUrl(), checkInGroup);
+    this->lineEditRelayCheckInUrl->setPlaceholderText(
+        "optional - a relay address, for the estate view");
+    this->lineEditRelayCheckInUrl->setToolTip(
+        "Where this machine says what it holds, so one person can see the whole\n"
+        "estate instead of visiting every venue.\n\n"
+        "A relay you pull from is its own logbook and needs nothing here. A GitHub\n"
+        "repository is not one at all - reading is what a repository does, and a\n"
+        "check-in is a write - so a venue on that route reports to a relay instead\n"
+        "while still pulling its templates from GitHub.\n\n"
+        "A relay used only for this holds no packs. Deploy it and leave it empty.");
+    checkInGrid->addWidget(this->lineEditRelayCheckInUrl, 0, 1, 1, 3);
+
+    checkInGrid->addWidget(new QLabel("Report token:", checkInGroup), 1, 0);
+    this->lineEditRelayCheckInToken = new QLineEdit(RelayClient::checkInToken(), checkInGroup);
+    this->lineEditRelayCheckInToken->setPlaceholderText("required when pulling from GitHub");
+    this->lineEditRelayCheckInToken->setToolTip(
+        "That relay's DOWNLOAD token.\n\n"
+        "Required when the templates come from GitHub: the token above is a\n"
+        "repository credential and is never sent to a relay, so a client with\n"
+        "nothing here reports nowhere and says so.");
+    checkInGrid->addWidget(this->lineEditRelayCheckInToken, 1, 1, 1, 3);
+
+    checkInGrid->addWidget(new QLabel("Report at least every:", checkInGroup), 2, 0);
+    this->spinBoxRelayHeartbeat = new QSpinBox(checkInGroup);
+    this->spinBoxRelayHeartbeat->setRange(0, 10080);
+    this->spinBoxRelayHeartbeat->setSuffix(" minutes");
+    this->spinBoxRelayHeartbeat->setSpecialValueText("only when something changes");
+    this->spinBoxRelayHeartbeat->setValue(RelayClient::heartbeatMinutes());
+    this->spinBoxRelayHeartbeat->setToolTip(
+        "How long this machine may stay quiet before it reports anyway.\n\n"
+        "A check-in goes out as soon as anything changes - a template installed, or\n"
+        "a poll that started failing - so this is not how quickly you hear about a\n"
+        "problem. It is what separates a venue that is fine and idle from one that\n"
+        "fell off the internet a fortnight ago.\n\n"
+        "Zero reports only on change, and leaves that question unanswered.");
+    checkInGrid->addWidget(this->spinBoxRelayHeartbeat, 2, 1);
+
+    checkInGrid->addWidget(new QLabel(
+        "This machine reports what it holds, which build it runs and how its last poll\n"
+        "went. It sends nothing else, and nothing here changes where templates come\n"
+        "from. Leave it empty and this venue simply reports nowhere.", checkInGroup),
+        3, 0, 1, 4);
+
+    templatesVBox->addWidget(checkInGroup);
+
 
     // The client itself, which is a different question from the packs above and
     // was reading as a second copy of them: two more fields called Source and

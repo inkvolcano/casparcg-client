@@ -598,6 +598,29 @@ void RelayClient::planFromGitHubTree(const QByteArray& treeJson)
         QMap<QString, QString> mine = TemplateInstaller::packDigests(pack, true);
 
         QList<QPair<QString, QString> > entries = byPack.value(pack);
+
+        // What this venue is working towards, so the check-in can say which version
+        // of each pack it holds.
+        //
+        // A relay hands out a version per pack in its manifest. A repository has no
+        // such thing, so one is made here from what the tree already gives: every
+        // file's path and blob hash, sorted so the order the API happened to use
+        // cannot change the answer, and hashed. It moves when any file in the pack
+        // moves and not otherwise, which is what a pack version has to mean for
+        // "behind on SEVILLE" to be worth printing.
+        //
+        // Without this the map stays empty and sendCheckIn returns before sending
+        // anything - so every venue on the GitHub route reported nothing at all,
+        // which is the one route the check-in override was built for.
+        QStringList fingerprint;
+        for (int i = 0; i < entries.count(); i++)
+            fingerprint.append(entries.at(i).first + ':' + entries.at(i).second);
+
+        fingerprint.sort();
+
+        this->versionByPack.insert(pack, QString::fromLatin1(
+            QCryptographicHash::hash(fingerprint.join('\n').toUtf8(),
+                                     QCryptographicHash::Sha1).toHex().left(12)));
         for (int i = 0; i < entries.count(); i++)
         {
             QString relative = entries.at(i).first;

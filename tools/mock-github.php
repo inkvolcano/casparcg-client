@@ -15,6 +15,23 @@ const REPO = __DIR__ . '/mock_repo';
 
 ini_set('display_errors', '0');
 
+// A check-in, which is not a GitHub call at all - the client posts it to whatever
+// address it was given for reporting, and this stands in for that so the test can
+// see whether one was ever sent. Above the Authorization check on purpose: a
+// check-in carries X-Relay-Token instead, and would otherwise be refused as though
+// the repository did not exist.
+//
+// It exists because a client on the GitHub route sent no check-in at all for
+// several builds. The pull worked, the estate view stayed empty, and nothing here
+// looked at the one thing that would have shown it.
+if (isset($_GET['action']) && $_GET['action'] === 'checkin') {
+    file_put_contents(__DIR__ . '/mock_checkin.json', file_get_contents('php://input'));
+
+    header('Content-Type: application/json');
+    echo json_encode(array('ok' => true));
+    exit;
+}
+
 $given = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
 if ($given !== 'Bearer ' . TOKEN) {
     // What GitHub does for a private repository a token cannot see.

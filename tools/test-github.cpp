@@ -17,6 +17,8 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
@@ -163,10 +165,15 @@ int main(int argc, char** argv)
     writeFile(QDir(repo).filePath(".github/workflows/ci.yml"), "on: push");
 
     int port = 0;
+    int reportPort = 0;
     {
         QTcpServer finder;
         finder.listen(QHostAddress::LocalHost, 0);
         port = finder.serverPort();
+
+        QTcpServer second;
+        second.listen(QHostAddress::LocalHost, 0);
+        reportPort = second.serverPort();
     }
 
     QProcess api;
@@ -175,6 +182,22 @@ int main(int argc, char** argv)
     if (!api.waitForStarted(5000))
     {
         out << "the mock API would not start\n";
+        return 2;
+    }
+
+    // A second one, purely to receive the check-in.
+    //
+    // php -S handles a single connection at a time, and the client keeps its
+    // connection to the API alive between requests, so a report posted to that same
+    // port waits behind a connection that will not close and never arrives. The
+    // client is doing nothing wrong; the toy server cannot do two things at once.
+    QProcess reporter;
+    reporter.setWorkingDirectory(apiDir);
+    reporter.start(php, QStringList() << "-S" << QString("127.0.0.1:%1").arg(reportPort)
+                                      << "mock-github.php");
+    if (!reporter.waitForStarted(5000))
+    {
+        out << "the mock check-in collector would not start\n";
         return 2;
     }
 
@@ -190,6 +213,21 @@ int main(int argc, char** argv)
     qputenv("CASPARCG_TEST_RelayPacks", "SEVILLE");
     qputenv("CASPARCG_TEST_RelayGitHubApi", QString("http://127.0.0.1:%1").arg(port).toUtf8());
 
+    // Where this venue reports. A repository has nowhere to report to, so a client
+    // on this route is given an address of its own - and for several builds it then
+    // sent nothing there at all, because the pack versions the report is built from
+    // were only ever filled in on the relay route. The pull worked, the estate view
+    // stayed empty, and no test looked.
+    qputenv("CASPARCG_TEST_RelayCheckInUrl",
+            QString("http://127.0.0.1:%1/report.php").arg(reportPort).toUtf8());
+    qputenv("CASPARCG_TEST_RelayCheckInToken", "a-relay-download-token");
+
+    // The application sets this at startup from the generated version header, which
+    // a harness has no reason to have. Without it the report carries no build, which
+    // is deliberate - reporting nothing beats reporting a wrong answer - so the test
+    // does what the application does.
+    RelayClient::setClientVersion("2.3.1", "999");
+
     out << "Reading the address\n";
 
     expectTrue(RelayClient::isGitHub(), "a github: address is recognised as one");
@@ -203,6 +241,28 @@ int main(int argc, char** argv)
     expectTrue(first.contains("installed"), "the first pull installs something: " + first);
     expectTrue(readFile(QDir(templates).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>one</h1>"),
                "a template arrived with the right bytes");
+
+    out << "\nAnd reporting it\n";
+
+    // The mock writes whatever it is posted to this file. Its absence is the bug
+    // this exists for: a venue that pulled perfectly and told nobody.
+    settle(4000);
+
+    // The collector writes beside mock-github.php, which is apiDir.
+    const QByteArray reported = readFile(QDir(apiDir).filePath("mock_checkin.json"));
+
+    expectTrue(!reported.isEmpty(), "a client on the GitHub route reports at all");
+
+    QJsonObject report = QJsonDocument::fromJson(reported).object();
+
+    expectTrue(report.value("source").toString() == "github",
+               "and says the templates came from GitHub");
+    expectTrue(report.contains("packs") && !report.value("packs").toObject().isEmpty(),
+               "and names the packs it holds, which is the field that was empty");
+    expectTrue(!report.value("packs").toObject().value("SEVILLE").toString().isEmpty(),
+               "with a version for the pack it followed");
+    expectTrue(!report.value("build").toString().isEmpty(),
+               "and which build it is running");
     expectTrue(readFile(QDir(templates).filePath("SEVILLE/css/site.css")) == QByteArray("body{}"),
                "so did a nested one");
 
@@ -270,6 +330,7 @@ int main(int argc, char** argv)
     out << "\nWhen GitHub is unreachable\n";
 
     api.kill();
+    reporter.kill();
     api.waitForFinished(3000);
 
     QString gone = poll(25000);
