@@ -118,8 +118,9 @@ one because a relay answers both. Give a client a check-in address and it report
 there while still pulling from GitHub with a read-only token:
 
 **Settings → Templates → Report to** — the address of a relay.
-**Report token** — that relay's `DOWNLOAD_TOKEN`. Left empty it reuses the token
-above, which is wrong for this route, so fill it in.
+**Report token** — that relay's `DOWNLOAD_TOKEN`. Required on this route: the
+token above is a GitHub credential and is never sent to a relay, so a client with
+no report token of its own reports nothing and says so.
 
 The relay you point at **does not need to hold any packs**. Deploy `relay.php`
 as normal, set both tokens, and leave its storage empty: it is a logbook. Every
@@ -130,6 +131,38 @@ carries a `source` field saying which.
 Nothing about the pull changes. The GitHub token stays read-only, the repository
 is still never written to, and a client with no check-in address set behaves
 exactly as before — it simply reports nowhere.
+
+### How often it reports
+
+A check-in goes out **when what the client holds actually changes** — a template
+installed, or a poll that started failing — and otherwise on a slow heartbeat,
+**Report at least every**, twelve hours by default.
+
+It used to report on every poll, which for a machine that was simply up to date
+meant the same few hundred bytes four times an hour forever. That was harmless
+against a relay, which overwrites one record per client, and it is the reason a
+Git repository is a poor place to send these: every report would be a commit.
+
+The two cadences answer two different questions, and it is worth keeping them
+apart:
+
+| | Answered by |
+|---|---|
+| What does this venue hold? | the change report, immediately |
+| Is this venue still reachable? | the heartbeat, within its interval |
+
+Reporting only on change cannot answer the second — a venue silent for a
+fortnight is either fine, or dead, and there is no telling which. That is why the
+heartbeat exists, and why setting it to zero (changes only) leaves that question
+unanswered rather than merely making things quieter.
+
+**A failure is a change**, so a venue that starts failing is heard on its next
+poll rather than at the next heartbeat. The heartbeat is not how quickly you hear
+about a problem; it is what separates *fine and idle* from *gone*.
+
+In the push tool's estate view a current venue now reads
+`SEVILLE   3m ago   current  (updated 12d ago)` — last heard from, and last
+actually changed.
 
 ### If you would rather not host anything at all
 

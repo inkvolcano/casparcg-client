@@ -521,6 +521,32 @@ switch ($action) {
 
         // Only the fields this understands are kept. A client cannot store arbitrary
         // content here by adding keys to the body.
+        // Two timestamps, not one.
+        //
+        // A client used to check in on every poll, so "last seen" and "last
+        // changed" were the same moment and the column could only ever mean the
+        // first. A client now reports when what it holds actually changes, and
+        // otherwise on a slow heartbeat - so the two are worth keeping apart:
+        // seenAt answers "is this venue still there", changedAt answers "when did
+        // it last take an update".
+        //
+        // changedAt is carried forward from the previous record when the state
+        // digest matches. A client too old to send one has no digest to match, so
+        // every check-in reads as a change, which is exactly what it meant before.
+        $previous = array();
+        $existing = @file_get_contents(CLIENT_DIR . '/' . $id . '.json');
+        if ($existing !== false) {
+            $decoded = json_decode($existing, true);
+            if (is_array($decoded)) {
+                $previous = $decoded;
+            }
+        }
+
+        $state = isset($sent['state']) ? substr((string) $sent['state'], 0, 64) : '';
+        $unchanged = $state !== ''
+            && isset($previous['state'])
+            && $previous['state'] === $state;
+
         $record = array(
             'host'   => substr((string) $sent['host'], 0, 128),
             'os'     => isset($sent['os']) ? substr((string) $sent['os'], 0, 128) : '',
@@ -529,7 +555,10 @@ switch ($action) {
             // here: a client does not get to decide how much of this disk it uses.
             'result' => isset($sent['result']) ? substr((string) $sent['result'], 0, 300) : '',
             'failed' => isset($sent['failed']) ? (int) $sent['failed'] : 0,
+            'state'  => $state,
             'seenAt' => gmdate('c'),
+            'changedAt' => $unchanged && isset($previous['changedAt'])
+                ? (string) $previous['changedAt'] : gmdate('c'),
         );
 
         if (isset($sent['packs']) && is_array($sent['packs'])) {
@@ -558,7 +587,8 @@ switch ($action) {
             reply(500, array('error' => 'Cannot record that check-in'));
         }
 
-        reply(200, array('ok' => true, 'host' => $record['host'], 'at' => $record['seenAt']));
+        reply(200, array('ok' => true, 'host' => $record['host'], 'at' => $record['seenAt'],
+                         'changed' => !$unchanged));
 
     case 'selftest':
         // The upload token: this reports on how the relay is configured, which is

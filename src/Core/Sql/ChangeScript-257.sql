@@ -1,0 +1,15 @@
+-- How long a venue may stay quiet before it reports anyway.
+--
+-- A check-in used to go out on every poll. The body carries no timestamp - the
+-- collector stamps arrival - so a machine that was simply up to date sent the
+-- same bytes four times an hour forever, and the relay wrote the same record
+-- every time. It now reports when what it holds actually changes.
+--
+-- That answers "what does this venue hold" and cannot answer "is it still
+-- reachable", because a healthy idle venue and a dead one both say nothing. So
+-- the second question is asked on a timer, and this is the timer.
+--
+-- Twelve hours: quiet enough that an estate is not chattering, short enough that
+-- a venue which fell off the internet overnight is obvious before the morning.
+-- Zero means changes only, for somebody who would rather have the silence.
+INSERT INTO Configuration (Name, Value) VALUES ('RelayCheckInHeartbeat', '720');

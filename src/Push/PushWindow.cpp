@@ -1299,16 +1299,30 @@ void PushWindow::describeRelayClients(const PushTarget& target)
         {
             QJsonObject client = value.toObject();
 
-            QString ago;
-            QDateTime seen = QDateTime::fromString(client.value("seenAt").toString(), Qt::ISODate);
-            if (seen.isValid())
-            {
-                qint64 seconds = seen.secsTo(QDateTime::currentDateTimeUtc());
-                ago = (seconds < 60) ? QString("just now")
-                    : (seconds < 3600) ? QString("%1m ago").arg(seconds / 60)
-                    : (seconds < 86400) ? QString("%1h ago").arg(seconds / 3600)
-                    : QString("%1d ago").arg(seconds / 86400);
-            }
+            // Two timestamps now arrive rather than one. A client reports when what
+            // it holds changes, and otherwise on a slow heartbeat, so "last heard
+            // from" and "last took an update" are different questions - and a venue
+            // that has been current and quiet for a fortnight is the normal case
+            // rather than a suspicious one.
+            //
+            // An older relay sends neither field, and an older client gives a relay
+            // no digest to compare, so both read as absent and the line falls back
+            // to what it always said.
+            auto agoFor = [](const QString& iso) {
+                QDateTime when = QDateTime::fromString(iso, Qt::ISODate);
+                if (!when.isValid())
+                    return QString();
+
+                qint64 seconds = when.secsTo(QDateTime::currentDateTimeUtc());
+
+                return (seconds < 60) ? QString("just now")
+                     : (seconds < 3600) ? QString("%1m ago").arg(seconds / 60)
+                     : (seconds < 86400) ? QString("%1h ago").arg(seconds / 3600)
+                     : QString("%1d ago").arg(seconds / 86400);
+            };
+
+            QString ago = agoFor(client.value("seenAt").toString());
+            QString changedAgo = agoFor(client.value("changedAt").toString());
 
             // Naming the packs rather than just saying "behind": which pack is
             // stale decides whether it matters before this particular show.
@@ -1331,6 +1345,12 @@ void PushWindow::describeRelayClients(const PushTarget& target)
             QString result = client.value("result").toString();
             if (!result.isEmpty() && (failed > 0 || !behind.isEmpty()))
                 state += QString("  (%1)").arg(result);
+
+            // For a venue with no problem to report, the useful fact is when it last
+            // took anything - which is the question the heartbeat exists to keep
+            // separate from "when did it last speak".
+            else if (!changedAgo.isEmpty() && changedAgo != ago)
+                state += QString("  (updated %1)").arg(changedAgo);
 
             log(QString("    %1  %2  %3")
                 .arg(client.value("host").toString(), -22)

@@ -107,6 +107,31 @@ static void theTokenFallsBackRatherThanBeingTypedTwice()
     same(d.token, "dl-token", "falling back to the source token");
 }
 
+static void aGitHubTokenIsNeverSentToARelay()
+{
+    // The fallback above is right for a relay reporting to itself and wrong across
+    // routes. A GitHub client's source token is a repository credential, and the
+    // fallback would have posted it as X-Relay-Token to whatever host was in the
+    // check-in field - handing a repository token to a third party because a box
+    // was left empty. Read-only or not, that is a credential leaking on a typo.
+    CheckInTarget::Decision d = CheckInTarget::decide(
+        true, "https://api.github.com/repos/me/templates", "github_pat_secret",
+        "https://someone-elses-host/logbook.php", "");
+
+    expectTrue(!d.send, "a GitHub venue with no check-in token of its own sends nothing");
+    expectTrue(d.token != "github_pat_secret", "and the GitHub token is not the one it would have sent");
+    expectTrue(d.reason.contains("GitHub token is not used here"),
+               "the reason says the GitHub token is not the answer");
+
+    // Spelled out, it reports, and with its own token rather than the other one.
+    CheckInTarget::Decision told = CheckInTarget::decide(
+        true, "https://api.github.com/repos/me/templates", "github_pat_secret",
+        "https://host/logbook.php", "relay-token");
+
+    expectTrue(told.send, "given the relay's own token it reports");
+    same(told.token, "relay-token", "and sends that one");
+}
+
 static void anAddressWithNoTokenAnywhereIsRefused()
 {
     // A GitHub venue has no relay token to fall back on. Posting with no
@@ -146,6 +171,67 @@ static void surroundingSpaceDoesNotChangeTheAnswer()
                "an address of only spaces is no address");
 }
 
+static void anUnchangedVenueStopsRepeatingItself()
+{
+    // The point of the whole change. A machine that is up to date said the same
+    // few hundred bytes four times an hour forever, and the body carries no
+    // timestamp, so every one of those reports was byte-identical to the last.
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 60, 720) == CheckInTarget::Report::Nothing,
+               "nothing changed and the heartbeat is not due, so nothing is said");
+
+    expectTrue(CheckInTarget::reportFor("def", "abc", 60, 720) == CheckInTarget::Report::Changed,
+               "a different state reports at once");
+}
+
+static void aFailureIsAChangeAndReportsImmediately()
+{
+    // result and failed are in the body, so a venue that starts failing has a
+    // different digest and does not wait for the heartbeat to say so. This is the
+    // property that makes reporting-on-change safe rather than merely quieter.
+    expectTrue(CheckInTarget::reportFor("ok-2-installed", "ok-idle", 5, 720)
+                   == CheckInTarget::Report::Changed,
+               "a venue that just started failing is heard on the next poll");
+}
+
+static void theFirstReportOfARunAlwaysGoesOut()
+{
+    // Nothing has been accepted yet, so there is no record to be consistent with.
+    // A restarted client and a collector redeployed underneath one look the same
+    // from here, and both want the record put back rather than assumed.
+    expectTrue(CheckInTarget::reportFor("abc", "", -1, 720) == CheckInTarget::Report::Changed,
+               "a client that has sent nothing yet reports");
+    expectTrue(CheckInTarget::reportFor("abc", "", 90000, 720) == CheckInTarget::Report::Changed,
+               "an empty last digest reports even if the clock says otherwise");
+    expectTrue(CheckInTarget::reportFor("abc", "abc", -1, 720) == CheckInTarget::Report::Changed,
+               "and so does a matching digest that was never actually accepted");
+}
+
+static void theHeartbeatKeepsTheTimestampMeaningful()
+{
+    // Without this a venue silent for a fortnight is either fine or dead and there
+    // is no way to tell, which is the question worth answering before a show.
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 719 * 60, 720) == CheckInTarget::Report::Nothing,
+               "a minute short of due says nothing");
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 720 * 60, 720) == CheckInTarget::Report::Heartbeat,
+               "exactly due sends the heartbeat");
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 5000 * 60, 720) == CheckInTarget::Report::Heartbeat,
+               "and long overdue still only sends one");
+}
+
+static void theHeartbeatCanBeTurnedOff()
+{
+    // A legitimate choice for somebody who would rather have the silence, so it is
+    // off rather than clamped to some minimum nobody asked for.
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 99999, 0) == CheckInTarget::Report::Nothing,
+               "zero minutes means changes only");
+    expectTrue(CheckInTarget::reportFor("abc", "abc", 99999, -5) == CheckInTarget::Report::Nothing,
+               "and so does a negative, rather than meaning always");
+
+    // Turning the heartbeat off must never silence an actual change.
+    expectTrue(CheckInTarget::reportFor("def", "abc", 1, 0) == CheckInTarget::Report::Changed,
+               "a change still reports with no heartbeat");
+}
+
 static void theEndpointKeepsTheRelayShape()
 {
     same(CheckInTarget::endpointFor("https://host/relay.php"),
@@ -174,9 +260,17 @@ int main(int argc, char* argv[])
     aGitHubVenueWithACheckInAddressReports();
     theAddressWinsOverTheRelayToo();
     theTokenFallsBackRatherThanBeingTypedTwice();
+    aGitHubTokenIsNeverSentToARelay();
     anAddressWithNoTokenAnywhereIsRefused();
     nothingConfiguredReportsNothing();
     surroundingSpaceDoesNotChangeTheAnswer();
+
+    anUnchangedVenueStopsRepeatingItself();
+    aFailureIsAChangeAndReportsImmediately();
+    theFirstReportOfARunAlwaysGoesOut();
+    theHeartbeatKeepsTheTimestampMeaningful();
+    theHeartbeatCanBeTurnedOff();
+
     theEndpointKeepsTheRelayShape();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";

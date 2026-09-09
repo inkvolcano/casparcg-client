@@ -88,6 +88,23 @@ QString RelayClient::checkInUrl()
     return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInUrl").getValue().trimmed();
 }
 
+int RelayClient::heartbeatMinutes()
+{
+    const QString raw = DatabaseManager::getInstance()
+        .getConfigurationByName("RelayCheckInHeartbeat").getValue().trimmed();
+
+    bool parsed = false;
+    const int minutes = raw.toInt(&parsed);
+
+    // Twelve hours. Long enough that an estate is quiet, short enough that a venue
+    // which fell off the internet overnight is obvious before the morning.
+    if (!parsed)
+        return 720;
+
+    // A negative is somebody meaning "off" in the other direction, not "always".
+    return minutes > 0 ? minutes : 0;
+}
+
 QString RelayClient::checkInToken()
 {
     return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInToken").getValue().trimmed();
@@ -885,6 +902,30 @@ void RelayClient::sendCheckIn()
     body.insert("failed", this->failed);
     body.insert("installed", this->installed);
 
+    // Nothing in that body is a clock - the collector stamps arrival itself - so
+    // two identical polls produce byte-identical JSON and this digest is stable
+    // for as long as the venue is. That is what makes "only when it changed"
+    // possible without a schema for what counts as a change.
+    const QByteArray payload = QJsonDocument(body).toJson(QJsonDocument::Compact);
+    const QString digest = QString::fromLatin1(
+        QCryptographicHash::hash(payload, QCryptographicHash::Md5).toHex());
+
+    const qint64 sinceLast = this->lastReportAt.isValid()
+        ? this->lastReportAt.secsTo(QDateTime::currentDateTimeUtc()) : -1;
+
+    const CheckInTarget::Report report =
+        CheckInTarget::reportFor(digest, this->lastReportDigest, sinceLast, heartbeatMinutes());
+
+    if (report == CheckInTarget::Report::Nothing)
+        return;
+
+    // Sent with every report so the collector can hold two timestamps rather than
+    // one: when this venue was last heard from at all, and when what it holds last
+    // actually changed. A collector that does not understand the field ignores it
+    // and behaves exactly as it did before.
+    body.insert("state", digest);
+    body.insert("heartbeat", report == CheckInTarget::Report::Heartbeat);
+
     QNetworkRequest request((QUrl(CheckInTarget::endpointFor(target.url))));
 
     // Always the relay's header, never GitHub's: the destination is a relay even
@@ -893,9 +934,18 @@ void RelayClient::sendCheckIn()
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
     QNetworkReply* reply = this->network->post(request, QJsonDocument(body).toJson(QJsonDocument::Compact));
-    QObject::connect(reply, &QNetworkReply::finished, this, [reply]() {
-        // Nothing is retried and nothing is reported on success: this is bookkeeping
-        // for somebody else's benefit, and it must never be why a poll looks failed.
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, digest]() {
+        // Recorded on success only. A report that did not arrive has not been made,
+        // and leaving the digest alone means the next poll sends it again - which is
+        // a retry, without any retry machinery having to exist.
+        if (reply->error() == QNetworkReply::NoError)
+        {
+            this->lastReportDigest = digest;
+            this->lastReportAt = QDateTime::currentDateTimeUtc();
+        }
+
+        // Still nothing reported to the operator either way: this is bookkeeping for
+        // somebody else's benefit, and it must never be why a poll looks failed.
         reply->deleteLater();
     });
 }

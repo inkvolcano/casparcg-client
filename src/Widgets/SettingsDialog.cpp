@@ -811,15 +811,36 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     relayGrid->addWidget(new QLabel("Report token:", relayGroup), 8, 0);
     this->lineEditRelayCheckInToken = new QLineEdit(RelayClient::checkInToken(), relayGroup);
-    this->lineEditRelayCheckInToken->setPlaceholderText("optional - falls back to the token above");
+    this->lineEditRelayCheckInToken->setPlaceholderText("required when pulling from GitHub");
     this->lineEditRelayCheckInToken->setToolTip(
-        "That relay's DOWNLOAD token. Left empty, the token above is used, which is\n"
-        "right when this machine pulls and reports to the same relay.");
+        "That relay's DOWNLOAD token.\n\n"
+        "Left empty it falls back to the token above, which is right when this machine\n"
+        "pulls and reports to the same relay.\n\n"
+        "It never falls back when the source is GitHub: that token is a repository\n"
+        "credential and does not belong on someone else's host. Fill this in.");
     relayGrid->addWidget(this->lineEditRelayCheckInToken, 8, 1, 1, 3);
+
+    // A check-in now goes out when what this machine holds actually changes. That
+    // answers "what does this venue have" and cannot answer "is it still there",
+    // so this is the second question, asked on a timer.
+    relayGrid->addWidget(new QLabel("Report at least every:", relayGroup), 9, 0);
+    this->spinBoxRelayHeartbeat = new QSpinBox(relayGroup);
+    this->spinBoxRelayHeartbeat->setRange(0, 10080);
+    this->spinBoxRelayHeartbeat->setSuffix(" minutes");
+    this->spinBoxRelayHeartbeat->setSpecialValueText("only when something changes");
+    this->spinBoxRelayHeartbeat->setValue(RelayClient::heartbeatMinutes());
+    this->spinBoxRelayHeartbeat->setToolTip(
+        "How long this machine may stay quiet before it reports anyway.\n\n"
+        "A check-in is sent as soon as anything changes - a template installed, or a\n"
+        "poll that started failing - so this is not how quickly you hear about a\n"
+        "problem. It is what separates a venue that is fine and idle from one that\n"
+        "fell off the internet a fortnight ago.\n\n"
+        "Zero reports only on change, and leaves that question unanswered.");
+    relayGrid->addWidget(this->spinBoxRelayHeartbeat, 9, 1);
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 9, 0, 1, 2);
+    relayGrid->addWidget(this->labelRelayStatus, 10, 0, 1, 2);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
@@ -898,6 +919,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
             ConfigurationModel(0, "RelayCheckInUrl", this->lineEditRelayCheckInUrl->text().trimmed()));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayCheckInToken", this->lineEditRelayCheckInToken->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayCheckInHeartbeat",
+                               QString::number(this->spinBoxRelayHeartbeat->value())));
 
         // Turning the feature on has to bring the socket up, and off may be the
         // last thing keeping it up.

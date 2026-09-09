@@ -68,6 +68,12 @@ class WIDGETS_EXPORT RelayClient : public QObject
         static QString checkInUrl();
         static QString checkInToken();
 
+        // How long a venue may stay silent before it says so anyway. Reporting only
+        // on change answers "what does this venue hold" and cannot answer "is it
+        // still reachable", and a machine quiet for a fortnight is either fine or
+        // dead. Zero turns it off, leaving changes only.
+        static int heartbeatMinutes();
+
         static int pollMinutes();
 
         // A "github:owner/repo" or "github:owner/repo@branch" address rather than
@@ -195,5 +201,15 @@ class WIDGETS_EXPORT RelayClient : public QObject
         QDateTime ranAt;
         QString summary;
         bool ok = true;
+
+        // What was last accepted by the collector, and when. A check-in used to go
+        // out on every poll; it now goes out when this digest changes, or when the
+        // heartbeat falls due, so an idle venue stops repeating itself.
+        //
+        // Both are recorded on success only. A report that never arrived is not a
+        // report, and leaving the digest alone means the next poll retries it
+        // without any retry machinery existing.
+        QString lastReportDigest;
+        QDateTime lastReportAt;
         int manifestAttempts = 0;
 };

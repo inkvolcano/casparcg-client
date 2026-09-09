@@ -49,14 +49,25 @@ namespace CheckInTarget
         if (!overrideUrl.isEmpty())
         {
             // An explicit destination wins whatever the templates come from. The
-            // token falls back to the source's, because pointing a GitHub venue
-            // at a relay usually means it has a relay token already and being
-            // made to type it twice is a way to get it wrong once.
-            decision.token = checkInToken.trimmed().isEmpty() ? sourceToken.trimmed() : checkInToken.trimmed();
+            // token falls back to the source's, because a relay venue reporting to
+            // a relay has one already and being made to type it twice is a way to
+            // get it wrong once.
+            //
+            // It never falls back across routes. A GitHub client's source token is
+            // a GitHub credential, and sending it as X-Relay-Token to whatever host
+            // is in the check-in field would hand a repository token to a third
+            // party because somebody left a box empty. Read-only or not, that is
+            // not ours to leak.
+            const QString explicitToken = checkInToken.trimmed();
+
+            decision.token = explicitToken.isEmpty() && !sourceIsGitHub ? sourceToken.trimmed() : explicitToken;
 
             if (decision.token.isEmpty())
             {
-                decision.reason = "A check-in address is set but there is no token to send with it.";
+                decision.reason = sourceIsGitHub
+                    ? "A check-in address is set but no check-in token. The GitHub token is "
+                      "not used here, so this needs the relay's own token."
+                    : "A check-in address is set but there is no token to send with it.";
                 return decision;
             }
 
@@ -86,6 +97,56 @@ namespace CheckInTarget
         decision.token = sourceToken.trimmed();
 
         return decision;
+    }
+
+    // Whether this poll has anything worth reporting.
+    //
+    // A check-in used to go out on every poll, which for a machine that is simply
+    // up to date is the same few hundred bytes saying the same thing four times an
+    // hour forever. The body carries no timestamp - the collector stamps arrival -
+    // so two idle polls produce byte-identical reports, and "has this changed"
+    // is a digest comparison rather than a schema question.
+    //
+    // Two questions are being answered, and only one of them changes when an
+    // update lands:
+    //
+    //   what does this venue hold   - changes on install, and on a failure, since
+    //                                 the result and failure count are in the body
+    //   is this venue reachable     - changes never, and must therefore be said
+    //                                 on a timer or it is not being said at all
+    //
+    // Reporting only on change answers the first perfectly and the second not at
+    // all: a venue silent for a fortnight is either fine, or dead, and that is
+    // exactly the thing worth knowing before a show. So both - on change, and on a
+    // slow heartbeat that keeps the timestamp meaningful.
+    enum class Report
+    {
+        Nothing,
+        Changed,    // the state differs from what was last accepted
+        Heartbeat   // unchanged, but quiet for long enough to be worth confirming
+    };
+
+    // secondsSinceLastSend is negative when nothing has been sent yet this run.
+    // heartbeatMinutes of zero or less turns the heartbeat off, leaving changes
+    // only - which is a legitimate choice for somebody who does not want the
+    // liveness signal and would rather have the silence.
+    inline Report reportFor(const QString& digest, const QString& lastDigest,
+                            qint64 secondsSinceLastSend, int heartbeatMinutes)
+    {
+        // Nothing accepted yet, so there is no record to be consistent with. This
+        // covers a restarted client and a collector that was redeployed underneath
+        // one: both need the record put back rather than assumed.
+        if (secondsSinceLastSend < 0 || lastDigest.isEmpty())
+            return Report::Changed;
+
+        if (digest != lastDigest)
+            return Report::Changed;
+
+        if (heartbeatMinutes <= 0)
+            return Report::Nothing;
+
+        return secondsSinceLastSend >= static_cast<qint64>(heartbeatMinutes) * 60
+            ? Report::Heartbeat : Report::Nothing;
     }
 
     // The relay speaks one URL shape, and a check-in collector is a relay whether

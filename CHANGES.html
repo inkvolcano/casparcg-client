@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#checkin-cadence">Check-In Cadence</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
 <a href="#drag-lock">Drag Between Rundowns</a><br>
 <a href="#missing-media">Missing Media Warnings</a><br>
@@ -1787,6 +1788,32 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="checkin-cadence">A Check-In That Says Something</h2>
+
+<p>A client reported to its relay after <b>every poll</b> &mdash; four times an hour, forever, whether or not anything had happened. The report carries no timestamp of its own (the relay stamps arrival), so a machine that was simply up to date sent byte-identical bytes every fifteen minutes and the relay wrote the same record each time.</p>
+
+<p>It now reports <b>when what it holds actually changes</b>, and otherwise on a slow heartbeat: <b>Settings &rarr; Templates &rarr; Report at least every</b>, twelve hours by default.</p>
+
+<p>The split is the point. Two questions were being answered by one message, and only one of them changes when an update lands:</p>
+
+<table>
+<tr><th></th><th>Answered by</th></tr>
+<tr><td>What does this venue hold?</td><td>the change report, immediately</td></tr>
+<tr><td>Is this venue still reachable?</td><td>the heartbeat, within its interval</td></tr>
+</table>
+
+<p>Reporting only on change cannot answer the second, because a venue that is healthy and idle and one that fell off the internet a fortnight ago both say nothing. That is why the heartbeat is there, and why setting it to zero leaves that question genuinely unanswered rather than just making things quieter.</p>
+
+<p><b>A failure is a change.</b> The result and the failure count are in the report, so a venue that starts failing is heard on its next poll, not at the next heartbeat. The heartbeat is not how fast you hear about a problem &mdash; it is what separates <i>fine and idle</i> from <i>gone</i>.</p>
+
+<p>The relay now keeps <b>two timestamps</b> instead of one, and the estate view reads <code>SEVILLE&nbsp;&nbsp;&nbsp;3m ago&nbsp;&nbsp;&nbsp;current&nbsp;&nbsp;(updated 12d ago)</code>: last heard from, and last actually took something. An older relay, or an older client, simply does not have the second and the line reads as it always did.</p>
+
+<h3>A GitHub token is no longer sent to a relay</h3>
+
+<p><b>Report token</b> used to fall back to the pull token when left empty. That is right for a venue that pulls from a relay and reports to the same one, and wrong across routes: a GitHub client's pull token is a <b>repository credential</b>, and the fallback would have posted it as <code>X-Relay-Token</code> to whatever host was in the check-in field &mdash; handing a repository token to a third party because a box was left empty. Read-only or not, that is not ours to leak.</p>
+
+<p>It now never falls back when the source is GitHub. A client with no report token of its own reports nothing and says why.</p>
 
 <h2 id="github-checkin">Check-ins on the GitHub route</h2>
 

@@ -1782,6 +1782,53 @@ about.
 
 ---
 
+## A Check-In That Says Something
+
+A client reported to its relay after **every poll** — four times an hour, forever,
+whether or not anything had happened. The report carries no timestamp of its own
+(the relay stamps arrival), so a machine that was simply up to date sent
+byte-identical bytes every fifteen minutes and the relay wrote the same record
+each time.
+
+It now reports **when what it holds actually changes**, and otherwise on a slow
+heartbeat: **Settings → Templates → Report at least every**, twelve hours by
+default.
+
+The split is the point. Two questions were being answered by one message, and
+only one of them changes when an update lands:
+
+| | Answered by |
+|---|---|
+| What does this venue hold? | the change report, immediately |
+| Is this venue still reachable? | the heartbeat, within its interval |
+
+Reporting only on change cannot answer the second, because a venue that is
+healthy and idle and one that fell off the internet a fortnight ago both say
+nothing. That is why the heartbeat is there, and why setting it to zero leaves
+that question genuinely unanswered rather than just making things quieter.
+
+**A failure is a change.** The result and the failure count are in the report, so
+a venue that starts failing is heard on its next poll, not at the next heartbeat.
+The heartbeat is not how fast you hear about a problem — it is what separates
+*fine and idle* from *gone*.
+
+The relay now keeps **two timestamps** instead of one, and the estate view reads
+`SEVILLE   3m ago   current  (updated 12d ago)`: last heard from, and last
+actually took something. An older relay, or an older client, simply does not have
+the second and the line reads as it always did.
+
+### A GitHub token is no longer sent to a relay
+
+**Report token** used to fall back to the pull token when left empty. That is
+right for a venue that pulls from a relay and reports to the same one, and wrong
+across routes: a GitHub client's pull token is a **repository credential**, and
+the fallback would have posted it as `X-Relay-Token` to whatever host was in the
+check-in field — handing a repository token to a third party because a box was
+left empty. Read-only or not, that is not ours to leak.
+
+It now never falls back when the source is GitHub. A client with no report token
+of its own reports nothing and says why.
+
 ## Check-ins on the GitHub route
 
 A venue pulling from a PHP relay reported to that relay after every poll, so the
