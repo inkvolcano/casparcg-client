@@ -682,6 +682,23 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     QWidget* tabTemplates = new QWidget();
     QVBoxLayout* templatesVBox = new QVBoxLayout(tabTemplates);
 
+    // Three boxes, and only two questions between them. Push and pull are the same
+    // job travelling in opposite directions - a client uses one or the other, never
+    // both - and the third box is not about templates at all.
+    QLabel* templatesIntro = new QLabel(
+        "<b>Getting templates here</b> is the first two boxes, and they are alternatives "
+        "rather than steps: <b>push</b> is a dev machine on this network sending packs in, "
+        "<b>pull</b> is this machine fetching them from a relay or a GitHub repository. "
+        "Both end at the same installer with the same rules &mdash; nothing is ever deleted, "
+        "and project.js and extensions.json are never touched. Pick whichever suits how "
+        "this machine can be reached.<br><br>"
+        "<b>Updating the client itself</b> is the last box, and is a different thing: it "
+        "carries the program rather than the graphics, from its own repository, and only "
+        "when somebody asks.", tabTemplates);
+    templatesIntro->setWordWrap(true);
+    templatesIntro->setStyleSheet("color: rgba(190, 190, 190, 215); font-size: 11px;");
+    templatesVBox->addWidget(templatesIntro);
+
     QGroupBox* pushGroup = new QGroupBox("Accept Template Pushes", tabTemplates);
     QGridLayout* pushGrid = new QGridLayout(pushGroup);
     spaceOutGroup(pushGrid);
@@ -721,6 +738,8 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     pushGrid->addWidget(this->lineEditTemplatePushPath, 2, 1, 1, 2);
 
     pushGrid->addWidget(new QLabel(
+        "Needs the dev machine to be able to reach this one, so it suits a venue on the same\n"
+        "network. Where it cannot, use the box below instead - do not use both.\n\n"
         "project.js and extensions.json are never written by a push: this machine owns the\n"
         "API key, the local flag and the Sheets panel buttons.", pushGroup), 3, 0, 1, 3);
 
@@ -839,38 +858,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "Zero reports only on change, and leaves that question unanswered.");
     relayGrid->addWidget(this->spinBoxRelayHeartbeat, 9, 1);
 
-    // Where builds of the client itself come from. Deliberately beside the
-    // template settings rather than in them: the two answer different questions
-    // and are usually different repositories.
-    relayGrid->addWidget(new QLabel("Update source:", relayGroup), 10, 0);
-    this->lineEditUpdateSource = new QLineEdit(UpdateDialog::source(), relayGroup);
-    this->lineEditUpdateSource->setReadOnly(true);
-    this->lineEditUpdateSource->setFocusPolicy(Qt::NoFocus);
-    this->lineEditUpdateSource->setStyleSheet("color: rgba(190, 190, 190, 200);");
-    this->lineEditUpdateSource->setToolTip(
-        "Where builds of the client itself come from. Fixed in this build, and shown\n"
-        "here rather than offered.\n\n"
-        "A template is a file the server reads. A build is a program that runs on\n"
-        "this machine, so where one may come from is not a setting - a text field\n"
-        "here would let anyone who can open this dialog point the client at any\n"
-        "repository, and the checksum would not catch it: it proves the download\n"
-        "arrived intact, not who built it.\n\n"
-        "Nothing is checked automatically. Help -> Check for Updates asks, and\n"
-        "nothing is installed without somebody doing it.");
-    relayGrid->addWidget(this->lineEditUpdateSource, 10, 1, 1, 3);
-
-    relayGrid->addWidget(new QLabel("Update token:", relayGroup), 11, 0);
-    this->lineEditUpdateToken = new QLineEdit(UpdateDialog::token(), relayGroup);
-    this->lineEditUpdateToken->setPlaceholderText("only needed if that repository is private");
-    this->lineEditUpdateToken->setToolTip(
-        "Only needed if that repository is private. A public one - which is the\n"
-        "ordinary case for builds - needs nothing here.\n\n"
-        "Read-only is enough. This never writes to the repository.");
-    relayGrid->addWidget(this->lineEditUpdateToken, 11, 1, 1, 3);
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 12, 0, 1, 2);
+    relayGrid->addWidget(this->labelRelayStatus, 12, 0, 1, 4);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
@@ -885,11 +876,14 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     relayGrid->addWidget(relayCheck, 9, 3);
 
     relayGrid->addWidget(new QLabel(
+        "The same packs as a push, fetched instead of received, so nothing inbound has to be\n"
+        "opened at the venue. A relay is a PHP file you host; GitHub costs nothing to run and\n"
+        "keeps the history of every template. Either works - the address says which.\n\n"
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
-        "alone here exactly as they are during a push.", relayGroup), 10, 0, 1, 4);
+        "alone here exactly as they are during a push.", relayGroup), 11, 0, 1, 4);
 
     relayGrid->addWidget(new QLabel(
-        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 9, 0, 1, 4);
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 10, 0, 1, 4);
 
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.
@@ -920,6 +914,63 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     });
 
     templatesVBox->addWidget(relayGroup);
+
+    // The client itself, which is a different question from the packs above and
+    // was reading as a second copy of them: two more fields called Source and
+    // Token inside a box about pulling template packs.
+    //
+    // Templates arrive on their own every fifteen minutes because a template is a
+    // file the server reads. A build is the program running the show, on a machine
+    // that may be on air, so nothing here happens without somebody asking.
+    QGroupBox* updateGroup = new QGroupBox("Update This Client", tabTemplates);
+    QGridLayout* updateGrid = new QGridLayout(updateGroup);
+    updateGrid->setContentsMargins(12, 8, 12, 8);
+    updateGrid->setHorizontalSpacing(8);
+    updateGrid->setVerticalSpacing(6);
+    updateGrid->setColumnStretch(1, 1);
+
+    updateGrid->addWidget(new QLabel("Update source:", updateGroup), 0, 0);
+    this->lineEditUpdateSource = new QLineEdit(UpdateDialog::source(), updateGroup);
+    this->lineEditUpdateSource->setReadOnly(true);
+    this->lineEditUpdateSource->setFocusPolicy(Qt::NoFocus);
+    this->lineEditUpdateSource->setStyleSheet("color: rgba(190, 190, 190, 200);");
+    this->lineEditUpdateSource->setToolTip(
+        "Where builds of the client itself come from. Fixed in this build, and shown\n"
+        "here rather than offered.\n\n"
+        "A template is a file the server reads. A build is a program that runs on\n"
+        "this machine, so where one may come from is not a setting - a text field\n"
+        "here would let anyone who can open this dialog point the client at any\n"
+        "repository, and the checksum would not catch it: it proves the download\n"
+        "arrived intact, not who built it.");
+    updateGrid->addWidget(this->lineEditUpdateSource, 0, 1, 1, 2);
+
+    updateGrid->addWidget(new QLabel("Update token:", updateGroup), 1, 0);
+    this->lineEditUpdateToken = new QLineEdit(UpdateDialog::token(), updateGroup);
+    this->lineEditUpdateToken->setPlaceholderText("only needed if that repository is private");
+    this->lineEditUpdateToken->setToolTip(
+        "Only needed if that repository is private. A public one - which is the\n"
+        "ordinary case for builds - needs nothing here.\n\n"
+        "Read-only is enough. This never writes to the repository.");
+    updateGrid->addWidget(this->lineEditUpdateToken, 1, 1, 1, 2);
+
+    updateGrid->addWidget(new QLabel(
+        "The program, not the graphics, and from its own repository rather than the one\n"
+        "above. Templates arrive on their own every few minutes because a template is a file\n"
+        "the server reads; this is the program running the show, so nothing is checked or\n"
+        "installed unless you ask, and the moment to replace it is yours.", updateGroup), 2, 0, 1, 2);
+
+    QPushButton* updateCheck = new QPushButton("Check for Updates...", updateGroup);
+    updateCheck->setFixedHeight(22);
+    updateCheck->setFocusPolicy(Qt::NoFocus);
+    updateCheck->setToolTip("The same as Help -> Check for Updates.");
+    QObject::connect(updateCheck, &QPushButton::clicked, this, [this]() {
+        UpdateDialog dialog(this);
+        dialog.exec();
+    });
+    updateGrid->addWidget(updateCheck, 2, 2);
+
+    templatesVBox->addWidget(updateGroup);
+
     templatesVBox->addStretch();
 
     this->tabWidgetSettings->addTab(tabTemplates, "Templates");
