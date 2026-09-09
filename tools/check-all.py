@@ -131,6 +131,19 @@ def main():
         if line.strip():
             print('  ' + line.strip())
 
+    # A tab that does not scroll draws its rows on top of one another once it stops
+    # fitting the dialog, rather than clipping or scrolling. It is invisible until
+    # somebody adds one row too many, and then the page is unreadable.
+    print()
+    print('Settings tabs')
+    tabs = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-settings-tabs.py')],
+                          cwd=ROOT, capture_output=True, text=True)
+    tabs_ok = tabs.returncode == 0
+    for line in tabs.stdout.splitlines():
+        stripped = line.strip()
+        if stripped and stripped != 'Settings tabs':
+            print('  ' + stripped)
+
     # A feature nobody is told about is a feature nobody uses.
     print()
     print('Changelog')
@@ -185,10 +198,12 @@ def main():
         print('A feature is missing from the changelog.')
     if not panels_ok:
         print('A panel is registered but not placed, or a consumer stopped reading the registry.')
+    if not tabs_ok:
+        print('A Settings tab added in code has no scroll area, so it will overlap as it grows.')
     if broken:
         print('Failed: ' + ', '.join(broken))
 
-    return 0 if (syntax_ok and wiring_ok and story_ok and panels_ok
+    return 0 if (syntax_ok and wiring_ok and story_ok and panels_ok and tabs_ok
                  and not broken and totalFailed == 0) else 1
 
 

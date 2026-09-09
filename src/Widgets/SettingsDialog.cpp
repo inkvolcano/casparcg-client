@@ -59,6 +59,36 @@ namespace
     // where the title already is, so the first row and the title crowd each other.
     // The top margin is what buys the title its own line. Four pixels between rows
     // reads as cramped once a group has more than two or three of them.
+    // Give a tab a scroll area and hand back the widget its contents go in.
+    //
+    // There is a loop near the top of the constructor that does this for every tab
+    // the .ui file brings, and it cannot help the ones built in code: it runs
+    // before they exist, and it skips anything that already has a layout, which
+    // they all do. So each of them has to ask.
+    //
+    // It matters because a Qt layout given less height than its rows need does not
+    // clip or scroll - it compresses them until they draw on top of one another.
+    // The Templates tab reached that point and became unreadable; Sheets and Simple
+    // Mode are the same shape and were heading the same way.
+    //
+    // tools/check-settings-tabs.py fails the build if a tab added in code does not
+    // come through here, so the next one cannot quietly miss it.
+    QWidget* scrollableTab(QWidget* tab)
+    {
+        QVBoxLayout* outer = new QVBoxLayout(tab);
+        outer->setContentsMargins(0, 0, 0, 0);
+
+        QScrollArea* scroll = new QScrollArea(tab);
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+        outer->addWidget(scroll);
+
+        QWidget* content = new QWidget();
+        scroll->setWidget(content);
+
+        return content;
+    }
+
     void spaceOutGroup(QGridLayout* grid)
     {
         grid->setContentsMargins(10, 18, 10, 10);
@@ -426,16 +456,17 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     // Simple Mode tab: its own independent layout + grid options.
     QWidget* tabSimpleMode = new QWidget();
-    QVBoxLayout* smVBox = new QVBoxLayout(tabSimpleMode);
+    QWidget* smContent = scrollableTab(tabSimpleMode);
+    QVBoxLayout* smVBox = new QVBoxLayout(smContent);
 
-    smVBox->addWidget(new QLabel("Panel layout used while Simple Mode is active (View \xe2\x86\x92 Simple Mode):", tabSimpleMode));
-    this->simpleLayoutPresetBar = new LayoutPresetBar(LayoutPreset::scopeSimple(), tabSimpleMode);
+    smVBox->addWidget(new QLabel("Panel layout used while Simple Mode is active (View \xe2\x86\x92 Simple Mode):", smContent));
+    this->simpleLayoutPresetBar = new LayoutPresetBar(LayoutPreset::scopeSimple(), smContent);
     smVBox->addWidget(this->simpleLayoutPresetBar);
 
-    this->simpleLayoutEditor = new LayoutEditorWidget(tabSimpleMode, "Simple");
+    this->simpleLayoutEditor = new LayoutEditorWidget(smContent, "Simple");
     smVBox->addWidget(this->simpleLayoutEditor, 1);
 
-    QGroupBox* smButtonsGroup = new QGroupBox("Button Grid", tabSimpleMode);
+    QGroupBox* smButtonsGroup = new QGroupBox("Button Grid", smContent);
     QHBoxLayout* smOptionsRow = new QHBoxLayout(smButtonsGroup);
     spaceOutGroup(smOptionsRow);
     // Grid columns/rows are set directly in the Simple Mode bottom bar.
@@ -466,9 +497,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Sheets tab: the cache service, the budget it is measured against, and the
     // outward report.
     QWidget* tabSheets = new QWidget();
-    QVBoxLayout* sheetsVBox = new QVBoxLayout(tabSheets);
+    QWidget* sheetsContent = scrollableTab(tabSheets);
+    QVBoxLayout* sheetsVBox = new QVBoxLayout(sheetsContent);
 
-    QGroupBox* sheetsCacheGroup = new QGroupBox("Cache Service", tabSheets);
+    QGroupBox* sheetsCacheGroup = new QGroupBox("Cache Service", sheetsContent);
     QGridLayout* sheetsGrid = new QGridLayout(sheetsCacheGroup);
     spaceOutGroup(sheetsGrid);
 
@@ -496,7 +528,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Hosting the cache here instead of alongside it. The templates already know how
     // to talk to a cache; this answers on the same parameters, so pointing them at this
     // port is the whole migration.
-    QGroupBox* sheetsHostGroup = new QGroupBox("Host The Cache In This Client", tabSheets);
+    QGroupBox* sheetsHostGroup = new QGroupBox("Host The Cache In This Client", sheetsContent);
     QGridLayout* hostGrid = new QGridLayout(sheetsHostGroup);
     spaceOutGroup(hostGrid);
 
@@ -591,7 +623,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Where each project's templates look for the cache. The flag lives in the
     // project's own project.js, which is the file the templates read, so this writes
     // there rather than keeping a second copy of the answer.
-    QGroupBox* sheetsProjectsGroup = new QGroupBox("Template Projects", tabSheets);
+    QGroupBox* sheetsProjectsGroup = new QGroupBox("Template Projects", sheetsContent);
     QVBoxLayout* projectsVBox = new QVBoxLayout(sheetsProjectsGroup);
     spaceOutGroup(projectsVBox);
 
@@ -618,7 +650,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     buildSheetProjectsGroup();
 
-    QGroupBox* sheetsWarmGroup = new QGroupBox("Warming", tabSheets);
+    QGroupBox* sheetsWarmGroup = new QGroupBox("Warming", sheetsContent);
     QGridLayout* warmGrid = new QGridLayout(sheetsWarmGroup);
     spaceOutGroup(warmGrid);
 
@@ -650,7 +682,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     sheetsVBox->addWidget(sheetsWarmGroup);
 
-    QGroupBox* sheetsStrainGroup = new QGroupBox("Strain Reporting", tabSheets);
+    QGroupBox* sheetsStrainGroup = new QGroupBox("Strain Reporting", sheetsContent);
     QVBoxLayout* strainVBox = new QVBoxLayout(sheetsStrainGroup);
     spaceOutGroup(strainVBox);
 
@@ -680,7 +712,15 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Templates tab: receiving a pack pushed from a dev machine. Separate from
     // Sheets because it is a different job, though it shares the same socket.
     QWidget* tabTemplates = new QWidget();
-    QVBoxLayout* templatesVBox = new QVBoxLayout(tabTemplates);
+
+    // Its own scroll area, because the loop near the top of this constructor that
+    // gives every tab one skips any tab that already has a layout - and this tab is
+    // built here, with a layout, long after that loop has run. Without it the whole
+    // page has to fit the dialog's height, and a QGridLayout asked for less room
+    // than its rows need does not scroll or clip: it compresses them until they
+    // draw on top of one another, which is what this page was doing.
+    QWidget* templatesContent = scrollableTab(tabTemplates);
+    QVBoxLayout* templatesVBox = new QVBoxLayout(templatesContent);
 
     // Three boxes, and only two questions between them. Push and pull are the same
     // job travelling in opposite directions - a client uses one or the other, never
@@ -694,12 +734,12 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "this machine can be reached.<br><br>"
         "<b>Updating the client itself</b> is the last box, and is a different thing: it "
         "carries the program rather than the graphics, from its own repository, and only "
-        "when somebody asks.", tabTemplates);
+        "when somebody asks.", templatesContent);
     templatesIntro->setWordWrap(true);
     templatesIntro->setStyleSheet("color: rgba(190, 190, 190, 215); font-size: 11px;");
     templatesVBox->addWidget(templatesIntro);
 
-    QGroupBox* pushGroup = new QGroupBox("Accept Template Pushes", tabTemplates);
+    QGroupBox* pushGroup = new QGroupBox("Accept Template Pushes", templatesContent);
     QGridLayout* pushGrid = new QGridLayout(pushGroup);
     spaceOutGroup(pushGrid);
 
@@ -748,7 +788,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Pulling: the same job as a push, in the direction that survives a venue
     // firewall. Nothing inbound is opened here; this machine reaches out. Either a
     // relay or a private GitHub repository, told apart by how the address is written.
-    QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay Or GitHub", tabTemplates);
+    QGroupBox* relayGroup = new QGroupBox("Pull Packs From A Relay Or GitHub", templatesContent);
     QGridLayout* relayGrid = new QGridLayout(relayGroup);
     spaceOutGroup(relayGrid);
 
@@ -922,7 +962,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // Templates arrive on their own every fifteen minutes because a template is a
     // file the server reads. A build is the program running the show, on a machine
     // that may be on air, so nothing here happens without somebody asking.
-    QGroupBox* updateGroup = new QGroupBox("Update This Client", tabTemplates);
+    QGroupBox* updateGroup = new QGroupBox("Update This Client", templatesContent);
     QGridLayout* updateGrid = new QGridLayout(updateGroup);
     updateGrid->setContentsMargins(12, 8, 12, 8);
     updateGrid->setHorizontalSpacing(8);
@@ -2810,7 +2850,8 @@ void SettingsDialog::setupHotkeyTab()
     QWidget* tabHotkeys = new QWidget();
     this->tabWidgetSettings->addTab(tabHotkeys, "Hotkeys");
 
-    QVBoxLayout* mainLayout = new QVBoxLayout(tabHotkeys);
+    QWidget* hotkeysContent = scrollableTab(tabHotkeys);
+    QVBoxLayout* mainLayout = new QVBoxLayout(hotkeysContent);
 
     QScrollArea* scrollArea = new QScrollArea();
     scrollArea->setWidgetResizable(true);
