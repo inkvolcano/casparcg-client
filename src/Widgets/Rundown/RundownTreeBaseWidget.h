@@ -67,6 +67,10 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void moveItemUp();
         void moveItemDown();
         void moveItemIntoGroup();
+        // Move the current item into a named group rather than the one above it.
+        // The Simple Mode shotbox needs this: the target is a key on a grid, not
+        // a neighbouring row. Returns false when the move is refused.
+        bool moveCurrentItemInto(QTreeWidgetItem* targetGroup);
         void moveItemOutOfGroup();
         void groupItems();
         void ungroupItems();

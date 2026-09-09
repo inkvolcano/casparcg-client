@@ -125,6 +125,7 @@ qt_add_library(widgets
     Rundown/RundownHttpGetWidget.cpp Rundown/RundownHttpGetWidget.h Rundown/RundownHttpGetWidget.ui
     Rundown/RundownShellCommandWidget.cpp Rundown/RundownShellCommandWidget.h Rundown/RundownShellCommandWidget.ui
     Rundown/MissingMediaScanner.cpp Rundown/MissingMediaScanner.h
+    Rundown/SimpleModeMarker.cpp Rundown/SimpleModeMarker.h
     Rundown/RundownHttpPostWidget.cpp Rundown/RundownHttpPostWidget.h Rundown/RundownHttpPostWidget.ui
     Rundown/RundownImageScrollerWidget.cpp Rundown/RundownImageScrollerWidget.h Rundown/RundownImageScrollerWidget.ui
     Rundown/RundownItemFactory.cpp Rundown/RundownItemFactory.h

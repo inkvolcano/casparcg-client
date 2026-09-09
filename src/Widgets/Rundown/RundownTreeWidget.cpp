@@ -73,6 +73,7 @@
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
 #include "MissingMediaScanner.h"
+#include "SimpleModeMarker.h"
 
 #include "AutoSaveNaming.h"
 
@@ -1457,6 +1458,7 @@ void RundownTreeWidget::openRundown(const QString& path)
         // The rundown is on screen now, so anything pointing at media that is
         // not there can be marked before it is played rather than after.
         checkMissingMedia();
+        markSimpleModeItems();
 
         qDebug("RundownTreeWidget::openRundown %lld msec (%d items)", time.elapsed(), this->treeWidgetRundown->invisibleRootItem()->childCount());
     }
@@ -1703,6 +1705,18 @@ bool RundownTreeWidget::openAutoSaveCopy(const QString& autoSavePath, const QStr
     EventManager::getInstance().fireActiveRundownChangedEvent(ActiveRundownChangedEvent(this->activeRundown));
 
     return true;
+}
+
+// Which rows have a key on the Simple Mode grid. Deferred for the same reason as
+// the media sweep: on load the item widgets are still being built.
+void RundownTreeWidget::markSimpleModeItems()
+{
+    if (this->simpleModeMarker == nullptr)
+        this->simpleModeMarker = new SimpleModeMarker(this);
+
+    QTimer::singleShot(0, this, [this]() {
+        this->simpleModeMarker->sweep(this->treeWidgetRundown);
+    });
 }
 
 void RundownTreeWidget::checkMissingMedia()

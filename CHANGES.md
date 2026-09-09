@@ -1931,6 +1931,49 @@ lands this is for building and checking graphics, not for playing them out.
 
 ---
 
+## The mini shotbox
+
+A rack on the grid. One Simple Mode key holds **up to four rows**, each with an
+item's label on the left and that item's own controls on the right - so a break
+block, a set of stings or four camera bumps live on one key instead of four.
+
+It is a **group**, shown a third way. A group can already be an ordinary key or a
+dropdown; tick **Treat as shotbox** in `Inspector -> Simple Mode` and it becomes a
+rack of its children instead. Everything a group already does carries over: the
+children, their order, their labels, save, undo, clone.
+
+- **The group itself never fires.** Each row fires its own child, on that child's
+  own channel and layer - the same rule the group invoke buttons already follow.
+- **Row order is rundown order.** Move a child in the rundown and its row moves.
+  One order, rather than two that can disagree.
+- **The controls follow your settings.** Play/Stop, Preview where it is turned on,
+  Next where the item asks for it - so a row behaves like a key.
+- **Put items in with the Move button**, the same gesture that moves a key: select
+  an item, press Move, click the shotbox. Right-click a row to take it out again.
+  Both go on the undo stack.
+- A child that is inside a shotbox no longer also gets a key of its own, which
+  would have put the same item on the surface twice.
+- Shotbox and dropdown are mutually exclusive, in both directions.
+
+## Simple Mode: three smaller things
+
+**Renaming an item now updates its key.** The grid was not listening for label
+changes, so a key kept the old name until something else rebuilt it - and the
+Simple Inspector has a label field, so this was reachable without leaving Simple
+Mode. A key with the wrong name on it is worse than a key with no name.
+
+**The rundown now shows which items have keys.** A small blue mark on the row,
+hung on the same frame the missing-media warning uses. The flag was invisible from
+the rundown side, so answering "is this block on the grid?" meant selecting rows
+one at a time and reading the Inspector. Ticking the box updates its row straight
+away.
+
+**A separator can be a heading or a gap on the grid.** Flag a separator for Simple
+Mode and it stops pretending to be a button: **with a label it is a heading over
+the keys below it, without one it is a deliberate blank**. That is the whole rule,
+and it needs no new setting - the label, the position, the colour, undo and save
+all come from a separator being an ordinary rundown item.
+
 ## Sorting the Library by date, size and length
 
 The Library could sort by name and by nothing else. The type is already the tabs,

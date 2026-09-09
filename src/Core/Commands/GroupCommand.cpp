@@ -71,6 +71,24 @@ void GroupCommand::setTreatAsDropdown(bool treatAsDropdown)
     emit treatAsDropdownChanged(this->treatAsDropdown);
 }
 
+bool GroupCommand::getTreatAsShotbox() const
+{
+    return this->treatAsShotbox;
+}
+
+void GroupCommand::setTreatAsShotbox(bool treatAsShotbox)
+{
+    this->treatAsShotbox = treatAsShotbox;
+
+    // The two render modes are exclusive. Enforced here rather than only in the
+    // Inspector, because a hand-edited rundown can set both and the grid would
+    // otherwise have to pick one silently.
+    if (treatAsShotbox && this->treatAsDropdown)
+        setTreatAsDropdown(false);
+
+    emit treatAsShotboxChanged(this->treatAsShotbox);
+}
+
 int GroupCommand::getDropdownIndex() const
 {
     return this->dropdownIndex;
@@ -100,6 +118,11 @@ void GroupCommand::readProperties(boost::property_tree::wptree& pt)
     setAutoLoop(pt.get(L"autoloop", Group::DEFAULT_AUTO_LOOP));
     setTreatAsDropdown(pt.get(L"treatasdropdown", false));
     setDropdownIndex(pt.get(L"dropdownindex", 0));
+
+    // Read last of the three, because its setter is what resolves the two render
+    // modes being on at once - a hand-edited file with both ends up a shotbox
+    // rather than ending up as whichever the grid happened to test for first.
+    setTreatAsShotbox(pt.get(L"treatasshotbox", false));
 }
 
 void GroupCommand::writeProperties(QXmlStreamWriter& writer)
@@ -116,4 +139,9 @@ void GroupCommand::writeProperties(QXmlStreamWriter& writer)
         writer.writeTextElement("treatasdropdown", "true");
         writer.writeTextElement("dropdownindex", QString::number(getDropdownIndex()));
     }
+
+    // Written only when on, like the dropdown pair above, so an untouched rundown
+    // gains nothing in its file.
+    if (getTreatAsShotbox())
+        writer.writeTextElement("treatasshotbox", "true");
 }

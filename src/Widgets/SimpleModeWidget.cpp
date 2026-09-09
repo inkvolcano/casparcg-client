@@ -7,6 +7,14 @@
 #include "Commands/AbstractCommand.h"
 #include "Commands/GroupCommand.h"
 #include "Commands/TemplateCommand.h"
+#include "Commands/SeparatorCommand.h"
+
+// A shotbox holds this many rows. Four is what fits in a key that is still square
+// enough to sit in the grid beside ordinary keys, and past four the labels get
+// too short to tell two clips apart.
+static const int SHOTBOX_MAX_ROWS = 4;
+static const int SHOTBOX_ROW_HEIGHT = 30;
+static const int SHOTBOX_TITLE_HEIGHT = 18;
 #include "Events/Rundown/ExecuteRundownItemEvent.h"
 #include "Rundown/AbstractRundownWidget.h"
 #include "Rundown/RundownTreeWidget.h"
@@ -216,6 +224,12 @@ SimpleModeWidget::SimpleModeWidget(RundownWidget* rundownWidget, QWidget* parent
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownStructureChanged()), this, SLOT(rundownStructureChanged()));
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemFired(QTreeWidgetItem*, int)), this, SLOT(rundownItemFired(QTreeWidgetItem*, int)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemSelected(const RundownItemSelectedEvent&)), this, SLOT(rundownItemSelected(const RundownItemSelectedEvent&)));
+    // A key showing the old name is worse than a key showing none, and the Simple
+    // Inspector has a label field - so this is reachable without leaving Simple
+    // Mode. Coalesced through the same debounce as invoke edits, because the
+    // event fires on every keystroke.
+    QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)),
+                     this, SLOT(labelChanged(const LabelChangedEvent&)));
 }
 
 void SimpleModeWidget::resizeEvent(QResizeEvent* event)
@@ -331,6 +345,15 @@ int SimpleModeWidget::computeCellSize() const
     return qBound(MIN_CELL_SIZE, size, MAX_CELL_SIZE);
 }
 
+void SimpleModeWidget::labelChanged(const LabelChangedEvent& event)
+{
+    Q_UNUSED(event);
+
+    // The label decides the wrapped text height, which decides an auto-height
+    // key's span, so this is a rebuild rather than a setText on one label.
+    invokeDataChanged();
+}
+
 void SimpleModeWidget::invokeDataChanged()
 {
     if (this->contentDebounce != nullptr)
@@ -376,11 +399,30 @@ RundownTreeBaseWidget* SimpleModeWidget::undoTarget() const
 
 void SimpleModeWidget::collectFlaggedItems(RundownTreeWidget* tree, QList<QTreeWidgetItem*>& result) const
 {
+    // A child of a shotbox is already on the grid, as a row of its parent's key.
+    // Giving it a key of its own as well would put the same item on the surface
+    // twice, which is the sort of thing that gets fired by accident.
+    auto insideShotbox = [tree](QTreeWidgetItem* item) {
+        QTreeWidgetItem* parent = item->parent();
+        if (parent == nullptr)
+            return false;
+
+        QWidget* parentWidget = tree->treeWidget()->itemWidget(parent, 0);
+        AbstractRundownWidget* parentItem = dynamic_cast<AbstractRundownWidget*>(parentWidget);
+        if (parentItem == nullptr)
+            return false;
+
+        GroupCommand* group = dynamic_cast<GroupCommand*>(parentItem->getCommand());
+
+        return group != nullptr && group->getTreatAsShotbox();
+    };
+
     std::function<void(QTreeWidgetItem*)> walk = [&](QTreeWidgetItem* item) {
         QWidget* widget = tree->treeWidget()->itemWidget(item, 0);
         AbstractRundownWidget* rundownItem = dynamic_cast<AbstractRundownWidget*>(widget);
         if (rundownItem != nullptr && rundownItem->getCommand() != nullptr
-            && rundownItem->getCommand()->getShowInSimpleMode())
+            && rundownItem->getCommand()->getShowInSimpleMode()
+            && !insideShotbox(item))
             result.append(item);
 
         for (int i = 0; i < item->childCount(); i++)
@@ -411,6 +453,33 @@ int SimpleModeWidget::computeControlsHeight(AbstractCommand* command, bool showP
 // labeled invokes; a group key lifts the labeled invokes of every descendant
 // template flagged with "Show invokes on group button". Only labeled invokes
 // ever appear — an unlabeled invoke has nothing to print on a button.
+// The children a shotbox group puts on its key: the first four, in rundown
+// order, skipping anything that is not a playable item. Order comes from the
+// rundown rather than from a separate arrangement, so moving a child in the
+// rundown moves its row - one order, not two that can disagree.
+QList<QTreeWidgetItem*> SimpleModeWidget::collectShotboxRows(RundownTreeWidget* tree, QTreeWidgetItem* item) const
+{
+    QList<QTreeWidgetItem*> rows;
+
+    for (int i = 0; i < item->childCount() && rows.count() < SHOTBOX_MAX_ROWS; i++)
+    {
+        QTreeWidgetItem* child = item->child(i);
+        QWidget* widget = tree->treeWidget()->itemWidget(child, 0);
+        AbstractRundownWidget* rundownItem = dynamic_cast<AbstractRundownWidget*>(widget);
+
+        if (rundownItem == nullptr || rundownItem->getCommand() == nullptr)
+            continue;
+
+        // A separator inside a shotbox is a rundown comment, not a row.
+        if (dynamic_cast<SeparatorCommand*>(rundownItem->getCommand()) != nullptr)
+            continue;
+
+        rows.append(child);
+    }
+
+    return rows;
+}
+
 QList<SimpleModeWidget::InvokeButton> SimpleModeWidget::collectInvokeButtons(RundownTreeWidget* tree, QTreeWidgetItem* item) const
 {
     QList<InvokeButton> result;
@@ -471,6 +540,24 @@ int SimpleModeWidget::computeSpanCols(AbstractCommand* command) const
 
 int SimpleModeWidget::computeSpanRows(RundownTreeWidget* tree, QTreeWidgetItem* item, AbstractCommand* command, bool showPlayStop) const
 {
+    // A separator is a heading or a gap, not a key: nothing to fire, so nothing
+    // to make room for. One slot, always.
+    if (dynamic_cast<SeparatorCommand*>(command) != nullptr)
+        return 1;
+
+    // A shotbox is measured from its rows rather than from a label, because its
+    // height is the one thing about it that is not up to the operator.
+    if (GroupCommand* shotbox = dynamic_cast<GroupCommand*>(command))
+    {
+        if (shotbox->getTreatAsShotbox())
+        {
+            const int rows = qMax(1, collectShotboxRows(tree, item).count());
+            const int wanted = SHOTBOX_TITLE_HEIGHT + rows * SHOTBOX_ROW_HEIGHT + 12;
+
+            return qMax(1, (wanted + this->cellSize - 1) / this->cellSize);
+        }
+    }
+
     // Mirror buildButtonCell exactly — same widgets, same heights, same spacing —
     // and measure the real text, so a key grows into a second slot only when its
     // content genuinely does not fit rather than on a padded guess.
@@ -981,6 +1068,236 @@ QWidget* SimpleModeWidget::buildButtonCell(RundownTreeWidget* tree, QTreeWidgetI
     QWidget* widget = tree->treeWidget()->itemWidget(item, 0);
     AbstractRundownWidget* rundownItem = dynamic_cast<AbstractRundownWidget*>(widget);
     AbstractCommand* command = rundownItem->getCommand();
+
+    // A separator on the grid is not a key. It is the thing that makes a grid of
+    // forty buttons readable: a heading over a block of them, or a deliberate gap
+    // between two blocks.
+    //
+    // Which one it is comes from the separator's own label rather than from a new
+    // setting - a separator with text is a heading, one without is a spacer. That
+    // is the whole rule, and it needs nothing that did not already exist: the
+    // label, the slot, the colour, undo, save and clone all come from the fact
+    // that a separator is an ordinary rundown item.
+    if (dynamic_cast<SeparatorCommand*>(command) != nullptr)
+    {
+        const QString headingText = rundownItem->getLibraryModel()->getLabel().trimmed();
+
+        SimpleCellFrame* heading = new SimpleCellFrame(this->gridContainer);
+        heading->setFixedSize(cellSize * spanCols + GRID_SPACING * (spanCols - 1),
+                              cellSize * spanRows + GRID_SPACING * (spanRows - 1));
+        heading->setProperty("itemColor", rundownItem->getColor());
+
+        // Still selectable, because Move and Remove act on the selection and a
+        // heading has to be movable like anything else on the grid.
+        heading->onPress = [this, tree, item]() {
+            this->setFocus();
+            tree->treeWidget()->setCurrentItem(item);
+        };
+        heading->onContext = [this, tree, item](const QPoint& globalPos) {
+            tree->treeWidget()->setCurrentItem(item);
+
+            QMenu menu(this);
+            QAction* removeAction = menu.addAction("Remove from Grid");
+            if (menu.exec(globalPos) == removeAction)
+            {
+                UndoScope scope(undoTarget(), "Remove From Simple Mode");
+                if (AbstractCommand* c = this->selectedCommand.data())
+                    c->setShowInSimpleMode(false);
+
+                refresh();
+            }
+        };
+
+        QVBoxLayout* headingLayout = new QVBoxLayout(heading);
+        headingLayout->setContentsMargins(6, 4, 6, 4);
+        headingLayout->setSpacing(0);
+
+        if (!headingText.isEmpty())
+        {
+            QLabel* text = new QLabel(headingText, heading);
+            text->setAlignment(Qt::AlignCenter);
+            text->setWordWrap(true);
+
+            int size = command->getSimpleModeLabelSize();
+            if (size <= 0)
+                size = 12;
+
+            // Reads as a label over the keys rather than as another key: letter
+            // spacing and a quieter colour do that without a border or a fill.
+            text->setStyleSheet(QString("color: rgba(210, 210, 210, 210); background: transparent;"
+                                        " font-size: %1px; font-weight: bold; letter-spacing: 1px;").arg(size));
+            headingLayout->addWidget(text, 1);
+        }
+
+        this->cellFrames.append(heading);
+        this->buttonCommands.append(command);
+        this->cellTallies.append(nullptr);
+        this->cellItems.append(item);
+
+        return heading;
+    }
+
+    // A shotbox: one key holding a row per child, the child's label on the left
+    // and its own controls on the right.
+    //
+    // The group itself never fires. That is the point of it - it is a rack, not a
+    // button - so every control here targets the child that owns the row, on that
+    // child's channel and layer. It is the same rule the group-invoke buttons
+    // already follow.
+    if (GroupCommand* shotboxGroup = dynamic_cast<GroupCommand*>(command))
+    {
+        if (shotboxGroup->getTreatAsShotbox())
+        {
+            const QList<QTreeWidgetItem*> rows = collectShotboxRows(tree, item);
+
+            SimpleCellFrame* box = new SimpleCellFrame(this->gridContainer);
+            box->setFixedSize(cellSize * spanCols + GRID_SPACING * (spanCols - 1),
+                              cellSize * spanRows + GRID_SPACING * (spanRows - 1));
+            box->setProperty("itemColor", rundownItem->getColor());
+            box->onPress = [this, tree, item]() {
+                this->setFocus();
+
+                // Armed Move turns a shotbox into a drop target: clicking it puts
+                // the selected item in, rather than selecting the box. This is the
+                // only way in, so that placing a row and moving a key are the same
+                // gesture rather than two.
+                if (this->moveMode && !this->selectedCommand.isNull())
+                {
+                    if (tree->treeWidget()->moveCurrentItemInto(item))
+                    {
+                        setMoveMode(false);
+                        refresh();
+                        return;
+                    }
+                }
+
+                tree->treeWidget()->setCurrentItem(item);
+            };
+            box->onContext = [this, tree, item](const QPoint& globalPos) {
+                tree->treeWidget()->setCurrentItem(item);
+
+                QMenu menu(this);
+                QAction* removeAction = menu.addAction("Remove from Grid");
+                if (menu.exec(globalPos) == removeAction)
+                {
+                    UndoScope scope(undoTarget(), "Remove From Simple Mode");
+                    if (AbstractCommand* c = this->selectedCommand.data())
+                        c->setShowInSimpleMode(false);
+
+                    refresh();
+                }
+            };
+
+            QVBoxLayout* boxLayout = new QVBoxLayout(box);
+            boxLayout->setContentsMargins(5, 4, 5, 5);
+            boxLayout->setSpacing(3);
+
+            QLabel* title = new QLabel(rundownItem->getLibraryModel()->getLabel().split('/').last(), box);
+            title->setFixedHeight(SHOTBOX_TITLE_HEIGHT);
+            title->setAttribute(Qt::WA_TransparentForMouseEvents);
+            title->setStyleSheet("color: rgba(210, 210, 210, 200); background: transparent;"
+                                 " font-size: 11px; font-weight: bold; letter-spacing: 1px;");
+            boxLayout->addWidget(title, 0);
+
+            if (rows.isEmpty())
+            {
+                // An empty rack has to say how to fill it, or it reads as broken.
+                QLabel* hint = new QLabel("Move items in with the Move button", box);
+                hint->setWordWrap(true);
+                hint->setAlignment(Qt::AlignCenter);
+                hint->setAttribute(Qt::WA_TransparentForMouseEvents);
+                hint->setStyleSheet("color: rgba(130, 130, 130, 170); background: transparent; font-size: 10px;");
+                boxLayout->addWidget(hint, 1);
+            }
+
+            for (QTreeWidgetItem* rowItem : rows)
+            {
+                QWidget* rowWidget = tree->treeWidget()->itemWidget(rowItem, 0);
+                AbstractRundownWidget* rowRundownItem = dynamic_cast<AbstractRundownWidget*>(rowWidget);
+                AbstractCommand* rowCommand = rowRundownItem->getCommand();
+
+                QWidget* row = new QWidget(box);
+                row->setFixedHeight(SHOTBOX_ROW_HEIGHT);
+                QHBoxLayout* rowLayout = new QHBoxLayout(row);
+                rowLayout->setContentsMargins(0, 0, 0, 0);
+                rowLayout->setSpacing(3);
+
+                // A row has to have a way out, or the only way to undo putting an
+                // item in is to go and find it in the rundown.
+                row->setContextMenuPolicy(Qt::CustomContextMenu);
+                QObject::connect(row, &QWidget::customContextMenuRequested, this,
+                                 [this, tree, rowItem, row](const QPoint& pos) {
+                    tree->treeWidget()->setCurrentItem(rowItem);
+
+                    QMenu menu(this);
+                    QAction* takeOut = menu.addAction("Take out of Shotbox");
+                    if (menu.exec(row->mapToGlobal(pos)) == takeOut)
+                    {
+                        tree->treeWidget()->moveItemOutOfGroup();
+
+                        // The item was destroyed and recreated outside the group,
+                        // and the grid holds pointers to it.
+                        EventManager::getInstance().fireRundownStructureChangedEvent();
+                        refresh();
+                    }
+                });
+
+                QLabel* rowLabel = new QLabel(rowRundownItem->getLibraryModel()->getLabel().split('/').last(), row);
+                rowLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+                rowLabel->setStyleSheet("color: rgba(235, 235, 235, 230); background: transparent; font-size: 11px;");
+                rowLayout->addWidget(rowLabel, 1);
+
+                // Elided rather than wrapped: a row is one line high, and a label
+                // that overflowed would push the controls off the key.
+                rowLabel->setText(QFontMetrics(rowLabel->font())
+                    .elidedText(rowLabel->text(), Qt::ElideRight, qMax(20, box->width() - 110)));
+
+                auto addControl = [&](const QString& glyph, const QString& colour,
+                                      Playout::PlayoutType type) {
+                    QPushButton* control = new QPushButton(glyph, row);
+                    control->setFixedSize(24, 22);
+                    control->setFocusPolicy(Qt::NoFocus);
+                    control->setStyleSheet(QString(
+                        "QPushButton { background-color: %1; color: white; border: none;"
+                        " border-radius: 2px; font-size: 10px; }"
+                        "QPushButton:hover { background-color: rgba(255, 255, 255, 40); }").arg(colour));
+                    QObject::connect(control, &QPushButton::clicked, this, [rowItem, type]() {
+                        EventManager::getInstance().fireExecuteRundownItemEvent(
+                            ExecuteRundownItemEvent(type, rowItem));
+                    });
+                    rowLayout->addWidget(control, 0);
+                };
+
+                // The same controls an ordinary key would show, from the same
+                // settings, so a shotbox row and a key behave alike.
+                if (showPlayStop)
+                {
+                    addControl(QString::fromUtf8("\xe2\x96\xb6"), "rgba(40, 110, 60, 220)",
+                               Playout::PlayoutType::Play);
+                    addControl(QString::fromUtf8("\xe2\x96\xa0"), "rgba(120, 45, 45, 220)",
+                               Playout::PlayoutType::Stop);
+                }
+
+                if (this->showPreviewControls)
+                    addControl("PVW", "rgba(45, 75, 120, 220)", Playout::PlayoutType::Preview);
+
+                if (rowCommand->getSimpleModeNextButton())
+                    addControl(QString::fromUtf8("\xe2\x8f\xad"), "rgba(70, 70, 70, 220)",
+                               Playout::PlayoutType::Next);
+
+                boxLayout->addWidget(row, 0);
+            }
+
+            boxLayout->addStretch(1);
+
+            this->cellFrames.append(box);
+            this->buttonCommands.append(command);
+            this->cellTallies.append(nullptr);
+            this->cellItems.append(item);
+
+            return box;
+        }
+    }
 
     // The whole cell is one bordered "key": pressing its body selects the item,
     // and the selection border wraps everything including the sub-buttons.

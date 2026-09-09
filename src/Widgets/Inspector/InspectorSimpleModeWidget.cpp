@@ -45,6 +45,16 @@ InspectorSimpleModeWidget::InspectorSimpleModeWidget(QWidget* parent)
         "Treat this group as a list to choose from: playing the group fires only the selected child");
     grid->addWidget(this->checkBoxTreatAsDropdown, 3, 1);
 
+    addLabel(tr("Shotbox"), 4);
+
+    this->checkBoxTreatAsShotbox = new QCheckBox(tr("Treat as shotbox"), this);
+    this->checkBoxTreatAsShotbox->setToolTip(
+        "Show this group as one key holding a row per child: the child's label on the\n"
+        "left, its own controls on the right.\n\n"
+        "The group itself never fires. Each row fires its own child, on that child's\n"
+        "channel and layer. Put an item in with the Move button on the grid.");
+    grid->addWidget(this->checkBoxTreatAsShotbox, 4, 1);
+
     grid->setColumnStretch(1, 1);
 
     resetControls();
@@ -53,6 +63,7 @@ InspectorSimpleModeWidget::InspectorSimpleModeWidget(QWidget* parent)
     QObject::connect(this->checkBoxNextButton, SIGNAL(stateChanged(int)), this, SLOT(nextButtonChanged(int)));
     QObject::connect(this->checkBoxGroupInvokes, SIGNAL(stateChanged(int)), this, SLOT(groupInvokesChanged(int)));
     QObject::connect(this->checkBoxTreatAsDropdown, SIGNAL(stateChanged(int)), this, SLOT(treatAsDropdownChanged(int)));
+    QObject::connect(this->checkBoxTreatAsShotbox, SIGNAL(stateChanged(int)), this, SLOT(treatAsShotboxChanged(int)));
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemSelected(const RundownItemSelectedEvent&)),
                      this, SLOT(rundownItemSelected(const RundownItemSelectedEvent&)));
@@ -64,6 +75,7 @@ void InspectorSimpleModeWidget::blockAllSignals(bool block)
     this->checkBoxNextButton->blockSignals(block);
     this->checkBoxGroupInvokes->blockSignals(block);
     this->checkBoxTreatAsDropdown->blockSignals(block);
+    this->checkBoxTreatAsShotbox->blockSignals(block);
 }
 
 void InspectorSimpleModeWidget::resetControls()
@@ -78,6 +90,8 @@ void InspectorSimpleModeWidget::resetControls()
     this->checkBoxGroupInvokes->setEnabled(false);
     this->checkBoxTreatAsDropdown->setChecked(false);
     this->checkBoxTreatAsDropdown->setEnabled(false);
+    this->checkBoxTreatAsShotbox->setChecked(false);
+    this->checkBoxTreatAsShotbox->setEnabled(false);
 
     blockAllSignals(false);
 }
@@ -111,6 +125,8 @@ void InspectorSimpleModeWidget::rundownItemSelected(const RundownItemSelectedEve
     GroupCommand* groupCommand = dynamic_cast<GroupCommand*>(event.getCommand());
     this->checkBoxTreatAsDropdown->setEnabled(groupCommand != nullptr);
     this->checkBoxTreatAsDropdown->setChecked(groupCommand != nullptr && groupCommand->getTreatAsDropdown());
+    this->checkBoxTreatAsShotbox->setEnabled(groupCommand != nullptr);
+    this->checkBoxTreatAsShotbox->setChecked(groupCommand != nullptr && groupCommand->getTreatAsShotbox());
 
     blockAllSignals(false);
 }
@@ -145,5 +161,37 @@ void InspectorSimpleModeWidget::treatAsDropdownChanged(int state)
         return;
 
     if (GroupCommand* groupCommand = dynamic_cast<GroupCommand*>(this->command.data()))
+    {
         groupCommand->setTreatAsDropdown(state == Qt::Checked);
+
+        // The two are exclusive, and the box that was already ticked has to be
+        // seen to untick itself rather than just stop applying.
+        if (state == Qt::Checked)
+        {
+            groupCommand->setTreatAsShotbox(false);
+            blockAllSignals(true);
+            this->checkBoxTreatAsShotbox->setChecked(false);
+            blockAllSignals(false);
+        }
+    }
+}
+
+void InspectorSimpleModeWidget::treatAsShotboxChanged(int state)
+{
+    if (this->command.isNull())
+        return;
+
+    if (GroupCommand* groupCommand = dynamic_cast<GroupCommand*>(this->command.data()))
+    {
+        // The command's own setter clears the dropdown; this puts the checkbox in
+        // step with it.
+        groupCommand->setTreatAsShotbox(state == Qt::Checked);
+
+        if (state == Qt::Checked)
+        {
+            blockAllSignals(true);
+            this->checkBoxTreatAsDropdown->setChecked(false);
+            blockAllSignals(false);
+        }
+    }
 }

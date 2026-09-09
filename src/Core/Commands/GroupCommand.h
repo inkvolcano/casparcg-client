@@ -30,6 +30,7 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         int getAutoLoopDelay() const;
         bool getTreatAsDropdown() const;
         int getDropdownIndex() const;
+        bool getTreatAsShotbox() const;
 
         void setNotes(const QString& notes);
         void setAutoPlay(bool autoPlay);
@@ -38,6 +39,7 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         void setAutoLoopDelay(int autoLoopDelay);
         void setTreatAsDropdown(bool treatAsDropdown);
         void setDropdownIndex(int index);
+        void setTreatAsShotbox(bool treatAsShotbox);
 
     private:
         QString notes = Group::DEFAULT_NOTE;
@@ -50,6 +52,15 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         bool treatAsDropdown = false;
         int dropdownIndex = 0;
 
+        // Shotbox group: one grid key holding a row per child - label on the
+        // left, the child's own controls on the right. The group itself never
+        // fires; each row fires its own child on that child's channel.
+        //
+        // Mutually exclusive with the dropdown above, because both are answers to
+        // "what does this group look like on the grid" and a group cannot be a
+        // chooser and a rack at the same time.
+        bool treatAsShotbox = false;
+
         Q_SIGNAL void notesChanged(const QString&);
         Q_SIGNAL void autoPlayChanged(bool);
         Q_SIGNAL void loopChanged(bool);
@@ -57,4 +68,5 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         Q_SIGNAL void autoLoopDelayChanged(int);
         Q_SIGNAL void treatAsDropdownChanged(bool);
         Q_SIGNAL void dropdownIndexChanged(int);
+        Q_SIGNAL void treatAsShotboxChanged(bool);
 };

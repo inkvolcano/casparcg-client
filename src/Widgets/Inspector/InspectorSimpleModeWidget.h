@@ -32,6 +32,7 @@ class WIDGETS_EXPORT InspectorSimpleModeWidget : public QWidget
         QCheckBox* checkBoxNextButton = nullptr;
         QCheckBox* checkBoxGroupInvokes = nullptr;
         QCheckBox* checkBoxTreatAsDropdown = nullptr;
+        QCheckBox* checkBoxTreatAsShotbox = nullptr;
 
         void blockAllSignals(bool block);
         void resetControls();
@@ -41,4 +42,5 @@ class WIDGETS_EXPORT InspectorSimpleModeWidget : public QWidget
         Q_SLOT void nextButtonChanged(int);
         Q_SLOT void groupInvokesChanged(int);
         Q_SLOT void treatAsDropdownChanged(int);
+        Q_SLOT void treatAsShotboxChanged(int state);
 };

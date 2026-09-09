@@ -49,6 +49,8 @@
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkAccessManager>
 
+class SimpleModeMarker;
+
 struct AutoPlayQueueInfo
 {
     QList<AbstractRundownWidget*>* queue;
@@ -75,6 +77,7 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         // Sweeps the rundown for items pointing at media that is not there and
         // marks them. Safe to call at any time; does nothing when switched off.
         void checkMissingMedia();
+        void markSimpleModeItems();
 
         bool checkForSave() const;
 
@@ -126,6 +129,10 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         void requestCrossTabFocusGateway(const QString& gatewayId, bool fromIsExit, const QString& exitLabel);
 
     private:
+        // Outlives each sweep: it stays connected to the commands it marked, so a
+        // flag ticked in the Inspector updates its own row.
+        SimpleModeMarker* simpleModeMarker = nullptr;
+
         struct GatewayExitLocation
         {
             QTreeWidgetItem* exitItem = nullptr;

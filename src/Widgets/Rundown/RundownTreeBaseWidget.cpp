@@ -1485,6 +1485,67 @@ void RundownTreeBaseWidget::moveItemOutOfGroup()
     QTreeWidget::doItemsLayout(); // Refresh
 }
 
+bool RundownTreeBaseWidget::moveCurrentItemInto(QTreeWidgetItem* targetGroup)
+{
+    if (targetGroup == NULL || QTreeWidget::currentItem() == NULL)
+        return false;
+
+    QTreeWidgetItem* currentItem = QTreeWidget::currentItem();
+    if (currentItem == targetGroup)
+        return false;
+
+    AbstractRundownWidget* currentWidget =
+        dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(currentItem, 0));
+    AbstractRundownWidget* targetWidget =
+        dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(targetGroup, 0));
+
+    if (currentWidget == NULL || targetWidget == NULL || !targetWidget->isGroup())
+        return false;
+
+    // Only plain items go in. A group inside a group is what the depth rules in
+    // moveItemIntoGroup exist to prevent, and a shotbox row is a clip, not a rack.
+    if (currentWidget->isGroup())
+        return false;
+
+    // Already a child of this group: nothing to do, and doing it anyway would
+    // delete and recreate the row for no reason.
+    if (currentItem->parent() == targetGroup)
+        return false;
+
+    UndoScope undo(this, "Move Into Shotbox");
+
+    QTreeWidgetItem* container = currentItem->parent() ? currentItem->parent() : QTreeWidget::invisibleRootItem();
+    const int row = container->indexOfChild(currentItem);
+
+    // The tree owns its widgets, so moving an item means cloning it under the new
+    // parent and destroying the old one - the same dance moveItemIntoGroup does.
+    QTreeWidgetItem* newItem = new QTreeWidgetItem();
+    AbstractRundownWidget* cloned = currentWidget->cloneItem();
+    cloned->setInGroup(true);
+
+    targetGroup->addChild(newItem);
+    QTreeWidget::setItemWidget(newItem, 0, dynamic_cast<QWidget*>(cloned));
+
+    if (getCompactView())
+        dynamic_cast<QWidget*>(cloned)->setFixedHeight(Rundown::COMPACT_ITEM_HEIGHT);
+    else
+        dynamic_cast<QWidget*>(cloned)->setFixedHeight(Rundown::DEFAULT_ITEM_HEIGHT);
+
+    QTreeWidget::setCurrentItem(newItem);
+
+    container->takeChild(row);
+    EventManager::getInstance().fireRemoveItemFromAutoPlayQueueEvent(RemoveItemFromAutoPlayQueueEvent(currentItem));
+    EventManager::getInstance().fireClearCurrentPlayingItemEvent(ClearCurrentPlayingItemEvent(currentItem));
+    delete currentItem;
+
+    updateGroupWidget(targetGroup);
+
+    // The grid holds item pointers and one of them was just destroyed.
+    EventManager::getInstance().fireRundownStructureChangedEvent();
+
+    return true;
+}
+
 void RundownTreeBaseWidget::moveItemIntoGroup()
 {
     UndoScope undo(this, "Move Into Group");

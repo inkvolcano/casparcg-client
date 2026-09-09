@@ -7,6 +7,7 @@
 #include "Events/Rundown/EmptyRundownEvent.h"
 #include "Events/Rundown/OpenRundownEvent.h"
 #include "Events/Rundown/ReloadRundownEvent.h"
+#include "Events/Inspector/LabelChangedEvent.h"
 #include "Events/Rundown/RundownItemSelectedEvent.h"
 
 #include <QtCore/QList>
@@ -110,6 +111,7 @@ class WIDGETS_EXPORT SimpleModeWidget : public QWidget
         int computeControlsHeight(AbstractCommand* command, bool showPlayStop) const;
         int computeSpanCols(AbstractCommand* command) const;
         int computeSpanRows(RundownTreeWidget* tree, QTreeWidgetItem* item, AbstractCommand* command, bool showPlayStop) const;
+        QList<QTreeWidgetItem*> collectShotboxRows(RundownTreeWidget* tree, QTreeWidgetItem* item) const;
         QList<InvokeButton> collectInvokeButtons(RundownTreeWidget* tree, QTreeWidgetItem* item) const;
         void assignSlots(RundownTreeWidget* tree, const QList<QTreeWidgetItem*>& items, bool showPlayStop);
         QWidget* buildButtonCell(RundownTreeWidget* tree, QTreeWidgetItem* item, bool showPlayStop, int cellSize, int spanRows, int spanCols);
@@ -128,6 +130,7 @@ class WIDGETS_EXPORT SimpleModeWidget : public QWidget
         Q_SLOT void rundownStructureChanged();
         Q_SLOT void rundownItemFired(QTreeWidgetItem* item, int channel);
         Q_SLOT void invokeDataChanged();
+        Q_SLOT void labelChanged(const LabelChangedEvent&);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);
 
     protected:
