@@ -27,6 +27,13 @@ param(
     # already have downloaded what is there.
     [switch] $Force,
 
+    # A copy of everything the release carries, kept locally under a folder named
+    # for the build. Your build command already leaves the unpacked client on the
+    # Desktop; this puts the package, the checksums, the standalone updater and the
+    # PHP beside it, so nothing has to be fetched back from GitHub to get at what
+    # was just built here. Empty to skip it.
+    [string] $LocalCopy = "$env:USERPROFILE\Desktop\custom casparcg builds",
+
     # Build the zip and the checksum, print what would happen, publish nothing.
     [switch] $WhatIfPublish
 )
@@ -224,6 +231,26 @@ Write-Host "  $assetName  $sizeMb MB"
 Write-Host "  sha256 $hash"
 
 # ---- publish ----------------------------------------------------------------
+
+# ---- keep a copy here too ----------------------------------------------------
+#
+# Before publishing rather than after, so a build that cannot reach GitHub still
+# leaves everything on this machine - which is also the case where you most want
+# it, since the alternative is no copy anywhere.
+
+if ($LocalCopy -ne "") {
+    $localFolder = Join-Path $LocalCopy $tag
+
+    New-Item -ItemType Directory -Path $localFolder -Force | Out-Null
+    Copy-Item $zipPath $localFolder -Force
+    Copy-Item $sumsPath $localFolder -Force
+    Copy-Item $bootstrapPath $localFolder -Force
+    if (Test-Path $phpPath) { Copy-Item $phpPath $localFolder -Force }
+
+    Write-Host ""
+    Write-Host "  a copy of all of it is in:"
+    Write-Host "    $localFolder"
+}
 
 if ($WhatIfPublish) {
     Write-Host ""

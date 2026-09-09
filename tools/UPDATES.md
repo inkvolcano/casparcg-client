@@ -32,13 +32,28 @@ of your checkout, so a tag can never claim a build that does not match the binar
 It refuses if `windeployqt` has not run, because a zip without Qt beside the exe
 is a binary that starts on no venue machine.
 
-It produces two assets:
+It produces four assets, and refuses to publish if any of them cannot be built:
 
 - `casparcg-client-v2.3.1-206-windows.zip` — one folder inside, named for the
   build, so unzipping never scatters four hundred DLLs into somebody's Downloads.
 - `SHA256SUMS.txt` — what makes the download verifiable. The releases API
   publishes a size and nothing else worth checking, and two builds of this client
   are the same size often enough that a size check would pass one for the other.
+- `install-update.cmd` — the standalone updater, for clients older than build 210
+  which can download a build but have no way to put it in place.
+- `server-php.zip` — the relay and the sheet cache, for a web host rather than a
+  venue machine. Versioned with the build because the relay protocol moves with
+  the client, so this is how you tell which relay goes with which.
+
+After publishing it **reads the release back** and names anything missing. `gh`
+reporting success is not the same as four assets being there, and a release with
+the updater missing looks complete right up until somebody on an old build needs
+it.
+
+**A copy of all four is kept locally too**, under
+`Desktop\custom casparcg builds\<tag>\`, written *before* the upload — so a build
+that cannot reach GitHub still leaves everything on the machine that made it.
+`-LocalCopy ""` turns that off.
 
 **It will not overwrite a published tag** unless you pass `-Force`. A venue may
 already be running what is under it. Bump `DEV_BUILD_ID` instead — that is what
