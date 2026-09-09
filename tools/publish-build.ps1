@@ -176,6 +176,42 @@ $sumsPath = Join-Path $staging "SHA256SUMS.txt"
 # most need it are the ones too old to have Install and Restart - they can find a
 # build and download it, and then have no way to put it in place. Downloading one
 # small file beats doing the swap by hand and getting the nested folder wrong.
+# The server-side PHP, versioned with the build it belongs to.
+#
+# It is not part of the client and does not go on a venue machine - it is the
+# relay and the sheet cache, which live on a web host. It ships here because the
+# builds repository is the only thing some people have, and because the relay
+# protocol moves with the client: build 206 taught the relay two timestamps
+# instead of one, and 211 taught it which build each venue runs. Pairing them in
+# one release is how anybody can tell which relay goes with which client.
+#
+# -Force on Get-ChildItem because .htaccess and .user.ini decide whether the relay
+# works at all, and leaving them out is the classic way to deploy a broken one.
+$phpSource = Join-Path $PSScriptRoot "php"
+$phpPath = Join-Path $staging "server-php.zip"
+
+if (Test-Path $phpSource) {
+    $phpStage = Join-Path $staging "php"
+    New-Item -ItemType Directory -Path $phpStage -Force | Out-Null
+    Copy-Item -Path (Join-Path $phpSource "*") -Destination $phpStage -Recurse -Force
+
+    $dotfiles = Get-ChildItem $phpSource -Recurse -Force -Filter ".*" -File
+    foreach ($dotfile in $dotfiles) {
+        $relative = $dotfile.FullName.Substring($phpSource.Length).TrimStart('\')
+        $target = Join-Path $phpStage $relative
+        New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+        Copy-Item $dotfile.FullName $target -Force
+    }
+
+    Compress-Archive -Path (Join-Path $phpStage "*") -DestinationPath $phpPath -Force
+    Remove-Item $phpStage -Recurse -Force
+
+    $phpCount = (Get-ChildItem $phpSource -Recurse -Force -File).Count
+    Write-Host "  server-php.zip  $phpCount files"
+} else {
+    Fail "tools\php is missing, so a release would carry no relay for anyone to deploy."
+}
+
 $bootstrapSource = Join-Path $PSScriptRoot "install-update.cmd"
 $bootstrapPath = Join-Path $staging "install-update.cmd"
 if (Test-Path $bootstrapSource) {
@@ -208,7 +244,7 @@ if ($existing -and -not $Force) {
 Write-Host ""
 if ($existing) {
     Write-Host "  replacing the assets on $tag..."
-    & gh release upload $tag $zipPath $sumsPath $bootstrapPath --repo $Repo --clobber
+    & gh release upload $tag $zipPath $sumsPath $bootstrapPath $phpPath --repo $Repo --clobber
     if ($LASTEXITCODE -ne 0) { Fail "gh release upload failed" }
 } else {
     Write-Host "  creating $tag..."
@@ -217,9 +253,51 @@ if ($existing) {
              "`n`n**On anything older**, which has no Install and Restart: Download, then Show Download, " +
              "put ``install-update.cmd`` from this release into the folder that opens, close the client and " +
              "run it. It works out the rest for itself. Only needed once." +
-             "`n`nVerified against SHA256SUMS.txt either way."
-    & gh release create $tag $zipPath $sumsPath $bootstrapPath --repo $Repo --title "Build $build" --notes $notes
+             "`n`nVerified against SHA256SUMS.txt either way." +
+             "`n`n``server-php.zip`` is the relay and the sheet cache, for a web host rather " +
+             "than a venue machine. Only needed if you want the estate view; templates and " +
+             "updates work without it. Deploy every file in it, the dotfiles included."
+    & gh release create $tag $zipPath $sumsPath $bootstrapPath $phpPath --repo $Repo --title "Build $build" --notes $notes
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
+}
+
+# ---- and check it is actually all there -------------------------------------
+#
+# gh reporting success is not the same as four assets being on the release. An
+# upload can fail per file, and a release missing the PHP or the standalone
+# updater looks complete until the day somebody needs the missing one - which,
+# for the updater, is the day they are on an old build and cannot install
+# anything. Cheaper to find out now than at a venue.
+
+Write-Host ""
+Write-Host "  checking what actually landed..."
+
+$published = & gh release view $tag --repo $Repo --json assets --jq '.assets[].name'
+if ($LASTEXITCODE -ne 0) { Fail "Published, but could not read the release back to check it." }
+
+$landed = @($published -split "`n" | Where-Object { $_ -ne "" })
+
+$expected = @(
+    @{ Name = $assetName;          What = "the client build" },
+    @{ Name = "SHA256SUMS.txt";    What = "the checksums, without which a client refuses to install" },
+    @{ Name = "install-update.cmd"; What = "the standalone updater for clients older than build 210" },
+    @{ Name = "server-php.zip";    What = "the relay and sheet cache" }
+)
+
+$missing = @()
+foreach ($item in $expected) {
+    if ($landed -contains $item.Name) {
+        Write-Host ("    ok   " + $item.Name)
+    } else {
+        Write-Host ("    MISSING  " + $item.Name + "  - " + $item.What) -ForegroundColor Red
+        $missing += $item.Name
+    }
+}
+
+if ($missing.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  The release exists but is incomplete. Re-run with -Force to replace its assets." -ForegroundColor Red
+    exit 1
 }
 
 Remove-Item $staging -Recurse -Force

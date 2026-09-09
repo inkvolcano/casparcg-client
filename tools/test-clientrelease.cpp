@@ -180,6 +180,38 @@ static void eachPlatformGetsItsOwnPackage()
                "a release with no assets offers nothing");
 }
 
+static void nothingElseInAReleaseIsMistakenForTheClient()
+{
+    // A release carries more than the build now: the checksums, the standalone
+    // updater for clients too old to update themselves, and the server-side PHP.
+    // Every one of those is a file that must never be handed to somebody as though
+    // it were the client - installing server-php.zip over an installation would
+    // replace a working client with two folders of PHP.
+    const QStringList assets = QStringList()
+        << "casparcg-client-v2.3.1-211-windows.zip"
+        << "SHA256SUMS.txt"
+        << "install-update.cmd"
+        << "server-php.zip";
+
+    same(ClientRelease::assetFor("windows", assets),
+         "casparcg-client-v2.3.1-211-windows.zip",
+         "the client build is still the one chosen");
+
+    // The one that could actually be confused: it is a .zip, like the build.
+    expectTrue(ClientRelease::assetFor("windows", QStringList() << "server-php.zip").isEmpty(),
+               "the PHP archive is never chosen, even though it is also a zip");
+
+    expectTrue(ClientRelease::assetFor("windows", QStringList() << "install-update.cmd").isEmpty(),
+               "and neither is the standalone updater");
+
+    // On a platform this release publishes nothing for, finding nothing is the
+    // right answer - better than handing a Mac a zip of PHP.
+    expectTrue(ClientRelease::assetFor("macos-arm64", assets).isEmpty(),
+               "a platform with no build in the release is offered nothing at all");
+    expectTrue(ClientRelease::assetFor("linux", assets).isEmpty(),
+               "and so is one with no package of its own");
+}
+
 static void theChecksumIsReadForTheRightFile()
 {
     const QString sums =
@@ -317,6 +349,7 @@ int main(int argc, char* argv[])
     theComparisonIsNumericNotAlphabetical();
     theBuildDecidesWhenNothingElseMoved();
     eachPlatformGetsItsOwnPackage();
+    nothingElseInAReleaseIsMistakenForTheClient();
     theChecksumIsReadForTheRightFile();
     aMalformedSumsFileVerifiesNothing();
     theSumsFileIsReadTheWayCoreutilsWritesIt();
