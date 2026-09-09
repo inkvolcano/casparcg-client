@@ -166,8 +166,31 @@ def itRefusesAZipThatIsNotAClient():
           "nothing from it was copied in either")
 
 
+def clientIsRunning():
+    """Whether a real client is up. See the note in test-updater.py.
+
+    install-update.cmd waits for casparcg-client.exe to exit, and cannot tell a
+    real one from this test's pretend one. With a client open every case waits out
+    the timeout and refuses - which is the script doing its job, reported as
+    failure.
+    """
+    if os.name != 'nt':
+        return False
+
+    found = subprocess.run(['tasklist', '/fi', 'IMAGENAME eq casparcg-client.exe'],
+                           capture_output=True, text=True)
+
+    return 'casparcg-client.exe' in (found.stdout or '')
+
+
 def main():
     print("Standalone updater")
+
+    if clientIsRunning():
+        print("  the CasparCG Client is running on this machine, and the script under")
+        print("  test waits for it to close. Close it and run this again.")
+        print("\n0 passed, 0 failed  (skipped: the client is open)")
+        return 0
 
     if os.name != 'nt':
         print("\n0 passed, 0 failed  (Windows only)")

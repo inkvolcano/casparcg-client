@@ -201,8 +201,35 @@ def theRefusalsAreNotJustAlwaysFailing():
     check(contents == 'NEW BUILD 209', "and does replace the executable")
 
 
+def clientIsRunning():
+    """Whether a real client is up on this machine.
+
+    The script under test waits for casparcg-client.exe to exit before it touches
+    anything - that is the whole point of it, and the reason a hand-done update
+    leaves a mixed installation. It cannot tell a real client from the test's
+    pretend one, so with a client open every case here waits out the full timeout
+    and then correctly refuses.
+
+    That is the script working. Reported as five failures and seven minutes, it
+    looks like the opposite, so it is called what it is instead.
+    """
+    if os.name != 'nt':
+        return False
+
+    found = subprocess.run(['tasklist', '/fi', 'IMAGENAME eq casparcg-client.exe'],
+                           capture_output=True, text=True)
+
+    return 'casparcg-client.exe' in (found.stdout or '')
+
+
 def main():
     print("Client updater")
+
+    if clientIsRunning():
+        print("  the CasparCG Client is running on this machine, and the script under")
+        print("  test waits for it to close. Close it and run this again.")
+        print("\n0 passed, 0 failed  (skipped: the client is open)")
+        return 0
 
     if os.name != 'nt':
         # The script is Windows batch. Nothing to say on another platform, and
