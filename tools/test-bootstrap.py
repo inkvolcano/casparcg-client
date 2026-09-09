@@ -18,7 +18,10 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, 'install-update.cmd')
-WORK = os.path.join(os.environ.get('TEMP', r'C:\tmp'), 'casparcg-test-bootstrap')
+# Per process, for the same reason as test-updater: two overlapping runs sharing
+# one folder fail each other, and the failure reads as a broken updater.
+WORK = os.path.join(os.environ.get('TEMP', r'C:\tmp'),
+                    'casparcg-test-bootstrap-%d' % os.getpid())
 
 failures = []
 checks = []

@@ -26,7 +26,11 @@ import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, '..', 'src', 'Widgets', 'UpdateDialog.cpp')
-WORK = os.path.join(os.environ.get('TEMP', r'C:\tmp'), 'casparcg-test-updater')
+# Named for this process, so two runs of the suite - or one that overlaps another
+# - cannot use the same folder and fail each other. They did once, and it looked
+# exactly like a real regression in the thing being tested.
+WORK = os.path.join(os.environ.get('TEMP', r'C:\tmp'),
+                    'casparcg-test-updater-%d' % os.getpid())
 
 failures = []
 checks = []
