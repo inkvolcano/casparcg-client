@@ -63,6 +63,7 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
         QTextEdit* textNotes = nullptr;
         QPushButton* buttonCheck = nullptr;
         QPushButton* buttonDownload = nullptr;
+        QPushButton* buttonInstall = nullptr;
         QPushButton* buttonReveal = nullptr;
         QProgressBar* progress = nullptr;
 
@@ -80,6 +81,26 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
 
         void check();
         void download();
+
+        // Write the script that does the swap, start it, and quit so it can.
+        //
+        // The client cannot install itself while it is running - Windows will not
+        // replace a running executable - so the last step has to outlive the
+        // process. A small script waits for this one to exit, unpacks, copies over
+        // the installation and starts the new build.
+        //
+        // Two things it does that doing it by hand gets wrong. The package has a
+        // folder inside it named for the build, and copying that folder rather than
+        // its contents leaves the old executable exactly where it was, running,
+        // reporting the old number. And it waits for the process to be gone rather
+        // than assuming: an overwrite that begins while the client is still up
+        // replaces the libraries, skips the locked executable, and leaves a mixed
+        // installation that starts and misbehaves.
+        void installAndRestart();
+
+        // Everything the script needs, written next to the download. Returns the
+        // path to it, or empty with the reason in `problem`.
+        QString writeUpdaterScript(QString* problem) const;
 
         void requestSums();
         void requestAsset();

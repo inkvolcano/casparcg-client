@@ -12,6 +12,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QUrl>
+#include <QtCore/QProcess>
 
 #include <QtGui/QDesktopServices>
 
@@ -20,6 +21,7 @@
 #include <QtNetwork/QNetworkRequest>
 
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QProgressBar>
@@ -143,15 +145,23 @@ UpdateDialog::UpdateDialog(QWidget* parent)
 
     this->buttonCheck = buttons->addButton("Check Now", QDialogButtonBox::ActionRole);
     this->buttonDownload = buttons->addButton("Download", QDialogButtonBox::ActionRole);
+    this->buttonInstall = buttons->addButton("Install and Restart", QDialogButtonBox::ActionRole);
     this->buttonReveal = buttons->addButton("Show Download", QDialogButtonBox::ActionRole);
     buttons->addButton(QDialogButtonBox::Close);
 
     this->buttonDownload->setEnabled(false);
+    this->buttonInstall->setEnabled(false);
     this->buttonReveal->setEnabled(false);
+
+    this->buttonInstall->setToolTip(
+        "Close the client, copy the new build over this installation, and start it again.\n\n"
+        "Only available once a download has been verified against the checksum the\n"
+        "release published. The build you are running is kept so it can be put back.");
 
     QObject::connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     QObject::connect(this->buttonCheck, &QPushButton::clicked, this, [this]() { check(); });
     QObject::connect(this->buttonDownload, &QPushButton::clicked, this, [this]() { download(); });
+    QObject::connect(this->buttonInstall, &QPushButton::clicked, this, [this]() { installAndRestart(); });
     QObject::connect(this->buttonReveal, &QPushButton::clicked, this, [this]() {
         QDesktopServices::openUrl(QUrl::fromLocalFile(stagingFolder()));
     });
@@ -189,6 +199,10 @@ void UpdateDialog::setBusy(bool busy)
 {
     this->buttonCheck->setEnabled(!busy && isGitHub() && !source().isEmpty());
     this->buttonDownload->setEnabled(!busy && !this->assetUrl.isEmpty());
+
+    // Only ever after a download that matched its checksum. An install button that
+    // could act on an unverified file would undo the point of verifying.
+    this->buttonInstall->setEnabled(!busy && !this->downloadedPath.isEmpty());
     this->progress->setVisible(busy);
 
     if (!busy)
@@ -334,6 +348,184 @@ void UpdateDialog::check()
     });
 }
 
+// ---- put it in place -------------------------------------------------------
+
+QString UpdateDialog::writeUpdaterScript(QString* problem) const
+{
+    const QString installDir = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
+    const QString zip = QDir::toNativeSeparators(this->downloadedPath);
+    const QString folder = QDir::toNativeSeparators(stagingFolder());
+    const QString exe = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+
+    const QString scriptPath = QDir(stagingFolder()).absoluteFilePath("apply-update.cmd");
+
+    QFile script(scriptPath);
+    if (!script.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    {
+        if (problem != nullptr)
+            *problem = QString("Could not write the updater to %1").arg(folder);
+
+        return QString();
+    }
+
+    // Written rather than shipped so the paths are literal and there is no quoting
+    // to get wrong at run time, and so anybody who wants to read what is about to
+    // happen to their installation can open it.
+    QString text;
+    text += "@echo off\r\n";
+    text += "setlocal\r\n";
+    text += "title CasparCG Client update\r\n";
+    text += "echo Updating the CasparCG Client.\r\n";
+    text += "echo.\r\n";
+    text += "\r\n";
+    text += "set \"INSTALL=" + installDir + "\"\r\n";
+    text += "set \"ZIP=" + zip + "\"\r\n";
+    text += "set \"WORK=" + folder + "\\staged\"\r\n";
+    text += "set \"BACKUP=" + folder + "\\previous\"\r\n";
+    text += "\r\n";
+
+    // 1. Wait for the client to actually be gone. Overwriting while it is up is
+    //    the failure that leaves a mixed installation: the libraries are replaced,
+    //    the locked executable is skipped, and the thing starts and misbehaves.
+    text += "echo Waiting for the client to close...\r\n";
+    text += "set /a TRIES=0\r\n";
+    text += ":waitloop\r\n";
+    text += "set /a TRIES+=1\r\n";
+    text += "if %TRIES% GTR 60 goto :stillrunning\r\n";
+    text += "tasklist /fi \"IMAGENAME eq casparcg-client.exe\" 2>nul | find /i \"casparcg-client.exe\" >nul\r\n";
+    text += "if errorlevel 1 goto :closed\r\n";
+    text += "ping -n 2 127.0.0.1 >nul\r\n";
+    text += "goto :waitloop\r\n";
+    text += "\r\n";
+    text += ":stillrunning\r\n";
+    text += "echo The client is still running after a minute. Nothing has been changed.\r\n";
+    text += "echo Close it and run this file again:\r\n";
+    text += "echo   " + QDir::toNativeSeparators(scriptPath) + "\r\n";
+    text += "pause\r\n";
+    text += "exit /b 1\r\n";
+    text += "\r\n";
+    text += ":closed\r\n";
+
+    // 2. Unpack. Expand-Archive is on every Windows 10 and later; tar is not on
+    //    all of them, and neither is 7-Zip - this machine has no 7-Zip at all,
+    //    which is exactly the sort of assumption worth not making.
+    text += "echo Unpacking...\r\n";
+    text += "if exist \"%WORK%\" rmdir /s /q \"%WORK%\"\r\n";
+    text += "powershell -NoProfile -ExecutionPolicy Bypass -Command "
+            "\"Expand-Archive -LiteralPath '%ZIP%' -DestinationPath '%WORK%' -Force\"\r\n";
+    text += "if errorlevel 1 goto :unpackfailed\r\n";
+    text += "\r\n";
+
+    // 3. The package holds one folder named for the build. Copying that folder
+    //    instead of what is inside it is the mistake that leaves the old
+    //    executable in place, still running, still reporting the old number.
+    text += "set \"SOURCE=%WORK%\"\r\n";
+    text += "for /d %%D in (\"%WORK%\\*\") do set \"SOURCE=%%~fD\"\r\n";
+    text += "if not exist \"%SOURCE%\\casparcg-client.exe\" goto :noexe\r\n";
+    text += "\r\n";
+
+    // 4. Keep what is there. A copy that fails halfway leaves an installation that
+    //    is half of each, and without this there is nothing to go back to.
+    text += "echo Backing up the current build...\r\n";
+    text += "if exist \"%BACKUP%\" rmdir /s /q \"%BACKUP%\"\r\n";
+    text += "robocopy \"%INSTALL%\" \"%BACKUP%\" /E /NFL /NDL /NP /NJH /NJS /R:1 /W:1 >nul\r\n";
+    text += "if errorlevel 8 goto :backupfailed\r\n";
+    text += "\r\n";
+
+    text += "echo Installing...\r\n";
+    text += "robocopy \"%SOURCE%\" \"%INSTALL%\" /E /NFL /NDL /NP /NJH /NJS /R:3 /W:2 >nul\r\n";
+    text += "if errorlevel 8 goto :copyfailed\r\n";
+    text += "\r\n";
+
+    text += "echo Done. Starting the new build.\r\n";
+    text += "start \"\" \"" + exe + "\"\r\n";
+    text += "exit /b 0\r\n";
+    text += "\r\n";
+
+    // Every failure says what was and was not changed, because "it did not work"
+    // on a playout machine is the start of a bad hour.
+    text += ":unpackfailed\r\n";
+    text += "echo Could not unpack the download. Nothing has been changed.\r\n";
+    text += "pause\r\n";
+    text += "exit /b 1\r\n";
+    text += "\r\n";
+    text += ":noexe\r\n";
+    text += "echo The package does not contain casparcg-client.exe. Nothing has been changed.\r\n";
+    text += "pause\r\n";
+    text += "exit /b 1\r\n";
+    text += "\r\n";
+    text += ":backupfailed\r\n";
+    text += "echo Could not back up the current build, so nothing was replaced.\r\n";
+    text += "pause\r\n";
+    text += "exit /b 1\r\n";
+    text += "\r\n";
+    text += ":copyfailed\r\n";
+    text += "echo The copy failed. Putting the previous build back...\r\n";
+    text += "robocopy \"%BACKUP%\" \"%INSTALL%\" /E /NFL /NDL /NP /NJH /NJS /R:3 /W:2 >nul\r\n";
+    text += "if errorlevel 8 (\r\n";
+    text += "  echo The restore ALSO failed. The previous build is in:\r\n";
+    text += "  echo   %BACKUP%\r\n";
+    text += ") else (\r\n";
+    text += "  echo The previous build is back. Nothing has changed.\r\n";
+    text += ")\r\n";
+    text += "pause\r\n";
+    text += "exit /b 1\r\n";
+
+    script.write(text.toUtf8());
+    script.close();
+
+    return scriptPath;
+}
+
+void UpdateDialog::installAndRestart()
+{
+    if (this->downloadedPath.isEmpty())
+        return;
+
+    const QString target = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
+
+    // Asked plainly, because this closes the program. On a playout machine that is
+    // not a click to make without reading it.
+    QMessageBox confirm(this);
+    confirm.setWindowTitle("Install and restart");
+    confirm.setIcon(QMessageBox::Question);
+    confirm.setText("Close the client and install this build?");
+    confirm.setInformativeText(
+        QString("The client will close, the new build will be copied over\n%1\n"
+                "and the client will start again.\n\n"
+                "The build you are running now is kept, so it can be put back if the\n"
+                "copy fails.\n\n"
+                "Do not do this during a show.").arg(target));
+    confirm.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
+    confirm.setDefaultButton(QMessageBox::Cancel);
+    confirm.button(QMessageBox::Ok)->setText("Close and install");
+
+    if (confirm.exec() != QMessageBox::Ok)
+        return;
+
+    QString problem;
+    const QString script = writeUpdaterScript(&problem);
+
+    if (script.isEmpty())
+    {
+        say(problem, true);
+        return;
+    }
+
+    // Detached on purpose: it has to outlive this process, because this process is
+    // what it is waiting for.
+    if (!QProcess::startDetached("cmd.exe",
+                                 QStringList() << "/c" << QDir::toNativeSeparators(script)))
+    {
+        say("Could not start the updater. The package is still in " + stagingFolder()
+            + " and can be unpacked over the installation by hand.", true);
+        return;
+    }
+
+    // And now get out of its way.
+    QCoreApplication::quit();
+}
+
 // ---- fetch it --------------------------------------------------------------
 
 void UpdateDialog::download()
@@ -447,12 +639,14 @@ void UpdateDialog::requestAsset()
 
         this->downloadedPath = path;
         this->buttonReveal->setEnabled(true);
+        this->buttonInstall->setEnabled(true);
 
         // And it stops here, on purpose. Windows will not overwrite a running
         // executable, and on a machine that may be on air the moment to replace the
         // client belongs to whoever is standing in front of it.
-        say(QString("Downloaded and verified.\n\nIt is in %1. Close the client, "
-                    "unpack it over the installation, and start the new one.")
+        say(QString("Downloaded and verified.\n\nInstall and Restart will close the client, "
+                    "put it in place and start it again. Or unpack it yourself from %1 - "
+                    "the contents of the folder inside the zip, not the folder.")
             .arg(stagingFolder()));
     });
 }
