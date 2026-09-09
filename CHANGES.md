@@ -1782,6 +1782,69 @@ about.
 
 ---
 
+## Updating The Client Itself
+
+Templates got a distribution route years before the thing that plays them did. A
+venue ran whatever was copied onto it, the title bar said `build 206` to nobody in
+particular, and finding out what an estate was running meant visiting every
+machine.
+
+**Help → Check for Updates** asks a repository what it has published, says whether
+it is newer than what you are running, and will fetch and verify it.
+
+It is deliberately smaller than the template route, and the difference is the
+point:
+
+| | Templates | The client |
+|---|---|---|
+| Checks | every 15 minutes | when somebody presses Check |
+| Installs | itself | never |
+
+A template is a file the server reads. The client is the program running the show,
+on a machine that may be on air — and Windows will not overwrite a running
+executable anyway. So it fetches, verifies, and **stops**: the package is left in an
+`updates` folder beside the application, the folder is opened, and the person
+standing in front of the machine chooses the moment.
+
+**Nothing is verified on trust.** The release publishes a `SHA256SUMS.txt` and a
+download that does not match it is thrown away without being written, so there is
+never a file left sitting there that somebody could install by hand later. A
+release with no checksums file is refused rather than downloaded.
+
+Set it in **Settings → Templates → Update source**, as `github:owner/repo`. The
+token is only needed for a private repository. This is deliberately not the
+template source — the repository holding builds is not usually the one holding
+templates.
+
+### Which build is every venue on
+
+The check-in now carries it, so the push tool's estate view can say:
+
+```
+SEVILLE       b205   3m ago    current  (updated 12d ago)
+MARSEILLE     b198   2h ago    behind on SEVILLE
+NANTES        -      6d ago    current
+```
+
+`-` is a client too old to report it. An estate running four different builds is
+worth seeing before somebody spends an afternoon reproducing a bug that was fixed
+in one of them.
+
+### Publishing a build
+
+`tools/publish-build.ps1` turns a build you just made into a release. It reads the
+version and build id **out of the tree that was compiled**, not out of your
+checkout, so a tag can never claim a build that does not match the binary, and it
+refuses to overwrite a published tag unless told twice — a venue may already be
+running what is under it.
+
+Tags are `v2.3.1-206`, and **the build is the part that matters**: upstream's
+version has moved three times in as many years while this fork is on its two
+hundredth build. A tag that cannot be read is treated as unknown rather than as
+version zero, and is never offered as an update.
+
+See [tools/UPDATES.md](tools/UPDATES.md).
+
 ## A Check-In That Says Something
 
 A client reported to its relay after **every poll** — four times an hour, forever,

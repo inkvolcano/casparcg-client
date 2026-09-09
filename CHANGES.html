@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#client-updates">Updating The Client</a><br>
 <a href="#checkin-cadence">Check-In Cadence</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
 <a href="#drag-lock">Drag Between Rundowns</a><br>
@@ -1788,6 +1789,42 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="client-updates">Updating The Client Itself</h2>
+
+<p>Templates got a distribution route years before the thing that plays them did. A venue ran whatever was copied onto it, the title bar said <code>build 206</code> to nobody in particular, and finding out what an estate was running meant visiting every machine.</p>
+
+<p><b>Help &rarr; Check for Updates</b> asks a repository what it has published, says whether it is newer than what you are running, and will fetch and verify it.</p>
+
+<p>It is deliberately smaller than the template route, and the difference is the point:</p>
+
+<table>
+<tr><th></th><th>Templates</th><th>The client</th></tr>
+<tr><td>Checks</td><td>every 15 minutes</td><td>when somebody presses Check</td></tr>
+<tr><td>Installs</td><td>itself</td><td>never</td></tr>
+</table>
+
+<p>A template is a file the server reads. The client is the program running the show, on a machine that may be on air &mdash; and Windows will not overwrite a running executable anyway. So it fetches, verifies, and <b>stops</b>: the package is left in an <code>updates</code> folder beside the application, the folder is opened, and the person standing in front of the machine chooses the moment.</p>
+
+<p><b>Nothing is verified on trust.</b> The release publishes a <code>SHA256SUMS.txt</code> and a download that does not match it is thrown away without being written, so there is never a file left sitting there that somebody could install by hand later. A release with no checksums file is refused rather than downloaded.</p>
+
+<p>Set it in <b>Settings &rarr; Templates &rarr; Update source</b>, as <code>github:owner/repo</code>. The token is only needed for a private repository. This is deliberately not the template source &mdash; the repository holding builds is not usually the one holding templates.</p>
+
+<h3>Which build is every venue on</h3>
+
+<p>The check-in now carries it, so the push tool's estate view can say:</p>
+
+<pre><code>SEVILLE       b205   3m ago    current  (updated 12d ago)
+MARSEILLE     b198   2h ago    behind on SEVILLE
+NANTES        -      6d ago    current</code></pre>
+
+<p><code>-</code> is a client too old to report it. An estate running four different builds is worth seeing before somebody spends an afternoon reproducing a bug that was fixed in one of them.</p>
+
+<h3>Publishing a build</h3>
+
+<p><code>tools/publish-build.ps1</code> turns a build you just made into a release. It reads the version and build id <b>out of the tree that was compiled</b>, not out of your checkout, so a tag can never claim a build that does not match the binary, and it refuses to overwrite a published tag unless told twice &mdash; a venue may already be running what is under it.</p>
+
+<p>Tags are <code>v2.3.1-206</code>, and <b>the build is the part that matters</b>: upstream's version has moved three times in as many years while this fork is on its two hundredth build. A tag that cannot be read is treated as unknown rather than as version zero, and is never offered as an update.</p>
 
 <h2 id="checkin-cadence">A Check-In That Says Something</h2>
 

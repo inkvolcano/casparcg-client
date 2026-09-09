@@ -19,6 +19,8 @@
 #include "SettingsDialog.h"
 #include "StatusBarWidget.h"
 #include "WhatsNewDialog.h"
+#include "UpdateDialog.h"
+#include "RelayClient.h"
 
 #include "Version.h"
 #include "Global.h"
@@ -83,6 +85,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     setupMenu();
     loadHotkeys();
     setWindowIcon(QIcon(":/Graphics/Images/CasparCG.png"));
+
+    // The check-in reports this, so an estate can be asked what it is running
+    // without visiting every machine. Here because this is where the generated
+    // version header is already included.
+    RelayClient::setClientVersion(QString("%1.%2.%3").arg(MAJOR_VERSION)
+                                     .arg(MINOR_VERSION).arg(REVISION_VERSION),
+                                 QString(DEV_BUILD_ID));
 
     this->applicationTitle = QString("%1 v%2.%3.%4 build %5")
         .arg(this->windowTitle())
@@ -379,6 +388,7 @@ void MainWindow::setupMenu()
     QAction* action = this->helpMenu->addAction("View Help", this, SLOT(showHelpDialog()), QKeySequence::fromString("Ctrl+H"));
     this->helpMenu->addSeparator();
     this->helpMenu->addAction("What's New...", this, SLOT(showWhatsNewDialog()));
+    this->helpMenu->addAction("Check for Updates...", this, SLOT(showUpdateDialog()));
     this->helpMenu->addAction("About CasparCG Client...", this, SLOT(showAboutDialog()));
     action->setEnabled(false);
 
@@ -752,6 +762,15 @@ void MainWindow::showAboutDialog()
 {
     AboutDialog* dialog = new AboutDialog(this);
     dialog->exec();
+}
+
+// Nothing checks on its own: no timer, no check at startup. On a playout machine
+// the client is not something to have quietly replace itself, so the operator
+// opens this when they want to know.
+void MainWindow::showUpdateDialog()
+{
+    UpdateDialog dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::showWhatsNewDialog()

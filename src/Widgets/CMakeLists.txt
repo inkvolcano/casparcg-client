@@ -158,6 +158,7 @@ qt_add_library(widgets
     ActivityPanelWidget.cpp ActivityPanelWidget.h ActivityPanelWidget.ui
     TriggerBanksPanelWidget.cpp TriggerBanksPanelWidget.h TriggerBanksPanelWidget.ui
     WhatsNewDialog.cpp WhatsNewDialog.h
+    UpdateDialog.cpp UpdateDialog.h
     Shared.h
     Utils/ItemScheduler.cpp Utils/ItemScheduler.h
     Utils/AutoLoopController.cpp Utils/AutoLoopController.h

@@ -1,6 +1,7 @@
 #include "SettingsDialog.h"
 #include "PreviewWidget.h"
 #include "StreamCommand.h"
+#include "UpdateDialog.h"
 #include "PanelRegistry.h"
 #include "PanelPlacement.h"
 #include "LayoutPresetBar.h"
@@ -838,9 +839,33 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "Zero reports only on change, and leaves that question unanswered.");
     relayGrid->addWidget(this->spinBoxRelayHeartbeat, 9, 1);
 
+    // Where builds of the client itself come from. Deliberately beside the
+    // template settings rather than in them: the two answer different questions
+    // and are usually different repositories.
+    relayGrid->addWidget(new QLabel("Update source:", relayGroup), 10, 0);
+    this->lineEditUpdateSource = new QLineEdit(UpdateDialog::source(), relayGroup);
+    this->lineEditUpdateSource->setPlaceholderText("optional - github:owner/repo, for Check for Updates");
+    this->lineEditUpdateSource->setToolTip(
+        "Where builds of the client itself are published, as github:owner/repo.\n\n"
+        "This is not the template source. The repository holding builds is not\n"
+        "usually the one holding templates, and a venue may follow one and not\n"
+        "the other.\n\n"
+        "Nothing is checked automatically. Help -> Check for Updates asks, and\n"
+        "nothing is installed without somebody doing it.");
+    relayGrid->addWidget(this->lineEditUpdateSource, 10, 1, 1, 3);
+
+    relayGrid->addWidget(new QLabel("Update token:", relayGroup), 11, 0);
+    this->lineEditUpdateToken = new QLineEdit(UpdateDialog::token(), relayGroup);
+    this->lineEditUpdateToken->setPlaceholderText("only needed if that repository is private");
+    this->lineEditUpdateToken->setToolTip(
+        "Only needed if that repository is private. A public one - which is the\n"
+        "ordinary case for builds - needs nothing here.\n\n"
+        "Read-only is enough. This never writes to the repository.");
+    relayGrid->addWidget(this->lineEditUpdateToken, 11, 1, 1, 3);
+
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 10, 0, 1, 2);
+    relayGrid->addWidget(this->labelRelayStatus, 12, 0, 1, 2);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
@@ -922,6 +947,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayCheckInHeartbeat",
                                QString::number(this->spinBoxRelayHeartbeat->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "UpdateSource", this->lineEditUpdateSource->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "UpdateToken", this->lineEditUpdateToken->text().trimmed()));
 
         // Turning the feature on has to bring the socket up, and off may be the
         // last thing keeping it up.

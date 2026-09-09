@@ -555,6 +555,11 @@ switch ($action) {
             // here: a client does not get to decide how much of this disk it uses.
             'result' => isset($sent['result']) ? substr((string) $sent['result'], 0, 300) : '',
             'failed' => isset($sent['failed']) ? (int) $sent['failed'] : 0,
+            // Which build this venue runs. Capped like everything else a client
+            // sends; a client older than this reports neither and the estate view
+            // shows nothing rather than guessing.
+            'version' => isset($sent['version']) ? substr((string) $sent['version'], 0, 32) : '',
+            'build' => isset($sent['build']) ? substr((string) $sent['build'], 0, 16) : '',
             'state'  => $state,
             'seenAt' => gmdate('c'),
             'changedAt' => $unchanged && isset($previous['changedAt'])

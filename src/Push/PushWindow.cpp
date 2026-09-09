@@ -1352,8 +1352,15 @@ void PushWindow::describeRelayClients(const PushTarget& target)
             else if (!changedAgo.isEmpty() && changedAgo != ago)
                 state += QString("  (updated %1)").arg(changedAgo);
 
-            log(QString("    %1  %2  %3")
+            // Which build the venue runs, when it is new enough to say. An estate
+            // running four different builds is worth seeing before somebody spends
+            // an afternoon reproducing a bug that was fixed in one of them.
+            QString build = client.value("build").toString();
+            QString runs = build.isEmpty() ? QString("-") : QString("b%1").arg(build);
+
+            log(QString("    %1  %2  %3  %4")
                 .arg(client.value("host").toString(), -22)
+                .arg(runs, -6)
                 .arg(ago, -10)
                 .arg(state));
         }
