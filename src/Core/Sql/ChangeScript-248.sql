@@ -14,6 +14,6 @@ INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('PreviewAutoPlayVideo',
 -- than tapped from the player, so they follow scrubbing and hold while paused.
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('PreviewAudioMeters', 'true');
 
--- Rendering HTML templates in the panel. Needs a build with Qt WebEngine; when
+-- Rendering HTML templates in the panel. Needs a build with Qt WebEngine - when
 -- the build has none, the panel says so and this setting does nothing.
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('PreviewTemplates', 'true');

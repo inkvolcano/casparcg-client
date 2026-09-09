@@ -142,6 +142,26 @@ void DatabaseManager::upgradeDatabase()
 
                  if (!sql.exec(query))
                  {
+                    // A column that is already there is not a failure.
+                    //
+                    // initialize() adds Device.TemplatePath, MediaPath and ServerPath
+                    // by hand if they are missing, as a guard against exactly the sort
+                    // of migration problem this loop is now recovering from. On a
+                    // database where that guard has already run, the migration that
+                    // was supposed to add them arrives to find them present - and
+                    // without this, ends the program.
+                    //
+                    // SQLite has no ADD COLUMN IF NOT EXISTS, so the error is the only
+                    // way to know. Every other failure still stops everything, because
+                    // continuing past a migration that did not apply would leave a
+                    // database the code believes is newer than it is.
+                    if (sql.lastError().text().contains("duplicate column name", Qt::CaseInsensitive))
+                    {
+                        qDebug("ChangeScript-%d: %s was already applied, continuing",
+                               version + 1, qPrintable(query.trimmed().left(60)));
+                        continue;
+                    }
+
                     QSqlDatabase::database().rollback();
                     qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
                  }

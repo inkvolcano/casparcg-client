@@ -163,7 +163,7 @@ INSERT INTO Configuration (Name, Value) VALUES('RelayEnabled', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('RelayUrl', '');
 INSERT INTO Configuration (Name, Value) VALUES('RelayToken', '');
 INSERT INTO Configuration (Name, Value) VALUES('RelayPollMinutes', '15');
--- Empty means every pack the relay carries; a list means only those.
+-- Empty means every pack the relay carries. A list means only those.
 INSERT INTO Configuration (Name, Value) VALUES('RelayPacks', '');
 
 -- Where the GitHub API lives. Empty means github.com. A GitHub Enterprise

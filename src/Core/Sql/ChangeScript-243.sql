@@ -5,5 +5,5 @@ INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('RelayEnabled', 'false'
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('RelayUrl', '');
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('RelayToken', '');
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('RelayPollMinutes', '15');
--- Empty means every pack the relay carries; a list means only those.
+-- Empty means every pack the relay carries. A list means only those.
 INSERT OR IGNORE INTO Configuration (Name, Value) VALUES('RelayPacks', '');

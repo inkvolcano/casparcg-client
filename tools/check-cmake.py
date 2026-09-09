@@ -114,11 +114,51 @@ def main():
     with open(version, 'r', encoding='utf-8', errors='replace') as handle:
         declared = re.search(r'DATABASE_VERSION "(\d+)"', handle.read()).group(1)
 
-    # A script that is not in the resource file is not in the binary, so an upgrade
-    # would step over it and every setting it adds would be missing at runtime.
+    # The list that actually decides what ends up in the binary.
+    #
+    # This used to check Core.qrc, which the build does not read: the resource is
+    # built by qt_add_resources() from Core_resource_files in CMakeLists.txt, and
+    # the two drifted thirty scripts apart without a word. Every migration from 229
+    # to 258 was on disk, in the .qrc, and absent from the binary - so the upgrade
+    # loop opened nothing, stepped over all of them, and left every database in the
+    # estate stuck at 228 while the code believed it was at 258.
+    #
+    # What that looked like: an empty Library, because the queries asked for columns
+    # a migration was supposed to have added. Nothing said why. The .qrc is checked
+    # too, because a script missing from it is a sign the two have drifted again.
+    cmakelists = os.path.join(SRC, 'Core', 'CMakeLists.txt')
+    with open(cmakelists, 'r', encoding='utf-8', errors='replace') as handle:
+        cmake = handle.read()
+
+    listed = cmake[cmake.index('set(Core_resource_files'):]
+    listed = listed[:listed.index('\n)')]
+
     for number in scripts:
-        if ('ChangeScript-%d.sql' % number) not in resources:
-            problems.append('ChangeScript-%d.sql is not listed in Core.qrc' % number)
+        name = 'ChangeScript-%d.sql' % number
+
+        if name not in listed:
+            problems.append(name + ' is not in Core_resource_files, so it is NOT in the '
+                                   'binary and will never run')
+        if name not in resources:
+            problems.append(name + ' is not listed in Core.qrc')
+
+    # A semicolon inside a comment splits the file in the wrong place.
+    #
+    # The upgrade loop reads a script and splits it on ';' - it has no idea what a
+    # comment is - so "-- every pack the relay carries; a list means only those"
+    # becomes two statements, the second of which starts mid-sentence and is a
+    # syntax error. That stops the client dead, and it was sitting in two migrations
+    # and in Schema.sql, which is what a brand new database is built from.
+    for name in sorted(os.listdir(sql)):
+        if not name.endswith('.sql'):
+            continue
+
+        with open(os.path.join(sql, name), 'r', encoding='utf-8', errors='replace') as handle:
+            for number, line in enumerate(handle, 1):
+                stripped = line.strip()
+                if stripped.startswith('--') and ';' in stripped:
+                    problems.append('%s line %d has a semicolon in a comment, which '
+                                    'splits the script there' % (name, number))
 
     # A gap in the sequence stops the upgrade loop dead at the gap.
     for number in range(scripts[0], scripts[-1] + 1):
