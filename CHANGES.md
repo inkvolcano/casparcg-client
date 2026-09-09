@@ -1811,10 +1811,19 @@ download that does not match it is thrown away without being written, so there i
 never a file left sitting there that somebody could install by hand later. A
 release with no checksums file is refused rather than downloaded.
 
-Set it in **Settings → Templates → Update source**, as `github:owner/repo`. The
-token is only needed for a private repository. This is deliberately not the
-template source — the repository holding builds is not usually the one holding
-templates.
+**There is nothing to set.** The source is fixed in the build and shown read-only
+in Settings, so Check for Updates works out of the box.
+
+That is a security boundary rather than a convenience. A template is a file the
+server reads; a build is a program that runs on the playout machine with the
+operator's privileges. A text field would let anyone who can open Settings point a
+venue at any repository at all — and **the checksum would not catch it**, because
+it verifies the download against the sums file published beside it. That proves
+the bytes arrived intact and says nothing whatever about who built them.
+Provenance has to come from the list being fixed, not from the file being hashed.
+
+A stored source that is not on the list is ignored rather than obeyed, and the
+dialog says so rather than falling back in silence.
 
 ### Which build is every venue on
 

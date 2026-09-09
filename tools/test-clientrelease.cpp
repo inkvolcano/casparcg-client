@@ -243,6 +243,55 @@ static void aVersionCanBeShownBack()
          "something unreadable says so rather than showing zeroes");
 }
 
+static void buildsComeFromOneKnownPlace()
+{
+    // The reason this is a list in the binary rather than a text field: a build is
+    // a program that runs on the playout machine, so its source is a
+    // code-execution channel. A field anyone could edit would let a venue be
+    // repointed at any repository at all.
+    expectTrue(!ClientRelease::allowedSources().isEmpty(), "there is somewhere to fetch from");
+    expectTrue(ClientRelease::isAllowedSource(ClientRelease::defaultSource()),
+               "and the default is itself allowed, or nothing could ever be fetched");
+
+    expectTrue(ClientRelease::isAllowedSource("inkvolcano/casparcg-builds"),
+               "the builds repository is allowed");
+
+    // The ones that matter. Each of these is somebody being pointed at a program
+    // written by someone else.
+    expectTrue(!ClientRelease::isAllowedSource("attacker/casparcg-builds"),
+               "the same repository name under another owner is not");
+    expectTrue(!ClientRelease::isAllowedSource("inkvolcano/casparcg-client"),
+               "nor is another repository of the same owner");
+    expectTrue(!ClientRelease::isAllowedSource(""), "nor is nothing at all");
+    expectTrue(!ClientRelease::isAllowedSource("   "), "nor blank space");
+
+    // A near miss must not pass. Trailing text after the repository name is how a
+    // check that used startsWith rather than equality gets fooled.
+    expectTrue(!ClientRelease::isAllowedSource("inkvolcano/casparcg-builds-evil"),
+               "and neither does a name that merely starts the same way");
+    expectTrue(!ClientRelease::isAllowedSource("evil.com/inkvolcano/casparcg-builds"),
+               "nor one with the allowed name buried inside it");
+}
+
+static void aSourceIsReadHoweverItWasWritten()
+{
+    same(ClientRelease::normaliseSource("github:inkvolcano/casparcg-builds"),
+         "inkvolcano/casparcg-builds", "the github: prefix is stripped");
+    same(ClientRelease::normaliseSource("  inkvolcano/casparcg-builds  "),
+         "inkvolcano/casparcg-builds", "and surrounding space");
+    same(ClientRelease::normaliseSource("github:inkvolcano/casparcg-builds@main"),
+         "inkvolcano/casparcg-builds", "a branch means nothing to a release");
+    same(ClientRelease::normaliseSource("inkvolcano/casparcg-builds/"),
+         "inkvolcano/casparcg-builds", "and a trailing slash is not part of the name");
+
+    // GitHub does not care about case in an owner or a repository, so refusing one
+    // that differs only in capitalisation would be a puzzle rather than a defence.
+    expectTrue(ClientRelease::isAllowedSource("InkVolcano/CasparCG-Builds"),
+               "capitalisation does not decide whether a source is allowed");
+    expectTrue(ClientRelease::isAllowedSource("github:inkvolcano/casparcg-builds@main"),
+               "and a fully written one is still allowed");
+}
+
 static void thisBuildKnowsWhatItIs()
 {
     // Whatever it was compiled for, it must be one of the four the assets use, or
@@ -272,6 +321,8 @@ int main(int argc, char* argv[])
     aMalformedSumsFileVerifiesNothing();
     theSumsFileIsReadTheWayCoreutilsWritesIt();
     aVersionCanBeShownBack();
+    buildsComeFromOneKnownPlace();
+    aSourceIsReadHoweverItWasWritten();
     thisBuildKnowsWhatItIs();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";

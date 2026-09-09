@@ -44,6 +44,9 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
         // the one holding templates, and a client may well follow one and not the
         // other.
         static QString source();
+
+        // Whether a stored source was ignored for not being on the allowlist.
+        static bool sourceWasOverridden();
         static QString token();
 
         // "github:owner/repo", the only shape understood so far.

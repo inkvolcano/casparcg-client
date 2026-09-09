@@ -27,6 +27,68 @@
 
 namespace ClientRelease
 {
+    // Where builds may be fetched from, and nowhere else.
+    //
+    // This is not a preference. A template is a file the server reads; a build is
+    // a program that runs on the playout machine with the operator's privileges,
+    // so the source of one is a code-execution channel and a free text field would
+    // mean anyone who can open Settings can repoint a venue at any repository.
+    //
+    // The checksum does not help there. It verifies the download against the sums
+    // file published beside it, which proves the bytes arrived intact - it says
+    // nothing whatever about who built them. Provenance has to come from the list
+    // being fixed, not from the file being hashed.
+    //
+    // Adding a repository here is a one-line change and a rebuild, which is the
+    // point: it takes somebody with commit access rather than somebody with the
+    // Settings dialog open.
+    inline QStringList allowedSources()
+    {
+        return QStringList() << "inkvolcano/casparcg-builds";
+    }
+
+    inline QString defaultSource()
+    {
+        return allowedSources().first();
+    }
+
+    // owner/repo, however it was written: with the github: prefix, with a branch
+    // nobody needs on a release, in whatever case somebody typed.
+    inline QString normaliseSource(const QString& raw)
+    {
+        QString text = raw.trimmed();
+
+        if (text.startsWith("github:", Qt::CaseInsensitive))
+            text = text.mid(QString("github:").length()).trimmed();
+
+        // A branch means nothing to a release. Somebody will paste the template
+        // source in here, and asking GitHub for "owner/repo@main" would 404 with
+        // nothing to explain it.
+        text = text.section('@', 0, 0).trimmed();
+
+        while (text.endsWith('/'))
+            text.chop(1);
+
+        return text;
+    }
+
+    // Compared case-insensitively, because GitHub treats owners and repositories
+    // that way and a venue that typed InkVolcano should not be silently refused.
+    inline bool isAllowedSource(const QString& raw)
+    {
+        const QString wanted = normaliseSource(raw);
+        if (wanted.isEmpty())
+            return false;
+
+        foreach (const QString& allowed, allowedSources())
+        {
+            if (QString::compare(wanted, allowed, Qt::CaseInsensitive) == 0)
+                return true;
+        }
+
+        return false;
+    }
+
     struct Version
     {
         bool valid = false;

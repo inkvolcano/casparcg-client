@@ -844,12 +844,17 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // and are usually different repositories.
     relayGrid->addWidget(new QLabel("Update source:", relayGroup), 10, 0);
     this->lineEditUpdateSource = new QLineEdit(UpdateDialog::source(), relayGroup);
-    this->lineEditUpdateSource->setPlaceholderText("optional - github:owner/repo, for Check for Updates");
+    this->lineEditUpdateSource->setReadOnly(true);
+    this->lineEditUpdateSource->setFocusPolicy(Qt::NoFocus);
+    this->lineEditUpdateSource->setStyleSheet("color: rgba(190, 190, 190, 200);");
     this->lineEditUpdateSource->setToolTip(
-        "Where builds of the client itself are published, as github:owner/repo.\n\n"
-        "This is not the template source. The repository holding builds is not\n"
-        "usually the one holding templates, and a venue may follow one and not\n"
-        "the other.\n\n"
+        "Where builds of the client itself come from. Fixed in this build, and shown\n"
+        "here rather than offered.\n\n"
+        "A template is a file the server reads. A build is a program that runs on\n"
+        "this machine, so where one may come from is not a setting - a text field\n"
+        "here would let anyone who can open this dialog point the client at any\n"
+        "repository, and the checksum would not catch it: it proves the download\n"
+        "arrived intact, not who built it.\n\n"
         "Nothing is checked automatically. Help -> Check for Updates asks, and\n"
         "nothing is installed without somebody doing it.");
     relayGrid->addWidget(this->lineEditUpdateSource, 10, 1, 1, 3);
@@ -947,8 +952,6 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayCheckInHeartbeat",
                                QString::number(this->spinBoxRelayHeartbeat->value())));
-        DatabaseManager::getInstance().updateConfiguration(
-            ConfigurationModel(0, "UpdateSource", this->lineEditUpdateSource->text().trimmed()));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "UpdateToken", this->lineEditUpdateToken->text().trimmed()));
 

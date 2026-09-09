@@ -43,7 +43,27 @@ namespace
 
 QString UpdateDialog::source()
 {
-    return DatabaseManager::getInstance().getConfigurationByName("UpdateSource").getValue().trimmed();
+    // A stored value is honoured only if it is on the allowlist. Anything else is
+    // ignored rather than obeyed - a client whose configuration was edited to point
+    // somewhere else goes on checking the place it is supposed to, instead of
+    // quietly downloading a program from wherever the row now says.
+    const QString stored = DatabaseManager::getInstance()
+        .getConfigurationByName("UpdateSource").getValue().trimmed();
+
+    if (!stored.isEmpty() && ClientRelease::isAllowedSource(stored))
+        return ClientRelease::normaliseSource(stored);
+
+    return ClientRelease::defaultSource();
+}
+
+// Whether the stored value was one this build will use. Only for saying so out
+// loud: source() has already fallen back by the time anyone asks.
+bool UpdateDialog::sourceWasOverridden()
+{
+    const QString stored = DatabaseManager::getInstance()
+        .getConfigurationByName("UpdateSource").getValue().trimmed();
+
+    return !stored.isEmpty() && !ClientRelease::isAllowedSource(stored);
 }
 
 QString UpdateDialog::token()
@@ -53,20 +73,15 @@ QString UpdateDialog::token()
 
 bool UpdateDialog::isGitHub()
 {
-    return source().startsWith("github:", Qt::CaseInsensitive);
+    // Always, now that the source is a fixed list rather than something typed.
+    // Kept as a question because the answer will not always be yes if a route that
+    // is not GitHub is ever added to the list.
+    return !source().isEmpty();
 }
 
 QString UpdateDialog::gitHubOwnerRepo()
 {
-    if (!isGitHub())
-        return QString();
-
-    QString rest = source().mid(QString("github:").length()).trimmed();
-
-    // A branch means nothing to a release, but somebody will paste the template
-    // source in here, and quietly asking GitHub for "owner/repo@main" would 404
-    // with nothing to explain it.
-    return rest.section('@', 0, 0);
+    return source();
 }
 
 QString UpdateDialog::runningVersionText()
@@ -143,22 +158,23 @@ UpdateDialog::UpdateDialog(QWidget* parent)
 
     outer->addWidget(buttons);
 
-    if (source().isEmpty())
+    // Fixed, and shown rather than offered: this is where builds come from, not a
+    // preference. A build is a program that runs on this machine, so the list of
+    // places it may come from belongs in the binary rather than in a text field
+    // anybody with the Settings dialog open could edit.
+    this->labelSource->setText(gitHubOwnerRepo());
+    this->labelSource->setToolTip("Fixed in this build. A build is a program that runs on this"
+                                  + QString(" machine, so where one may come from is not a setting."));
+
+    if (sourceWasOverridden())
     {
-        this->labelSource->setText("not set");
-        say("No update source is set. Settings → Templates → Update Source, "
-            "as github:owner/repo.", true);
-        this->buttonCheck->setEnabled(false);
-    }
-    else if (!isGitHub())
-    {
-        this->labelSource->setText(source());
-        say("Only a github:owner/repo source is understood so far.", true);
-        this->buttonCheck->setEnabled(false);
+        // Say so rather than fall back in silence. Somebody put a value there and
+        // is entitled to know it is being ignored.
+        say("A different update source is configured, and is being ignored: builds "
+            "are only accepted from the repository above.", true);
     }
     else
     {
-        this->labelSource->setText(gitHubOwnerRepo());
         say("Nothing has been checked yet.");
     }
 }
