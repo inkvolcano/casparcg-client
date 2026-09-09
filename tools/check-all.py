@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are twenty-five test suites and a syntax checker. Twenty-three commands that each take a
+There are twenty-six test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -41,6 +41,7 @@ SUITES = [
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
     ('test-clientrelease', False, 'which build is published, whether it is newer, and which asset belongs here'),
     ('test-updater', False, 'the script that replaces the client, run against a throwaway installation'),
+    ('test-bootstrap', False, 'the standalone updater, for a client too old to update itself'),
     ('test-templateroot', False, 'the push tool templates folder, and what an unset one must not do'),
     ('test-placement', False, 'whether a panel is placed, and so whether its work runs at all'),
     ('test-ograflibrary', False, 'finding OGraf graphics in a template folder, and naming them'),

@@ -48,10 +48,11 @@ def build_script(work):
 
     substitutions = {
         'installDir': os.path.join(work, 'install'),
-        'zip': os.path.join(work, 'download', 'package.zip'),
-        'folder': os.path.join(work, 'download'),
+        'zip': os.path.join(work, 'install', 'updates', 'package.zip'),
+        # Inside the installation, which is where a real client keeps it.
+        'folder': os.path.join(work, 'install', 'updates'),
         'exe': os.path.join(work, 'install', 'casparcg-client.exe'),
-        'scriptPath': os.path.join(work, 'download', 'apply-update.cmd'),
+        'scriptPath': os.path.join(work, 'install', 'updates', 'apply-update.cmd'),
     }
 
     # A string literal, or one of those names, whichever comes next. Order is as
@@ -84,7 +85,7 @@ def run_updater(make_package, keep_extra=False):
         shutil.rmtree(WORK)
 
     install = os.path.join(WORK, 'install')
-    download = os.path.join(WORK, 'download')
+    download = os.path.join(install, 'updates')
     os.makedirs(install)
     os.makedirs(download)
 
@@ -147,6 +148,18 @@ def aNewBuildActuallyReplacesTheOldOne():
     previous = os.path.join(download, 'previous', 'casparcg-client.exe')
     check(os.path.exists(previous) and io.open(previous).read() == 'OLD BUILD 208',
           "the build that was running is kept, so it can be put back")
+
+    # The updates folder lives inside the installation, so a backup that does not
+    # exclude it copies the folder into itself - the package, the unpacked staging
+    # and all. On a real build that is 214 MB of package copied into a subfolder of
+    # the folder holding it, and it was only visible once this test used the layout
+    # a client actually has rather than two sibling folders.
+    check(not os.path.exists(os.path.join(download, 'previous', 'updates')),
+          "the backup did not copy the updates folder into itself")
+
+    package_in_backup = os.path.join(download, 'previous', 'package.zip')
+    check(not os.path.exists(package_in_backup),
+          "and the package was not copied into the backup beside it")
 
 
 def aPackageWithNoClientInItChangesNothing():

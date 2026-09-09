@@ -172,6 +172,18 @@ $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
 $sumsPath = Join-Path $staging "SHA256SUMS.txt"
 "$hash  $assetName" | Out-File -FilePath $sumsPath -Encoding ascii -NoNewline
 
+# The standalone updater goes out with every release, because the clients that
+# most need it are the ones too old to have Install and Restart - they can find a
+# build and download it, and then have no way to put it in place. Downloading one
+# small file beats doing the swap by hand and getting the nested folder wrong.
+$bootstrapSource = Join-Path $PSScriptRoot "install-update.cmd"
+$bootstrapPath = Join-Path $staging "install-update.cmd"
+if (Test-Path $bootstrapSource) {
+    Copy-Item $bootstrapSource $bootstrapPath
+} else {
+    Fail "tools\install-update.cmd is missing, so old clients would have no way to install this."
+}
+
 Write-Host "  $assetName  $sizeMb MB"
 Write-Host "  sha256 $hash"
 
@@ -196,12 +208,17 @@ if ($existing -and -not $Force) {
 Write-Host ""
 if ($existing) {
     Write-Host "  replacing the assets on $tag..."
-    & gh release upload $tag $zipPath $sumsPath --repo $Repo --clobber
+    & gh release upload $tag $zipPath $sumsPath $bootstrapPath --repo $Repo --clobber
     if ($LASTEXITCODE -ne 0) { Fail "gh release upload failed" }
 } else {
     Write-Host "  creating $tag..."
-    $notes = "Build $build of the client, $major.$minor.$bug.`n`nVerify with SHA256SUMS.txt before installing."
-    & gh release create $tag $zipPath $sumsPath --repo $Repo --title "Build $build" --notes $notes
+    $notes = "Build $build of the client, $major.$minor.$bug." +
+             "`n`n**On build 210 or newer:** Help -> Check for Updates -> Download -> Install and Restart." +
+             "`n`n**On anything older**, which has no Install and Restart: Download, then Show Download, " +
+             "put ``install-update.cmd`` from this release into the folder that opens, close the client and " +
+             "run it. It works out the rest for itself. Only needed once." +
+             "`n`nVerified against SHA256SUMS.txt either way."
+    & gh release create $tag $zipPath $sumsPath $bootstrapPath --repo $Repo --title "Build $build" --notes $notes
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 

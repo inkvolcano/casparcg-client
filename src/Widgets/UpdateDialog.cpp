@@ -428,7 +428,14 @@ QString UpdateDialog::writeUpdaterScript(QString* problem) const
     //    is half of each, and without this there is nothing to go back to.
     text += "echo Backing up the current build...\r\n";
     text += "if exist \"%BACKUP%\" rmdir /s /q \"%BACKUP%\"\r\n";
-    text += "robocopy \"%INSTALL%\" \"%BACKUP%\" /E /NFL /NDL /NP /NJH /NJS /R:1 /W:1 >nul\r\n";
+
+    // Excluding the updates folder, which lives INSIDE the installation. Without
+    // that, backing the installation up into a folder within it copies the folder
+    // into itself: the package, the unpacked staging and all. Found by running
+    // this against a layout that matched a real installation rather than one where
+    // the two folders happened to be siblings.
+    text += "robocopy \"%INSTALL%\" \"%BACKUP%\" /E /XD \"" + folder + "\""
+            " /NFL /NDL /NP /NJH /NJS /R:1 /W:1 >nul\r\n";
     text += "if errorlevel 8 goto :backupfailed\r\n";
     text += "\r\n";
 
