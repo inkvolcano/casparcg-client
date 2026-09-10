@@ -138,6 +138,13 @@ class CASPAR_EXPORT CasparDevice : public AmcpDevice
         Q_SIGNAL void dataChanged(const QList<CasparData>&, CasparDevice&);
         Q_SIGNAL void versionChanged(const QString& version, CasparDevice&);
         Q_SIGNAL void responseChanged(const QString&, CasparDevice&);
+
+        // A reply the server refused: the AMCP code, and the line as it was sent.
+        //
+        // 501 is the one worth watching. The server is up and answering, and cannot
+        // scan its media or template folder - so it returns nothing, the Library
+        // looks empty, and until this existed nothing anywhere said why.
+        Q_SIGNAL void commandFailed(int code, const QString& line, CasparDevice&);
         Q_SIGNAL void thumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&);
         Q_SIGNAL void thumbnailRetrieveChanged(const QString& data, CasparDevice&);
 

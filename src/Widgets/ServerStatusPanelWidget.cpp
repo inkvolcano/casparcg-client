@@ -277,6 +277,17 @@ void ServerStatusPanelWidget::updateCacheStatus()
 
 void ServerStatusPanelWidget::setupRelayRow(QVBoxLayout* serverOuterLayout)
 {
+    // What the server refused, when it refuses something. Hidden until it does,
+    // so it costs nothing on a healthy machine and is impossible to miss on a
+    // broken one - which is the opposite of how this used to behave.
+    this->labelServerFailure = new QLabel(this->widgetServer);
+    this->labelServerFailure->setWordWrap(true);
+    this->labelServerFailure->setVisible(false);
+    this->labelServerFailure->setStyleSheet(
+        "font-size: 10px; color: rgb(240, 190, 120);"
+        "background-color: rgba(90, 60, 20, 140); border-radius: 3px; padding: 4px;");
+    serverOuterLayout->addWidget(this->labelServerFailure);
+
     this->relayRow = new QWidget(this->widgetServer);
     QHBoxLayout* rowLayout = new QHBoxLayout(this->relayRow);
     rowLayout->setContentsMargins(0, 2, 0, 2);
@@ -392,6 +403,16 @@ void ServerStatusPanelWidget::toggleServerCollapse()
 
 void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
 {
+    // A server that refuses a command says so here rather than nowhere.
+    //
+    // 501 CLS FAILED is a server that is up, answering, and unable to scan its own
+    // media folder - so it returns no media, the Library is empty, and nothing on
+    // this side is wrong. That took an hour to find once, from an empty panel and
+    // a log nobody thinks to read.
+    QObject::connect(&device, SIGNAL(commandFailed(int, const QString&, CasparDevice&)),
+                     this, SLOT(commandFailed(int, const QString&, CasparDevice&)),
+                     Qt::UniqueConnection);
+
     QString deviceName;
     int channels = 0;
 
@@ -975,4 +996,38 @@ void ServerStatusPanelWidget::updatePreviewButtonStyle()
     {
         this->previewModeButton->setStyleSheet(BUTTON_INACTIVE_STYLE);
     }
+}
+
+// What the server refused, in the words it used, with the thing to try.
+//
+// Deliberately not a dialog: this arrives while a refresh is happening, possibly
+// repeatedly, and a modal on every failed command would be worse than the silence
+// it replaces.
+void ServerStatusPanelWidget::commandFailed(int code, const QString& line, CasparDevice& device)
+{
+    Q_UNUSED(device);
+
+    if (code < 400)
+        return;
+
+    QString advice;
+
+    // The one worth explaining. Everything else is shown as sent.
+    if (code == 501 && (line.contains("CLS", Qt::CaseInsensitive)
+                        || line.contains("TLS", Qt::CaseInsensitive)
+                        || line.contains("THUMBNAIL", Qt::CaseInsensitive)))
+    {
+        advice = " - the server cannot scan its media or template folder, so the Library "
+                 "will be empty. Usually a stale _media cache: stop the server, delete "
+                 "_media from its folder, and start it again.";
+    }
+
+    const QString text = QString("%1%2").arg(line.trimmed(), advice);
+
+    if (this->labelServerFailure == nullptr)
+        return;
+
+    this->labelServerFailure->setText(text);
+    this->labelServerFailure->setToolTip(text);
+    this->labelServerFailure->setVisible(true);
 }

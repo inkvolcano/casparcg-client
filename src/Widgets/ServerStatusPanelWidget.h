@@ -55,6 +55,7 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
 
         QWidget* relayRow = nullptr;
         QLabel* relayDot = nullptr;
+        QLabel* labelServerFailure = nullptr;
         QLabel* relayLabel = nullptr;
         QPushButton* relayCheckButton = nullptr;
         void setupRelayRow(QVBoxLayout* serverOuterLayout);
@@ -112,6 +113,7 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
 
         Q_SLOT void toggleServerCollapse();
         Q_SLOT void deviceAdded(CasparDevice&);
+        Q_SLOT void commandFailed(int code, const QString& line, CasparDevice&);
         Q_SLOT void deviceRemoved();
         Q_SLOT void deviceConnectionStateChanged(CasparDevice&);
         Q_SLOT void deviceMediaChanged(const QList<CasparMedia>&, CasparDevice&);

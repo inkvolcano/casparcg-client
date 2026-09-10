@@ -653,6 +653,25 @@ void CasparDevice::sendNotification()
     if (AmcpDevice::response.count() > 0)
         qDebug("Received message from %s:%d: %s\\r\\n", qPrintable(AmcpDevice::getAddress()), AmcpDevice::getPort(), qPrintable(AmcpDevice::response.at(0).trimmed()));
 
+    // A reply the server refused, said before anything tries to read it as data.
+    //
+    // 400 and up are failures. The one that matters is 501: the server is up and
+    // answering - it manages 201 VERSION OK - but cannot scan its own media or
+    // template folder, so it returns nothing and the Library looks empty. Nothing
+    // said so, and the answer is usually a stale _media cache in the server folder
+    // rather than anything on this side at all.
+    if (AmcpDevice::code >= 400 && AmcpDevice::response.count() > 0)
+    {
+        const QString line = AmcpDevice::response.at(0).trimmed();
+
+        emit commandFailed(AmcpDevice::code, line, *this);
+
+        // Still passed on, so anything watching the raw traffic sees it as before.
+        emit responseChanged(line, *this);
+
+        return;
+    }
+
     switch (AmcpDevice::command)
     {
         case AmcpDevice::AmcpDeviceCommand::CLS:

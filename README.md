@@ -4,13 +4,38 @@
 [![help](https://img.shields.io/badge/help-community%20forum-green.svg?style=flat-square)](https://casparcgforum.org/)
 [![license](https://img.shields.io/badge/license-GPLv3-blue.svg?style=flat-square)](LICENSE)
 [![changes](https://img.shields.io/badge/changelog-whats%20new-orange.svg?style=flat-square)](CHANGES.md)
+[![builds](https://img.shields.io/badge/builds-download-blue.svg?style=flat-square)](https://github.com/inkvolcano/casparcg-builds/releases)
 
 <p align="center"><img src="/src/Widgets/Images/Clients.png"></p>
+
+## Download
+
+Builds of this fork are published at
+**[inkvolcano/casparcg-builds/releases](https://github.com/inkvolcano/casparcg-builds/releases)**.
+
+Each release carries four things:
+
+| | |
+|---|---|
+| `casparcg-client-…-windows.zip` | the build |
+| `SHA256SUMS.txt` | check the download against this before installing |
+| `install-update.cmd` | for updating a client older than build 210 |
+| `server-php.zip` | the relay and sheet cache, for a web host |
+
+From **build 210** onwards the client updates itself: **Help &rarr; Check for
+Updates**, which verifies the download against the release's own checksums and
+then puts it in place. Nothing is checked or installed unless you ask.
 
 ## Installation
 
 #### Windows
-No installation required. Unpack the zip file to a location on your drive and start it. Tested on Windows 10 x64.
+No installation required. Unpack the zip file to a location on your drive and
+start it. Tested on Windows 10 x64.
+
+The zip holds **one folder** named for the build. Copy what is **inside** it over
+your installation, not the folder itself, and close the client first - Windows
+will not replace a running executable, and doing either wrong leaves you running
+the old build with new libraries around it.
 
 #### macOS
 No installation required. Open the DMG file and drag the 'CasparCG Client' app to a location on your drive and start it. Tested on macOS 11.

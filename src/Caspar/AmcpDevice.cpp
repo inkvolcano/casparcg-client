@@ -181,6 +181,18 @@ void AmcpDevice::parseHeader(const QString& line)
             this->state = AmcpDeviceParserState::ExpectingTwoline;
             break;
         default:
+            // Everything else, which includes every failure the server can report.
+            //
+            // The command was not being read out of these, so a failed reply arrived
+            // labelled as no command at all and every handler ignored it. A server
+            // that answers "501 CLS FAILED" - its own scan of the media folder broke,
+            // which a stale _media cache is enough to cause - therefore produced an
+            // empty Library and not one word about why.
+            //
+            // Named here so the failure can be attributed to the thing that failed.
+            if (tokens.count() > 1)
+                this->command = translateCommand(tokens.at(1));
+
             parseOneline(line);
             return;
     }

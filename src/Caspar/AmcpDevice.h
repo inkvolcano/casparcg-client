@@ -27,6 +27,11 @@ class CASPAR_EXPORT AmcpDevice : public QObject
         Q_SLOT void connectDevice();
 
     protected:
+        // The AMCP code of the reply being parsed. Beside response and command,
+        // which subclasses already read, because a subclass that can see what the
+        // server said should be able to see whether the server refused.
+        int code = 0;
+
         enum class AmcpDeviceCommand
         {
             NONE,
@@ -79,7 +84,6 @@ class CASPAR_EXPORT AmcpDevice : public QObject
         QString address;
 
         int port;
-        int code;
 
         bool connected = false;
         bool disableCommands = false;
