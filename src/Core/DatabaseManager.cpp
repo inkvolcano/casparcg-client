@@ -155,7 +155,18 @@ void DatabaseManager::upgradeDatabase()
                     // way to know. Every other failure still stops everything, because
                     // continuing past a migration that did not apply would leave a
                     // database the code believes is newer than it is.
-                    if (sql.lastError().text().contains("duplicate column name", Qt::CaseInsensitive))
+                    // Schema.sql builds a new database with everything in it and then
+                    // declares itself version 239, so a fresh install runs 240 to 258
+                    // over a schema that already has what several of them add. Three
+                    // of them collide that way today: two columns and one table.
+                    //
+                    // Both errors mean the same thing - the object is already there,
+                    // which is the state the migration wanted - and SQLite offers no
+                    // IF NOT EXISTS for ADD COLUMN, so the error is the only signal.
+                    const QString reason = sql.lastError().text();
+
+                    if (reason.contains("duplicate column name", Qt::CaseInsensitive)
+                        || reason.contains("already exists", Qt::CaseInsensitive))
                     {
                         qDebug("ChangeScript-%d: %s was already applied, continuing",
                                version + 1, qPrintable(query.trimmed().left(60)));
