@@ -1782,6 +1782,60 @@ about.
 
 ---
 
+## A Test For Reporting Back
+
+**Settings → Templates → Report Back To A Relay** has a **Test** button. It
+reaches the address with the token, writes nothing, and says what answered.
+
+It can tell the two relay tokens apart. Paste the upload token where the download
+one goes and it says so, rather than *ok* — because a venue holding the upload
+token could write templates to every other venue, which is the thing the two
+tokens exist to prevent. The field is now called **Download token** and says which
+line of `relay.php` it comes from; "report token" told you nothing about which of
+the two it meant.
+
+And a client pulling from GitHub **reported nothing at all** until build 215. The
+pack versions a check-in is built from were only ever filled in on the relay
+route, so the report bailed out before sending on the one route the override was
+made for. The estate view stayed empty, the client said *already up to date*, and
+both were true. Fixed, and tested against a mock that records what it is posted.
+
+## When The Server Refuses
+
+`501 CLS FAILED` is a CasparCG server that is up, answering, and unable to scan
+its own media folder. It returns nothing, the Library is empty, and until this
+build the client said nothing — the failure was parsed, delivered, and dropped,
+because a reply's command name was only read for the codes the parser expected.
+
+**Server Status** now shows what the server refused, in the words it used, and
+for a `501` on a listing, what it usually means: a stale `_media` cache in the
+server folder. Stop the server, delete `_media`, start it again. Hidden until
+something fails, so a healthy machine sees nothing.
+
+## The Database That Never Moved
+
+The Library went empty. The log said `no such column: l.Size`.
+
+**Thirty migrations — every one since build 192 — were never in the binary.** They
+were on disk and listed in `Core.qrc`, and the build reads neither: it builds the
+resource from a list in `CMakeLists.txt` that stopped at 228. The upgrade loop
+asked for each, got nothing, and stepped over it. So named layouts had no table,
+the Library had no size or date to sort by, and every setting added since then
+was missing — while the code assumed the schema had all of it. The check meant to
+catch this read `Core.qrc` too, and said everything was fine.
+
+The check now reads the list the build uses. Turning the migrations on then
+exposed two ways they would have stopped the client dead: a semicolon inside a
+SQL comment splits a script mid-sentence (two migrations and `Schema.sql`, which
+builds every *new* database, had one), and a fresh install builds everything
+from `Schema.sql` and then runs migrations that add it again. Both handled, both
+verified — against a copy of a real database and against a brand-new one.
+
+**First start after this build migrates thirty versions at once.** A short pause.
+The Library then refills on the next refresh from the server — the rows were
+deleted by every failed refresh before, so a correct schema is not by itself
+enough; the server has to be asked again.
+
 ## Updating The Client Itself
 
 Templates got a distribution route years before the thing that plays them did. A

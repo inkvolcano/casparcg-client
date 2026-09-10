@@ -117,10 +117,22 @@ and where a machine reports are two separate questions**, and only looked like
 one because a relay answers both. Give a client a check-in address and it reports
 there while still pulling from GitHub with a read-only token:
 
-**Settings → Templates → Report to** — the address of a relay.
-**Report token** — that relay's `DOWNLOAD_TOKEN`. Required on this route: the
-token above is a GitHub credential and is never sent to a relay, so a client with
-no report token of its own reports nothing and says so.
+**Settings → Templates → Report Back To A Relay**, its own section on that tab:
+
+| Field | |
+|---|---|
+| Report to | the address of a relay |
+| Download token | that relay's `DOWNLOAD_TOKEN` — line 60 of `relay.php`, not the `UPLOAD_TOKEN` above it, and not the GitHub token |
+| Report at least every | the heartbeat, 720 minutes by default |
+
+The download token is **required on this route**. The GitHub token is a
+repository credential and is never sent to a relay, so a client with nothing here
+reports nowhere and says so.
+
+Press **Test**. It reaches the address with the token, writes nothing, and says
+what answered — and it can tell the two tokens apart: if you pasted the upload
+token it says so, because a venue holding that one could write templates to every
+other venue, which is what the two tokens exist to prevent.
 
 The relay you point at **does not need to hold any packs**. Deploy `relay.php`
 as normal, set both tokens, and leave its storage empty: it is a logbook. Every

@@ -371,6 +371,76 @@ bool RelayClient::checkNow()
     return true;
 }
 
+void RelayClient::pingCheckIn()
+{
+    // The same decision the real check-in makes, so the test tests what will
+    // actually be sent - including the rule that a GitHub token never stands in
+    // for a missing relay token.
+    const CheckInTarget::Decision target =
+        CheckInTarget::decide(isGitHub(), url(), token(), checkInUrl(), checkInToken());
+
+    if (!target.send)
+    {
+        emit checkInTested(target.reason, false);
+        return;
+    }
+
+    const QString base = target.url.trimmed();
+    QNetworkRequest request((QUrl(base + (base.contains('?') ? "&action=ping" : "?action=ping"))));
+    request.setRawHeader("X-Relay-Token", target.token.toUtf8());
+
+    QNetworkReply* reply = this->network->get(request);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
+        if (status == 401)
+        {
+            emit checkInTested("The relay refused the token. This needs the relay's "
+                               "DOWNLOAD_TOKEN - line 60 of relay.php - not the GitHub one.", false);
+            return;
+        }
+
+        if (status != 200)
+        {
+            emit checkInTested(status == 0
+                ? QString("Could not reach it: %1").arg(reply->errorString())
+                : QString("Answered %1, which a relay does not do. Is that the address of relay.php?").arg(status),
+                false);
+            return;
+        }
+
+        const QJsonObject info = QJsonDocument::fromJson(reply->readAll()).object();
+
+        // A 200 that is not a relay's answer is a web server serving something
+        // else at that address - a directory listing, a holding page. It would
+        // accept every check-in and record none of them.
+        if (!info.contains("relay"))
+        {
+            emit checkInTested("Something answered, but it is not a relay. Check the address "
+                               "ends in relay.php.", false);
+            return;
+        }
+
+        // The relay tells us which token it was given. A venue holding the upload
+        // token can write templates to every other venue, which is exactly what the
+        // two tokens exist to prevent - so this is a warning, not a pass.
+        if (info.value("canUpload").toBool())
+        {
+            emit checkInTested(QString("Reached \"%1\", but that is the UPLOAD token. A venue "
+                                       "should hold the DOWNLOAD_TOKEN - line 60 of relay.php. "
+                                       "Swap it before leaving this machine.")
+                               .arg(info.value("relay").toString()), false);
+            return;
+        }
+
+        emit checkInTested(QString("Reached \"%1\". Download token accepted. This machine will "
+                                   "report as %2.")
+                           .arg(info.value("relay").toString(), QSysInfo::machineHostName()), true);
+    });
+}
+
 void RelayClient::ping()
 {
     if (url().isEmpty() || token().isEmpty())

@@ -140,6 +140,9 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#checkin-test">Check-In Test</a><br>
+<a href="#server-refusals">Server Refusals</a><br>
+<a href="#database-migrations">Database Never Moved</a><br>
 <a href="#client-updates">Updating The Client</a><br>
 <a href="#checkin-cadence">Check-In Cadence</a><br>
 <a href="#github-checkin">GitHub Check-ins</a><br>
@@ -1789,6 +1792,30 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="checkin-test">A Test For Reporting Back</h2>
+
+<p><b>Settings &rarr; Templates &rarr; Report Back To A Relay</b> has a <b>Test</b> button. It reaches the address with the token, writes nothing, and says what answered.</p>
+
+<p>It can tell the two relay tokens apart. Paste the upload token where the download one goes and it says so, rather than <i>ok</i> &mdash; because a venue holding the upload token could write templates to every other venue, which is the thing the two tokens exist to prevent. The field is now called <b>Download token</b> and says which line of <code>relay.php</code> it comes from; "report token" told you nothing about which of the two it meant.</p>
+
+<p>And a client pulling from GitHub <b>reported nothing at all</b> until build 215. The pack versions a check-in is built from were only ever filled in on the relay route, so the report bailed out before sending on the one route the override was made for. The estate view stayed empty, the client said <i>already up to date</i>, and both were true. Fixed, and tested against a mock that records what it is posted.</p>
+
+<h2 id="server-refusals">When The Server Refuses</h2>
+
+<p><code>501 CLS FAILED</code> is a CasparCG server that is up, answering, and unable to scan its own media folder. It returns nothing, the Library is empty, and until this build the client said nothing &mdash; the failure was parsed, delivered, and dropped, because a reply's command name was only read for the codes the parser expected.</p>
+
+<p><b>Server Status</b> now shows what the server refused, in the words it used, and for a <code>501</code> on a listing, what it usually means: a stale <code>_media</code> cache in the server folder. Stop the server, delete <code>_media</code>, start it again. Hidden until something fails, so a healthy machine sees nothing.</p>
+
+<h2 id="database-migrations">The Database That Never Moved</h2>
+
+<p>The Library went empty. The log said <code>no such column: l.Size</code>.</p>
+
+<p><b>Thirty migrations &mdash; every one since build 192 &mdash; were never in the binary.</b> They were on disk and listed in <code>Core.qrc</code>, and the build reads neither: it builds the resource from a list in <code>CMakeLists.txt</code> that stopped at 228. The upgrade loop asked for each, got nothing, and stepped over it. So named layouts had no table, the Library had no size or date to sort by, and every setting added since then was missing &mdash; while the code assumed the schema had all of it. The check meant to catch this read <code>Core.qrc</code> too, and said everything was fine.</p>
+
+<p>The check now reads the list the build uses. Turning the migrations on then exposed two ways they would have stopped the client dead: a semicolon inside a SQL comment splits a script mid-sentence (two migrations and <code>Schema.sql</code>, which builds every <i>new</i> database, had one), and a fresh install builds everything from <code>Schema.sql</code> and then runs migrations that add it again. Both handled, both verified &mdash; against a copy of a real database and against a brand-new one.</p>
+
+<p><b>First start after this build migrates thirty versions at once.</b> A short pause. The Library then refills on the next refresh from the server &mdash; the rows were deleted by every failed refresh before, so a correct schema is not by itself enough; the server has to be asked again.</p>
 
 <h2 id="client-updates">Updating The Client Itself</h2>
 

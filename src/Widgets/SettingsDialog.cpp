@@ -938,14 +938,18 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "A relay used only for this holds no packs. Deploy it and leave it empty.");
     checkInGrid->addWidget(this->lineEditRelayCheckInUrl, 0, 1, 1, 3);
 
-    checkInGrid->addWidget(new QLabel("Report token:", checkInGroup), 1, 0);
+    checkInGrid->addWidget(new QLabel("Download token:", checkInGroup), 1, 0);
     this->lineEditRelayCheckInToken = new QLineEdit(RelayClient::checkInToken(), checkInGroup);
-    this->lineEditRelayCheckInToken->setPlaceholderText("required when pulling from GitHub");
+    this->lineEditRelayCheckInToken->setPlaceholderText(
+        "the relay's DOWNLOAD_TOKEN, from line 60 of relay.php - not the GitHub token");
     this->lineEditRelayCheckInToken->setToolTip(
-        "That relay's DOWNLOAD token.\n\n"
-        "Required when the templates come from GitHub: the token above is a\n"
-        "repository credential and is never sent to a relay, so a client with\n"
-        "nothing here reports nowhere and says so.");
+        "The relay's DOWNLOAD_TOKEN - the second of the two defined at the top of\n"
+        "relay.php, line 60. Not the UPLOAD_TOKEN above it: that one can write\n"
+        "templates to every venue, and a venue machine must never hold it.\n\n"
+        "Not the GitHub token either. That is a repository credential and is\n"
+        "never sent to a relay, so a client with nothing here reports nowhere\n"
+        "and says so.\n\n"
+        "Press Test: it says which token the relay recognised.");
     checkInGrid->addWidget(this->lineEditRelayCheckInToken, 1, 1, 1, 3);
 
     checkInGrid->addWidget(new QLabel("Report at least every:", checkInGroup), 2, 0);
@@ -963,11 +967,49 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "Zero reports only on change, and leaves that question unanswered.");
     checkInGrid->addWidget(this->spinBoxRelayHeartbeat, 2, 1);
 
+    QPushButton* checkInTest = new QPushButton("Test", checkInGroup);
+    checkInTest->setFixedHeight(22);
+    checkInTest->setFocusPolicy(Qt::NoFocus);
+    checkInTest->setToolTip(
+        "Reach the address above with the token above and say what answered.\n"
+        "Writes nothing, and tells you if the token is the wrong one of the two.");
+    checkInGrid->addWidget(checkInTest, 2, 3);
+
     checkInGrid->addWidget(new QLabel(
         "This machine reports what it holds, which build it runs and how its last poll\n"
         "went. It sends nothing else, and nothing here changes where templates come\n"
         "from. Leave it empty and this venue simply reports nowhere.", checkInGroup),
         3, 0, 1, 4);
+
+    this->labelCheckInStatus = new QLabel(checkInGroup);
+    this->labelCheckInStatus->setWordWrap(true);
+    checkInGrid->addWidget(this->labelCheckInStatus, 4, 0, 1, 4);
+
+    // Tested against what is typed, not what was last saved, so a test is a test
+    // of the address and token in front of the operator.
+    auto applyCheckInFields = [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayCheckInUrl", this->lineEditRelayCheckInUrl->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayCheckInToken", this->lineEditRelayCheckInToken->text().trimmed()));
+    };
+
+    QObject::connect(&RelayClient::getInstance(), &RelayClient::checkInTested, this,
+                     [this](const QString& line, bool ok) {
+        if (this->labelCheckInStatus == nullptr)
+            return;
+
+        this->labelCheckInStatus->setText(line);
+        this->labelCheckInStatus->setStyleSheet(ok ? "color: rgb(150, 220, 150);"
+                                                   : "color: rgb(230, 140, 140);");
+    });
+
+    QObject::connect(checkInTest, &QPushButton::clicked, this, [this, applyCheckInFields]() {
+        applyCheckInFields();
+        this->labelCheckInStatus->setStyleSheet(QString());
+        this->labelCheckInStatus->setText("Asking the relay...");
+        RelayClient::getInstance().pingCheckIn();
+    });
 
     templatesVBox->addWidget(checkInGroup);
 

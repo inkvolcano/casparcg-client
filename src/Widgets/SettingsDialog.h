@@ -140,6 +140,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QLineEdit* lineEditRelayCheckInUrl = nullptr;
     QLineEdit* lineEditRelayCheckInToken = nullptr;
     QSpinBox* spinBoxRelayHeartbeat = nullptr;
+    QLabel* labelCheckInStatus = nullptr;
     QLineEdit* lineEditUpdateSource = nullptr;
     QLineEdit* lineEditUpdateToken = nullptr;
     QSpinBox* spinBoxRelayPoll = nullptr;

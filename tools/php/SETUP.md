@@ -118,7 +118,34 @@ Now press **Check now**, and press **OK** to close Settings.
 > **You should see** your packs appear in the client's templates folder. Not sure
 > where that is? Settings → Templates → **Install into** shows it.
 
-That machine is done. It will keep itself up to date from now on.
+That machine is done for templates. It will keep itself up to date from now on.
+
+### Reporting back
+
+Still on the Templates tab, in **Report Back To A Relay**. This is what lets you
+see every venue from one place: the push tool's **Identify** list and
+**Assignments...** show nothing for a venue that does not report. A GitHub repository has
+nowhere for a client to report to, so this goes to a relay - which can hold no
+packs at all and just keep the logbook.
+
+| Field | What to put |
+|---|---|
+| Report to | `https://your-host/path/relay.php` |
+| Download token | the relay's `DOWNLOAD_TOKEN`, line 60 of `relay.php` |
+| Report at least every | 720 is fine |
+
+Press **Test**.
+
+> **You should see** *Reached "template relay". Download token accepted.* and the
+> name this machine will report as.
+>
+> If it says *that is the UPLOAD token* - swap it. A venue must never hold the
+> upload token; that is the one that can write templates to every other venue.
+> If it says *refused the token*, it is neither of the two: usually the GitHub
+> token pasted in the wrong box.
+
+Press **OK**. The machine reports on its next poll, and appears in the push tool
+under **Identify** with its packs and its build number.
 
 ## Step 4: prove it works end to end
 

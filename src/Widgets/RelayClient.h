@@ -133,9 +133,21 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // discovered during a pull.
         Q_SLOT void ping();
 
+        // Reach the check-in address with the check-in token and say what answered.
+        //
+        // Writes nothing: it uses the relay's ping, which either token opens, and
+        // reads back which one this was - so it can say "that is the upload token"
+        // rather than "ok" when a venue has been handed the wrong one. That is the
+        // mistake the two-token design invites, and until this existed the only
+        // way to find it was an estate view that stayed empty.
+        Q_SLOT void pingCheckIn();
+
     Q_SIGNALS:
         // Every line this would put in a log, so a dialog can show the same thing.
         void progress(const QString& line);
+
+        // The answer to pingCheckIn, one line, and whether it was good news.
+        void checkInTested(const QString& line, bool ok);
 
         // A poll ended. Installed and failed are file counts.
         void finished(int installed, int failed, const QString& summary);
