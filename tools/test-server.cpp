@@ -24,6 +24,7 @@
 #include <QtCore/QTextStream>
 #include <QtCore/QThread>
 
+#include <QtNetwork/QHostAddress>
 #include <QtNetwork/QTcpServer>
 #include <QtNetwork/QTcpSocket>
 
@@ -240,6 +241,39 @@ int main(int argc, char** argv)
     expectTrue(shortFile.readAll() == QByteArray("HELLO"),
                "and only the declared length was written");
     shortFile.close();
+
+    out << "\nWho may flip bypass\n";
+
+    // Bypass is written to the database, and this port is open to the whole
+    // network, so flipping it used to be one URL from the guest Wi-Fi. Reading
+    // stays open; writing is this machine, or the push token. The socket here is
+    // always loopback, so the remote cases go through the rule directly - which
+    // is why it is a static function rather than a line in the handler.
+    expectTrue(statusOf(sendRaw(request("GET", "/bypass", QByteArray()))) == 200,
+               "anyone can read the bypass state");
+    expectTrue(statusOf(sendRaw(request("GET", "/bypass?on=1", QByteArray()))) == 200,
+               "this machine can flip it without a token");
+    expectTrue(statusOf(sendRaw(request("GET", "/bypass?on=0", QByteArray()))) == 200,
+               "and back");
+
+    expectTrue(SheetCacheServer::mayChangeBypass(QHostAddress(QHostAddress::LocalHost), QString()),
+               "127.0.0.1 may change it");
+    expectTrue(SheetCacheServer::mayChangeBypass(QHostAddress(QHostAddress::LocalHostIPv6), QString()),
+               "::1 may change it");
+    expectTrue(SheetCacheServer::mayChangeBypass(QHostAddress("::ffff:127.0.0.1"), QString()),
+               "a dual-stack listener's view of localhost may change it");
+    expectTrue(!SheetCacheServer::mayChangeBypass(QHostAddress("192.168.1.20"), QString()),
+               "a LAN peer with no token may not");
+    expectTrue(!SheetCacheServer::mayChangeBypass(QHostAddress("192.168.1.20"), "wrong"),
+               "nor with the wrong token");
+    expectTrue(SheetCacheServer::mayChangeBypass(QHostAddress("192.168.1.20"), TOKEN),
+               "a LAN peer with the push token may");
+
+    // An unset token must never match, the same rule as the push route.
+    qputenv("CASPARCG_TEST_TemplatePushToken", QByteArray());
+    expectTrue(!SheetCacheServer::mayChangeBypass(QHostAddress("192.168.1.20"), QString()),
+               "no token set and none sent is still refused");
+    qputenv("CASPARCG_TEST_TemplatePushToken", TOKEN);
 
     out << "\nStill working afterwards\n";
 

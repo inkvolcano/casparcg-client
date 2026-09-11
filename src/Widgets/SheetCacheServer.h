@@ -8,6 +8,7 @@
 #include <QtCore/QObject>
 #include <QtCore/QString>
 
+class QHostAddress;
 class QTcpServer;
 class QTcpSocket;
 
@@ -23,6 +24,9 @@ class QTcpSocket;
 //   GET  /strain                                    reads in the last minute, totalled
 //   GET  /strain?tick=1&spreadsheetId=X             a template reporting one read
 //   GET  /bypass  |  /bypass?on=1  |  /bypass?on=0  read or flip bypass
+//
+// Reading bypass is open. Flipping it is written to the database, so that is
+// only from this machine or with the template push token.
 //
 // Bypass is the switch that matters during a show: reads answer 404 so graphics go
 // live to the sheet, while writes still land, so the cache stays warm for the moment
@@ -52,6 +56,11 @@ class WIDGETS_EXPORT SheetCacheServer : public QObject
 
         static bool isBypassing();
         static void setBypassing(bool bypass);
+
+        // Whether a request may flip bypass: from this machine, or carrying the
+        // template push token. Anyone else on the network can read the state but
+        // not change it. Static so the rule can be tested without a socket.
+        static bool mayChangeBypass(const QHostAddress& peer, const QString& pushToken);
 
     private:
         explicit SheetCacheServer();

@@ -1,7 +1,8 @@
 # Bughunt — all findings, by priority
 
 **30 findings from eight passes on 2026-09-11, against build 219. The four P1s
-are fixed in build 220. The other 26 are still open and unchanged.** Every entry
+are fixed in build 220; four of the five P2s in build 221, and the fifth (F30) is
+kept as it is by decision. The other 21 are still open and unchanged.** Every entry
 names the file and line it rests on and the shape of a fix, so each can be picked
 up on its own.
 
@@ -32,11 +33,29 @@ rest of this list.
 
 Full suite after the changes: 1583 assertions, 0 failed, network suites included.
 
+## Fixed in build 221
+
+| | What was done | Checked by |
+|---|---|---|
+| **F20** | Flipping `/bypass` now needs a loopback peer or the template push token; reading it stays open. `/strain` is left open on purpose — other clients report through it | 10 assertions in `test-server`: the socket cases from loopback, and the rule itself for 127.0.0.1, ::1, ::ffff:127.0.0.1, a LAN address with no / wrong / right token, and an unset token |
+| **F26** | The relay and check-in fields are snapshotted when Settings opens and written back on Cancel if a Test or Check now changed them | no automated cover — dialog code |
+| **F18** | The recovery prompt has three answers: Open, Delete, Not Now. Escape and the close box are Not Now, which keeps the copies | no automated cover — dialog code |
+| **F24** | All three Library refreshes count failed statements and roll back on any, keeping the rows they had. `typeId` is initialised too — it was read uninitialised for an unknown type | no automated cover — `DatabaseManager` is stubbed in every harness here |
+
+**Verified by breaking it:** making the rule accept everyone failed exactly the
+three remote-refusal assertions in `test-server`.
+
+**F30 is kept, not fixed.** The OSC WebSocket accepting any origin may be how a
+browser-based control surface on another machine is meant to reach the client.
+That is a decision for whoever runs the venue, not a bug to close from here, so it
+stays open in the list with its entry unchanged.
+
 ## Priority
 
 | | Meaning |
 |---|---|
-| **done** | Fixed in build 220. Kept here with what changed. |
+| **done** | Fixed in build 220 or 221. Kept here with what changed. |
+| **kept** | Looked at and left as it is, on purpose. |
 | **P1** | Takes a machine down, or stops a new one being set up. Fix before the next venue. |
 | **P2** | Lets someone do what they should not, or turns one slip into lost or leaked data. |
 | **P3** | Wrong answers, fragility, or data problems that are latent today. |
@@ -54,11 +73,11 @@ sessions rather than inherited.
 | done | F7 | Simple Mode keys point at items a drag has deleted | Simple Mode | fixed in 220 |
 | done | F23 | Opening a malformed rundown file crashes the client | Rundown | fixed in 220 |
 | done | F16 | A fresh two-pack venue can never complete its first pull | Template pull | fixed in 220 |
-| P2 | F30 | The OSC WebSocket accepts connections from any web page | OSC | origin check |
-| P2 | F20 | `/bypass` flips a persisted setting for anyone on the LAN | Local HTTP | loopback or token check |
-| P2 | F26 | Settings Test saves the field, so Cancel does not cancel — **mine** | Settings | snapshot/revert |
-| P2 | F18 | Declining autosave recovery deletes every autosave | Autosave | change No |
-| P2 | F24 | A Library refresh commits its DELETE after failed INSERTs | Database | rollback ×3 |
+| kept | F30 | The OSC WebSocket accepts connections from any web page | OSC | left by decision |
+| done | F20 | `/bypass` flips a persisted setting for anyone on the LAN | Local HTTP | fixed in 221 |
+| done | F26 | Settings Test saves the field, so Cancel does not cancel — **mine** | Settings | fixed in 221 |
+| done | F18 | Declining autosave recovery deletes every autosave | Autosave | fixed in 221 |
+| done | F24 | A Library refresh commits its DELETE after failed INSERTs | Database | fixed in 221 |
 | P3 | F21 | Two client instances silently drop each other's writes | Database | `QLockFile` |
 | P3 | F1 | `Configuration` holds duplicate rows for 31 settings — partly **mine** | Database | migration + index |
 | P3 | F22 | Venues with the same hostname are one venue to the relay | Check-in | client + relay |
@@ -226,6 +245,8 @@ absurd single list (say 5,000). Add a 501-file test and a line in `GITHUB.md`.
 
 ### F30. The OSC WebSocket accepts connections from any web page
 
+**KEPT.** Possibly how a remote browser control surface is meant to reach the client; left as it is by decision. Not fixed, not forgotten.
+
 **OSC · on-air control from a browser tab**
 
 `OscWebSocketListener.cpp:29` listens on `QHostAddress::Any:4250`, on by
@@ -246,6 +267,8 @@ unless a setting says otherwise.
 
 ### F20. `/bypass` flips a persisted setting for anyone on the LAN
 
+**FIXED in build 221.** `mayChangeBypass()` — loopback, or the push token. Reading stays open, and so does `/strain`, on purpose: other clients report through it. Covered by `test-server`.
+
 **Local HTTP server · no authentication**
 
 `SheetCacheServer.cpp:174` binds `QHostAddress::Any`. `GET /bypass?on=1`
@@ -265,6 +288,8 @@ correctly.
 
 ### F26. Settings Test saves the field, so Cancel does not cancel — mine
 
+**FIXED in build 221.** The five relay/check-in values are snapshotted at open and restored on `rejected` if a test changed them. No automated cover.
+
 **Settings · stores the wrong token**
 
 **Test** and **Check now** call `applyRelayFields()` (`SettingsDialog.cpp:905`,
@@ -281,6 +306,8 @@ the fields without writing, and save only on OK.
 
 ### F18. Declining autosave recovery deletes every autosave
 
+**FIXED in build 221.** Open / Delete / Not Now, with Escape as Not Now. Only Delete removes the copies, and the text says so. No automated cover.
+
 **Autosave · one click, no second chance**
 
 `MainWindow::offerAutoSaveRecovery()` (`:194`) asks once, Yes/No, for *all*
@@ -292,6 +319,8 @@ all three recovery files, and the dialog does not say it will.
 clean save — or offer per rundown, or at least say "No deletes them".
 
 ### F24. A Library refresh commits its DELETE after failed INSERTs
+
+**FIXED in build 221.** All three refreshes roll back on any failed statement and log one line. No automated cover.
 
 **Database · empty instead of stale**
 

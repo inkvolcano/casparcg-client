@@ -132,6 +132,26 @@ void SheetCacheServer::setBypassing(bool bypass)
         ConfigurationModel(0, "SheetsCacheBypass", bypass ? "true" : "false"));
 }
 
+bool SheetCacheServer::mayChangeBypass(const QHostAddress& peer, const QString& pushToken)
+{
+    // This port is open to the whole network, and bypass is persisted: one URL
+    // from the guest Wi-Fi used to turn a venue's cache off until somebody
+    // noticed. Local callers keep the URL the settings label promises; anything
+    // else needs the same token a template push does, and an unset token never
+    // matches, as on that route.
+    if (peer.isLoopback())
+        return true;
+
+    // A dual-stack listener sees localhost as ::ffff:127.0.0.1.
+    bool isIPv4 = false;
+    const quint32 v4 = peer.toIPv4Address(&isIPv4);
+    if (isIPv4 && QHostAddress(v4).isLoopback())
+        return true;
+
+    const QString expected = TemplateInstaller::token();
+    return !expected.isEmpty() && pushToken == expected;
+}
+
 QString SheetCacheServer::cacheFilePath(const QString& spreadsheetId, const QString& sheetNumber)
 {
     // Same names the PHP service uses, so the two can share a folder.
@@ -351,6 +371,13 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
     {
         if (query.hasQueryItem("on"))
         {
+            if (!mayChangeBypass(socket->peerAddress(), pushToken))
+            {
+                respond(socket, 403, "{\"error\":\"Bypass can only be changed from this machine, "
+                                     "or with the template push token\"}");
+                return;
+            }
+
             QString value = query.queryItemValue("on").toLower();
             setBypassing(value == "1" || value == "true" || value == "yes");
         }

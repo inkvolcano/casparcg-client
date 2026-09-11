@@ -1782,6 +1782,57 @@ about.
 
 ---
 
+## Four More Off The List
+
+The next four from the bughunt — the ones that let somebody do what they should
+not, or turn one slip into lost data. One more from that group is left as it is
+on purpose: the OSC WebSocket accepting any origin may be how a remote control
+page is meant to reach the client, and that is a venue's call, not this build's.
+
+### Bypass could be flipped from the guest Wi-Fi
+
+The sheet cache the client hosts answers on every interface, and `/bypass?on=1`
+took no token. Bypass is written to the database, so one URL from anything on
+the network turned a venue's cache off until somebody noticed it had gone quiet.
+
+Reading the state is still open. Flipping it now has to come from the machine
+itself — the URL the settings label promises still works there — or carry the
+template push token. An unset token never matches, the same rule as a push.
+
+`/strain` stays open on purpose: other clients report through it, and it writes
+nothing to disk.
+
+### Cancel now cancels
+
+**Test** and **Check now** in Settings write the typed values first, because the
+client reads its address and token from the database when it runs. That made
+Cancel a lie. The check-in Test exists to say *that is the UPLOAD token — swap
+it*; press Cancel after reading that and the venue was holding the upload token,
+persisted, behind a dialog that said nothing had changed.
+
+The values are kept from the moment Settings opens, and Cancel puts back any a
+test changed. OK writes the fields anyway, so nothing there is different.
+
+### No did two jobs
+
+After a crash, the recovery prompt asked once, Yes or No, for every rundown at
+once — and No deleted all of the copies without saying it would. Three rundowns
+open, one reflexive No, three recovery files gone.
+
+It has three answers now: **Open**, **Delete**, **Not Now**. Only Delete removes
+the copies, and the text says so. Escape and the close box are Not Now, which
+keeps them on disk and asks again at the next start.
+
+### A refresh that failed left the Library empty
+
+A Library refresh deleted the old rows, inserted the new ones, and committed —
+whether or not the inserts had worked. That is exactly what the migration bug in
+216 looked like from the outside: 215 rows deleted, 215 inserts failed, commit,
+empty Library. A stale Library still plays; an empty one does not.
+
+All three refreshes — media, templates, data — now count what failed, and on any
+failure roll back and keep the rows they had, with one line in the log saying so.
+
 ## Four That Take A Machine Down
 
 An eight-pass read through the code turned up thirty things worth writing down.

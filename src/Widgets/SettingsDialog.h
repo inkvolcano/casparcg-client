@@ -139,6 +139,10 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QLineEdit* lineEditRelayToken = nullptr;
     QLineEdit* lineEditRelayCheckInUrl = nullptr;
     QLineEdit* lineEditRelayCheckInToken = nullptr;
+
+    // What the relay fields held when the dialog opened, so Cancel can take
+    // back what Test and Check now wrote in order to run.
+    QMap<QString, QString> relayFieldsAtOpen;
     QSpinBox* spinBoxRelayHeartbeat = nullptr;
     QLabel* labelCheckInStatus = nullptr;
     QLineEdit* lineEditUpdateSource = nullptr;

@@ -885,6 +885,33 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     relayGrid->addWidget(new QLabel(
         "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 8, 0, 1, 4);
 
+    // Test and Check now write the typed values first, because the client reads
+    // its address and token from the database when it runs. That made Cancel a
+    // lie: the check-in Test exists to say "that is the UPLOAD token - swap it",
+    // and pressing Cancel after reading that left the venue holding the upload
+    // token, persisted. So the values at open are kept, and Cancel puts back any
+    // that a test changed. OK writes the fields anyway, so it needs nothing.
+    const QStringList relayKeys = { "RelayUrl", "RelayToken", "RelayPacks",
+                                    "RelayCheckInUrl", "RelayCheckInToken" };
+    for (const QString& key : relayKeys)
+        this->relayFieldsAtOpen.insert(key, DatabaseManager::getInstance().getConfigurationByName(key).getValue());
+
+    QObject::connect(this, &QDialog::rejected, this, [this]() {
+        bool restored = false;
+        for (auto it = this->relayFieldsAtOpen.constBegin(); it != this->relayFieldsAtOpen.constEnd(); ++it)
+        {
+            if (DatabaseManager::getInstance().getConfigurationByName(it.key()).getValue() == it.value())
+                continue;
+
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, it.key(), it.value()));
+            restored = true;
+        }
+
+        // A test may have started the poll timer on the tested address.
+        if (restored)
+            RelayClient::getInstance().start();
+    });
+
     // Both buttons act on what is typed rather than on what was last saved, so a
     // test is a test of the address in front of the operator.
     auto applyRelayFields = [this]() {

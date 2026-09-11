@@ -1411,6 +1411,7 @@ void DatabaseManager::updateLibraryMedia(const QString& address, const QList<Lib
     QSqlDatabase::database().transaction();
 
     QSqlQuery sql;
+    int failures = 0;
 
     if (deleteModels.count() > 0)
     {
@@ -1421,13 +1422,16 @@ void DatabaseManager::updateLibraryMedia(const QString& address, const QList<Lib
             sql.bindValue(":Id", deleteModels.at(i).getId());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
     }
 
     if (insertModels.count() > 0)
     {
-        int typeId;
+        int typeId = -1;
         for (int i = 0; i < insertModels.count(); i++)
         {
             if (insertModels.at(i).getType() == Rundown::AUDIO)
@@ -1448,8 +1452,23 @@ void DatabaseManager::updateLibraryMedia(const QString& address, const QList<Lib
             sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
+    }
+
+    if (failures > 0)
+    {
+        // The DELETEs have run and the INSERTs meant to replace those rows have
+        // not, so committing here leaves the Library empty rather than stale.
+        // That is exactly what the 2026-09-10 migration bug looked like: 215 rows
+        // deleted, 215 inserts failed, commit. A stale Library still plays.
+        QSqlDatabase::database().rollback();
+        qWarning("Library refresh for %s refused: %d statement(s) failed, keeping the rows it had",
+                 qPrintable(address), failures);
+        return;
     }
 
     QSqlDatabase::database().commit();
@@ -1466,6 +1485,7 @@ void DatabaseManager::updateLibraryTemplate(const QString& address, const QList<
     QSqlDatabase::database().transaction();
 
     QSqlQuery sql;
+    int failures = 0;
     if (deleteModels.count() > 0)
     {
         for (int i = 0; i < deleteModels.count(); i++)
@@ -1475,7 +1495,10 @@ void DatabaseManager::updateLibraryTemplate(const QString& address, const QList<
             sql.bindValue(":Id", deleteModels.at(i).getId());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
     }
 
@@ -1494,8 +1517,23 @@ void DatabaseManager::updateLibraryTemplate(const QString& address, const QList<
             sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
+    }
+
+    if (failures > 0)
+    {
+        // The DELETEs have run and the INSERTs meant to replace those rows have
+        // not, so committing here leaves the Library empty rather than stale.
+        // That is exactly what the 2026-09-10 migration bug looked like: 215 rows
+        // deleted, 215 inserts failed, commit. A stale Library still plays.
+        QSqlDatabase::database().rollback();
+        qWarning("Library refresh for %s refused: %d statement(s) failed, keeping the rows it had",
+                 qPrintable(address), failures);
+        return;
     }
 
     QSqlDatabase::database().commit();
@@ -1511,6 +1549,7 @@ void DatabaseManager::updateLibraryData(const QString& address, const QList<Libr
     QSqlDatabase::database().transaction();
 
     QSqlQuery sql;
+    int failures = 0;
     if (deleteModels.count() > 0)
     {
         for (int i = 0; i < deleteModels.count(); i++)
@@ -1520,20 +1559,26 @@ void DatabaseManager::updateLibraryData(const QString& address, const QList<Libr
             sql.bindValue(":Id", deleteModels.at(i).getThumbnailId());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
 
             sql.prepare("DELETE FROM Library "
                         "WHERE Id = :Id AND TypeId = 2");
             sql.bindValue(":Id", deleteModels.at(i).getId());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
     }
 
     if (insertModels.count() > 0)
     {
-        int typeId;
+        int typeId = -1;
         for (int i = 0; i < insertModels.count(); i++)
         {
             if (insertModels.at(i).getType() == "DATA")
@@ -1550,8 +1595,23 @@ void DatabaseManager::updateLibraryData(const QString& address, const QList<Libr
             sql.bindValue(":Timestamp", insertModels.at(i).getTimestamp());
 
             if (!sql.exec())
+            {
                qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+               failures++;
+            }
         }
+    }
+
+    if (failures > 0)
+    {
+        // The DELETEs have run and the INSERTs meant to replace those rows have
+        // not, so committing here leaves the Library empty rather than stale.
+        // That is exactly what the 2026-09-10 migration bug looked like: 215 rows
+        // deleted, 215 inserts failed, commit. A stale Library still plays.
+        QSqlDatabase::database().rollback();
+        qWarning("Library refresh for %s refused: %d statement(s) failed, keeping the rows it had",
+                 qPrintable(address), failures);
+        return;
     }
 
     QSqlDatabase::database().commit();

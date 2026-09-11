@@ -67,6 +67,7 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QPushButton>
 #include <QtGui/QShortcut>
 #include <QtWidgets/QToolButton>
 #include <QtWidgets/QWidgetAction>
@@ -212,22 +213,36 @@ void MainWindow::offerAutoSaveRecovery()
     box.setWindowIcon(QIcon(":/Graphics/Images/CasparCG.png"));
     box.setIconPixmap(QPixmap(":/Graphics/Images/Attention.png"));
     box.setText(QString("The client did not shut down cleanly. Unsaved changes were auto-saved for:\n\n%1\n\n"
-                        "Open them? Nothing is written to the original files until you save.")
+                        "Nothing is written to the original files until you save.")
                     .arg(names.join("\n")));
-    box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    box.setInformativeText("Not Now keeps the copies and asks again at the next start. "
+                           "Delete removes them for good.");
+
+    // Three answers, because No was doing two jobs. It deleted every copy - after
+    // a crash with three rundowns open, one reflexive press destroyed all three
+    // recovery files, and the dialog had not said it would. Deleting is its own
+    // button now and says so; Escape and the close box keep the files.
+    QPushButton* open = box.addButton("Open", QMessageBox::AcceptRole);
+    QPushButton* remove = box.addButton("Delete", QMessageBox::DestructiveRole);
+    QPushButton* later = box.addButton("Not Now", QMessageBox::RejectRole);
+    box.setDefaultButton(open);
+    box.setEscapeButton(later);
     for (QAbstractButton* button : box.buttons())
     {
         button->setIcon(QIcon());
         button->setFocusPolicy(Qt::NoFocus);
     }
 
-    if (box.exec() != QMessageBox::Yes)
+    box.exec();
+
+    if (box.clickedButton() == remove)
     {
-        // Declining is a decision, not a deferral. Keeping them would ask again at
-        // every launch about work the operator has already said they do not want.
         RundownWidget::clearAutoSaves();
         return;
     }
+
+    if (box.clickedButton() != open)
+        return;   // kept on disk, and offered again at the next start
 
     foreach (const QString& path, pending)
     {

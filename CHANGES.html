@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#bughunt-p2">Four More Off The List</a><br>
 <a href="#bughunt-p1">Four That Take A Machine Down</a><br>
 <a href="#checkin-test">Check-In Test</a><br>
 <a href="#server-refusals">Server Refusals</a><br>
@@ -1793,6 +1794,36 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="bughunt-p2">Four More Off The List</h2>
+
+<p>The next four from the bughunt &mdash; the ones that let somebody do what they should not, or turn one slip into lost data. One more from that group is left as it is on purpose: the OSC WebSocket accepting any origin may be how a remote control page is meant to reach the client, and that is a venue's call, not this build's.</p>
+
+<h3>Bypass could be flipped from the guest Wi-Fi</h3>
+
+<p>The sheet cache the client hosts answers on every interface, and <code>/bypass?on=1</code> took no token. Bypass is written to the database, so one URL from anything on the network turned a venue's cache off until somebody noticed it had gone quiet.</p>
+
+<p>Reading the state is still open. Flipping it now has to come from the machine itself &mdash; the URL the settings label promises still works there &mdash; or carry the template push token. An unset token never matches, the same rule as a push.</p>
+
+<p><code>/strain</code> stays open on purpose: other clients report through it, and it writes nothing to disk.</p>
+
+<h3>Cancel now cancels</h3>
+
+<p><b>Test</b> and <b>Check now</b> in Settings write the typed values first, because the client reads its address and token from the database when it runs. That made Cancel a lie. The check-in Test exists to say <i>that is the UPLOAD token &mdash; swap it</i>; press Cancel after reading that and the venue was holding the upload token, persisted, behind a dialog that said nothing had changed.</p>
+
+<p>The values are kept from the moment Settings opens, and Cancel puts back any a test changed. OK writes the fields anyway, so nothing there is different.</p>
+
+<h3>No did two jobs</h3>
+
+<p>After a crash, the recovery prompt asked once, Yes or No, for every rundown at once &mdash; and No deleted all of the copies without saying it would. Three rundowns open, one reflexive No, three recovery files gone.</p>
+
+<p>It has three answers now: <b>Open</b>, <b>Delete</b>, <b>Not Now</b>. Only Delete removes the copies, and the text says so. Escape and the close box are Not Now, which keeps them on disk and asks again at the next start.</p>
+
+<h3>A refresh that failed left the Library empty</h3>
+
+<p>A Library refresh deleted the old rows, inserted the new ones, and committed &mdash; whether or not the inserts had worked. That is exactly what the migration bug in 216 looked like from the outside: 215 rows deleted, 215 inserts failed, commit, empty Library. A stale Library still plays; an empty one does not.</p>
+
+<p>All three refreshes &mdash; media, templates, data &mdash; now count what failed, and on any failure roll back and keep the rows they had, with one line in the log saying so.</p>
 
 <h2 id="bughunt-p1">Four That Take A Machine Down</h2>
 
