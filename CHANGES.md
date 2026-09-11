@@ -1782,6 +1782,32 @@ about.
 
 ---
 
+## A Video With No Sound Took The Client Down
+
+A client at a venue died the moment the operator selected a video in the
+Library. Reproduced here: Windows recorded an access violation inside Qt's
+FFmpeg media plugin, two seconds after the log stopped.
+
+The clip was a VP9 background loop with **no audio track**. The Preview panel
+opens every selected movie twice — once to show it, once to decode its audio
+for the meters — and Qt 6.5.3's audio decoder faults, rather than errors, on a
+file that has no audio to decode. A small harness in `tools/` opens a file with
+each of the two in a process of its own and named the guilty one by exit code.
+
+It never mattered that the panel was hidden on that machine. It is built and
+listening whether or not the layout shows it, so a venue with the Preview panel
+out of sight was still decoding every selected clip, invisibly, until it found
+one it could not.
+
+Now the audio decoder is not started until the player has opened the file and
+reports an audio track. A silent clip shows no meters, which is what it showed
+before. A hidden panel keeps the selection and does nothing until it is shown.
+And a clip the backend cannot open says so in the panel, in the backend's own
+words, instead of staying blank.
+
+Until a venue has this build: **Settings → Servers → clear the Media path**, and
+the panel opens nothing.
+
 ## Four More Off The List
 
 The next four from the bughunt — the ones that let somebody do what they should

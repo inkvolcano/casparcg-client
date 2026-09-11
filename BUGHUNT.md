@@ -1,6 +1,7 @@
 # Bughunt — all findings, by priority
 
-**30 findings from eight passes on 2026-09-11, against build 219. The four P1s
+**31 findings: 30 from eight passes on 2026-09-11 against build 219, and F31 from
+a crash in the field the same day. The four P1s
 are fixed in build 220; four of the five P2s in build 221, and the fifth (F30) is
 kept as it is by decision. The other 21 are still open and unchanged.** Every entry
 names the file and line it rests on and the shape of a fix, so each can be picked
@@ -32,6 +33,12 @@ window. They were checked by reading and by type-check, which is weaker than the
 rest of this list.
 
 Full suite after the changes: 1583 assertions, 0 failed, network suites included.
+
+## Fixed in build 222
+
+| | What was done | Checked by |
+|---|---|---|
+| **F31** | The Preview panel no longer starts `QAudioDecoder` until the player has opened the file and `hasAudio()` says there is a track to decode; a hidden panel defers all media work to `showEvent`; `errorOccurred` is shown in the placeholder | `tools/test-mediaprobe.bat` — opens a file with each Qt Multimedia API in its own process; the decoder on a video-only webm exits `0xC0000005`, the player does not, and both are clean on a ProRes+PCM mov |
 
 ## Fixed in build 221
 
@@ -69,6 +76,7 @@ sessions rather than inherited.
 
 | Pri | ID | Finding | Area | Size of fix |
 |---|---|---|---|---|
+| done | F31 | Selecting a video with no audio track crashes the client | Preview | fixed in 222 |
 | done | F28 | One malformed UDP datagram terminates the client | OSC | fixed in 220 |
 | done | F7 | Simple Mode keys point at items a drag has deleted | Simple Mode | fixed in 220 |
 | done | F23 | Opening a malformed rundown file crashes the client | Rundown | fixed in 220 |
@@ -103,6 +111,33 @@ sessions rather than inherited.
 ---
 
 ## P1 — fix before the next venue
+
+### F31. Selecting a video with no audio track crashes the client
+
+**FIXED in build 222.** The decoder waits for the player's `hasAudio()`. A hidden
+panel does nothing until shown. Reproduced outside the client with
+`tools/test-mediaprobe.bat`, which is kept for the next clip that misbehaves.
+
+**Preview · found in the field, 2026-09-11, build 218**
+
+A venue client died on a Library click. The local reproduction gave the Windows
+fault record: `0xc0000005` in `ffmpegmediaplugin.dll` 6.5.3, two seconds after
+the log's last line. `ffprobe` over the media folder found one clip with no audio
+stream at all - `BLUE Background_.webm`, VP9, the newest file there. A harness
+opening it with each Qt Multimedia API in its own process named the opener:
+`QAudioDecoder` faults on a file with no audio stream; `QMediaPlayer` opens it
+fine.
+
+`PreviewWidget::loadVideo()` called `audioAnalyser->analyse(filePath)` - which is
+`QAudioDecoder::start()` - on every selected movie whenever the meters were on,
+which is the default. And the panel is built and subscribed whether or not the
+layout places it, so the venue with the Preview panel *hidden* was decoding
+every selected clip invisibly.
+
+**Fix.** Start the decoder only from `mediaStatusChanged` once
+`player->hasAudio()` is true; keep the selection and do nothing while hidden;
+connect `errorOccurred`. Until a venue has 222: clear the server's Media path in
+Settings → Servers, and nothing is opened at all.
 
 ### F28. One malformed UDP datagram terminates the client
 

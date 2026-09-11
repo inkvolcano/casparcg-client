@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#preview-no-audio">Video With No Sound</a><br>
 <a href="#bughunt-p2">Four More Off The List</a><br>
 <a href="#bughunt-p1">Four That Take A Machine Down</a><br>
 <a href="#checkin-test">Check-In Test</a><br>
@@ -1794,6 +1795,18 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="preview-no-audio">A Video With No Sound Took The Client Down</h2>
+
+<p>A client at a venue died the moment the operator selected a video in the Library. Reproduced here: Windows recorded an access violation inside Qt's FFmpeg media plugin, two seconds after the log stopped.</p>
+
+<p>The clip was a VP9 background loop with <b>no audio track</b>. The Preview panel opens every selected movie twice &mdash; once to show it, once to decode its audio for the meters &mdash; and Qt 6.5.3's audio decoder faults, rather than errors, on a file that has no audio to decode. A small harness in <code>tools/</code> opens a file with each of the two in a process of its own and named the guilty one by exit code.</p>
+
+<p>It never mattered that the panel was hidden on that machine. It is built and listening whether or not the layout shows it, so a venue with the Preview panel out of sight was still decoding every selected clip, invisibly, until it found one it could not.</p>
+
+<p>Now the audio decoder is not started until the player has opened the file and reports an audio track. A silent clip shows no meters, which is what it showed before. A hidden panel keeps the selection and does nothing until it is shown. And a clip the backend cannot open says so in the panel, in the backend's own words, instead of staying blank.</p>
+
+<p>Until a venue has this build: <b>Settings &rarr; Servers &rarr; clear the Media path</b>, and the panel opens nothing.</p>
 
 <h2 id="bughunt-p2">Four More Off The List</h2>
 

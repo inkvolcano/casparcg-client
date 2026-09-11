@@ -23,6 +23,7 @@
 #include <QtCore/QTextStream>
 #include <QtCore/QTimer>
 #include <QtCore/QUrl>
+#include <QtGui/QShowEvent>
 #include <QtMultimedia/QAudioOutput>
 #include <QtMultimedia/QMediaPlayer>
 #include <QtMultimedia/QVideoFrame>
@@ -81,6 +82,20 @@ PreviewWidget::PreviewWidget(QWidget* parent)
 
     QObject::connect(this->player, &QMediaPlayer::positionChanged, this, &PreviewWidget::positionChanged);
     QObject::connect(this->player, &QMediaPlayer::durationChanged, this, &PreviewWidget::durationChanged);
+
+    // The meters wait for this: see playerStatusChanged.
+    QObject::connect(this->player, &QMediaPlayer::mediaStatusChanged, this,
+                     [this](QMediaPlayer::MediaStatus status) { playerStatusChanged(int(status)); });
+
+    // A backend that cannot open a file used to say nothing; the panel just
+    // stayed blank. Named now, in the backend's own words.
+    QObject::connect(this->player, &QMediaPlayer::errorOccurred, this,
+                     [this](QMediaPlayer::Error, const QString& text) {
+        this->pendingAnalysis.clear();
+        this->meterTimer->stop();
+        this->contentWidget->setPlaceholder(
+            QString("This clip could not be opened for preview.\n\n%1").arg(text));
+    });
 
     QObject::connect(this->videoSink, &QVideoSink::videoFrameChanged, this, [this](const QVideoFrame& frame) {
         QVideoFrame f = frame;
@@ -297,6 +312,18 @@ void PreviewWidget::setThumbnail()
 
     if (this->model == nullptr)
         return;
+
+    // Nothing is opened for a panel nobody can see. This widget exists and hears
+    // every selection whether or not the layout places it, and a venue with the
+    // panel hidden was still decoding each selected clip - and crashed on one.
+    // The selection is kept and done on the way in.
+    if (!isVisible())
+    {
+        this->selectionPending = true;
+        return;
+    }
+
+    this->selectionPending = false;
 
     const QString type = this->model->getType();
     const QString name = this->model->getName();
@@ -602,14 +629,18 @@ bool PreviewWidget::loadImage(const QString& filePath)
 
 void PreviewWidget::loadVideo(const QString& filePath)
 {
+    // Not analysed yet. The decoder starts from playerStatusChanged, once the
+    // player has opened the file and can say whether there is audio to decode -
+    // started blind on a video-only file, it takes the client down (build 218,
+    // a VP9 background loop with no audio track).
+    //
+    // Set before setSource, not after: the FFmpeg backend can report the load
+    // synchronously from inside that call, and the status handler has to find
+    // this waiting when it does.
+    this->pendingAnalysis = (!legacyMode() && showAudioMeters()) ? filePath : QString();
+
     this->player->setSource(QUrl::fromLocalFile(filePath));
     this->transportBar->setVisible(true);
-
-    if (!legacyMode() && showAudioMeters())
-    {
-        this->audioAnalyser->analyse(filePath);
-        this->meterTimer->start();
-    }
 
     if (!legacyMode() && autoPlayVideo())
     {
@@ -623,8 +654,45 @@ void PreviewWidget::loadVideo(const QString& filePath)
     }
 }
 
+// The player has opened the file - or failed to. Only now is it known whether
+// the file has an audio track, which is the one thing QAudioDecoder must not
+// be asked about a file that has none.
+void PreviewWidget::playerStatusChanged(int status)
+{
+    if (this->pendingAnalysis.isEmpty())
+        return;
+
+    const QMediaPlayer::MediaStatus mediaStatus = QMediaPlayer::MediaStatus(status);
+
+    if (mediaStatus == QMediaPlayer::InvalidMedia || mediaStatus == QMediaPlayer::NoMedia)
+    {
+        this->pendingAnalysis.clear();
+        return;
+    }
+
+    if (mediaStatus != QMediaPlayer::LoadedMedia && mediaStatus != QMediaPlayer::BufferingMedia
+        && mediaStatus != QMediaPlayer::BufferedMedia)
+        return;
+
+    const QString filePath = this->pendingAnalysis;
+    this->pendingAnalysis.clear();
+
+    if (!this->player->hasAudio())
+    {
+        // Silent by construction, so the meters have nothing to show - the same
+        // answer the analyser gives for a file whose audio is empty.
+        this->meterLevels.clear();
+        this->contentWidget->clearAudioLevels();
+        return;
+    }
+
+    this->audioAnalyser->analyse(filePath);
+    this->meterTimer->start();
+}
+
 void PreviewWidget::stopVideo()
 {
+    this->pendingAnalysis.clear();
     this->player->stop();
     this->player->setSource(QUrl());
     this->transportBar->setVisible(false);
@@ -922,6 +990,14 @@ void PreviewWidget::sliderMoved(int value)
         this->meterLevels = this->audioAnalyser->dbfsAt(value);
         this->contentWidget->setAudioLevels(this->meterLevels);
     }
+}
+
+void PreviewWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+
+    if (this->selectionPending)
+        setThumbnail();
 }
 
 void PreviewWidget::resizeEvent(QResizeEvent* event)

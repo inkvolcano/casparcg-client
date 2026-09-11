@@ -56,6 +56,7 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
 
     protected:
         void resizeEvent(QResizeEvent* event) override;
+        void showEvent(QShowEvent* event) override;
 
     private:
         bool collapsed = false;
@@ -110,6 +111,20 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         PreviewAudioAnalyser* audioAnalyser = nullptr;
         QTimer* meterTimer = nullptr;
         QVector<double> meterLevels;
+
+        // The file whose meters are wanted, held until the player has opened it
+        // and can say whether it has an audio track at all. Qt 6.5.3's FFmpeg
+        // plugin faults inside QAudioDecoder on a file with no audio stream - an
+        // access violation, not an error - so the decoder is never started on a
+        // file the player has not first reported as carrying audio.
+        QString pendingAnalysis;
+
+        // A selection that arrived while this panel was hidden. The panel is built
+        // and subscribed whether or not the layout places it, and a venue with it
+        // hidden was still opening every selected clip twice, invisibly.
+        bool selectionPending = false;
+
+        void playerStatusChanged(int status);
 
         void setupMenus();
         void setupTransportBars();
