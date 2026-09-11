@@ -81,6 +81,9 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         static int pollMinutes();
 
+        // How many files one poll installs before leaving the rest for the next.
+        static int filesPerPoll();
+
         // A "github:owner/repo" or "github:owner/repo@branch" address rather than
         // the address of a relay.
         static bool isGitHub();
@@ -164,6 +167,10 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // worth more than the report would be.
         void sendCheckIn();
 
+        // Trims the queue to one batch, marking the packs it could not finish.
+        // False when the listing is too large to be a real set of packs.
+        bool capQueue();
+
         void planFrom(const QByteArray& manifestJson);
         void planFromGitHubTree(const QByteArray& treeJson);
 
@@ -214,6 +221,12 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // current.
         QMap<QString, QString> versionByPack;
         QSet<QString> packsWithFailures;
+
+        // Packs with files still queued when the batch ended, and how many files
+        // this poll left behind. A half-installed pack is no more "current" than
+        // one that failed, so it is left out of the check-in the same way.
+        QSet<QString> packsIncomplete;
+        int deferred = 0;
 
         QDateTime ranAt;
         QString summary;

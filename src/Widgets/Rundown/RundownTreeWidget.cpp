@@ -97,6 +97,7 @@
 
 #include <QtGui/QAction>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QInputDialog>
 #include <QtWidgets/QFrame>
@@ -1437,11 +1438,29 @@ void RundownTreeWidget::openRundown(const QString& path)
         qDebug("Hash is %s", qPrintable(this->hexHash));
 
         qApp->clipboard()->setText(data);
-        this->treeWidgetRundown->pasteSelectedItems(false, true); // preserveCloneLinks = true for file load.
+
+        // A rundown that cannot be read is refused rather than ending the client,
+        // so this is where whoever opened it finds out which file and why.
+        const bool loaded =
+            this->treeWidgetRundown->pasteSelectedItems(false, true); // preserveCloneLinks = true for file load.
         wireAllGatewayWidgets();
 
         // Set previous stored clipboard value.
         qApp->clipboard()->setText(latest);
+
+        if (!loaded)
+        {
+            const QString reason = this->treeWidgetRundown->lastParseError();
+
+            qWarning("Could not read rundown %s: %s", qPrintable(path), qPrintable(reason));
+
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent(QString("Could not read %1").arg(QFileInfo(path).fileName())));
+
+            QMessageBox::warning(this, "Could not open rundown",
+                                 QString("%1 could not be read.\n\n%2")
+                                     .arg(QFileInfo(path).fileName(), reason));
+        }
 
         qDebug("Parsing rundown completed in %lld msec", time.elapsed());
 

@@ -348,7 +348,7 @@ def main():
     # The library defines matter: without them every export macro reads as
     # dllimport and moc output fails on a static member it is entitled to define.
     defines = ('/DQT_CORE_LIB /DQT_GUI_LIB /DQT_WIDGETS_LIB /DQT_NETWORK_LIB '
-               '/DWIDGETS_LIBRARY /DCORE_LIBRARY /DCOMMON_LIBRARY /DCASPAR_LIBRARY')
+               '/DCASPAR_LIBRARY /DCOMMON_LIBRARY /DCORE_LIBRARY /DGPI_LIBRARY /DNDI_LIBRARY /DOSC_LIBRARY /DREPOSITORY_LIBRARY /DWEB_LIBRARY /DWIDGETS_LIBRARY')
 
     failures = []
     for source in sources + generated:

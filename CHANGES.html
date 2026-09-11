@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#bughunt-p1">Four That Take A Machine Down</a><br>
 <a href="#checkin-test">Check-In Test</a><br>
 <a href="#server-refusals">Server Refusals</a><br>
 <a href="#database-migrations">Database Never Moved</a><br>
@@ -1792,6 +1793,38 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="bughunt-p1">Four That Take A Machine Down</h2>
+
+<p>An eight-pass read through the code turned up thirty things worth writing down. These four are the ones that end a session or stop a machine being set up, and they are fixed in this build. The other twenty-six are recorded and open.</p>
+
+<h3>One stray packet ended the client</h3>
+
+<p>The client listens for OSC on two UDP ports, on every interface, by default: 3250 for control, and 6250 for the stream the CasparCG server sends back. The library that parses those packets throws on anything malformed &mdash; a length that is not a multiple of four is enough, and so is an empty datagram. Nothing caught it, and an exception leaving a thread is not an error dialog, it is the process ending.</p>
+
+<p>So a port scan ended the client. So did one truncated frame from the server.</p>
+
+<p>Both listeners now drop what they cannot parse and carry on, and the OSC thread has a backstop underneath that. A valid message still arrives &mdash; the test checks that too, because a guard that swallowed everything would have passed the rest.</p>
+
+<h3>Simple Mode keys pointed at items that no longer existed</h3>
+
+<p>Simple Mode and the rundown cannot be on screen at the same time, which is what made this survivable for as long as it was. The grid holds pointers to rundown items, and a drag in the rundown deletes an item and builds a new one. Come back to the grid and a key could be pointing at something already deleted &mdash; whenever the signal that says <i>the rundown changed</i> had not fired. One path never fired it.</p>
+
+<p>The grid now rebuilds every time it is shown, and the path that deletes items while the grid is visible &mdash; a repository update arriving &mdash; announces itself. Keys keep their slots, so nothing moves on screen.</p>
+
+<h3>A broken rundown file ended the client too</h3>
+
+<p>Opening a rundown is a paste: the file goes through the clipboard and into the same parse the clipboard uses. There was no guard anywhere on it. A truncated file, a hand-edited one, a file from a newer build holding an item type this one does not know, or Ctrl+V with ordinary text in the clipboard &mdash; each of them ended the client from inside the event loop.</p>
+
+<p>All six places that parse rundown XML now go through one guard, an unknown item type is skipped rather than followed, and <b>Open</b> says what was wrong with the file instead of the window disappearing.</p>
+
+<h3>A new venue could never finish its first pull</h3>
+
+<p>A pull was capped at 500 files, and past the cap it refused the whole thing. A venue following two real packs is over that on its first pull, so it was told the source offered more than one poll would take &mdash; every fifteen minutes, forever, installing nothing. The cap was reached by exactly the machines that needed the pull most.</p>
+
+<p>The cap is a batch now. It installs its 500, says what is left, and takes the rest on the next poll. A pack it has not finished is kept out of its check-in, so the estate view cannot show a half-installed pack as current. Genuinely absurd trees &mdash; over 5000 files &mdash; are still refused outright.</p>
+
+<p><b>Two of these four have no automated test.</b> The Simple Mode and rundown fixes live in window code the harnesses here cannot reach, and were checked by reading. The other two are covered, and the batching test was verified by breaking it.</p>
 
 <h2 id="checkin-test">A Test For Reporting Back</h2>
 

@@ -57,6 +57,11 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void writeProperties(QTreeWidgetItem* item, QXmlStreamWriter& writer) const;
 
         bool pasteSelectedItems(bool repositoryRundown = false, bool preserveCloneLinks = false);
+
+        // Why the last parse refused, when it did. Set by every path that reads
+        // rundown XML, so an open can tell the operator what is wrong with a file
+        // instead of the client disappearing.
+        QString lastParseError() const { return this->parseError; }
         bool pasteAsLinkedClones();
         bool pasteItemProperties();
         bool pasteItemPropertiesNoData();
@@ -114,6 +119,8 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void paintEvent(QPaintEvent* event);
 
     private:
+        QString parseError;
+
         bool compactView;
         QString theme;
         bool lock;

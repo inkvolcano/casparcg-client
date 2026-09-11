@@ -18,6 +18,7 @@ qt_add_executable(casparcg_tests
     DeviceManagerLockingTest.cpp
     ShellCommandTest.cpp
     AutoSaveTest.cpp
+    OscPacketGuardTest.cpp
 )
 add_external_dependencies(casparcg_tests)
 

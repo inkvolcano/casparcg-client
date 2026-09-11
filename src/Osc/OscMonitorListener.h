@@ -25,6 +25,10 @@ class OSC_EXPORT OscMonitorListener : public QObject, public osc::OscPacketListe
         Q_SIGNAL void messageReceived(const QString&, const QList<QVariant>&);
 
     protected:
+        // A malformed datagram makes oscpack throw while parsing, and an exception
+        // off the OSC thread is std::terminate. Caught here so one bad UDP packet
+        // costs a dropped message rather than the client. See OscControlListener.
+        virtual void ProcessPacket(const char* data, int size, const IpEndpointName& endpoint);
         virtual void ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint);
 
     private:

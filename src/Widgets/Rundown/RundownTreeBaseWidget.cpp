@@ -85,6 +85,44 @@ QString RundownTreeBaseWidget::serializeTree() const
     return data;
 }
 
+namespace
+{
+    // Every rundown this client opens arrives as text and is parsed here.
+    //
+    // Opening a rundown is a paste: the file's XML goes through the clipboard into
+    // pasteSelectedItems. Both of these throw - read_xml on anything that is not
+    // well formed, get_child on anything with no <items> element - and nothing in
+    // this file caught them, so a truncated or hand-edited file ended the client
+    // from inside the event loop.
+    //
+    // Returns false with the reason instead. pt is only usable when it returns true.
+    bool parseRundownXml(std::wstringstream& stream, boost::property_tree::wptree& pt,
+                         QString* problem)
+    {
+        try
+        {
+            boost::property_tree::xml_parser::read_xml(stream, pt);
+        }
+        catch (const std::exception& e)
+        {
+            if (problem != nullptr)
+                *problem = QString::fromUtf8(e.what());
+
+            return false;
+        }
+
+        if (pt.count(L"items") == 0)
+        {
+            if (problem != nullptr)
+                *problem = QString("there is no <items> element, so this is not rundown data");
+
+            return false;
+        }
+
+        return true;
+    }
+}
+
 void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
 {
     m_undoRestoring = true;
@@ -97,7 +135,16 @@ void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
     wstringstream << xml.toStdWString();
 
     boost::property_tree::wptree pt;
-    boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+    // Our own snapshot, so this should not fail - but the tree has already been
+    // emptied by this point, and throwing here would take the client with it.
+    if (!parseRundownXml(wstringstream, pt, &this->parseError))
+    {
+        blockSignals(false);
+        setUpdatesEnabled(true);
+        m_undoRestoring = false;
+        return;
+    }
 
     for (boost::property_tree::wptree::value_type& parentValue : pt.get_child(L"items"))
     {
@@ -105,6 +152,10 @@ void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
             continue;
 
         AbstractRundownWidget* parentWidget = readProperties(parentValue.second);
+
+        if (parentWidget == nullptr)
+            continue;
+
         parentWidget->setInGroup(false);
         parentWidget->setExpanded(false);
 
@@ -391,7 +442,11 @@ bool RundownTreeBaseWidget::pasteItemProperties()
     wstringstream << qApp->clipboard()->text().toStdWString();
 
     boost::property_tree::wptree pt;
-    boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+    // Paste Item Properties reads whatever is in the clipboard. Ordinary text is
+    // not rundown data and used to throw rather than be refused.
+    if (!parseRundownXml(wstringstream, pt, &this->parseError))
+        return false;
 
     for (boost::property_tree::wptree::value_type &parentValue : pt.get_child(L"items"))
     {
@@ -414,7 +469,11 @@ bool RundownTreeBaseWidget::pasteItemPropertiesNoData()
     wstringstream << qApp->clipboard()->text().toStdWString();
 
     boost::property_tree::wptree pt;
-    boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+    // Paste Item Properties reads whatever is in the clipboard. Ordinary text is
+    // not rundown data and used to throw rather than be refused.
+    if (!parseRundownXml(wstringstream, pt, &this->parseError))
+        return false;
 
     for (boost::property_tree::wptree::value_type &parentValue : pt.get_child(L"items"))
     {
@@ -452,7 +511,13 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
 
     int offset = 1; // Drop offset.
     boost::property_tree::wptree pt;
-    boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+    // A file that is truncated, not well formed, or simply not a rundown is
+    // refused here rather than throwing out of the event loop. Callers that open
+    // files report lastParseError(); an ordinary Ctrl+V over other text just
+    // returns false, which every caller already handles.
+    if (!parseRundownXml(wstringstream, pt, &this->parseError))
+        return false;
 
     if (pt.get_child(L"items").count(L"allowremotetriggering") > 0)
     {
@@ -464,12 +529,25 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
 
     setUpdatesEnabled(false);
 
+    // The parse above proves the file is XML with an <items> element. It does not
+    // prove every value inside is the type its command expects: a default covers a
+    // missing key, not <simplemodeslot>abc</simplemodeslot>, which throws from deep
+    // inside readProperties. Caught here so a damaged item costs the paste rather
+    // than the client, and updates are switched back on before leaving.
+    try
+    {
+
     for (boost::property_tree::wptree::value_type &parentValue : pt.get_child(L"items"))
     {
         if (parentValue.first != L"item")
             continue;
 
         AbstractRundownWidget* parentWidget = readProperties(parentValue.second);
+
+        // A <type> this build does not know leaves this null, and every line below
+        // would dereference it. Skipping keeps the rest of the rundown.
+        if (parentWidget == nullptr)
+            continue;
 
         // Clear clone links on pasted items so they become independent copies.
         if (!preserveCloneLinks)
@@ -536,6 +614,9 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
 
                 AbstractRundownWidget* childWidget = readProperties(childValue.second);
 
+                if (childWidget == nullptr)
+                    continue;
+
                 if (!preserveCloneLinks)
                     childWidget->getCommand()->setCloneGroupId("");
 
@@ -567,6 +648,9 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
 
                             AbstractRundownWidget* gcWidget = readProperties(grandchildValue.second);
 
+                            if (gcWidget == nullptr)
+                                continue;
+
                             if (!preserveCloneLinks)
                                 gcWidget->getCommand()->setCloneGroupId("");
 
@@ -584,6 +668,17 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
             }
         }
 
+    }
+
+    }
+    catch (const std::exception& e)
+    {
+        this->parseError = QString::fromUtf8(e.what());
+
+        setUpdatesEnabled(true);
+        updateAllGroupWidgets();
+
+        return false;
     }
 
     QTreeWidget::doItemsLayout();
@@ -2204,6 +2299,12 @@ void RundownTreeBaseWidget::applyRepositoryChanges()
     if (this->repositoryChanges.count() > 0)
         checRepositoryChanges();
 
+    // Items were added and removed above, and this is the one path that does that
+    // while Simple Mode can be on screen: a newsroom pushes a change and the grid
+    // is holding pointers to the items just deleted. Everything else happens in
+    // the rundown, which means the grid is hidden and rebuilds when it is shown.
+    EventManager::getInstance().fireRundownStructureChangedEvent();
+
     EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(""));
 }
 
@@ -2233,7 +2334,10 @@ bool RundownTreeBaseWidget::containsStoryId(const QString& storyId, const QStrin
         wstringstream << data.toStdWString();
 
         boost::property_tree::wptree pt;
-        boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+        // Story data from a newsroom is no more trustworthy than a file.
+        if (!parseRundownXml(wstringstream, pt, nullptr))
+            return false;
 
         for (const boost::property_tree::wptree::value_type &parentValue : pt.get_child(L"items"))
         {
@@ -2282,7 +2386,10 @@ void RundownTreeBaseWidget::addRepositoryItem(const QString& storyId, const QStr
     wstringstream << data.toStdWString();
 
     boost::property_tree::wptree pt;
-    boost::property_tree::xml_parser::read_xml(wstringstream, pt);
+
+    // Story data from a newsroom is no more trustworthy than a file.
+    if (!parseRundownXml(wstringstream, pt, &this->parseError))
+        return;
 
     setUpdatesEnabled(false);
 
@@ -2292,6 +2399,10 @@ void RundownTreeBaseWidget::addRepositoryItem(const QString& storyId, const QStr
             continue;
 
         AbstractRundownWidget* parentWidget = readProperties(parentValue.second);
+
+        if (parentWidget == nullptr)
+            continue;
+
         parentWidget->setInGroup(false);
         parentWidget->setExpanded(false);
 

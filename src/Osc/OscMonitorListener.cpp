@@ -51,6 +51,20 @@ void OscMonitorListener::start(int port, int batchInterval)
     }
  }
 
+void OscMonitorListener::ProcessPacket(const char* data, int size, const IpEndpointName& endpoint)
+{
+    // See OscControlListener: a malformed datagram throws in the parse, and off
+    // the OSC thread that is std::terminate. Dropped rather than fatal.
+    try
+    {
+        osc::OscPacketListener::ProcessPacket(data, size, endpoint);
+    }
+    catch (const osc::Exception& e)
+    {
+        qDebug("Dropped a malformed OSC monitor packet (%d bytes): %s", size, e.what());
+    }
+}
+
 void OscMonitorListener::ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint)
 {
     char addressBuffer[256];

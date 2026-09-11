@@ -15,6 +15,7 @@ int runTemplateCommandTest(int argc, char* argv[]);
 int runDeviceManagerLockingTest(int argc, char* argv[]);
 int runShellCommandTest(int argc, char* argv[]);
 int runAutoSaveTest(int argc, char* argv[]);
+int runOscPacketGuardTest(int argc, char* argv[]);
 
 int main(int argc, char* argv[])
 {
@@ -35,6 +36,7 @@ int main(int argc, char* argv[])
     status |= runDeviceManagerLockingTest(argc, argv);
     status |= runShellCommandTest(argc, argv);
     status |= runAutoSaveTest(argc, argv);
+    status |= runOscPacketGuardTest(argc, argv);
 
     return status;
 }

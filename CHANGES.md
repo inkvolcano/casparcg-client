@@ -1782,6 +1782,69 @@ about.
 
 ---
 
+## Four That Take A Machine Down
+
+An eight-pass read through the code turned up thirty things worth writing down.
+These four are the ones that end a session or stop a machine being set up, and
+they are fixed in this build. The other twenty-six are recorded and open.
+
+### One stray packet ended the client
+
+The client listens for OSC on two UDP ports, on every interface, by default:
+3250 for control, and 6250 for the stream the CasparCG server sends back. The
+library that parses those packets throws on anything malformed — a length that
+is not a multiple of four is enough, and so is an empty datagram. Nothing caught
+it, and an exception leaving a thread is not an error dialog, it is the process
+ending.
+
+So a port scan ended the client. So did one truncated frame from the server.
+
+Both listeners now drop what they cannot parse and carry on, and the OSC thread
+has a backstop underneath that. A valid message still arrives — the test checks
+that too, because a guard that swallowed everything would have passed the rest.
+
+### Simple Mode keys pointed at items that no longer existed
+
+Simple Mode and the rundown cannot be on screen at the same time, which is what
+made this survivable for as long as it was. The grid holds pointers to rundown
+items, and a drag in the rundown deletes an item and builds a new one. Come back
+to the grid and a key could be pointing at something already deleted — whenever
+the signal that says *the rundown changed* had not fired. One path never fired
+it.
+
+The grid now rebuilds every time it is shown, and the path that deletes items
+while the grid is visible — a repository update arriving — announces itself.
+Keys keep their slots, so nothing moves on screen.
+
+### A broken rundown file ended the client too
+
+Opening a rundown is a paste: the file goes through the clipboard and into the
+same parse the clipboard uses. There was no guard anywhere on it. A truncated
+file, a hand-edited one, a file from a newer build holding an item type this one
+does not know, or Ctrl+V with ordinary text in the clipboard — each of them
+ended the client from inside the event loop.
+
+All six places that parse rundown XML now go through one guard, an unknown item
+type is skipped rather than followed, and **Open** says what was wrong with the
+file instead of the window disappearing.
+
+### A new venue could never finish its first pull
+
+A pull was capped at 500 files, and past the cap it refused the whole thing. A
+venue following two real packs is over that on its first pull, so it was told
+the source offered more than one poll would take — every fifteen minutes,
+forever, installing nothing. The cap was reached by exactly the machines that
+needed the pull most.
+
+The cap is a batch now. It installs its 500, says what is left, and takes the
+rest on the next poll. A pack it has not finished is kept out of its check-in,
+so the estate view cannot show a half-installed pack as current. Genuinely
+absurd trees — over 5000 files — are still refused outright.
+
+**Two of these four have no automated test.** The Simple Mode and rundown fixes
+live in window code the harnesses here cannot reach, and were checked by reading.
+The other two are covered, and the batching test was verified by breaking it.
+
 ## A Test For Reporting Back
 
 **Settings → Templates → Report Back To A Relay** has a **Test** button. It

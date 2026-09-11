@@ -309,6 +309,58 @@ int main(int argc, char** argv)
     expectTrue(readFile(QDir(templates).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>two</h1>"),
                "and the new bytes replaced the old");
 
+    out << "\nA pull larger than one batch\n";
+
+    // The first pull of a real estate is 769 files across two packs, and anything
+    // over the cap used to be refused outright - so a new venue following both
+    // packs was told the source offered more than one poll would take, every
+    // fifteen minutes, and installed nothing. Ever. The cap is a batch now.
+    //
+    // Set small here so the boundary can be crossed with three files rather than
+    // five hundred and one.
+    qputenv("CASPARCG_TEST_RelayFilesPerPoll", "2");
+
+    writeFile(QDir(repo).filePath("SEVILLE/batch/one.html"), "1");
+    writeFile(QDir(repo).filePath("SEVILLE/batch/two.html"), "2");
+    writeFile(QDir(repo).filePath("SEVILLE/batch/three.html"), "3");
+
+    QString batched = poll();
+    expectTrue(!batched.contains("more than"), "a pull over the batch is not refused: " + batched);
+    expectTrue(batched.contains("still to come"), "it says what is left for the next poll: " + batched);
+
+    int installedNow = 0;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/one.html"))) installedNow++;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/two.html"))) installedNow++;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/three.html"))) installedNow++;
+
+    expectTrue(installedNow == 2, QString("one batch is installed, not all of it (got %1)").arg(installedNow));
+
+    // Half a pack is no more "current" than a pack that failed, so the estate must
+    // not be told this venue holds SEVILLE yet.
+    settle(2000);
+    QJsonObject partial =
+        QJsonDocument::fromJson(readFile(QDir(apiDir).filePath("mock_checkin.json"))).object();
+    expectTrue(!partial.value("packs").toObject().contains("SEVILLE"),
+               "a pack with files still queued is left out of the check-in");
+
+    QString rest = poll();
+    expectTrue(rest.contains("installed"), "the next poll takes the rest: " + rest);
+
+    int installedAfter = 0;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/one.html"))) installedAfter++;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/two.html"))) installedAfter++;
+    if (QFile::exists(QDir(templates).filePath("SEVILLE/batch/three.html"))) installedAfter++;
+
+    expectTrue(installedAfter == 3, QString("two polls finish what one could not (got %1)").arg(installedAfter));
+
+    settle(2000);
+    QJsonObject whole =
+        QJsonDocument::fromJson(readFile(QDir(apiDir).filePath("mock_checkin.json"))).object();
+    expectTrue(!whole.value("packs").toObject().value("SEVILLE").toString().isEmpty(),
+               "and the completed pack is reported again");
+
+    qputenv("CASPARCG_TEST_RelayFilesPerPoll", QByteArray());
+
     out << "\nA tree too large to list\n";
 
     // A truncated listing looks exactly like a repository missing files. Acting on

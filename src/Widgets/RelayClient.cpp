@@ -21,10 +21,18 @@
 
 namespace
 {
-    // A single poll should never turn into an afternoon of downloads. This is far
-    // above any real pack and low enough that a misconfigured relay is noticed as a
-    // refusal rather than as an hour of traffic.
-    const int MAXIMUM_FILES_PER_POLL = 500;
+    // One poll's batch, not a limit on the estate.
+    //
+    // A first pull of a real estate is larger than this - the two packs here are
+    // 769 files - so what does not fit waits for the next poll. It used to be a
+    // refusal, which meant a new machine following both packs was told the source
+    // "offered more than one poll will take" every fifteen minutes and installed
+    // nothing, forever.
+    const int DEFAULT_FILES_PER_POLL = 500;
+
+    // Past this a listing is a misconfiguration rather than a big estate: a pack
+    // root pointed at a media drive, or a relay serving somebody else's tree.
+    const int MAXIMUM_FILES_OFFERED = 5000;
 
     // An INACTIVITY timeout, not a deadline. Measured and confirmed against Qt
     // 6.5.3: a transfer that keeps delivering bytes runs as long as it needs, and
@@ -120,6 +128,16 @@ void RelayClient::setClientVersion(const QString& version, const QString& build)
 QString RelayClient::checkInToken()
 {
     return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInToken").getValue().trimmed();
+}
+
+// Hidden, like RelayGitHubApi: almost nobody needs it, and the default is right.
+// The tests set it so a batch boundary can be crossed without 501 files.
+int RelayClient::filesPerPoll()
+{
+    const int configured = DatabaseManager::getInstance()
+        .getConfigurationByName("RelayFilesPerPoll").getValue().trimmed().toInt();
+
+    return configured > 0 ? configured : DEFAULT_FILES_PER_POLL;
 }
 
 int RelayClient::pollMinutes()
@@ -365,6 +383,8 @@ bool RelayClient::checkNow()
     this->manifestAttempts = 0;
     this->versionByPack.clear();
     this->packsWithFailures.clear();
+    this->packsIncomplete.clear();
+    this->deferred = 0;
     this->gitHubAssignments = QJsonObject();
 
     requestManifest();
@@ -719,12 +739,8 @@ void RelayClient::planFromGitHubTree(const QByteArray& treeJson)
         }
     }
 
-    if (this->queue.count() > MAXIMUM_FILES_PER_POLL)
-    {
-        done(QString("the repository offered %1 files, which is more than one poll will take. "
-                     "Check the address and the pack list.").arg(this->queue.count()));
+    if (!capQueue())
         return;
-    }
 
     if (byPack.isEmpty())
     {
@@ -824,12 +840,8 @@ void RelayClient::planFrom(const QByteArray& manifestJson)
         }
     }
 
-    if (this->queue.count() > MAXIMUM_FILES_PER_POLL)
-    {
-        done(QString("the relay offered %1 files, which is more than one poll will take. "
-                     "Check the address and the pack list.").arg(this->queue.count()));
+    if (!capQueue())
         return;
-    }
 
     if (this->queue.isEmpty())
     {
@@ -941,6 +953,40 @@ void RelayClient::fetchOne(const Wanted& wanted)
     });
 }
 
+// Take this poll's batch and leave the rest for the next one.
+//
+// The queue is deterministic - packs in order, files in tree order - and every
+// file installed now matches its digest, so the next poll rebuilds the queue with
+// exactly what is left. A fresh two-pack venue finishes in two polls instead of
+// never finishing at all.
+bool RelayClient::capQueue()
+{
+    if (this->queue.count() > MAXIMUM_FILES_OFFERED)
+    {
+        done(QString("the source offered %1 files, which is more than a set of template packs "
+                     "should ever be. Check the address and the pack list.").arg(this->queue.count()));
+        return false;
+    }
+
+    const int perPoll = filesPerPoll();
+    if (this->queue.count() <= perPoll)
+        return true;
+
+    // A pack with files still queued is not held in full, so it must not be
+    // reported as current - the same rule as a pack with a failure.
+    for (int i = perPoll; i < this->queue.count(); i++)
+        this->packsIncomplete.insert(this->queue.at(i).pack);
+
+    this->deferred = this->queue.count() - perPoll;
+
+    say(QString("  %1 files to fetch: taking %2 now, the rest on the next poll")
+        .arg(this->queue.count()).arg(perPoll));
+
+    this->queue = this->queue.mid(0, perPoll);
+
+    return true;
+}
+
 void RelayClient::done(const QString& note)
 {
     this->busy = false;
@@ -955,6 +1001,9 @@ void RelayClient::done(const QString& note)
         this->summary = note;
     else if (this->failed > 0)
         this->summary = QString("%1 installed, %2 failed").arg(this->installed).arg(this->failed);
+    else if (this->deferred > 0)
+        this->summary = QString("%1 file(s) installed, %2 still to come - press Check now for the rest")
+                            .arg(this->installed).arg(this->deferred);
     else
         this->summary = QString("%1 file(s) installed").arg(this->installed);
 
@@ -988,7 +1037,7 @@ void RelayClient::sendCheckIn()
     {
         // A pack that had a file fail is left out rather than claimed. Being absent
         // from the report is honest; being listed as current would not be.
-        if (this->packsWithFailures.contains(pack))
+        if (this->packsWithFailures.contains(pack) || this->packsIncomplete.contains(pack))
             continue;
 
         packs.insert(pack, this->versionByPack.value(pack));

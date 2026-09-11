@@ -51,6 +51,22 @@ void OscControlListener::start(int port, int batchInterval)
     }
  }
 
+void OscControlListener::ProcessPacket(const char* data, int size, const IpEndpointName& endpoint)
+{
+    // The parse is the throwing part: ReceivedPacket/ReceivedMessage reject a
+    // malformed datagram, and without this that exception unwinds the OSC thread
+    // into std::terminate. A bad packet from anything on the network — a UDP port
+    // scan, or a truncated frame from the server itself — is a dropped message now.
+    try
+    {
+        osc::OscPacketListener::ProcessPacket(data, size, endpoint);
+    }
+    catch (const osc::Exception& e)
+    {
+        qDebug("Dropped a malformed OSC control packet (%d bytes): %s", size, e.what());
+    }
+}
+
 void OscControlListener::ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint)
 {
     char addressBuffer[256];

@@ -25,6 +25,12 @@ class OSC_EXPORT OscControlListener : public QObject, public osc::OscPacketListe
         Q_SIGNAL void messageReceived(const QString&, const QList<QVariant>&);
 
     protected:
+        // oscpack builds ReceivedMessage/ReceivedBundle here and it throws on a
+        // malformed datagram — a length not divisible by four is enough. The base
+        // does not catch, and an exception escaping the OSC thread is
+        // std::terminate, so one stray UDP packet would end the client. Caught and
+        // dropped instead.
+        virtual void ProcessPacket(const char* data, int size, const IpEndpointName& endpoint);
         virtual void ProcessMessage(const osc::ReceivedMessage& message, const IpEndpointName& endpoint);
 
     private:

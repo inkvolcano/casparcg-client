@@ -243,8 +243,20 @@ void SimpleModeWidget::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
 
-    if (this->rebuildPending)
-        refresh();
+    // Always, not only when a structure change arrived while hidden.
+    //
+    // Simple Mode and the rundown are never on screen together, so every edit to
+    // the rundown happens while this is hidden. A drag deletes the item and builds
+    // a new one from its XML; ungroup and Absorb Transforms delete too. None of
+    // them fires rundownStructureChanged, so the keys went on pointing at freed
+    // items — and looked right doing it, because the slot survives in the XML.
+    // The first press after switching back landed on a deleted item.
+    //
+    // Rebuilding on the way in costs one grid build per switch and cannot miss a
+    // delete path nobody has written yet. Slots are preserved, so the keys come
+    // back where they were: a reorder leaves them alone, and a move into or out of
+    // a group changes that group's buttons, which is the intended behaviour.
+    refresh();
 
     setFocus(); // arrow keys work immediately when Simple Mode appears
 }
