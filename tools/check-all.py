@@ -169,7 +169,15 @@ def main():
         totalPassed += passed
         totalFailed += failed
 
-        if ok:
+        if ok and passed == 0:
+            # The suite ran, counted nothing, and exited clean: it stood down on
+            # purpose and said why on its own line - the updater suites do this
+            # while the client is open. Shown as a skip with that reason, not as
+            # "0 passed": that read as a pass, and the total quietly dropped by
+            # 33 with no line saying so.
+            reason = re.search(r'0 passed, 0 failed\s*\((.*?)\)', output)
+            print('  %-13s SKIPPED  %s' % (name, reason.group(1) if reason else 'ran and counted nothing'))
+        elif ok:
             print('  %-13s %4d passed            %4.0fs' % (name, passed, took))
         elif passed == 0 and failed == 0:
             # Never ran. A missing PHP is a skip, not a failure: the suite is
