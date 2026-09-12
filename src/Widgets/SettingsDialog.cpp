@@ -33,6 +33,7 @@
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QListWidget>
 #include <QtWidgets/QScrollArea>
 #include <QtWidgets/QVBoxLayout>
 #include "Models/OscOutputModel.h"
@@ -840,13 +841,43 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->spinBoxRelayPoll->setValue(RelayClient::pollMinutes());
     relayGrid->addWidget(this->spinBoxRelayPoll, 4, 1);
 
-    relayGrid->addWidget(new QLabel("Packs:", relayGroup), 5, 0);
-    this->lineEditRelayPacks = new QLineEdit(RelayClient::packFilter().join(", "), relayGroup);
-    this->lineEditRelayPacks->setPlaceholderText("leave empty to follow every pack at the source");
-    this->lineEditRelayPacks->setToolTip(
-        "A comma-separated list, so one relay or one repository can carry every venue\n"
-        "while this client takes only the packs that are its own.");
-    relayGrid->addWidget(this->lineEditRelayPacks, 5, 1, 1, 3);
+    // The packs, as a list to tick rather than names to type. Typing them meant
+    // knowing the exact folder names at a source nobody at the venue can browse;
+    // Get packs asks the source and the operator picks from what is actually there.
+    relayGrid->addWidget(new QLabel("Packs:", relayGroup), 5, 0, Qt::AlignTop);
+
+    this->listRelayPacks = new QListWidget(relayGroup);
+    this->listRelayPacks->setMaximumHeight(120);
+    this->listRelayPacks->setToolTip(
+        "Tick the packs this client takes. Nothing ticked follows every pack at the source.\n"
+        "Get packs asks the source what it has; until then the list is what was saved here.");
+    relayGrid->addWidget(this->listRelayPacks, 5, 1, 1, 2);
+
+    QPushButton* relayGetPacks = new QPushButton("Get packs", relayGroup);
+    relayGetPacks->setFixedHeight(22);
+    relayGetPacks->setFocusPolicy(Qt::NoFocus);
+    relayGetPacks->setToolTip("Ask the source which packs it has. Installs nothing.");
+    relayGrid->addWidget(relayGetPacks, 5, 3, Qt::AlignTop);
+
+    this->labelRelayPacks = new QLabel(relayGroup);
+    this->labelRelayPacks->setWordWrap(true);
+    this->labelRelayPacks->setStyleSheet("color: rgba(150, 150, 150, 220);");
+    relayGrid->addWidget(this->labelRelayPacks, 6, 1, 1, 3);
+
+    // What is saved, before the source has been asked: names only, all ticked.
+    {
+        QList<RelayClient::PackListing> saved;
+        foreach (const QString& name, RelayClient::packFilter())
+        {
+            RelayClient::PackListing listing;
+            listing.name = name;
+            saved.append(listing);
+        }
+        fillRelayPackList(saved, QStringList(), false);
+        this->labelRelayPacks->setText(saved.isEmpty()
+            ? "Nothing ticked: this client follows every pack at the source. Press Get packs to choose."
+            : "As saved on this machine. Press Get packs to see what the source has.");
+    }
 
     this->checkBoxRelayPacksLocal = new QCheckBox(
         "Ignore what this machine is assigned and use the list above", relayGroup);
@@ -855,35 +886,35 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         "person can run the whole estate from one place. Tick this and the\n"
         "field above wins here instead, for the one machine that has to differ.");
     this->checkBoxRelayPacksLocal->setChecked(RelayClient::packsDecidedLocally());
-    relayGrid->addWidget(this->checkBoxRelayPacksLocal, 6, 1, 1, 3);
+    relayGrid->addWidget(this->checkBoxRelayPacksLocal, 7, 1, 1, 3);
 
 
 
     this->labelRelayStatus = new QLabel(RelayClient::getInstance().lastSummary(), relayGroup);
     this->labelRelayStatus->setWordWrap(true);
-    relayGrid->addWidget(this->labelRelayStatus, 10, 0, 1, 4);
+    relayGrid->addWidget(this->labelRelayStatus, 11, 0, 1, 4);
 
     QPushButton* relayTest = new QPushButton("Test", relayGroup);
     relayTest->setFixedHeight(22);
     relayTest->setFocusPolicy(Qt::NoFocus);
     relayTest->setToolTip("Reach the source and say what it is. Writes nothing.");
-    relayGrid->addWidget(relayTest, 7, 2);
+    relayGrid->addWidget(relayTest, 8, 2);
 
     QPushButton* relayCheck = new QPushButton("Check now", relayGroup);
     relayCheck->setFixedHeight(22);
     relayCheck->setFocusPolicy(Qt::NoFocus);
     relayCheck->setToolTip("Check now and install anything that differs.");
-    relayGrid->addWidget(relayCheck, 7, 3);
+    relayGrid->addWidget(relayCheck, 8, 3);
 
     relayGrid->addWidget(new QLabel(
         "The same packs as a push, fetched instead of received, so nothing inbound has to be\n"
         "opened at the venue. A relay is a PHP file you host; GitHub costs nothing to run and\n"
         "keeps the history of every template. Either works - the address says which.\n\n"
         "Nothing is ever deleted by a pull, and project.js and extensions.json are left\n"
-        "alone here exactly as they are during a push.", relayGroup), 9, 0, 1, 4);
+        "alone here exactly as they are during a push.", relayGroup), 10, 0, 1, 4);
 
     relayGrid->addWidget(new QLabel(
-        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 8, 0, 1, 4);
+        "Use a PRIVATE repository. Anyone can read a public one.", relayGroup), 9, 0, 1, 4);
 
     // Test and Check now write the typed values first, because the client reads
     // its address and token from the database when it runs. That made Cancel a
@@ -920,7 +951,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayToken", this->lineEditRelayToken->text().trimmed()));
         DatabaseManager::getInstance().updateConfiguration(
-            ConfigurationModel(0, "RelayPacks", this->lineEditRelayPacks->text().trimmed()));
+            ConfigurationModel(0, "RelayPacks", relayPacksText()));
     };
 
     QObject::connect(&RelayClient::getInstance(), &RelayClient::progress, this, [this](const QString& line) {
@@ -938,6 +969,27 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         applyRelayFields();
         if (!RelayClient::getInstance().checkNow())
             this->labelRelayStatus->setText("Already checking, or nothing is configured.");
+    });
+
+    QObject::connect(relayGetPacks, &QPushButton::clicked, this, [this, applyRelayFields]() {
+        applyRelayFields();   // the address and token as typed; Cancel puts them back
+        this->labelRelayPacks->setText("Asking the source...");
+        RelayClient::getInstance().listPacks();
+    });
+
+    QObject::connect(&RelayClient::getInstance(), &RelayClient::packsListed, this,
+                     [this](const QList<RelayClient::PackListing>& packs, const QStringList& assignedHere,
+                            bool sourceAssigns, const QString& error) {
+        if (this->listRelayPacks == nullptr)
+            return;
+
+        if (!error.isEmpty())
+        {
+            this->labelRelayPacks->setText(QString("Could not list the packs: %1").arg(error));
+            return;
+        }
+
+        fillRelayPackList(packs, assignedHere, sourceAssigns);
     });
 
     templatesVBox->addWidget(relayGroup);
@@ -1118,7 +1170,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayPollMinutes", QString::number(this->spinBoxRelayPoll->value())));
         DatabaseManager::getInstance().updateConfiguration(
-            ConfigurationModel(0, "RelayPacks", this->lineEditRelayPacks->text().trimmed()));
+            ConfigurationModel(0, "RelayPacks", relayPacksText()));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayPacksLocal",
                                this->checkBoxRelayPacksLocal->isChecked() ? "true" : "false"));
@@ -2559,6 +2611,89 @@ void SettingsDialog::fontSizeChanged(int size)
 {
     this->pendingFontSize = size;
     this->fontSizeDebounceTimer->start();
+}
+
+QString SettingsDialog::relayPacksText() const
+{
+    QStringList ticked;
+    for (int i = 0; i < this->listRelayPacks->count(); i++)
+    {
+        QListWidgetItem* item = this->listRelayPacks->item(i);
+        if (item->checkState() == Qt::Checked)
+            ticked.append(item->data(Qt::UserRole).toString());
+    }
+
+    return ticked.join(", ");
+}
+
+void SettingsDialog::fillRelayPackList(const QList<RelayClient::PackListing>& packs,
+                                       const QStringList& assignedHere, bool sourceAssigns)
+{
+    // What was ticked survives a refresh, and so does a ticked pack the source no
+    // longer lists - shown as such rather than silently dropped, because a pack
+    // that is coming next week is a reason to have ticked it.
+    QStringList ticked;
+    for (int i = 0; i < this->listRelayPacks->count(); i++)
+    {
+        QListWidgetItem* item = this->listRelayPacks->item(i);
+        if (item->checkState() == Qt::Checked)
+            ticked.append(item->data(Qt::UserRole).toString());
+    }
+
+    // An empty list is one nothing has been shown in yet, so what is saved is
+    // what is ticked. Without this the first fill showed every saved pack
+    // unticked, and OK then saved an empty filter - every visit to Settings
+    // would have wiped the packs this client follows.
+    if (this->listRelayPacks->count() == 0)
+        ticked = RelayClient::packFilter();
+
+    this->listRelayPacks->clear();
+
+    QStringList seen;
+    foreach (const RelayClient::PackListing& pack, packs)
+    {
+        QString detail;
+        if (!pack.version.isEmpty())
+            detail = QString("  \xe2\x80\x94  v%1, %2 file(s)").arg(pack.version).arg(pack.files);
+        else if (pack.files > 0)
+            detail = QString("  \xe2\x80\x94  %1 file(s)").arg(pack.files);
+
+        if (assignedHere.contains(pack.name, Qt::CaseInsensitive))
+            detail += "  \xc2\xb7  assigned to this machine";
+
+        QListWidgetItem* item = new QListWidgetItem(pack.name + QString::fromUtf8(detail.toUtf8()), this->listRelayPacks);
+        item->setData(Qt::UserRole, pack.name);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(ticked.contains(pack.name, Qt::CaseInsensitive) ? Qt::Checked : Qt::Unchecked);
+
+        seen.append(pack.name.toLower());
+    }
+
+    foreach (const QString& name, ticked)
+    {
+        if (seen.contains(name.toLower()))
+            continue;
+
+        QListWidgetItem* item = new QListWidgetItem(name + "  \xe2\x80\x94  not at the source", this->listRelayPacks);
+        item->setData(Qt::UserRole, name);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+    }
+
+    if (sourceAssigns)
+    {
+        this->labelRelayPacks->setText(assignedHere.isEmpty()
+            ? "The source assigns this machine NO packs. That is what a poll uses, "
+              "unless the box below is ticked."
+            : QString("The source assigns this machine: %1. That is what a poll uses, "
+                      "unless the box below is ticked.").arg(assignedHere.join(", ")));
+    }
+    else
+    {
+        this->labelRelayPacks->setText(
+            "The source does not assign this machine, so the ticked packs are what it takes. "
+            "Nothing ticked follows every pack.");
+    }
 }
 
 void SettingsDialog::flushPendingWrites()

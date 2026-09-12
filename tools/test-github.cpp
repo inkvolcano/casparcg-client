@@ -309,6 +309,68 @@ int main(int argc, char** argv)
     expectTrue(readFile(QDir(templates).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>two</h1>"),
                "and the new bytes replaced the old");
 
+    out << "\nListing the packs\n";
+
+    // Settings asks the source what it has so the operator can tick packs rather
+    // than type folder names. Same fetch as a poll, but it installs nothing, sends
+    // no check-in and leaves the last poll's summary alone.
+    {
+        QStringList listed;
+        int listedFiles = 0;
+        bool assigns = true;
+        QString listError = "never answered";
+        bool answered = false;
+
+        QMetaObject::Connection link = QObject::connect(
+            &RelayClient::getInstance(), &RelayClient::packsListed,
+            [&](const QList<RelayClient::PackListing>& packs, const QStringList&, bool sourceAssigns, const QString& error) {
+                listed.clear();
+                listedFiles = 0;
+                foreach (const RelayClient::PackListing& pack, packs)
+                {
+                    listed.append(pack.name);
+                    listedFiles += pack.files;
+                }
+                assigns = sourceAssigns;
+                listError = error;
+                answered = true;
+            });
+
+        const QString summaryBefore = RelayClient::getInstance().lastSummary();
+
+        RelayClient::getInstance().listPacks();
+
+        QElapsedTimer clock;
+        clock.start();
+        while (!answered && clock.elapsed() < 20000)
+        {
+            QCoreApplication::processEvents();
+            QThread::msleep(10);
+        }
+        QObject::disconnect(link);
+
+        expectTrue(listError.isEmpty(), "the source listed its packs: " + listError);
+
+        QStringList sorted = listed;
+        sorted.sort();
+        expectTrue(sorted == (QStringList() << "MARSEILLE" << "SEVILLE"),
+                   "both packs are listed and nothing else: " + listed.join(", "));
+        expectTrue(!listed.contains(".github") && !listed.contains("README.md"),
+                   "the repository's own machinery and root files are not packs");
+        expectTrue(listedFiles >= 3, QString("files are counted per pack (got %1)").arg(listedFiles));
+        expectTrue(!assigns, "a repository with no assignments.json names nobody");
+        expectTrue(!RelayClient::getInstance().isBusy(), "a listing leaves the client free for a poll");
+        expectTrue(RelayClient::getInstance().lastSummary() == summaryBefore,
+                   "and does not overwrite the last poll's summary");
+
+        // The rule both the listing and the pull use, on its own.
+        expectTrue(RelayClient::packOfTreePath("SEVILLE/css/site.css") == "SEVILLE", "a nested file belongs to its first folder");
+        expectTrue(RelayClient::packOfTreePath("README.md").isEmpty(), "a root file belongs to no pack");
+        expectTrue(RelayClient::packOfTreePath(".github/workflows/ci.yml").isEmpty(), ".github is not a pack");
+        expectTrue(RelayClient::packOfTreePath("../x/y.html").isEmpty(), "nor is a folder that fails the path rule");
+        expectTrue(RelayClient::packOfTreePath("/x.html").isEmpty(), "nor a leading slash");
+    }
+
     out << "\nA pull larger than one batch\n";
 
     // The first pull of a real estate is 769 files across two packs, and anything

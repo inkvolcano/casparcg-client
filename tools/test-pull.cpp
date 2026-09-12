@@ -257,6 +257,57 @@ int main(int argc, char** argv)
     expectTrue(mine.value("current").toBool(), "and the relay reads it as current");
     expectTrue(mine.value("failed").toInt() == 0, "with nothing reported as failed");
 
+    out << "\nListing the packs\n";
+
+    // The relay's manifest carries a version and the files per pack; the listing
+    // reads both, so Settings can show more than a name.
+    {
+        QList<RelayClient::PackListing> listed;
+        QString listError = "never answered";
+        bool answered = false;
+
+        QMetaObject::Connection link = QObject::connect(
+            &RelayClient::getInstance(), &RelayClient::packsListed,
+            [&](const QList<RelayClient::PackListing>& packs, const QStringList&, bool, const QString& error) {
+                listed = packs;
+                listError = error;
+                answered = true;
+            });
+
+        RelayClient::getInstance().listPacks();
+
+        QElapsedTimer clock;
+        clock.start();
+        while (!answered && clock.elapsed() < 20000)
+        {
+            QCoreApplication::processEvents();
+            QThread::msleep(10);
+        }
+        QObject::disconnect(link);
+
+        expectTrue(listError.isEmpty(), "the relay listed its packs: " + listError);
+
+        QStringList names;
+        int sevilleFiles = 0;
+        QString sevilleVersion;
+        foreach (const RelayClient::PackListing& pack, listed)
+        {
+            names.append(pack.name);
+            if (pack.name == "SEVILLE")
+            {
+                sevilleFiles = pack.files;
+                sevilleVersion = pack.version;
+            }
+        }
+        names.sort();
+
+        expectTrue(names == (QStringList() << "MARSEILLE" << "SEVILLE"),
+                   "both packs are listed, including the one this venue does not follow: " + names.join(", "));
+        expectTrue(sevilleFiles == 2, QString("SEVILLE's files are counted (got %1)").arg(sevilleFiles));
+        expectTrue(!sevilleVersion.isEmpty(), "and its version is carried");
+        expectTrue(!RelayClient::getInstance().isBusy(), "a listing leaves the client free for a poll");
+    }
+
     out << "\nWith the wrong token\n";
 
     qputenv("CASPARCG_TEST_RelayToken", "not-the-token");

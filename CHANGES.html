@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#pack-picker">Pick The Packs</a><br>
 <a href="#preview-no-audio">Video With No Sound</a><br>
 <a href="#bughunt-p2">Four More Off The List</a><br>
 <a href="#bughunt-p1">Four That Take A Machine Down</a><br>
@@ -1795,6 +1796,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="pack-picker">Pick The Packs From A List</h2>
+
+<p><b>Settings &rarr; Templates &rarr; Packs</b> was a field to type folder names into &mdash; the exact names of folders at a source nobody at the venue can browse. Get one letter wrong and the client quietly followed nothing.</p>
+
+<p>It is a list now. <b>Get packs</b> asks the source what it has &mdash; the same request a poll makes, but it installs nothing, sends no check-in and leaves the last poll's summary alone &mdash; and each pack is a row to tick. A relay says the version and how many files; a repository says how many files. A pack the source assigns to this machine is marked as such, and the line underneath says plainly whether the source's assignment or the ticks decide, because both exist and only one wins.</p>
+
+<p>What is saved is the same as before: the ticked names, so nothing that read the old field changed. A ticked pack the source no longer lists stays in the list and says so, rather than vanishing &mdash; a pack that arrives next week is a reason to have ticked it. Nothing ticked still follows everything.</p>
+
+<p>One rule now decides what counts as a pack in a repository tree, for the listing and the pull alike: the first folder of a path, unless it starts with a dot or fails the path rule. Tested on both routes; breaking that rule fails both.</p>
 
 <h2 id="preview-no-audio">A Video With No Sound Took The Client Down</h2>
 

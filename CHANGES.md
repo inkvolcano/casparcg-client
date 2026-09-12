@@ -1782,6 +1782,30 @@ about.
 
 ---
 
+## Pick The Packs From A List
+
+**Settings → Templates → Packs** was a field to type folder names into — the
+exact names of folders at a source nobody at the venue can browse. Get one
+letter wrong and the client quietly followed nothing.
+
+It is a list now. **Get packs** asks the source what it has — the same request a
+poll makes, but it installs nothing, sends no check-in and leaves the last
+poll's summary alone — and each pack is a row to tick. A relay says the version
+and how many files; a repository says how many files. A pack the source assigns
+to this machine is marked as such, and the line underneath says plainly whether
+the source's assignment or the ticks decide, because both exist and only one
+wins.
+
+What is saved is the same as before: the ticked names, so nothing that read the
+old field changed. A ticked pack the source no longer lists stays in the list
+and says so, rather than vanishing — a pack that arrives next week is a reason
+to have ticked it. Nothing ticked still follows everything.
+
+One rule now decides what counts as a pack in a repository tree, for the
+listing and the pull alike: the first folder of a path, unless it starts with a
+dot or fails the path rule. Tested on both routes; breaking that rule fails
+both.
+
 ## A Video With No Sound Took The Client Down
 
 A client at a venue died the moment the operator selected a video in the

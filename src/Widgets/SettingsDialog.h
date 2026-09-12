@@ -13,7 +13,10 @@
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QKeySequenceEdit>
 #include <QtWidgets/QLabel>
+#include "RelayClient.h"
+
 #include <QtWidgets/QLineEdit>
+#include <QtWidgets/QListWidget>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QSpinBox>
@@ -148,8 +151,19 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QLineEdit* lineEditUpdateSource = nullptr;
     QLineEdit* lineEditUpdateToken = nullptr;
     QSpinBox* spinBoxRelayPoll = nullptr;
-    QLineEdit* lineEditRelayPacks = nullptr;
+    // The packs this client follows, one checkable row each. Filled from the
+    // local setting on open and from the source on Get packs.
+    QListWidget* listRelayPacks = nullptr;
+    QLabel* labelRelayPacks = nullptr;
     QCheckBox* checkBoxRelayPacksLocal = nullptr;
+
+    // What the list saves: the ticked names, comma-separated, the same value the
+    // field it replaced held - so nothing that reads RelayPacks changed.
+    QString relayPacksText() const;
+
+    // Rebuild the list from what the source said, keeping whatever was ticked.
+    void fillRelayPackList(const QList<RelayClient::PackListing>& packs, const QStringList& assignedHere,
+                           bool sourceAssigns);
     QLabel* labelRelayStatus = nullptr;
 
     // One checkbox per discovered template project, writing the `local` flag straight

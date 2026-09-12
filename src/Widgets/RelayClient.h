@@ -120,6 +120,34 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // Off by default: the point of assignments is that one person decides.
         static bool packsDecidedLocally();
 
+        // Whether the source's assignments say anything about this machine at all -
+        // by its name, or with a "*" that covers every machine.
+        static bool sourceNamesThisMachine(const QJsonObject& assignments);
+
+        // One pack as the source lists it. A relay gives a version and the files
+        // are counted from its manifest; a repository tree has no version, so that
+        // stays empty and only the count is filled.
+        struct PackListing
+        {
+            QString name;
+            QString version;
+            int files = 0;
+        };
+
+        // The packs in a relay manifest, and in a GitHub tree, in the order they
+        // arrive. Pure functions of the bytes, so they can be tested on bytes.
+        static QList<PackListing> packsInManifest(const QByteArray& manifestJson);
+        static QList<PackListing> packsInTree(const QByteArray& treeJson);
+
+        // The pack a tree path belongs to: its first folder, or empty for a file at
+        // the root and for a folder the repository keeps for itself (.github and
+        // the like). The one rule for both the listing and the pull.
+        static QString packOfTreePath(const QString& path);
+
+        // Ask the source which packs it has and which it assigns to this machine,
+        // installing nothing. Answers on packsListed. Refused while a poll runs.
+        Q_SLOT void listPacks();
+
         bool isBusy() const { return this->busy; }
         QDateTime lastRun() const { return this->ranAt; }
         QString lastSummary() const { return this->summary; }
@@ -155,6 +183,12 @@ class WIDGETS_EXPORT RelayClient : public QObject
         // A poll ended. Installed and failed are file counts.
         void finished(int installed, int failed, const QString& summary);
 
+        // The answer to listPacks. An empty error means it worked. assignedHere is
+        // what the source assigns this machine; sourceAssigns says whether the
+        // source named it at all, since being named with nothing is an instruction.
+        void packsListed(const QList<RelayClient::PackListing>& packs, const QStringList& assignedHere,
+                         bool sourceAssigns, const QString& error);
+
     private:
         explicit RelayClient();
 
@@ -173,6 +207,22 @@ class WIDGETS_EXPORT RelayClient : public QObject
 
         void planFrom(const QByteArray& manifestJson);
         void planFromGitHubTree(const QByteArray& treeJson);
+
+        // Where a manifest or a tree goes once it is in hand: to the planner for a
+        // poll, or to the lister for listPacks. One fetch path, two uses.
+        void manifestReady(const QByteArray& manifestJson);
+        void treeReady(const QByteArray& treeJson);
+
+        // The listing half. Ends the request without touching the last poll's
+        // summary, status or check-in - a listing is a question, not a poll.
+        void listDone(const QList<PackListing>& packs, const QJsonObject& assignments, const QString& error);
+
+        // A manifest could not be had. Ends whichever kind of request was running.
+        // (Not "failed": that is the file counter a poll keeps.)
+        void manifestFailed(const QString& why);
+
+        // True while the request in flight is a listPacks rather than a poll.
+        bool listing = false;
 
         // A repository keeps its assignments in a file at its root, so the tree has
         // to be held while that file is fetched and the planning happens after.

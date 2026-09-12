@@ -245,6 +245,135 @@ void RelayClient::authorise(QNetworkRequest& request) const
 // Keyed on machine name, matched without regard to case because nobody types a
 // hostname the same way twice. "*" is the answer for a machine that is not named,
 // which is how a whole estate gets a shared pack without listing every box.
+bool RelayClient::sourceNamesThisMachine(const QJsonObject& assignments)
+{
+    if (assignments.contains("*"))
+        return true;
+
+    QString me = QSysInfo::machineHostName();
+    foreach (const QString& key, assignments.keys())
+    {
+        if (key.compare(me, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+
+    return false;
+}
+
+QString RelayClient::packOfTreePath(const QString& path)
+{
+    int slash = path.indexOf('/');
+    if (slash <= 0)
+        return QString();   // a file at the repository root belongs to no pack
+
+    QString pack = path.left(slash);
+
+    // A repository carries its own machinery. Without this, .github would be
+    // listed - and installed - as a pack called ".github".
+    if (pack.startsWith('.') || !TemplateInstaller::isSafeSegment(pack))
+        return QString();
+
+    return pack;
+}
+
+QList<RelayClient::PackListing> RelayClient::packsInManifest(const QByteArray& manifestJson)
+{
+    QList<PackListing> packs;
+
+    foreach (const QJsonValue& value, QJsonDocument::fromJson(manifestJson).object().value("packs").toArray())
+    {
+        QJsonObject pack = value.toObject();
+
+        PackListing listing;
+        listing.name = pack.value("name").toString();
+        listing.version = pack.value("version").toString();
+        listing.files = pack.value("files").toArray().count();
+
+        if (!listing.name.isEmpty())
+            packs.append(listing);
+    }
+
+    return packs;
+}
+
+QList<RelayClient::PackListing> RelayClient::packsInTree(const QByteArray& treeJson)
+{
+    QList<PackListing> packs;
+    QMap<QString, int> index;   // name -> position in packs, so the order is the tree's
+
+    foreach (const QJsonValue& value, QJsonDocument::fromJson(treeJson).object().value("tree").toArray())
+    {
+        QJsonObject entry = value.toObject();
+        if (entry.value("type").toString() != "blob")
+            continue;
+
+        QString pack = packOfTreePath(entry.value("path").toString());
+        if (pack.isEmpty())
+            continue;
+
+        if (!index.contains(pack))
+        {
+            PackListing listing;
+            listing.name = pack;
+            index.insert(pack, packs.count());
+            packs.append(listing);
+        }
+
+        packs[index.value(pack)].files++;
+    }
+
+    return packs;
+}
+
+void RelayClient::listPacks()
+{
+    if (this->busy)
+    {
+        emit packsListed(QList<PackListing>(), QStringList(), false,
+                         "a poll is running; try again when it has finished");
+        return;
+    }
+
+    if (url().isEmpty() || token().isEmpty())
+    {
+        emit packsListed(QList<PackListing>(), QStringList(), false, "no address or no token");
+        return;
+    }
+
+    this->busy = true;
+    this->listing = true;
+    this->manifestAttempts = 0;
+    this->gitHubAssignments = QJsonObject();
+
+    requestManifest();
+}
+
+void RelayClient::listDone(const QList<PackListing>& packs, const QJsonObject& assignments, const QString& error)
+{
+    // Not done(): that would overwrite the last poll's summary, flip the status
+    // light, and send a check-in for a question that installed nothing.
+    this->busy = false;
+    this->listing = false;
+
+    if (!error.isEmpty())
+    {
+        say(QString("%1: could not list the packs - %2").arg(isGitHub() ? "GitHub" : "Relay", error));
+        emit packsListed(packs, QStringList(), false, error);
+        return;
+    }
+
+    const bool named = sourceNamesThisMachine(assignments);
+
+    QStringList names;
+    foreach (const PackListing& pack, packs)
+        names.append(pack.name);
+
+    say(QString("%1: %2 pack(s) - %3").arg(isGitHub() ? "GitHub" : "Relay")
+        .arg(packs.count()).arg(names.join(", ")));
+
+    emit packsListed(packs, named ? assignedPacks(assignments) : QStringList(), named, QString());
+}
+
 QStringList RelayClient::assignedPacks(const QJsonObject& assignments)
 {
     QStringList packs;
@@ -299,16 +428,7 @@ QStringList RelayClient::packsForThisMachine(const QJsonObject& assignments)
     if (packsDecidedLocally())
         return packFilter();
 
-    QString me = QSysInfo::machineHostName();
-
-    bool named = assignments.contains("*");
-    foreach (const QString& key, assignments.keys())
-    {
-        if (key.compare(me, Qt::CaseInsensitive) == 0)
-            named = true;
-    }
-
-    if (named)
+    if (sourceNamesThisMachine(assignments))
     {
         QStringList assigned = assignedPacks(assignments);
 
@@ -553,7 +673,7 @@ void RelayClient::requestManifest()
                         : (status == 403 && github) ? "refused by GitHub, usually the rate limit"
                         : QString("could not read the manifest (%1)").arg(reply->errorString());
 
-            done(why);
+            manifestFailed(why);
             return;
         }
 
@@ -579,13 +699,64 @@ void RelayClient::requestManifest()
             if (!assignmentsBlob.isEmpty())
                 fetchGitHubAssignments(tree, assignmentsBlob);
             else
-                planFromGitHubTree(tree);
+                treeReady(tree);
         }
         else
         {
-            planFrom(reply->readAll());
+            manifestReady(reply->readAll());
         }
     });
+}
+
+void RelayClient::manifestReady(const QByteArray& manifestJson)
+{
+    if (!this->listing)
+    {
+        planFrom(manifestJson);
+        return;
+    }
+
+    QJsonDocument document = QJsonDocument::fromJson(manifestJson);
+    if (!document.isObject())
+    {
+        listDone(QList<PackListing>(), QJsonObject(), "the relay did not answer with a manifest");
+        return;
+    }
+
+    listDone(packsInManifest(manifestJson), document.object().value("assignments").toObject(), QString());
+}
+
+void RelayClient::treeReady(const QByteArray& treeJson)
+{
+    if (!this->listing)
+    {
+        planFromGitHubTree(treeJson);
+        return;
+    }
+
+    QJsonDocument document = QJsonDocument::fromJson(treeJson);
+    if (!document.isObject())
+    {
+        listDone(QList<PackListing>(), QJsonObject(), "GitHub did not answer with a tree");
+        return;
+    }
+
+    if (document.object().value("truncated").toBool())
+    {
+        listDone(QList<PackListing>(), QJsonObject(),
+                 "the repository is too large for one tree listing");
+        return;
+    }
+
+    listDone(packsInTree(treeJson), this->gitHubAssignments, QString());
+}
+
+void RelayClient::manifestFailed(const QString& why)
+{
+    if (this->listing)
+        listDone(QList<PackListing>(), QJsonObject(), why);
+    else
+        done(why);
 }
 
 // One extra request, and only when the repository actually carries the file.
@@ -619,7 +790,7 @@ void RelayClient::fetchGitHubAssignments(const QByteArray& treeJson, const QStri
             say("  could not read assignments.json; using the local pack list");
         }
 
-        planFromGitHubTree(treeJson);
+        treeReady(treeJson);
     });
 }
 
@@ -662,17 +833,11 @@ void RelayClient::planFromGitHubTree(const QByteArray& treeJson)
             continue;
 
         QString full = entry.value("path").toString();
-        int slash = full.indexOf('/');
-        if (slash <= 0)
-            continue;   // a file at the repository root belongs to no pack
+        QString pack = packOfTreePath(full);
+        if (pack.isEmpty())
+            continue;   // a root file, or the repository's own machinery
 
-        QString pack = full.left(slash);
-        QString relative = full.mid(slash + 1);
-
-        // A repository carries its own machinery. Without this, .github would be
-        // installed as a pack called ".github", and every file in it fetched first.
-        if (pack.startsWith('.') || !TemplateInstaller::isSafeSegment(pack))
-            continue;
+        QString relative = full.mid(pack.length() + 1);
 
         if (!wantedPacks.isEmpty() && !wantedPacks.contains(pack, Qt::CaseInsensitive))
             continue;
