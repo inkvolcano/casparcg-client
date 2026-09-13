@@ -1805,6 +1805,15 @@ are going to. Items can now be dragged out of a locked rundown into another;
 what lands there is a copy, the locked rundown keeps its own, and the status
 bar says so. Dropping into a locked rundown is still refused, as before.
 
+### The lock stopped spreading
+
+A rundown's lock was a broadcast: when a locked rundown became active, every
+other rundown in the window took the lock too — which is why dropping into
+the other pane was refused with a blocked cursor — and any paste into a normal
+rundown unlocked every locked one. Each rundown now owns its lock: set by
+*Lock Rundown*, or by the repository rundown pasted into it, and touched by
+nothing else.
+
 ### Settings no longer rebuilds the window for nothing
 
 Pressing OK in Settings tore the whole window down and built it again, every

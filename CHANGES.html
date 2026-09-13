@@ -1812,6 +1812,10 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 
 <p>A locked rundown refused to be dragged <i>from</i> at all, which read the lock the wrong way round: the lock protects the locked rundown, not the one the items are going to. Items can now be dragged out of a locked rundown into another; what lands there is a copy, the locked rundown keeps its own, and the status bar says so. Dropping into a locked rundown is still refused, as before.</p>
 
+<h3>The lock stopped spreading</h3>
+
+<p>A rundown's lock was a broadcast: when a locked rundown became active, every other rundown in the window took the lock too &mdash; which is why dropping into the other pane was refused with a blocked cursor &mdash; and any paste into a normal rundown unlocked every locked one. Each rundown now owns its lock: set by <i>Lock Rundown</i>, or by the repository rundown pasted into it, and touched by nothing else.</p>
+
 <h3>Settings no longer rebuilds the window for nothing</h3>
 
 <p>Pressing OK in Settings tore the whole window down and built it again, every time &mdash; change a hotkey or paste a token and every panel flickered and the layout you were looking at was rebuilt into itself. The rebuild now happens only when a layout setting actually changed between opening the dialog and pressing OK: column order, which panel sits where, sizes, spans, collapsed state, empty panels, in either mode. Anything else, and the window stays exactly as it is.</p>

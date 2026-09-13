@@ -525,6 +525,11 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
         EventManager::getInstance().fireAllowRemoteTriggeringEvent(AllowRemoteTriggeringEvent(allowRemoteTriggering));
     }
 
+    // A repository rundown locks the tree it is pasted into - this one, not
+    // every tree in the window. A normal paste says nothing about the lock.
+    if (repositoryRundown)
+        this->lock = true;
+
     EventManager::getInstance().fireRepositoryRundownEvent(RepositoryRundownEvent(repositoryRundown));
 
     setUpdatesEnabled(false);
@@ -1943,10 +1948,13 @@ void RundownTreeBaseWidget::dragEnterEvent(QDragEnterEvent* event)
     // nothing, which reads as the client having lost the drag.
     if (this->lock)
     {
+        qDebug("Drag refused: this rundown is locked (formats: %s)",
+               qPrintable(event->mimeData()->formats().join(", ")));
         event->ignore();
         return;
     }
 
+    qDebug("Drag entered a rundown (formats: %s)", qPrintable(event->mimeData()->formats().join(", ")));
     event->acceptProposedAction();
 }
 
@@ -2272,7 +2280,14 @@ void RundownTreeBaseWidget::selectItemBelow()
 
 void RundownTreeBaseWidget::repositoryRundown(const RepositoryRundownEvent& event)
 {
-    this->lock = event.getRepositoryRundown();
+    // Deliberately nothing. This event is a broadcast - fired when a rundown
+    // becomes active, and on every paste - and until build 227 every tree took
+    // its lock from it. So with a locked rundown active, the other pane was
+    // locked too and refused every drop with a blocked cursor; and any Ctrl+V
+    // into a normal rundown unlocked every locked rundown in the window. A
+    // tree's lock is its own: set by Lock Rundown, or by the repository paste
+    // that fills it. The inspector and the library still listen to this.
+    Q_UNUSED(event);
 }
 
 void RundownTreeBaseWidget::applyRepositoryChanges()

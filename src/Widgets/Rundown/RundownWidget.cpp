@@ -431,6 +431,14 @@ bool RundownWidget::eventFilter(QObject* watched, QEvent* event)
                                                                        : this->tabWidgetRundown;
                 QTabWidget* target = paneOf(w);
 
+                if (event->type() != QEvent::DragMove)
+                    qDebug("Tab drag %s over %s (%s): source %s, target %s",
+                           event->type() == QEvent::Drop ? "dropped" : "entered",
+                           qPrintable(w->objectName().isEmpty() ? QString(w->metaObject()->className()) : w->objectName()),
+                           w->metaObject()->className(),
+                           qPrintable(parts.value(0)),
+                           target == nullptr ? "none" : (target == source ? "its own pane" : "the other pane"));
+
                 // Only the other pane takes it. Over its own pane, or anything
                 // else, the cursor says no and letting go does nothing.
                 if (target == nullptr || target == source)
@@ -755,6 +763,8 @@ void RundownWidget::startTabDrag(QTabBar* bar, QMouseEvent* event)
     this->tabDragBar = nullptr;
     this->tabDragIndex = -1;
 
+    qDebug("Tab drag started from %s, tab %d", bar == this->tabWidgetRundownSecondary->tabBar() ? "secondary" : "primary", index);
+
     if (index < 0)
         return;
 
@@ -769,7 +779,9 @@ void RundownWidget::startTabDrag(QTabBar* bar, QMouseEvent* event)
     drag->setMimeData(mime);
     drag->setPixmap(bar->grab(bar->tabRect(index)));
     drag->setHotSpot(QPoint(drag->pixmap().width() / 2, drag->pixmap().height() / 2));
-    drag->exec(Qt::MoveAction);
+    const Qt::DropAction result = drag->exec(Qt::MoveAction);
+
+    qDebug("Tab drag ended: %s", result == Qt::MoveAction ? "moved" : "nothing taken it");
 }
 
 QTabWidget* RundownWidget::paneOf(QWidget* widget) const
