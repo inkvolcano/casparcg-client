@@ -34,6 +34,12 @@ rest of this list.
 
 Full suite after the changes: 1583 assertions, 0 failed, network suites included.
 
+## Fixed in build 224
+
+| | What was done | Checked by |
+|---|---|---|
+| **F13** | Refusals are kept per command and each clears when that command succeeds again: `CLS` on `mediaChanged`, `TLS` on `templateChanged`, `DATA LIST` on `dataChanged`, `THUMBNAIL LIST` on `thumbnailChanged`. Anything else clears on the next successful listing of any kind. The banner shows the newest standing refusal; the tooltip lists them all | no automated cover — panel code; seen in the field, banner still up after the `_media` fix with 169 templates and 9 videos listed |
+
 ## Fixed in build 222
 
 | | What was done | Checked by |
@@ -90,7 +96,7 @@ sessions rather than inherited.
 | P3 | F1 | `Configuration` holds duplicate rows for 31 settings — partly **mine** | Database | migration + index |
 | P3 | F22 | Venues with the same hostname are one venue to the relay | Check-in | client + relay |
 | P3 | F17 | Missing-media marks are computed once, at open | Rundown | re-sweep hooks |
-| P3 | F13 | The server-refusal banner never goes away — **mine** | Server Status | 3 lines |
+| done | F13 | The server-refusal banner never goes away — **mine** | Server Status | fixed in 224 |
 | P3 | F8 | The relay's path rule is the containment and is untested | Relay (PHP) | new test suite |
 | P3 | F4 | AMCP header parser indexes `tokens.at(1)` unguarded | AMCP | 1 line |
 | P3 | F5 | `THUMBNAIL LIST` parsing splits and indexes blind | AMCP | 2 guards |
@@ -436,6 +442,10 @@ file that disappears after open is never marked.
 The scanner reads the Library once per sweep, so it is cheap.
 
 ### F13. The server-refusal banner never goes away — mine, build 218
+
+**FIXED in build 224.** Per-command standing failures, each cleared by its own
+listing succeeding; a non-listing refusal clears on any listing. No automated
+cover.
 
 **Server Status · a warning that outlives its cause**
 

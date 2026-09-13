@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#banner-clears">Refusal Banner Clears</a><br>
 <a href="#pack-picker">Pick The Packs</a><br>
 <a href="#preview-no-audio">Video With No Sound</a><br>
 <a href="#bughunt-p2">Four More Off The List</a><br>
@@ -1796,6 +1797,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="banner-clears">The Refusal Banner Now Goes Away</h2>
+
+<p>The <b>Server Status</b> banner that says the server refused a listing &mdash; added in 218 so an empty Library would at least say why &mdash; was shown and never hidden. After the <code>_media</code> fix the server scanned fine, the Library filled with 169 templates and 9 videos, and the banner went on saying it could not, until the client was restarted. And while it sat there, the next real refusal had nothing left to catch the eye.</p>
+
+<p>Each refusal is now kept by the command that was refused, and clears when that same command succeeds again: a <code>CLS</code> failure goes when a media listing comes back, a <code>TLS</code> failure when a template listing does, and so on &mdash; one cannot clear the other, so a server that lists media but not templates keeps saying so. A refusal of anything that is not a listing clears on the next successful listing of any kind, which is proof enough the server is answering. When more than one is standing, the banner shows the newest and the tooltip lists them all.</p>
 
 <h2 id="pack-picker">Pick The Packs From A List</h2>
 

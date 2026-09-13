@@ -5,7 +5,10 @@
 
 #include "Global.h"
 
+#include "Models/CasparData.h"
 #include "Models/CasparMedia.h"
+#include "Models/CasparTemplate.h"
+#include "Models/CasparThumbnail.h"
 
 #include <QtCore/QMap>
 #include <QtCore/QObject>
@@ -117,6 +120,18 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
         Q_SLOT void deviceRemoved();
         Q_SLOT void deviceConnectionStateChanged(CasparDevice&);
         Q_SLOT void deviceMediaChanged(const QList<CasparMedia>&, CasparDevice&);
+        Q_SLOT void deviceTemplateChanged(const QList<CasparTemplate>&, CasparDevice&);
+        Q_SLOT void deviceDataChanged(const QList<CasparData>&, CasparDevice&);
+        Q_SLOT void deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&);
+
+        // The refusals currently standing, by the command that was refused, so
+        // each clears when its own command succeeds again and not before.
+        // Listing failures (CLS, TLS, DATA LIST, THUMBNAIL LIST) are keyed by
+        // command; anything else goes under "*" and clears on the next listing
+        // of any kind, which is proof the server is answering again.
+        QMap<QString, QString> standingFailures;
+        void listingSucceeded(const QString& command);
+        void showStandingFailures();
         Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
         Q_SLOT void timedLockTick(const QString& deviceName, int channel, int remainingSecs);
         Q_SLOT void previewModeChanged(bool active);

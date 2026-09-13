@@ -618,6 +618,15 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
     QObject::connect(&device, SIGNAL(mediaChanged(const QList<CasparMedia>&, CasparDevice&)),
                      this, SLOT(deviceMediaChanged(const QList<CasparMedia>&, CasparDevice&)), Qt::UniqueConnection);
 
+    // The other three listings, heard only so a standing refusal can be cleared
+    // by the success of the same command.
+    QObject::connect(&device, SIGNAL(templateChanged(const QList<CasparTemplate>&, CasparDevice&)),
+                     this, SLOT(deviceTemplateChanged(const QList<CasparTemplate>&, CasparDevice&)), Qt::UniqueConnection);
+    QObject::connect(&device, SIGNAL(dataChanged(const QList<CasparData>&, CasparDevice&)),
+                     this, SLOT(deviceDataChanged(const QList<CasparData>&, CasparDevice&)), Qt::UniqueConnection);
+    QObject::connect(&device, SIGNAL(thumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&)),
+                     this, SLOT(deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&)), Qt::UniqueConnection);
+
     this->serverLayout->addWidget(entry.row);
     this->serverEntries[deviceName] = entry;
 
@@ -689,6 +698,8 @@ void ServerStatusPanelWidget::deviceConnectionStateChanged(CasparDevice& device)
 
 void ServerStatusPanelWidget::deviceMediaChanged(const QList<CasparMedia>& mediaList, CasparDevice& device)
 {
+    listingSucceeded("CLS");
+
     Q_UNUSED(mediaList);
 
     for (auto it = this->serverEntries.begin(); it != this->serverEntries.end(); ++it)
@@ -1003,12 +1014,69 @@ void ServerStatusPanelWidget::updatePreviewButtonStyle()
 // Deliberately not a dialog: this arrives while a refresh is happening, possibly
 // repeatedly, and a modal on every failed command would be worse than the silence
 // it replaces.
+void ServerStatusPanelWidget::deviceTemplateChanged(const QList<CasparTemplate>&, CasparDevice&)
+{
+    listingSucceeded("TLS");
+}
+
+void ServerStatusPanelWidget::deviceDataChanged(const QList<CasparData>&, CasparDevice&)
+{
+    listingSucceeded("DATA LIST");
+}
+
+void ServerStatusPanelWidget::deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&)
+{
+    listingSucceeded("THUMBNAIL LIST");
+}
+
+// A listing came back: the refusal of that same command, if one was standing,
+// is over - and so is any non-listing refusal, since a server that answers a
+// listing is answering. Until build 224 the banner was shown and never hidden,
+// so it stayed up after the _media fix until the client was restarted.
+void ServerStatusPanelWidget::listingSucceeded(const QString& command)
+{
+    if (this->standingFailures.remove(command) + this->standingFailures.remove("*") == 0)
+        return;
+
+    showStandingFailures();
+}
+
+void ServerStatusPanelWidget::showStandingFailures()
+{
+    if (this->labelServerFailure == nullptr)
+        return;
+
+    if (this->standingFailures.isEmpty())
+    {
+        this->labelServerFailure->setVisible(false);
+        return;
+    }
+
+    // The most recent is the one shown; the tooltip carries all of them.
+    QStringList all = this->standingFailures.values();
+    this->labelServerFailure->setText(all.last());
+    this->labelServerFailure->setToolTip(all.join("\n"));
+    this->labelServerFailure->setVisible(true);
+}
+
 void ServerStatusPanelWidget::commandFailed(int code, const QString& line, CasparDevice& device)
 {
     Q_UNUSED(device);
 
     if (code < 400)
         return;
+
+    // "501 CLS FAILED" -> CLS, "501 THUMBNAIL LIST FAILED" -> THUMBNAIL LIST. A
+    // refusal of anything that is not a listing is filed under "*".
+    QStringList words = line.trimmed().toUpper().split(' ', Qt::SkipEmptyParts);
+    if (!words.isEmpty() && words.first().toInt() > 0)
+        words.removeFirst();
+    if (!words.isEmpty() && (words.last() == "FAILED" || words.last() == "ERROR"))
+        words.removeLast();
+    QString command = words.join(' ');
+
+    static const QStringList listings = { "CLS", "TLS", "DATA LIST", "THUMBNAIL LIST" };
+    const QString key = listings.contains(command) ? command : QString("*");
 
     QString advice;
 
@@ -1024,10 +1092,9 @@ void ServerStatusPanelWidget::commandFailed(int code, const QString& line, Caspa
 
     const QString text = QString("%1%2").arg(line.trimmed(), advice);
 
-    if (this->labelServerFailure == nullptr)
-        return;
+    // Re-inserted so the newest is last, which is the one the banner shows.
+    this->standingFailures.remove(key);
+    this->standingFailures.insert(key, text);
 
-    this->labelServerFailure->setText(text);
-    this->labelServerFailure->setToolTip(text);
-    this->labelServerFailure->setVisible(true);
+    showStandingFailures();
 }

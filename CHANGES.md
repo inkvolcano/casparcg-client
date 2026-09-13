@@ -1782,6 +1782,23 @@ about.
 
 ---
 
+## The Refusal Banner Now Goes Away
+
+The **Server Status** banner that says the server refused a listing — added in
+218 so an empty Library would at least say why — was shown and never hidden.
+After the `_media` fix the server scanned fine, the Library filled with 169
+templates and 9 videos, and the banner went on saying it could not, until the
+client was restarted. And while it sat there, the next real refusal had nothing
+left to catch the eye.
+
+Each refusal is now kept by the command that was refused, and clears when that
+same command succeeds again: a `CLS` failure goes when a media listing comes
+back, a `TLS` failure when a template listing does, and so on — one cannot clear
+the other, so a server that lists media but not templates keeps saying so. A
+refusal of anything that is not a listing clears on the next successful listing
+of any kind, which is proof enough the server is answering. When more than one
+is standing, the banner shows the newest and the tooltip lists them all.
+
 ## Pick The Packs From A List
 
 **Settings → Templates → Packs** was a field to type folder names into — the
