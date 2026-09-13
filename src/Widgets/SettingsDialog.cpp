@@ -15,6 +15,7 @@
 #include "DatabaseManager.h"
 #include "GpiManager.h"
 #include "RelayClient.h"
+#include "RepoPublisher.h"
 #include "SheetCacheServer.h"
 #include "TemplateInstaller.h"
 #include "SheetsProjectRegistry.h"
@@ -32,6 +33,7 @@
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
+#include <QtWidgets/QInputDialog>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QScrollArea>
@@ -923,7 +925,8 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     // token, persisted. So the values at open are kept, and Cancel puts back any
     // that a test changed. OK writes the fields anyway, so it needs nothing.
     const QStringList relayKeys = { "RelayUrl", "RelayToken", "RelayPacks",
-                                    "RelayCheckInUrl", "RelayCheckInToken" };
+                                    "RelayCheckInUrl", "RelayCheckInToken",
+                                    "RelayMaster", "RelayPushToken" };
     for (const QString& key : relayKeys)
         this->relayFieldsAtOpen.insert(key, DatabaseManager::getInstance().getConfigurationByName(key).getValue());
 
@@ -993,6 +996,121 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     });
 
     templatesVBox->addWidget(relayGroup);
+
+    // Pushing back, for the one client that is allowed to. Off by default, a
+    // second token, and never anything but the button: the source feeds every
+    // venue, and a push from a venue floor has to be meant, every time.
+    QGroupBox* masterGroup = new QGroupBox("Push From This Client (Master)", templatesContent);
+    QGridLayout* masterGrid = new QGridLayout(masterGroup);
+    spaceOutGroup(masterGrid);
+
+    this->checkBoxRelayMaster = new QCheckBox(
+        "This client is a master: it may push its own template edits to the source", masterGroup);
+    this->checkBoxRelayMaster->setToolTip(
+        "Edits made to the packs on this machine can be sent back to the GitHub\n"
+        "repository every venue pulls from. Only from the button below, never on\n"
+        "its own. Leave this off on a venue that only plays.");
+    this->checkBoxRelayMaster->setChecked(RepoPublisher::isMaster());
+    masterGrid->addWidget(this->checkBoxRelayMaster, 0, 0, 1, 4);
+
+    masterGrid->addWidget(new QLabel("Write token:", masterGroup), 1, 0);
+    this->lineEditRelayPushToken = new QLineEdit(RepoPublisher::pushToken(), masterGroup);
+    this->lineEditRelayPushToken->setPlaceholderText("a second GitHub token with Contents: read and write - not the pull token");
+    this->lineEditRelayPushToken->setToolTip(
+        "A fine-grained token for this one repository with Contents: read and write.\n"
+        "The pull token above is read-only on purpose and cannot be used here.");
+    masterGrid->addWidget(this->lineEditRelayPushToken, 1, 1, 1, 3);
+
+    QLabel* masterHelp = new QLabel(
+        "Only from the button, never automatically. Sends the files that differ, as one commit,\n"
+        "after showing them and asking for a message. Never deletes anything at the source, never\n"
+        "sends project.js or extensions.json, and only the packs ticked above. GitHub sources only.\n"
+        "If the repository holds files this machine has not pulled yet, it says so and refuses.",
+        masterGroup);
+    masterHelp->setWordWrap(true);
+    masterHelp->setStyleSheet("color: rgba(150, 150, 150, 220);");
+    masterGrid->addWidget(masterHelp, 2, 1, 1, 3);
+
+    QPushButton* relayPush = new QPushButton("Push my changes...", masterGroup);
+    relayPush->setFixedHeight(22);
+    relayPush->setFocusPolicy(Qt::NoFocus);
+    relayPush->setToolTip("Read the repository, show what differs, ask for a commit message, then send.");
+    masterGrid->addWidget(relayPush, 3, 3);
+
+    this->labelRelayPush = new QLabel(masterGroup);
+    this->labelRelayPush->setWordWrap(true);
+    masterGrid->addWidget(this->labelRelayPush, 4, 0, 1, 4);
+
+    auto applyMasterFields = [this]() {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayMaster", this->checkBoxRelayMaster->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPushToken", this->lineEditRelayPushToken->text().trimmed()));
+    };
+
+    QObject::connect(relayPush, &QPushButton::clicked, this, [this, applyRelayFields, applyMasterFields]() {
+        applyRelayFields();     // the source and the pack list as typed; Cancel puts them back
+        applyMasterFields();
+        this->labelRelayPush->setStyleSheet(QString());
+        this->labelRelayPush->setText("Reading the repository...");
+        RepoPublisher::getInstance().prepare();
+    });
+
+    QObject::connect(&RepoPublisher::getInstance(), &RepoPublisher::progress, this, [this](const QString& line) {
+        if (this->labelRelayPush != nullptr)
+            this->labelRelayPush->setText(line);
+    });
+
+    QObject::connect(&RepoPublisher::getInstance(), &RepoPublisher::planned, this,
+                     [this](const QStringList& files, const QString& problem) {
+        if (this->labelRelayPush == nullptr)
+            return;
+
+        if (!problem.isEmpty())
+        {
+            this->labelRelayPush->setText(problem);
+            return;
+        }
+
+        if (files.isEmpty())
+        {
+            this->labelRelayPush->setText("Nothing differs: the repository already has everything this machine has.");
+            return;
+        }
+
+        // What will go, in front of the operator, and a message they have to
+        // type. Nothing is sent until they press OK.
+        const int shown = qMin(files.count(), 25);
+        QString list = QStringList(files.mid(0, shown)).join("\n");
+        if (files.count() > shown)
+            list += QString("\n... and %1 more").arg(files.count() - shown);
+
+        bool okPressed = false;
+        const QString message = QInputDialog::getText(this, "Push to the source",
+            QString("%1 file(s) will be committed to %2:\n\n%3\n\nCommit message:")
+                .arg(files.count()).arg(RelayClient::sourceLabel(), list),
+            QLineEdit::Normal, QString(), &okPressed);
+
+        if (!okPressed || message.trimmed().isEmpty())
+        {
+            this->labelRelayPush->setText("Not pushed.");
+            return;
+        }
+
+        RepoPublisher::getInstance().push(message);
+    });
+
+    QObject::connect(&RepoPublisher::getInstance(), &RepoPublisher::pushed, this,
+                     [this](bool ok, const QString& summary) {
+        if (this->labelRelayPush == nullptr)
+            return;
+
+        this->labelRelayPush->setText(summary);
+        this->labelRelayPush->setStyleSheet(ok ? "color: rgb(150, 220, 150);"
+                                               : "color: rgb(230, 140, 140);");
+    });
+
+    templatesVBox->addWidget(masterGroup);
 
     // Reporting back, which is not the same question as where templates come from
     // and was sitting inside the box that answers it. The two were joined only
@@ -1183,6 +1301,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
                                QString::number(this->spinBoxRelayHeartbeat->value())));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "UpdateToken", this->lineEditUpdateToken->text().trimmed()));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayMaster", this->checkBoxRelayMaster->isChecked() ? "true" : "false"));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayPushToken", this->lineEditRelayPushToken->text().trimmed()));
 
         // Turning the feature on has to bring the socket up, and off may be the
         // last thing keeping it up.

@@ -167,6 +167,7 @@ qt_add_library(widgets
     SheetCacheServer.cpp SheetCacheServer.h
     TemplateInstaller.cpp TemplateInstaller.h
     RelayClient.cpp RelayClient.h
+    RepoPublisher.cpp RepoPublisher.h
     SheetDataResolver.cpp SheetDataResolver.h
     SheetsActionsDialog.cpp SheetsActionsDialog.h
     SimpleModeWidget.cpp SimpleModeWidget.h

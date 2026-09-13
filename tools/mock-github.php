@@ -11,6 +11,12 @@
 // what the repository holds by writing a file.
 
 const TOKEN = 'a-github-token-for-testing';
+
+// A second token that can write. The real thing is a fine-grained token with
+// Contents: read and write; the pull token has read only, and a push made with
+// it must be refused the way GitHub refuses it.
+const WRITE_TOKEN = 'a-github-write-token-for-testing';
+const STATE = __DIR__ . '/mock_state';
 const REPO = __DIR__ . '/mock_repo';
 
 ini_set('display_errors', '0');
@@ -33,11 +39,20 @@ if (isset($_GET['action']) && $_GET['action'] === 'checkin') {
 }
 
 $given = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : '';
-if ($given !== 'Bearer ' . TOKEN) {
+if ($given !== 'Bearer ' . TOKEN && $given !== 'Bearer ' . WRITE_TOKEN) {
     // What GitHub does for a private repository a token cannot see.
     http_response_code(404);
     header('Content-Type: application/json');
     echo json_encode(array('message' => 'Not Found'));
+    exit;
+}
+
+// Writing needs the token that can write. GitHub's wording, so the client's
+// message to the operator is the one they would see against the real thing.
+if ($_SERVER['REQUEST_METHOD'] !== 'GET' && $given !== 'Bearer ' . WRITE_TOKEN) {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(array('message' => 'Resource not accessible by personal access token'));
     exit;
 }
 
@@ -78,7 +93,26 @@ function everything() {
     return $files;
 }
 
+/** The head commit: named by everything the repository holds, so it moves when a push lands. */
+function headSha() {
+    return sha1('commit ' . json_encode(everything()));
+}
+
+function stateDir($kind) {
+    $dir = STATE . '/' . $kind;
+    if (!is_dir($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    return $dir;
+}
+
+function jsonBody() {
+    $decoded = json_decode(file_get_contents('php://input'), true);
+    return is_array($decoded) ? $decoded : array();
+}
+
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$method = $_SERVER['REQUEST_METHOD'];
 
 // GET /repos/{owner}/{repo}
 if (preg_match('#^/repos/[^/]+/[^/]+$#', $path)) {
@@ -88,6 +122,119 @@ if (preg_match('#^/repos/[^/]+/[^/]+$#', $path)) {
         'default_branch' => 'main',
         'private'        => true,
     ));
+    exit;
+}
+
+// GET /repos/{owner}/{repo}/git/ref/heads/{branch}
+if ($method === 'GET' && preg_match('#^/repos/[^/]+/[^/]+/git/ref/heads/(.+)$#', $path, $found)) {
+    header('Content-Type: application/json');
+    echo json_encode(array(
+        'ref'    => 'refs/heads/' . $found[1],
+        'object' => array('type' => 'commit', 'sha' => headSha()),
+    ));
+    exit;
+}
+
+// The write half of the Git Data API, in the order a push uses it: blobs, a tree,
+// a commit, then the branch moved to it. Nothing reaches mock_repo until the
+// last step, and that step refuses a commit whose parent is not the current
+// head - which is what the real thing does without force, and what stops a
+// push from overwriting one that landed in between.
+
+// POST /repos/{owner}/{repo}/git/blobs
+if ($method === 'POST' && preg_match('#^/repos/[^/]+/[^/]+/git/blobs$#', $path)) {
+    $body = jsonBody();
+    $content = isset($body['encoding']) && $body['encoding'] === 'base64'
+        ? base64_decode(isset($body['content']) ? $body['content'] : '')
+        : (isset($body['content']) ? $body['content'] : '');
+
+    $sha = blobSha($content);
+    file_put_contents(stateDir('blobs') . '/' . $sha, $content);
+
+    http_response_code(201);
+    header('Content-Type: application/json');
+    echo json_encode(array('sha' => $sha));
+    exit;
+}
+
+// POST /repos/{owner}/{repo}/git/trees
+if ($method === 'POST' && preg_match('#^/repos/[^/]+/[^/]+/git/trees$#', $path)) {
+    $body = jsonBody();
+    $entries = isset($body['tree']) && is_array($body['tree']) ? $body['tree'] : array();
+
+    foreach ($entries as $entry) {
+        if (!isset($entry['sha']) || !is_file(stateDir('blobs') . '/' . $entry['sha'])) {
+            http_response_code(422);
+            header('Content-Type: application/json');
+            echo json_encode(array('message' => 'tree.sha does not name a blob that was created'));
+            exit;
+        }
+    }
+
+    $sha = sha1('tree ' . json_encode($entries));
+    file_put_contents(stateDir('trees') . '/' . $sha . '.json', json_encode($entries));
+
+    http_response_code(201);
+    header('Content-Type: application/json');
+    echo json_encode(array('sha' => $sha));
+    exit;
+}
+
+// POST /repos/{owner}/{repo}/git/commits
+if ($method === 'POST' && preg_match('#^/repos/[^/]+/[^/]+/git/commits$#', $path)) {
+    $body = jsonBody();
+    $sha = sha1('commit-object ' . json_encode($body));
+    file_put_contents(stateDir('commits') . '/' . $sha . '.json', json_encode($body));
+
+    http_response_code(201);
+    header('Content-Type: application/json');
+    echo json_encode(array('sha' => $sha));
+    exit;
+}
+
+// PATCH /repos/{owner}/{repo}/git/refs/heads/{branch}
+if ($method === 'PATCH' && preg_match('#^/repos/[^/]+/[^/]+/git/refs/heads/(.+)$#', $path, $found)) {
+    $body = jsonBody();
+    $commitFile = stateDir('commits') . '/' . (isset($body['sha']) ? $body['sha'] : '') . '.json';
+    if (!is_file($commitFile)) {
+        http_response_code(422);
+        header('Content-Type: application/json');
+        echo json_encode(array('message' => 'Object does not exist'));
+        exit;
+    }
+
+    $commit = json_decode(file_get_contents($commitFile), true);
+    $parents = isset($commit['parents']) && is_array($commit['parents']) ? $commit['parents'] : array();
+    if (count($parents) !== 1 || $parents[0] !== headSha()) {
+        http_response_code(422);
+        header('Content-Type: application/json');
+        echo json_encode(array('message' => 'Update is not a fast forward'));
+        exit;
+    }
+
+    $treeFile = stateDir('trees') . '/' . (isset($commit['tree']) ? $commit['tree'] : '') . '.json';
+    if (!is_file($treeFile)) {
+        http_response_code(422);
+        header('Content-Type: application/json');
+        echo json_encode(array('message' => 'The commit names no tree that was created'));
+        exit;
+    }
+
+    foreach (json_decode(file_get_contents($treeFile), true) as $entry) {
+        $destination = REPO . '/' . $entry['path'];
+        $folder = dirname($destination);
+        if (!is_dir($folder)) {
+            mkdir($folder, 0777, true);
+        }
+        file_put_contents($destination, file_get_contents(stateDir('blobs') . '/' . $entry['sha']));
+    }
+
+    // For the test to read back what was said and by whom.
+    file_put_contents(STATE . '/last_commit.json', json_encode($commit));
+
+    header('Content-Type: application/json');
+    echo json_encode(array('ref' => 'refs/heads/' . $found[1],
+                           'object' => array('type' => 'commit', 'sha' => $body['sha'])));
     exit;
 }
 

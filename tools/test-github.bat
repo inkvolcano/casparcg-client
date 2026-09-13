@@ -11,12 +11,14 @@ set OUT=%TEMP%\casparcg-test-github
 if not exist "%OUT%" mkdir "%OUT%"
 
 "%QT%\bin\moc.exe" "%HERE%..\src\Widgets\RelayClient.h" -o "%OUT%\moc_RelayClient.cpp"
+"%QT%\bin\moc.exe" "%HERE%..\src\Widgets\RepoPublisher.h" -o "%OUT%\moc_RepoPublisher.cpp"
 if errorlevel 1 exit /b 1
 
 cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /Gy /W3 ^
    /Fo"%OUT%\\" /Fe"%OUT%\test-github.exe" ^
    "%HERE%test-github.cpp" "%HERE%test-paths-stubs.cpp" ^
    "%HERE%..\src\Widgets\RelayClient.cpp" "%OUT%\moc_RelayClient.cpp" ^
+   "%HERE%..\src\Widgets\RepoPublisher.cpp" "%OUT%\moc_RepoPublisher.cpp" ^
    "%HERE%..\src\Widgets\TemplateInstaller.cpp" ^
    "%HERE%..\src\Core\Models\ConfigurationModel.cpp" "%HERE%..\src\Core\Models\DeviceModel.cpp" ^
    /I"%HERE%..\src" /I"%HERE%..\src\Widgets" /I"%HERE%..\src\Core" /I"%HERE%..\src\Core\Models" ^

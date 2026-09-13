@@ -1782,6 +1782,40 @@ about.
 
 ---
 
+## A Master Client Can Push Its Edits Back
+
+Everything a venue plays comes from the source, so an edit made on a venue
+machine was lost on the next poll unless somebody carried it back by hand. Now
+one client can be a **master** and send its own edits to the GitHub repository
+every venue pulls from.
+
+It is deliberately narrow, and each limit is the point:
+
+- **Only from a button, never on its own.** *Settings → Templates → Push From
+  This Client → Push my changes…* is the one way a push starts. Nothing pushes
+  on save, on a timer, or on a poll — the source feeds every venue, and a push
+  from a venue floor has to be meant, every time.
+- **A second token.** The pull token is read-only and stays that way. A master
+  needs a *write token* — one more fine-grained token with Contents: read and
+  write — that only its operator holds. Push with the pull token and GitHub
+  refuses; the client shows the refusal and the repository is untouched.
+- **It shows what will go and asks for a message first.** The files that differ
+  are listed, the operator types the commit message, and nothing is sent until
+  they press OK. The commit is authored as the machine, so the history says
+  which venue changed what.
+- **Never a deletion, never `project.js` or `extensions.json`, and only the
+  packs this client follows** — the same three rules as a pull and a push, in
+  the other direction.
+- **Refuses if behind.** If the repository holds files this machine has not
+  pulled yet, the push says so and stops: pull first, then push. And the branch
+  is moved without force, so a push that landed in between is never overwritten.
+
+Under the hood it is one commit through GitHub's Git Data API — blobs, a tree
+on top of the current one, a commit on top of the current head, the branch
+moved — with no git on the machine. Every blob GitHub stores is checked against
+the digest computed here, so a file that did not arrive whole is not committed.
+Tested end to end against the mock, which now has the write half of the API.
+
 ## The Refusal Banner Now Goes Away
 
 The **Server Status** banner that says the server refused a listing — added in

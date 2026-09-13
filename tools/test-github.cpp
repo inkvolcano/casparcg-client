@@ -13,6 +13,7 @@
 // its own reasons and happens to make this testable.
 
 #include "../src/Widgets/RelayClient.h"
+#include "../src/Widgets/RepoPublisher.h"
 #include "../src/Widgets/TemplateInstaller.h"
 
 #include <QtCore/QCoreApplication>
@@ -24,6 +25,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QProcess>
 #include <QtCore/QTemporaryDir>
+#include <QtCore/QSysInfo>
 #include <QtCore/QTextStream>
 #include <QtCore/QThread>
 
@@ -371,6 +373,144 @@ int main(int argc, char** argv)
         expectTrue(RelayClient::packOfTreePath("/x.html").isEmpty(), "nor a leading slash");
     }
 
+    out << "\nA master pushes its edits\n";
+
+    // The way back: a client allowed to may send its own edits to the source,
+    // from a button and never on its own, with a token the pull token is not.
+    {
+        const QByteArray WRITE_TOKEN = "a-github-write-token-for-testing";
+
+        auto prepareAndWait = [&](QStringList& files, QString& problem) {
+            bool answered = false;
+            QMetaObject::Connection link = QObject::connect(
+                &RepoPublisher::getInstance(), &RepoPublisher::planned,
+                [&](const QStringList& f, const QString& p) { files = f; problem = p; answered = true; });
+            RepoPublisher::getInstance().prepare();
+            QElapsedTimer clock;
+            clock.start();
+            while (!answered && clock.elapsed() < 20000) { QCoreApplication::processEvents(); QThread::msleep(10); }
+            QObject::disconnect(link);
+            if (!answered) problem = "never answered";
+        };
+
+        auto pushAndWait = [&](const QString& message, bool& ok, QString& summary) {
+            bool answered = false;
+            QMetaObject::Connection link = QObject::connect(
+                &RepoPublisher::getInstance(), &RepoPublisher::pushed,
+                [&](bool o, const QString& s) { ok = o; summary = s; answered = true; });
+            RepoPublisher::getInstance().push(message);
+            QElapsedTimer clock;
+            clock.start();
+            while (!answered && clock.elapsed() < 20000) { QCoreApplication::processEvents(); QThread::msleep(10); }
+            QObject::disconnect(link);
+            if (!answered) { ok = false; summary = "never answered"; }
+        };
+
+        QStringList files;
+        QString problem;
+
+        // The three refusals that come before any network call.
+        qputenv("CASPARCG_TEST_RelayMaster", "false");
+        qputenv("CASPARCG_TEST_RelayPushToken", WRITE_TOKEN);
+        prepareAndWait(files, problem);
+        expectTrue(problem.contains("not a master"), "a client that is not a master cannot push: " + problem);
+
+        qputenv("CASPARCG_TEST_RelayMaster", "true");
+        qputenv("CASPARCG_TEST_RelayPushToken", QByteArray());
+        prepareAndWait(files, problem);
+        expectTrue(problem.contains("write token"), "no write token, no push: " + problem);
+
+        qputenv("CASPARCG_TEST_RelayPushToken", WRITE_TOKEN);
+
+        // Edits at the venue: one changed, one new in a subfolder, one protected
+        // file that must not travel, and one in a pack this client does not follow.
+        writeFile(QDir(templates).filePath("SEVILLE/calendar.html"), "<h1>edited at the venue</h1>");
+        writeFile(QDir(templates).filePath("SEVILLE/venue/new.html"), "<p>made here</p>");
+        writeFile(QDir(templates).filePath("SEVILLE/project.js"), "var apiKey = 'this venue only';");
+        writeFile(QDir(templates).filePath("MARSEILLE/incidents.html"), "<h1>changed, but not followed</h1>");
+
+        prepareAndWait(files, problem);
+        expectTrue(problem.isEmpty(), "the repository was read: " + problem);
+        QStringList sortedFiles = files;
+        sortedFiles.sort();
+        expectTrue(sortedFiles == (QStringList() << "SEVILLE/calendar.html" << "SEVILLE/venue/new.html"),
+                   "exactly the changed and the new file are listed: " + files.join(", "));
+        expectTrue(!files.contains("SEVILLE/project.js"), "project.js never travels");
+        expectTrue(!files.contains("MARSEILLE/incidents.html"), "a pack this client does not follow is not pushed");
+
+        bool ok = false;
+        QString summary;
+        pushAndWait("Edited at the venue", ok, summary);
+        expectTrue(ok, "the push was accepted: " + summary);
+        expectTrue(summary.contains("2 file(s) pushed"), "and says how many went: " + summary);
+        expectTrue(!RepoPublisher::getInstance().isBusy(), "and the publisher is free again");
+
+        expectTrue(readFile(QDir(repo).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>edited at the venue</h1>"),
+                   "the edit is in the repository");
+        expectTrue(readFile(QDir(repo).filePath("SEVILLE/venue/new.html")) == QByteArray("<p>made here</p>"),
+                   "and so is the new file, folder and all");
+        expectTrue(!QFile::exists(QDir(repo).filePath("SEVILLE/project.js")),
+                   "project.js did not reach the repository");
+        expectTrue(readFile(QDir(repo).filePath("MARSEILLE/incidents.html")) == QByteArray("<h1>not ours</h1>"),
+                   "the pack this client does not follow is untouched");
+
+        QJsonObject commit = QJsonDocument::fromJson(readFile(QDir(apiDir).filePath("mock_state/last_commit.json"))).object();
+        expectTrue(commit.value("message").toString() == "Edited at the venue", "the commit carries the operator's message");
+        expectTrue(commit.value("author").toObject().value("name").toString().contains(QSysInfo::machineHostName()),
+                   "and is authored as this machine");
+
+        QString afterPush = poll();
+        expectTrue(afterPush.contains("already up to date"),
+                   "a poll after the push finds nothing to do: " + afterPush);
+
+        // Behind: the dev machine pushed something this venue has not pulled.
+        writeFile(QDir(repo).filePath("SEVILLE/fresh.html"), "<h1>from the dev machine</h1>");
+        prepareAndWait(files, problem);
+        expectTrue(problem.contains("Pull first"), "a repository holding unpulled files is refused: " + problem);
+        expectTrue(files.isEmpty(), "and nothing is listed to push");
+
+        poll();
+        prepareAndWait(files, problem);
+        expectTrue(problem.isEmpty() && files.isEmpty(), "after pulling, nothing differs and nothing is refused: " + problem);
+
+        // The pull token cannot write, and the repository must not change.
+        qputenv("CASPARCG_TEST_RelayPushToken", TOKEN);
+        writeFile(QDir(templates).filePath("SEVILLE/calendar.html"), "<h1>third</h1>");
+        prepareAndWait(files, problem);
+        expectTrue(problem.isEmpty() && files.count() == 1, "reading works with a read token: " + problem);
+        pushAndWait("Should be refused", ok, summary);
+        expectTrue(!ok, "writing with the pull token is refused: " + summary);
+        expectTrue(readFile(QDir(repo).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>edited at the venue</h1>"),
+                   "and the repository is unchanged");
+
+        // Cleanly back in step, so what follows starts from a matching pair.
+        qputenv("CASPARCG_TEST_RelayPushToken", WRITE_TOKEN);
+        prepareAndWait(files, problem);
+        pushAndWait("Third", ok, summary);
+        expectTrue(ok, "the same push with the write token goes: " + summary);
+        qputenv("CASPARCG_TEST_RelayMaster", "false");
+
+        // The rule on its own.
+        QMap<QString, QString> local;
+        local.insert("a.html", "1");
+        local.insert("project.js", "x");
+        local.insert("same.html", "s");
+        local.insert("sub/b.html", "2");
+        QMap<QString, QString> remote;
+        remote.insert("a.html", "0");
+        remote.insert("same.html", "s");
+        remote.insert("gone.html", "g");
+        QStringList missing;
+        QList<RepoPublisher::Change> planned = RepoPublisher::plan("P", local, remote, &missing);
+        QStringList plannedPaths;
+        foreach (const RepoPublisher::Change& change, planned)
+            plannedPaths.append(change.repoPath() + (change.isNew ? " (new)" : ""));
+        plannedPaths.sort();
+        expectTrue(plannedPaths == (QStringList() << "P/a.html" << "P/sub/b.html (new)"),
+                   "changed and new are planned, unchanged and protected are not: " + plannedPaths.join(", "));
+        expectTrue(missing == QStringList("P/gone.html"), "a file only the repository has is reported, not deleted");
+    }
+
     out << "\nA pull larger than one batch\n";
 
     // The first pull of a real estate is 769 files across two packs, and anything
@@ -443,6 +583,10 @@ int main(int argc, char** argv)
 
     out << "\nWhen GitHub is unreachable\n";
 
+    // Whatever the file holds now - earlier sections may have changed it - is
+    // what it must still hold after a poll that could not reach the source.
+    const QByteArray heldBefore = readFile(QDir(templates).filePath("SEVILLE/calendar.html"));
+
     api.kill();
     reporter.kill();
     api.waitForFinished(3000);
@@ -451,7 +595,7 @@ int main(int argc, char** argv)
     expectTrue(!gone.isEmpty() && gone != "timed out",
                "an unreachable API ends the poll rather than hanging: " + gone);
     expectTrue(!gone.contains("up to date"), "and does not claim to be up to date");
-    expectTrue(readFile(QDir(templates).filePath("SEVILLE/calendar.html")) == QByteArray("<h1>two</h1>"),
+    expectTrue(readFile(QDir(templates).filePath("SEVILLE/calendar.html")) == heldBefore,
                "a failed poll leaves what was already installed alone");
 
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";

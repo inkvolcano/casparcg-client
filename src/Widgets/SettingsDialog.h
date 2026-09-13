@@ -150,6 +150,12 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     QLabel* labelCheckInStatus = nullptr;
     QLineEdit* lineEditUpdateSource = nullptr;
     QLineEdit* lineEditUpdateToken = nullptr;
+
+    // The master push: a checkbox that allows it, a second token that can write,
+    // and a line that says what the last push did.
+    QCheckBox* checkBoxRelayMaster = nullptr;
+    QLineEdit* lineEditRelayPushToken = nullptr;
+    QLabel* labelRelayPush = nullptr;
     QSpinBox* spinBoxRelayPoll = nullptr;
     // The packs this client follows, one checkable row each. Filled from the
     // local setting on open and from the source on Get packs.
