@@ -1782,6 +1782,38 @@ about.
 
 ---
 
+## Two Things That Got In The Way
+
+### A rundown's tab can be dragged to the other pane
+
+In split view, dragging a tab towards the other pane looked like it slid under
+it and was lost. It was: a tab bar only moves a tab within itself, and past
+its edge the tab simply stopped being drawn. The only way across was *Move to
+Other Pane* in the tab's right-click menu.
+
+Now, once a tab is dragged out of its own bar, it travels with the cursor and
+can be dropped anywhere on the other pane — its tab bar or its rundown. Over
+its own pane the cursor says no and letting go does nothing. Reordering within
+a bar is exactly as it was. Dragging the last tab out of a pane closes the
+split, the same as moving it from the menu.
+
+### A locked rundown can be dragged from
+
+A locked rundown refused to be dragged *from* at all, which read the lock the
+wrong way round: the lock protects the locked rundown, not the one the items
+are going to. Items can now be dragged out of a locked rundown into another;
+what lands there is a copy, the locked rundown keeps its own, and the status
+bar says so. Dropping into a locked rundown is still refused, as before.
+
+### Settings no longer rebuilds the window for nothing
+
+Pressing OK in Settings tore the whole window down and built it again, every
+time — change a hotkey or paste a token and every panel flickered and the
+layout you were looking at was rebuilt into itself. The rebuild now happens only
+when a layout setting actually changed between opening the dialog and pressing
+OK: column order, which panel sits where, sizes, spans, collapsed state, empty
+panels, in either mode. Anything else, and the window stays exactly as it is.
+
 ## A Master Client Can Push Its Edits Back
 
 Everything a venue plays comes from the source, so an edit made on a venue

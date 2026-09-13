@@ -1894,8 +1894,9 @@ void RundownTreeBaseWidget::mousePressEvent(QMouseEvent* event)
 
 void RundownTreeBaseWidget::mouseMoveEvent(QMouseEvent* event)
 {
-    if (this->lock)
-        return;
+    // A locked rundown can be dragged from. The lock protects this rundown,
+    // not the one the items land in; the drop there is a copy, and nothing
+    // here is removed - see DropRules::removesFromSource.
 
     if (!(event->buttons() & Qt::LeftButton))
              return;
@@ -2121,6 +2122,14 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
                     return false;
 
                 selectItemBelow();
+
+                if (!DropRules::removesFromSource(dragSourceWidget->lock))
+                {
+                    // A locked source keeps its items; what landed here is a copy.
+                    EventManager::getInstance().fireStatusbarEvent(
+                        StatusbarEvent(DropRules::copiedNotice(true)));
+                    return true;
+                }
 
                 // Delete the dragged items from the source tree.
                 QList<QTreeWidgetItem*> sourceItems = dragSourceWidget->selectedItems();

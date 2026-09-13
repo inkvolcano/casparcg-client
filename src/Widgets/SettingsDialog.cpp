@@ -112,10 +112,26 @@ namespace
     }
 }
 
+QMap<QString, QString> SettingsDialog::readLayoutKeys()
+{
+    QMap<QString, QString> values;
+
+    QStringList keys = LayoutPreset::keysFor(LayoutPreset::scopePanel());
+    keys.append(LayoutPreset::keysFor(LayoutPreset::scopeSimple()));
+
+    foreach (const QString& key, keys)
+        values.insert(key, DatabaseManager::getInstance().getConfigurationByName(key).getValue());
+
+    return values;
+}
+
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
 {
     setupUi(this);
+
+    // Before anything in here can write: the layout as it is now.
+    this->layoutAtOpen = readLayoutKeys();
 
     setupGeneralTab();
 
@@ -1366,7 +1382,16 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "ShowEmptyPanels",
                 this->checkBoxShowEmptyPanels->isChecked() ? "true" : "false"));
-        EventManager::getInstance().fireRebuildLayout();
+
+        // Only when something about the layout actually changed. This ran on
+        // every OK, so changing a hotkey or a token tore the whole window down
+        // and built it again - every panel flickered and any scroll position
+        // was lost - for a layout that was exactly what it had been.
+        //
+        // This handler runs last of the accepted handlers, so every layout key
+        // has been written by now and the comparison is against what was saved.
+        if (readLayoutKeys() != this->layoutAtOpen)
+            EventManager::getInstance().fireRebuildLayout();
     });
 }
 

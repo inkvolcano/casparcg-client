@@ -146,6 +146,12 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     // What the relay fields held when the dialog opened, so Cancel can take
     // back what Test and Check now wrote in order to run.
     QMap<QString, QString> relayFieldsAtOpen;
+
+    // Every layout key as it stood when the dialog opened, so OK can tell
+    // whether the layout actually changed before tearing the window down and
+    // building it again. It used to rebuild on every OK.
+    QMap<QString, QString> layoutAtOpen;
+    static QMap<QString, QString> readLayoutKeys();
     QSpinBox* spinBoxRelayHeartbeat = nullptr;
     QLabel* labelCheckInStatus = nullptr;
     QLineEdit* lineEditUpdateSource = nullptr;

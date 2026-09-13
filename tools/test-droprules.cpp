@@ -58,6 +58,13 @@ static void somethingElseEntirelyIsNotOurs()
     expectTrue(!DropRules::isRundownPayload(false, false), "a foreign drag is not a rundown payload");
     expectTrue(DropRules::isRundownPayload(true, false), "a library item is");
     expectTrue(DropRules::isRundownPayload(false, true), "and so is a rundown item");
+
+    // The other direction. A locked rundown can be dragged from; what it gives
+    // is a copy, and it keeps its own.
+    expectTrue(DropRules::removesFromSource(false), "a drag out of an unlocked rundown moves the items");
+    expectTrue(!DropRules::removesFromSource(true), "a drag out of a locked rundown leaves them, so the drop is a copy");
+    expectTrue(DropRules::copiedNotice(true).contains("locked"), "and says so");
+    expectTrue(DropRules::copiedNotice(false).isEmpty(), "a move says nothing extra");
 }
 
 static void aRefusalThatMattersIsExplained()

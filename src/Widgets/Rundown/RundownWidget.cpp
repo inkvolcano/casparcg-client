@@ -20,7 +20,14 @@
 #include <QtCore/QTimer>
 #include <QtCore/QUuid>
 
+#include <QtCore/QMimeData>
+
+#include <QtGui/QDrag>
+#include <QtGui/QDragEnterEvent>
+#include <QtGui/QDragMoveEvent>
+#include <QtGui/QDropEvent>
 #include <QtGui/QIcon>
+#include <QtGui/QMouseEvent>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
@@ -266,6 +273,11 @@ void RundownWidget::setupTabWidget(QTabWidget* tabWidget)
     tabWidget->setTabsClosable(true);
     tabWidget->setMovable(true);
 
+    // So a tab dragged across from the other pane can land here - on the bar,
+    // or anywhere on the pane. The drop itself is handled in eventFilter.
+    tabWidget->setAcceptDrops(true);
+    tabWidget->tabBar()->setAcceptDrops(true);
+
     // Connect signals via lambdas so we always know which pane fired.
     QObject::connect(tabWidget, &QTabWidget::currentChanged, [this, tabWidget](int index) {
         if (index < 0)
@@ -370,6 +382,79 @@ void RundownWidget::setupTabWidget(QTabWidget* tabWidget)
 
 bool RundownWidget::eventFilter(QObject* watched, QEvent* event)
 {
+    // Dragging a rundown's tab to the other pane.
+    if (this->splitViewActive && this->tabWidgetRundownSecondary != nullptr)
+    {
+        QWidget* w = qobject_cast<QWidget*>(watched);
+        const bool onABar = (w != nullptr)
+            && (w == this->tabWidgetRundown->tabBar() || w == this->tabWidgetRundownSecondary->tabBar());
+
+        if (event->type() == QEvent::MouseButtonPress && onABar)
+        {
+            QMouseEvent* mouse = static_cast<QMouseEvent*>(event);
+            QTabBar* bar = static_cast<QTabBar*>(w);
+
+            if (mouse->button() == Qt::LeftButton && bar->tabAt(mouse->pos()) >= 0)
+            {
+                this->tabDragBar = bar;
+                this->tabDragIndex = bar->tabAt(mouse->pos());
+                this->tabDragStart = mouse->pos();
+            }
+        }
+        else if (event->type() == QEvent::MouseMove && w != nullptr && w == this->tabDragBar && this->tabDragIndex >= 0)
+        {
+            // Inside the bar QTabBar reorders on its own. Out of it, with a tab
+            // in hand, is where its move stops making sense and ours starts.
+            QMouseEvent* mouse = static_cast<QMouseEvent*>(event);
+            if ((mouse->buttons() & Qt::LeftButton)
+                && !this->tabDragBar->rect().contains(mouse->pos())
+                && (mouse->pos() - this->tabDragStart).manhattanLength() >= QApplication::startDragDistance())
+            {
+                startTabDrag(this->tabDragBar, mouse);
+                return true;
+            }
+        }
+        else if (event->type() == QEvent::MouseButtonRelease && w != nullptr && w == this->tabDragBar)
+        {
+            this->tabDragBar = nullptr;
+            this->tabDragIndex = -1;
+        }
+        else if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove || event->type() == QEvent::Drop)
+        {
+            // QDragEnterEvent and QDragMoveEvent are both QDropEvents.
+            QDropEvent* drop = static_cast<QDropEvent*>(event);
+
+            if (drop->mimeData()->hasFormat("application/rundown-tab"))
+            {
+                const QStringList parts = QString::fromUtf8(drop->mimeData()->data("application/rundown-tab")).split(':');
+                QTabWidget* source = (parts.value(0) == "secondary") ? this->tabWidgetRundownSecondary
+                                                                       : this->tabWidgetRundown;
+                QTabWidget* target = paneOf(w);
+
+                // Only the other pane takes it. Over its own pane, or anything
+                // else, the cursor says no and letting go does nothing.
+                if (target == nullptr || target == source)
+                {
+                    drop->ignore();
+                    return true;
+                }
+
+                if (event->type() == QEvent::Drop)
+                {
+                    moveTabToOtherPane(source, parts.value(1).toInt());
+
+                    // Moving the last tab out closes the split, and the panes
+                    // with it; only follow the tab while there are still two.
+                    if (this->splitViewActive)
+                        setFocusedPane(target);
+                }
+
+                drop->acceptProposedAction();
+                return true;
+            }
+        }
+    }
+
     if (event->type() == QEvent::MouseButtonPress && this->splitViewActive && this->tabWidgetRundownSecondary != nullptr)
     {
         QWidget* w = qobject_cast<QWidget*>(watched);
@@ -653,6 +738,51 @@ void RundownWidget::deleteTabFromPane(QTabWidget* pane, int index)
         EventManager::getInstance().fireOpenRundownMenuEvent(OpenRundownMenuEvent(true));
         EventManager::getInstance().fireOpenRundownFromUrlMenuEvent(OpenRundownFromUrlMenuEvent(true));
     }
+}
+
+void RundownWidget::startTabDrag(QTabBar* bar, QMouseEvent* event)
+{
+    // End the bar's own move first, or it is left holding a tab that has gone.
+    // The release lands where the cursor is, so the tab settles at whatever
+    // index the bar had moved it to - and that, being current, is the index
+    // carried across.
+    QMouseEvent release(QEvent::MouseButtonRelease, event->position(), event->scenePosition(),
+                        event->globalPosition(), Qt::LeftButton, Qt::NoButton, event->modifiers());
+    QApplication::sendEvent(bar, &release);
+
+    const int index = bar->currentIndex();
+
+    this->tabDragBar = nullptr;
+    this->tabDragIndex = -1;
+
+    if (index < 0)
+        return;
+
+    const QString pane = (bar == this->tabWidgetRundownSecondary->tabBar()) ? "secondary" : "primary";
+
+    QMimeData* mime = new QMimeData();
+    mime->setData("application/rundown-tab", QString("%1:%2").arg(pane).arg(index).toUtf8());
+
+    // The tab itself travels with the cursor, so it no longer vanishes at the
+    // edge of its bar.
+    QDrag* drag = new QDrag(bar);
+    drag->setMimeData(mime);
+    drag->setPixmap(bar->grab(bar->tabRect(index)));
+    drag->setHotSpot(QPoint(drag->pixmap().width() / 2, drag->pixmap().height() / 2));
+    drag->exec(Qt::MoveAction);
+}
+
+QTabWidget* RundownWidget::paneOf(QWidget* widget) const
+{
+    for (QWidget* parent = widget; parent != nullptr; parent = parent->parentWidget())
+    {
+        if (parent == this->tabWidgetRundown)
+            return this->tabWidgetRundown;
+        if (parent == this->tabWidgetRundownSecondary)
+            return this->tabWidgetRundownSecondary;
+    }
+
+    return nullptr;
 }
 
 void RundownWidget::moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex)

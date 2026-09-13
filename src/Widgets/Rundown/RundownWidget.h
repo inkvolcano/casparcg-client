@@ -30,10 +30,14 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
+#include <QtCore/QPoint>
 #include <QtCore/QStringList>
 #include <QtCore/QTimer>
 
 #include <QtGui/QKeyEvent>
+#include <QtGui/QMouseEvent>
+
+class QTabBar;
 #include <QtGui/QShortcut>
 
 #include <QtGui/QAction>
@@ -119,6 +123,19 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         // Double-tap arrow key tracking for pane switching.
         QElapsedTimer lastArrowKeyTimer;
         Qt::Key lastArrowKey;
+
+        // A rundown's tab dragged out of its own bar and across to the other
+        // pane. QTabBar moves a tab only within its own bar: past the edge the
+        // tab vanishes behind the neighbour, which is what made this look
+        // broken. The bar's own move is ended and a real drag started the
+        // moment the cursor leaves the bar with a tab in hand.
+        QTabBar* tabDragBar = nullptr;
+        int tabDragIndex = -1;
+        QPoint tabDragStart;
+        void startTabDrag(QTabBar* bar, QMouseEvent* event);
+
+        // The pane a widget sits in, or null for anything outside both.
+        QTabWidget* paneOf(QWidget* widget) const;
 
         // Search bar.
         struct SearchResult {

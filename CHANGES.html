@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#tab-drag-settings-redraw">Tab Drag, Settings Redraw</a><br>
 <a href="#master-push">Master Push</a><br>
 <a href="#banner-clears">Refusal Banner Clears</a><br>
 <a href="#pack-picker">Pick The Packs</a><br>
@@ -1798,6 +1799,22 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="tab-drag-settings-redraw">Two Things That Got In The Way</h2>
+
+<h3>A rundown's tab can be dragged to the other pane</h3>
+
+<p>In split view, dragging a tab towards the other pane looked like it slid under it and was lost. It was: a tab bar only moves a tab within itself, and past its edge the tab simply stopped being drawn. The only way across was <i>Move to Other Pane</i> in the tab's right-click menu.</p>
+
+<p>Now, once a tab is dragged out of its own bar, it travels with the cursor and can be dropped anywhere on the other pane &mdash; its tab bar or its rundown. Over its own pane the cursor says no and letting go does nothing. Reordering within a bar is exactly as it was. Dragging the last tab out of a pane closes the split, the same as moving it from the menu.</p>
+
+<h3>A locked rundown can be dragged from</h3>
+
+<p>A locked rundown refused to be dragged <i>from</i> at all, which read the lock the wrong way round: the lock protects the locked rundown, not the one the items are going to. Items can now be dragged out of a locked rundown into another; what lands there is a copy, the locked rundown keeps its own, and the status bar says so. Dropping into a locked rundown is still refused, as before.</p>
+
+<h3>Settings no longer rebuilds the window for nothing</h3>
+
+<p>Pressing OK in Settings tore the whole window down and built it again, every time &mdash; change a hotkey or paste a token and every panel flickered and the layout you were looking at was rebuilt into itself. The rebuild now happens only when a layout setting actually changed between opening the dialog and pressing OK: column order, which panel sits where, sizes, spans, collapsed state, empty panels, in either mode. Anything else, and the window stays exactly as it is.</p>
 
 <h2 id="master-push">A Master Client Can Push Its Edits Back</h2>
 

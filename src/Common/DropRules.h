@@ -43,6 +43,24 @@ namespace DropRules
     // Why a drop was refused, for the status bar. Empty when it was accepted, or
     // when it was not a rundown drag at all — a drag from another application
     // ending on the client is not something to explain to the operator.
+    // Whether a drop from another rundown takes the items out of where they
+    // came from. A locked rundown keeps its items: it can be dragged from, and
+    // what lands elsewhere is a copy. Refusing the drag outright was the wrong
+    // reading of the lock - it protects the locked rundown, not the other one.
+    inline bool removesFromSource(bool sourceLocked)
+    {
+        return !sourceLocked;
+    }
+
+    // What the operator is told when the drop was a copy rather than a move.
+    inline QString copiedNotice(bool sourceLocked)
+    {
+        if (!sourceLocked)
+            return QString();
+
+        return QString("Copied from the locked rundown; the original stays where it is.");
+    }
+
     inline QString refusalReason(bool targetLocked, bool hasLibraryItem, bool hasRundownItem)
     {
         if (!isRundownPayload(hasLibraryItem, hasRundownItem))
