@@ -245,6 +245,7 @@ set(Core_resource_files
     "Sql/ChangeScript-256.sql"
     "Sql/ChangeScript-257.sql"
     "Sql/ChangeScript-258.sql"
+    "Sql/ChangeScript-259.sql"
     "Sql/Schema.sql"
 )
 

@@ -32,10 +32,19 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
     public:
         explicit PreviewWidget(QWidget* parent = 0);
 
-        // Everything below is off when this is on, and the panel behaves exactly
-        // as it did before any of it existed: a thumbnail for stills, the local
-        // file for movies, nothing for anything else.
+        // The default. When this is on the panel shows the database thumbnail for
+        // stills and movies and opens nothing - no file, no player, no page. The
+        // switches below only apply when it is off.
+        //
+        // Default because opening things on every click is what made the panel
+        // lag on every selection, and what took a venue's client down on a clip
+        // with no audio track (build 222).
         static bool legacyMode();
+
+        // The parts of the newer preview, each its own switch and each off until
+        // chosen: by default the panel reads no file, no clip and no template.
+        static bool showStillsFromFile();   // the real image, not the thumbnail
+        static bool showMovies();           // the clip in the player
 
         // Whether a movie starts playing as soon as it is selected.
         static bool autoPlayVideo();
@@ -134,6 +143,9 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         QString resolveImageFile(const QString& deviceName, const QString& mediaName);
         QString resolveTemplateFile(const QString& deviceName, const QString& templateName) const;
         bool loadImage(const QString& filePath);
+
+        // The thumbnail the server made, from the database. True when one was shown.
+        bool showDatabaseThumbnail(const QString& name, const QString& deviceName);
         void loadVideo(const QString& filePath);
         void stopVideo();
         void loadTemplate(const QString& filePath);

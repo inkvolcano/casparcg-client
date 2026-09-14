@@ -1657,6 +1657,33 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->previewFreezeTemplateCheck, row, 1, 1, 3);
     row++;
 
+    this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview: server thumbnails only, nothing opened (default)");
+    this->checkBoxPreviewLegacyMode->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewLegacyMode->setToolTip(
+        "The thumbnail the server made, for stills and movies, and nothing else.\n"
+        "No file is opened, no clip is decoded and no page is rendered, so selecting\n"
+        "an item costs nothing. Untick it to choose, below, what the panel opens.");
+    grid->addWidget(this->checkBoxPreviewLegacyMode, row, 1, 1, 3);
+    row++;
+
+    QLabel* previewPartsLabel = new QLabel("When legacy is off, show in the preview:");
+    previewPartsLabel->setStyleSheet("color: rgba(150, 150, 150, 220);");
+    grid->addWidget(previewPartsLabel, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxPreviewShowStills = new QCheckBox("Stills: the real image from the media folder");
+    this->checkBoxPreviewShowStills->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewShowStills->setToolTip("The full picture rather than the server's small thumbnail. Needs the\n"
+                                                "server's Media path to be a folder this machine can reach.");
+    grid->addWidget(this->checkBoxPreviewShowStills, row, 1, 1, 3);
+    row++;
+
+    this->checkBoxPreviewShowMovies = new QCheckBox("Movies: the clip itself, with transport controls");
+    this->checkBoxPreviewShowMovies->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewShowMovies->setToolTip("Opens the clip in a player on selection. Needs the server's Media path.");
+    grid->addWidget(this->checkBoxPreviewShowMovies, row, 1, 1, 3);
+    row++;
+
     this->checkBoxPreviewAutoPlayVideo = new QCheckBox("Start playing a video as soon as it is selected");
     this->checkBoxPreviewAutoPlayVideo->setFocusPolicy(Qt::NoFocus);
     this->checkBoxPreviewAutoPlayVideo->setToolTip("Off by default: selecting an item during a show should not start "
@@ -1664,15 +1691,17 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxPreviewAutoPlayVideo, row, 1, 1, 3);
     row++;
 
-    this->checkBoxPreviewAudioMeters = new QCheckBox("Show audio meters over the picture");
+    this->checkBoxPreviewAudioMeters = new QCheckBox("Audio meters over the picture (decodes the clip's audio)");
     this->checkBoxPreviewAudioMeters->setFocusPolicy(Qt::NoFocus);
     this->checkBoxPreviewAudioMeters->setToolTip("Levels are read from the file itself, so they follow scrubbing and "
                                                   "hold while paused.");
     grid->addWidget(this->checkBoxPreviewAudioMeters, row, 1, 1, 3);
     row++;
 
-    this->checkBoxPreviewTemplates = new QCheckBox("Render templates in the Preview panel");
+    this->checkBoxPreviewTemplates = new QCheckBox("Templates: render the HTML in the panel (heavy)");
     this->checkBoxPreviewTemplates->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxPreviewTemplates->setToolTip("Every selected template is loaded into a web view. It is the part that\n"
+                                               "makes selection lag, so it is off unless you want it.");
     grid->addWidget(this->checkBoxPreviewTemplates, row, 1, 1, 3);
     row++;
 
@@ -1686,13 +1715,6 @@ void SettingsDialog::setupGeneralTab()
         "and no manifest is ever read, so a client that does not use OGraf pays nothing.");
 
     grid->addWidget(this->checkBoxOgrafEnabled, row, 1, 1, 3);
-    row++;
-
-    this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview (thumbnails only, as before)");
-    this->checkBoxPreviewLegacyMode->setFocusPolicy(Qt::NoFocus);
-    this->checkBoxPreviewLegacyMode->setToolTip("Puts the panel back exactly as it was: a database thumbnail for "
-                                                 "stills, the local file for movies, nothing for anything else.");
-    grid->addWidget(this->checkBoxPreviewLegacyMode, row, 1, 1, 3);
     row++;
 
     // The Audio Levels meters. Both default on: a meter that hides a clip is not
@@ -2074,10 +2096,23 @@ void SettingsDialog::setupGeneralTab()
         DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DisconnectMode", text));
     });
 
-    // Preview panel. Legacy mode turns the other three off in the UI as well as
-    // in the panel, so the dialog cannot suggest a combination that does nothing.
-    wireCheckBox(this->checkBoxPreviewAudioMeters, "PreviewAudioMeters");
-    wireCheckBox(this->checkBoxPreviewTemplates, "PreviewTemplates");
+    // Preview panel. Legacy mode turns the parts off in the UI as well as in
+    // the panel, so the dialog cannot suggest a combination that does nothing.
+    // Every part is off when unset - by default the panel reads nothing - so
+    // none of them can use wireCheckBox, which reads unset as on.
+    for (auto pair : { qMakePair(this->checkBoxPreviewShowStills, QString("PreviewShowStills")),
+                       qMakePair(this->checkBoxPreviewShowMovies, QString("PreviewShowMovies")),
+                       qMakePair(this->checkBoxPreviewAudioMeters, QString("PreviewAudioMeters")),
+                       qMakePair(this->checkBoxPreviewTemplates, QString("PreviewTemplates")) })
+    {
+        QCheckBox* box = pair.first;
+        const QString key = pair.second;
+        box->setChecked(DatabaseManager::getInstance().getConfigurationByName(key).getValue() == "true");
+        QObject::connect(box, &QCheckBox::toggled, [key](bool checked) {
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, key, checked ? "true" : "false"));
+        });
+    }
 
     // Off unless switched on, so this cannot use wireCheckBox(), which treats an
     // unset value as on.
@@ -2117,13 +2152,16 @@ void SettingsDialog::setupGeneralTab()
             ConfigurationModel(0, "MeterClipIndicator", checked ? "true" : "false"));
     });
 
+    // Legacy is the default, so unset reads as on.
     QString previewLegacy = DatabaseManager::getInstance().getConfigurationByName("PreviewLegacyMode").getValue();
-    this->checkBoxPreviewLegacyMode->setChecked(previewLegacy == "true");
+    this->checkBoxPreviewLegacyMode->setChecked(previewLegacy != "false");
 
     auto applyPreviewLegacy = [this](bool legacy) {
+        this->checkBoxPreviewShowStills->setEnabled(!legacy);
+        this->checkBoxPreviewShowMovies->setEnabled(!legacy);
         this->checkBoxPreviewAutoPlayVideo->setEnabled(!legacy);
         this->checkBoxPreviewAudioMeters->setEnabled(!legacy);
-        this->checkBoxPreviewTemplates->setEnabled(!legacy);
+        this->checkBoxPreviewTemplates->setEnabled(!legacy && PreviewWidget::templateRenderingAvailable());
     };
     applyPreviewLegacy(this->checkBoxPreviewLegacyMode->isChecked());
 

@@ -1782,6 +1782,26 @@ about.
 
 ---
 
+## The Preview Panel Is Legacy Again, By Default
+
+The newer preview opened something on every click: a web view for a template,
+the clip in a player for a movie, and the clip's audio in a decoder for the
+meters. That is what made selecting an item lag, and one clip with no audio
+track is what took a venue's client down in 222. Legacy mode — the thumbnail
+the server made, and nothing else — is the default again. And it now means it:
+the movie path used to open the clip in the player even in legacy mode, which
+is where the lag came from on machines that thought they had turned it off.
+
+**Settings → Preview** is one switch and its parts. *Legacy preview* is on by
+default. Untick it and choose what the panel opens: the real image for stills,
+the clip for movies, templates rendered in the panel, audio meters. All four are off
+until you turn them on: by default the panel reads no file, no clip and no
+template.
+
+**This build resets the preview settings once**, so a machine where the dialog
+had already saved the old defaults comes up legacy too. Turn the parts back on
+in Settings if you want them on that machine.
+
 ## Two Things That Got In The Way
 
 ### A rundown's tab can be dragged to the other pane

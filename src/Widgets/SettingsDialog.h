@@ -85,6 +85,8 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxPreviewAudioMeters;
         QCheckBox* checkBoxPreviewTemplates;
         QCheckBox* checkBoxPreviewLegacyMode;
+        QCheckBox* checkBoxPreviewShowStills;
+        QCheckBox* checkBoxPreviewShowMovies;
         QCheckBox* checkBoxMeterPeakHold = nullptr;
         QCheckBox* checkBoxMeterClipIndicator = nullptr;
         QCheckBox* checkBoxOgrafEnabled;

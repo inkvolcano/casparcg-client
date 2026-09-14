@@ -137,7 +137,17 @@ PreviewWidget::PreviewWidget(QWidget* parent)
 
 bool PreviewWidget::legacyMode()
 {
-    return configIsTrue("PreviewLegacyMode", false);
+    return configIsTrue("PreviewLegacyMode", true);
+}
+
+bool PreviewWidget::showStillsFromFile()
+{
+    return configIsTrue("PreviewShowStills", false);
+}
+
+bool PreviewWidget::showMovies()
+{
+    return configIsTrue("PreviewShowMovies", false);
 }
 
 bool PreviewWidget::autoPlayVideo()
@@ -147,12 +157,12 @@ bool PreviewWidget::autoPlayVideo()
 
 bool PreviewWidget::showAudioMeters()
 {
-    return configIsTrue("PreviewAudioMeters", true);
+    return configIsTrue("PreviewAudioMeters", false);
 }
 
 bool PreviewWidget::showTemplates()
 {
-    return configIsTrue("PreviewTemplates", true);
+    return configIsTrue("PreviewTemplates", false);
 }
 
 bool PreviewWidget::ografEnabled()
@@ -329,17 +339,24 @@ void PreviewWidget::setThumbnail()
     const QString name = this->model->getName();
     const QString deviceName = this->model->getDeviceName();
 
-    const bool legacy = legacyMode();
-
-    // Legacy: stills and movies only, thumbnail from the database, nothing else.
-    if (legacy && type != Rundown::STILL && type != Rundown::MOVIE)
+    // Legacy, the default: the thumbnail the server made, for stills and movies,
+    // and nothing opened - no file, no player, no page. Before this build the
+    // movie path still opened the clip in the player even here, which is not
+    // what "legacy" promised and is where the lag on every click came from.
+    if (legacyMode())
     {
-        this->image = QImage();
-        this->contentWidget->clearContent();
+        if (type != Rundown::STILL && type != Rundown::MOVIE)
+        {
+            this->image = QImage();
+            this->contentWidget->clearContent();
+            return;
+        }
+
+        showDatabaseThumbnail(name, deviceName);
         return;
     }
 
-    if (!legacy && type == Rundown::TEMPLATE)
+    if (type == Rundown::TEMPLATE)
     {
         if (!showTemplates())
         {
@@ -386,45 +403,45 @@ void PreviewWidget::setThumbnail()
         return;
     }
 
-    // Stills: the real file first. The database thumbnail is small, and it only
-    // exists once a server has scanned the media — this panel is meant to work
-    // with no server running at all.
+    // Stills: the real file when that is switched on, the thumbnail otherwise.
     bool shown = false;
-    if (!legacy && type == Rundown::STILL)
+    if (type == Rundown::STILL && showStillsFromFile())
         shown = loadImage(resolveImageFile(deviceName, name));
 
     if (!shown)
-    {
-        QString data = DatabaseManager::getInstance().getThumbnailByNameAndDeviceName(name, deviceName).getData();
+        shown = showDatabaseThumbnail(name, deviceName);
 
-        if (!data.isEmpty())
-        {
-            this->image.loadFromData(QByteArray::fromBase64(data.toLatin1()), "PNG");
-            updateThumbnailDisplay();
-            shown = true;
-        }
-        else
-        {
-            this->image = QImage();
-            this->contentWidget->clearContent();
-        }
-    }
-
-    // For movies, try to load the local video file.
-    if (type == Rundown::MOVIE)
+    // Movies: the clip itself, when that is switched on.
+    if (type == Rundown::MOVIE && showMovies())
     {
         QString filePath = resolveMediaFile(deviceName, name);
         if (!filePath.isEmpty())
         {
             loadVideo(filePath);
         }
-        else if (!shown && !legacy)
+        else if (!shown)
         {
             this->contentWidget->setPlaceholder(
                 QString("\"%1\" was not found on this machine.\n\nSet this server's Media path in Settings "
                         "\xe2\x86\x92 Servers to a folder this computer can reach.").arg(name));
         }
     }
+}
+
+bool PreviewWidget::showDatabaseThumbnail(const QString& name, const QString& deviceName)
+{
+    QString data = DatabaseManager::getInstance().getThumbnailByNameAndDeviceName(name, deviceName).getData();
+
+    if (data.isEmpty())
+    {
+        this->image = QImage();
+        this->contentWidget->clearContent();
+        return false;
+    }
+
+    this->image.loadFromData(QByteArray::fromBase64(data.toLatin1()), "PNG");
+    updateThumbnailDisplay();
+    return true;
 }
 
 void PreviewWidget::updateThumbnailDisplay()
