@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#preview-legacy">Preview Legacy By Default</a><br>
 <a href="#tab-drag-settings-redraw">Tab Drag, Settings Redraw</a><br>
 <a href="#master-push">Master Push</a><br>
 <a href="#banner-clears">Refusal Banner Clears</a><br>
@@ -1799,6 +1800,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="preview-legacy">The Preview Panel Is Legacy Again, By Default</h2>
+
+<p>The newer preview opened something on every click: a web view for a template, the clip in a player for a movie, and the clip's audio in a decoder for the meters. That is what made selecting an item lag, and one clip with no audio track is what took a venue's client down in 222. Legacy mode &mdash; the thumbnail the server made, and nothing else &mdash; is the default again. And it now means it: the movie path used to open the clip in the player even in legacy mode, which is where the lag came from on machines that thought they had turned it off.</p>
+
+<p><b>Settings &rarr; Preview</b> is one switch and its parts. <i>Legacy preview</i> is on by default. Untick it and choose what the panel opens: the real image for stills, the clip for movies, templates rendered in the panel, audio meters. All four are off until you turn them on: by default the panel reads no file, no clip and no template.</p>
+
+<p><b>This build resets the preview settings once</b>, so a machine where the dialog had already saved the old defaults comes up legacy too. Turn the parts back on in Settings if you want them on that machine.</p>
 
 <h2 id="tab-drag-settings-redraw">Two Things That Got In The Way</h2>
 
