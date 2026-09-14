@@ -18,6 +18,7 @@
 #include "Rundown/RundownTreeWidget.h"
 #include "SettingsDialog.h"
 #include "StatusBarWidget.h"
+#include "BugReport.h"
 #include "WhatsNewDialog.h"
 #include "UpdateDialog.h"
 #include "RelayClient.h"
@@ -404,6 +405,7 @@ void MainWindow::setupMenu()
     this->helpMenu->addSeparator();
     this->helpMenu->addAction("What's New...", this, SLOT(showWhatsNewDialog()));
     this->helpMenu->addAction("Check for Updates...", this, SLOT(showUpdateDialog()));
+    this->helpMenu->addAction("Collect a Bug Report...", this, SLOT(collectBugReport()));
     this->helpMenu->addAction("About CasparCG Client...", this, SLOT(showAboutDialog()));
     action->setEnabled(false);
 
@@ -782,6 +784,16 @@ void MainWindow::showAboutDialog()
 // Nothing checks on its own: no timer, no check at startup. On a playout machine
 // the client is not something to have quietly replace itself, so the operator
 // opens this when they want to know.
+// Everything an operator was asked to gather by hand after a crash, gathered
+// by the client into one zip on the desktop, with the secrets taken out of the
+// database copy. See BugReport.
+void MainWindow::collectBugReport()
+{
+    BugReport::show(this, QString("CasparCG Client %1.%2.%3 build %4 (%5)")
+        .arg(MAJOR_VERSION).arg(MINOR_VERSION).arg(REVISION_VERSION)
+        .arg(DEV_BUILD_ID).arg(BUILD_VERSION));
+}
+
 void MainWindow::showUpdateDialog()
 {
     UpdateDialog dialog(this);

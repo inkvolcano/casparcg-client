@@ -168,6 +168,7 @@ qt_add_library(widgets
     TemplateInstaller.cpp TemplateInstaller.h
     RelayClient.cpp RelayClient.h
     RepoPublisher.cpp RepoPublisher.h
+    BugReport.cpp BugReport.h
     SheetDataResolver.cpp SheetDataResolver.h
     SheetsActionsDialog.cpp SheetsActionsDialog.h
     SimpleModeWidget.cpp SimpleModeWidget.h

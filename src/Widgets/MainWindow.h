@@ -138,6 +138,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void showAboutDialog();
         Q_SLOT void showWhatsNewDialog();
         Q_SLOT void showUpdateDialog();
+        Q_SLOT void collectBugReport();
         Q_SLOT void showHelpDialog();
         Q_SLOT void showSettingsDialog();
         Q_SLOT void toggleFullscreen();

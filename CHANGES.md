@@ -1782,6 +1782,23 @@ about.
 
 ---
 
+## Help → Collect A Bug Report
+
+After every crash an operator was sent a line of PowerShell to gather the log,
+the database, the Windows crash record and the error-report folder. The client
+does it now. **Help → Collect a Bug Report…** writes one folder on the desktop
+and zips it: today's and yesterday's log, a copy of the database, the Windows
+crash records for the client, the newest Windows Error Reporting folder for
+it, and `about.txt` — the build, Qt, Windows, the machine, the servers, the
+preview and template settings, and the largest templates on the machine, which
+is the fact that found the last hang. A dialog says where it went and opens the
+folder. Nothing is sent anywhere; you send the zip.
+
+**Tokens, API keys and passwords are removed from the database copy** before
+it is written — the relay, push, update and template-push tokens and every
+Sheets key — and if that removal cannot be done the copy is left out rather
+than included. The rule is tested against every secret the client stores.
+
 ## The Twenty-Second Hang On The Rolling Graphics
 
 Selecting one of the Dreamforce rolling graphics froze the client for twenty
