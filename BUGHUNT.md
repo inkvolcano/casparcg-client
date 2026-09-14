@@ -1,7 +1,7 @@
 # Bughunt — all findings, by priority
 
-**31 findings: 30 from eight passes on 2026-09-11 against build 219, and F31 from
-a crash in the field the same day. The four P1s
+**33 findings: 30 from eight passes on 2026-09-11 against build 219, F31 from a
+crash in the field the same day, and F32 from one on 2026-09-14. The four P1s
 are fixed in build 220; four of the five P2s in build 221, and the fifth (F30) is
 kept as it is by decision. The other 21 are still open and unchanged.** Every entry
 names the file and line it rests on and the shape of a fix, so each can be picked
@@ -33,6 +33,16 @@ window. They were checked by reading and by type-check, which is weaker than the
 rest of this list.
 
 Full suite after the changes: 1583 assertions, 0 failed, network suites included.
+
+## Fixed in build 232
+
+| | What was done | Checked by |
+|---|---|---|
+| **F33** | `SimpleModeMarker` connected each command's `showInSimpleModeChanged` to a lambda with `Qt::UniqueConnection`, which Qt refuses outright (the log warned on every rundown load), so the badge never followed a tick after the first sweep. One tracked connection per command now, replaced on re-sweep and dropped when the command goes | no automated cover; the warning line is gone from the log on load |
+| **F32** | The tab drag's `QDrag` is parented to the `RundownWidget`, not the tab bar; a drop never closes the split from inside `drag->exec()`; `startTabDrag` closes it after `exec()` returns | no automated cover — window code. Field evidence: `windows-crash.txt` (fault in `casparcg-client.exe`, `0xc0000005`, offset `0x313461`, build 229) and the log's last line `Tab drag started from secondary, tab 0` |
+
+Release builds carry a `.pdb` from 232 on, kept out of the published zip, so the
+next offset in our own exe can be symbolised instead of read from the log.
 
 ## Fixed in build 224
 
@@ -82,6 +92,8 @@ sessions rather than inherited.
 
 | Pri | ID | Finding | Area | Size of fix |
 |---|---|---|---|---|
+| done | F32 | Dragging a tab out of a pane can destroy the bar mid-drag | Rundown | fixed in 232 |
+| done | F33 | The Simple Mode badge never follows an Inspector tick — **mine** | Simple Mode | fixed in 232 |
 | done | F31 | Selecting a video with no audio track crashes the client | Preview | fixed in 222 |
 | done | F28 | One malformed UDP datagram terminates the client | OSC | fixed in 220 |
 | done | F7 | Simple Mode keys point at items a drag has deleted | Simple Mode | fixed in 220 |
@@ -117,6 +129,29 @@ sessions rather than inherited.
 ---
 
 ## P1 — fix before the next venue
+
+### F33. The Simple Mode badge never follows an Inspector tick — mine
+
+**FIXED in build 232.** `Qt::UniqueConnection` with a lambda is refused, not
+deduplicated; the field log carried the warning fourteen times per rundown load.
+Replaced by one tracked connection per command.
+
+### F32. Dragging a tab out of a pane can destroy the bar mid-drag
+
+**FIXED in build 232.** The `QDrag` is parented to the widget that outlives the
+drag; the split is closed after `exec()` returns, never from the drop inside it.
+No automated cover; the exact instruction was not symbolised (no `.pdb` existed
+for 229 — from 232 there is one).
+
+**Rundown · found in the field, 2026-09-14, build 229 — mine, build 226**
+
+GFX-AMS-02 died with an access violation in `casparcg-client.exe` at 22:16:37.
+The bug report from Help → Collect a Bug Report (first use) gave the module and
+offset, and the log's last line: `Tab drag started from secondary, tab 0`, with
+no "entered" or "ended" after it. `startTabDrag` created `new QDrag(bar)` and
+called `exec()`; a drop that emptied the source pane ran `closeSplitView()`
+inside that nested loop, which `deleteLater()`s the pane — the bar and the
+`QDrag` that was its child — while `exec()` was still on the stack.
 
 ### F31. Selecting a video with no audio track crashes the client
 

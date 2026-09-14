@@ -162,7 +162,10 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         void toggleSplitView(Qt::Orientation orientation);
         void updateSplitMenuState();
         void deleteTabFromPane(QTabWidget* pane, int index);
-        void moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex);
+        // closeIfEmpty is false during a tab drag: closing the split deleteLater()s
+        // a pane, and a deleteLater that runs inside the drag's own event loop
+        // destroys the bar the drag came from while exec() is still on the stack.
+        void moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex, bool closeIfEmpty = true);
         void connectRundownTreeSignals(RundownTreeWidget* widget);
 
         Q_SLOT void handleCrossTabGateway(const QString& gatewayId, const QString& exitLabel);

@@ -1782,6 +1782,28 @@ about.
 
 ---
 
+## A Tab Drag Could Take The Client Down
+
+A production client died on build 229 with an access violation in the client
+itself, five seconds after the log's last line: *Tab drag started from
+secondary, tab 0*. That is the tab drag from 226, and the fault was in how it
+ended: the drag's object belonged to the tab bar it came from, and a drop that
+emptied that pane closed the split — deleting the pane, the bar and the drag —
+while the drag was still running. Fixed: the drag belongs to the rundown widget,
+a drop only moves the tab, and the split closes once the drag has finished.
+
+This was the first bug report collected with **Help → Collect a Bug Report**,
+and it named the build, the module and the offset within minutes. What it could
+not do was turn the offset into a function, because no release build carried
+symbols. **From this build every release carries a `.pdb`**, kept in the release
+folder and out of the zip venues download, so the next fault in the client's
+own code is a named line rather than a number.
+
+The same log showed a smaller thing, fixed here too: the Simple Mode badge on a
+rundown row was connected to its Inspector tick with a form of connection Qt
+refuses outright, and warned about, on every rundown load. The badge followed
+the first sweep and never a tick after it. It follows now.
+
 ## Help → Collect A Bug Report
 
 After every crash an operator was sent a line of PowerShell to gather the log,

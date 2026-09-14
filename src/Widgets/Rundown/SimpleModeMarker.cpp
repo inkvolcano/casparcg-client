@@ -47,11 +47,23 @@ void SimpleModeMarker::walk(QTreeWidget* tree, QTreeWidgetItem* item)
         apply(widget, command->getShowInSimpleMode());
 
         // The flag is ticked in the Inspector with this row on screen, so a sweep
-        // on its own would be right only until the next tick. UniqueConnection
-        // makes re-sweeping free rather than doubling the connections.
-        QObject::connect(command, &AbstractCommand::showInSimpleModeChanged,
-                         this, [this, widget](bool onGrid) { apply(widget, onGrid); },
-                         Qt::UniqueConnection);
+        // on its own would be right only until the next tick. Re-sweeping must
+        // not double the connections, and Qt::UniqueConnection is not the way:
+        // with a lambda it refuses to connect at all. The previous connection
+        // for this command is dropped and one new one made.
+        if (this->listening.contains(command))
+        {
+            QObject::disconnect(this->listening.take(command));
+        }
+        else
+        {
+            QObject::connect(command, &QObject::destroyed, this,
+                             [this](QObject* gone) { this->listening.remove(gone); });
+        }
+
+        this->listening.insert(command,
+            QObject::connect(command, &AbstractCommand::showInSimpleModeChanged,
+                             this, [this, widget](bool onGrid) { apply(widget, onGrid); }));
     }
 
     for (int i = 0; i < item->childCount(); i++)

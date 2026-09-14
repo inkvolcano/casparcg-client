@@ -60,6 +60,17 @@ if (MSVC OR APPLE)
     qt_standard_project_setup()
 endif()
 
+if (MSVC)
+    # Symbols for Release builds. A crash in the field arrives as an offset into
+    # casparcg-client.exe, and without the .pdb of that exact build the offset is
+    # a number and nothing more - which is how a build-229 crash had to be found
+    # from its log alone. /Zi adds the .pdb beside the exe and changes no code;
+    # /OPT:REF and /OPT:ICF put back the linker optimisations /DEBUG turns off.
+    # publish-build.ps1 keeps the .pdb out of the zip venues download.
+    add_compile_options("$<$<CONFIG:Release>:/Zi>")
+    add_link_options("$<$<CONFIG:Release>:/DEBUG>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")
+endif()
+
 
 add_subdirectory(Common)
 add_subdirectory(Caspar)

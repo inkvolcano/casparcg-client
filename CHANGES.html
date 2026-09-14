@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
 <a href="#template-scan">Rolling Graphics Hang</a><br>
 <a href="#reconnect-guard">Reconnect Guard</a><br>
@@ -1803,6 +1804,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="tab-drag-crash">A Tab Drag Could Take The Client Down</h2>
+
+<p>A production client died on build 229 with an access violation in the client itself, five seconds after the log's last line: <i>Tab drag started from secondary, tab 0</i>. That is the tab drag from 226, and the fault was in how it ended: the drag's object belonged to the tab bar it came from, and a drop that emptied that pane closed the split &mdash; deleting the pane, the bar and the drag &mdash; while the drag was still running. Fixed: the drag belongs to the rundown widget, a drop only moves the tab, and the split closes once the drag has finished.</p>
+
+<p>This was the first bug report collected with <b>Help &rarr; Collect a Bug Report</b>, and it named the build, the module and the offset within minutes. What it could not do was turn the offset into a function, because no release build carried symbols. <b>From this build every release carries a <code>.pdb</code></b>, kept in the release folder and out of the zip venues download, so the next fault in the client's own code is a named line rather than a number.</p>
+
+<p>The same log showed a smaller thing, fixed here too: the Simple Mode badge on a rundown row was connected to its Inspector tick with a form of connection Qt refuses outright, and warned about, on every rundown load. The badge followed the first sweep and never a tick after it. It follows now.</p>
 
 <h2 id="bug-report">Help &rarr; Collect A Bug Report</h2>
 

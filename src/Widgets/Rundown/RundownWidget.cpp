@@ -449,7 +449,10 @@ bool RundownWidget::eventFilter(QObject* watched, QEvent* event)
 
                 if (event->type() == QEvent::Drop)
                 {
-                    moveTabToOtherPane(source, parts.value(1).toInt());
+                    // Never closing the split from in here: this runs inside
+                    // drag->exec(), and the pane it would delete is the one the
+                    // drag came from. startTabDrag closes it once exec() returns.
+                    moveTabToOtherPane(source, parts.value(1).toInt(), false);
 
                     // Moving the last tab out closes the split, and the panes
                     // with it; only follow the tab while there are still two.
@@ -775,13 +778,25 @@ void RundownWidget::startTabDrag(QTabBar* bar, QMouseEvent* event)
 
     // The tab itself travels with the cursor, so it no longer vanishes at the
     // edge of its bar.
-    QDrag* drag = new QDrag(bar);
+    //
+    // Parented to this widget, not to the bar. A drop that empties a pane used
+    // to close the split from inside exec() below, which deleteLater()s that
+    // pane - and the bar, and a QDrag that was the bar's child - while exec()
+    // was still on the stack. A venue client died that way on build 229: "Tab
+    // drag started from secondary, tab 0" was the last line it wrote.
+    QDrag* drag = new QDrag(this);
     drag->setMimeData(mime);
     drag->setPixmap(bar->grab(bar->tabRect(index)));
     drag->setHotSpot(QPoint(drag->pixmap().width() / 2, drag->pixmap().height() / 2));
     const Qt::DropAction result = drag->exec(Qt::MoveAction);
 
     qDebug("Tab drag ended: %s", result == Qt::MoveAction ? "moved" : "nothing taken it");
+
+    // Only now, with the drag's event loop gone, may the split close. The drop
+    // moved the tab and left the empty pane standing for exactly this reason.
+    if (this->splitViewActive && this->tabWidgetRundownSecondary != nullptr
+        && (this->tabWidgetRundown->count() == 0 || this->tabWidgetRundownSecondary->count() == 0))
+        closeSplitView();
 }
 
 QTabWidget* RundownWidget::paneOf(QWidget* widget) const
@@ -797,7 +812,7 @@ QTabWidget* RundownWidget::paneOf(QWidget* widget) const
     return nullptr;
 }
 
-void RundownWidget::moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex)
+void RundownWidget::moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex, bool closeIfEmpty)
 {
     if (sourcePane == nullptr || tabIndex < 0 || tabIndex >= sourcePane->count())
         return;
@@ -817,8 +832,9 @@ void RundownWidget::moveTabToOtherPane(QTabWidget* sourcePane, int tabIndex)
     targetPane->setTabToolTip(newIndex, tooltip);
     targetPane->setCurrentWidget(widget);
 
-    // If source pane is now empty, close the split.
-    if (sourcePane->count() == 0)
+    // If source pane is now empty, close the split - unless the caller is a
+    // drag in progress, which does it itself once its event loop has ended.
+    if (closeIfEmpty && sourcePane->count() == 0)
         closeSplitView();
 }
 

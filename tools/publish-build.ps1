@@ -150,7 +150,10 @@ New-Item -ItemType Directory -Path $inner -Force | Out-Null
 
 Write-Host ""
 Write-Host "  copying the deployed build..."
-& robocopy $release $inner /E /NFL /NDL /NP /R:2 /W:1 | Out-Null
+# The .pdb stays in the release folder, where a crash offset from the field can
+# be matched to this exact build; it does not travel in the zip, which every
+# venue downloads on an update.
+& robocopy $release $inner /E /XF *.pdb /NFL /NDL /NP /R:2 /W:1 | Out-Null
 # robocopy exit codes below 8 are success; 8 and up are real failures.
 if ($LASTEXITCODE -ge 8) { Fail "robocopy failed with $LASTEXITCODE" }
 

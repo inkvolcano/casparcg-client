@@ -2,6 +2,8 @@
 
 #include "../Shared.h"
 
+#include <QtCore/QHash>
+#include <QtCore/QMetaObject>
 #include <QtCore/QObject>
 
 QT_BEGIN_NAMESPACE
@@ -38,4 +40,11 @@ class WIDGETS_EXPORT SimpleModeMarker : public QObject
     private:
         void apply(QWidget* widget, bool onGrid);
         void walk(QTreeWidget* tree, QTreeWidgetItem* item);
+
+        // One connection per command, replaced on each sweep rather than added
+        // to. Qt::UniqueConnection cannot do this for a lambda - it refuses the
+        // connection outright, with a warning, and until build 232 that is what
+        // happened on every sweep: the badge followed the first sweep and never
+        // an Inspector tick after it. Entries go when their command does.
+        QHash<QObject*, QMetaObject::Connection> listening;
 };
