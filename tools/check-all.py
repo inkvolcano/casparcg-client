@@ -49,6 +49,7 @@ SUITES = [
     ('test-panelregistry', False, 'one list of panels, and every consumer answering from it'),
     ('test-meter',    False, 'what a level meter does between readings: peak hold, clip latch'),
     ('test-medialisting', False, 'reading what a server says it has, and ordering it'),
+    ('test-templatescan', False, 'what a template selection reads: the size gate and the once-per-file cache'),
     ('test-server',  True,  'the HTTP parser, driven over real sockets with real rubbish'),
     ('test-push',    True,  'a whole push, clicked through the buttons, to a real client'),
     ('test-pull',    True,  'the pull route end to end against a real PHP relay'),

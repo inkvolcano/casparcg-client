@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Shared.h"
+#include "TemplateScan.h"
 
 #include "Commands/TemplateCommand.h"
 #include "Events/Rundown/RundownItemSelectedEvent.h"
@@ -47,7 +48,15 @@ class WIDGETS_EXPORT InspectorInvokeWidget : public QWidget
         void syncInvokesToCommand();
         void moveInvokeRow(int from, int to);
         void dragInvokeRowTo(QWidget* handle, const QPoint& globalPos);
-        QStringList scanTemplateFunctions(QString* outFilePath = nullptr) const;
+        // The functions declared in the item's template. Read once per file and
+        // kept while the file is unchanged; a file over TemplateScan's limit is
+        // not read on selection at all unless force is set - which only the
+        // Discover Functions button does.
+        QStringList scanTemplateFunctions(QString* outFilePath = nullptr, bool force = false) const;
+
+        // How large the file was when a selection declined to scan it, or 0.
+        mutable qint64 scanSkippedBytes = 0;
+        mutable TemplateScan::Cache scanCache;
 
         Q_SLOT void addInvokeRow(const QString& text = "", const QString& label = "");
         Q_SLOT void removeInvokeRow();

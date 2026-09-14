@@ -1782,6 +1782,20 @@ about.
 
 ---
 
+## The Twenty-Second Hang On The Rolling Graphics
+
+Selecting one of the Dreamforce rolling graphics froze the client for twenty
+seconds, then again a moment later. No preview setting changed it, because it
+was never the Preview panel: those templates are self-contained pages with
+their images embedded, **18 to 28 MB of HTML each**, and the Inspector's Invoke
+section read the whole file, decoded it, and ran three regular expressions
+over it to learn the template's functions - on every click.
+
+A template is now scanned once per file and remembered while the file is
+unchanged, and a file over 4 MB is not scanned on selection at all. The
+status bar says so, and **Discover Functions** scans it on purpose. Every
+ordinary template is under 100 KB and is unaffected either way.
+
 ## Two Small Things The Log Showed
 
 A rundown opened from a repository URL keeps a newsroom connection to that

@@ -10,6 +10,7 @@
 #include "Playout.h"
 
 #include <QtCore/QDir>
+#include <QtCore/QFileInfo>
 #include <QtCore/QFile>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSet>
@@ -203,6 +204,12 @@ void InspectorInvokeWidget::rundownItemSelected(const RundownItemSelectedEvent& 
         // Refresh the dropdown choices for THIS item's template — discovered
         // functions must never leak from the previously selected item.
         this->discoveredFunctions = scanTemplateFunctions();
+
+        // A file too large to scan on a click is said so, or the empty dropdown
+        // would look like a template with no functions.
+        if (this->scanSkippedBytes > 0)
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent(TemplateScan::skippedNotice(this->scanSkippedBytes)));
 
         clearInvokeRows();
         const QStringList& invokes = this->command->getInvokes();
@@ -420,8 +427,10 @@ void InspectorInvokeWidget::moveInvokeRow(int from, int to)
 // Silent scan of the selected item's template HTML for raw JS function
 // declarations. Returns an empty list when the template can't be resolved or
 // read; outFilePath (optional) receives the resolved path when there is one.
-QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath) const
+QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath, bool force) const
 {
+    this->scanSkippedBytes = 0;
+
     if (this->command.isNull() || this->model == nullptr)
         return {};
 
@@ -440,6 +449,23 @@ QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath) c
     QString filePath = QDir(templatePath).filePath(templateName + ".html");
     if (outFilePath != nullptr)
         *outFilePath = filePath;
+
+    QFileInfo info(filePath);
+    if (!info.exists())
+        return {};
+
+    // Read once per file. The Dreamforce rolling graphics are 18 to 28 MB of
+    // HTML with their media embedded, and reading, decoding and scanning one of
+    // those took twenty seconds on the interface thread - on every click.
+    QStringList remembered;
+    if (this->scanCache.lookup(filePath, info, &remembered))
+        return remembered;
+
+    if (!force && !TemplateScan::scanOnSelection(info.size()))
+    {
+        this->scanSkippedBytes = info.size();
+        return {};
+    }
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -470,6 +496,8 @@ QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath) c
     collect(QRegularExpression("window\\.([A-Za-z_$][\\w$]*)\\s*=\\s*(?:async\\s+)?function").globalMatch(content));
     collect(QRegularExpression("(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:async\\s+)?(?:function\\b|\\([^)]*\\)\\s*=>)").globalMatch(content));
 
+    this->scanCache.remember(filePath, info, discovered);
+
     return discovered;
 }
 
@@ -479,7 +507,7 @@ void InspectorInvokeWidget::importInvokes()
         return;
 
     QString filePath;
-    QStringList discovered = scanTemplateFunctions(&filePath);
+    QStringList discovered = scanTemplateFunctions(&filePath, true);
 
     if (discovered.isEmpty())
     {

@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#template-scan">Rolling Graphics Hang</a><br>
 <a href="#reconnect-guard">Reconnect Guard</a><br>
 <a href="#preview-legacy">Preview Legacy By Default</a><br>
 <a href="#tab-drag-settings-redraw">Tab Drag, Settings Redraw</a><br>
@@ -1801,6 +1802,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="template-scan">The Twenty-Second Hang On The Rolling Graphics</h2>
+
+<p>Selecting one of the Dreamforce rolling graphics froze the client for twenty seconds, then again a moment later. No preview setting changed it, because it was never the Preview panel: those templates are self-contained pages with their images embedded, <b>18 to 28 MB of HTML each</b>, and the Inspector's Invoke section read the whole file, decoded it, and ran three regular expressions over it to learn the template's functions &mdash; on every click.</p>
+
+<p>A template is now scanned once per file and remembered while the file is unchanged, and a file over 4 MB is not scanned on selection at all. The status bar says so, and <b>Discover Functions</b> scans it on purpose. Every ordinary template is under 100 KB and is unaffected either way.</p>
 
 <h2 id="reconnect-guard">Two Small Things The Log Showed</h2>
 
