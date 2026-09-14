@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#reconnect-guard">Reconnect Guard</a><br>
 <a href="#preview-legacy">Preview Legacy By Default</a><br>
 <a href="#tab-drag-settings-redraw">Tab Drag, Settings Redraw</a><br>
 <a href="#master-push">Master Push</a><br>
@@ -1800,6 +1801,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="reconnect-guard">Two Small Things The Log Showed</h2>
+
+<p>A rundown opened from a repository URL keeps a newsroom connection to that host for the life of the tab, and it tried to connect <b>every five seconds while the previous attempt was still pending</b> &mdash; Qt refused each one with a warning, and the log filled with them. A new attempt now starts only when the socket is idle; the timer still runs, so a host that never answers keeps being tried, just not on top of itself.</p>
+
+<p>And a CasparCG server named by hostname rather than IP was looked up with a blocking DNS call on the interface thread every time an OSC filter was built for it &mdash; on every selection of a movie or audio item. It is resolved once and kept for as long as the address stays the same. Servers named by IP, which is nearly all of them, were never affected.</p>
 
 <h2 id="preview-legacy">The Preview Panel Is Legacy Again, By Default</h2>
 

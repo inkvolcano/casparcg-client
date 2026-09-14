@@ -27,15 +27,19 @@ const QString CasparDevice::resolveIpAddress() const
     if (!address.isNull())
         return getAddress(); // The ip address is valid.
 
-    // We don't have a valid ip address. Try to resolve using dns lookup.
+    // We don't have a valid ip address. Resolve it once - the lookup blocks
+    // this thread - and keep the answer for as long as the address is the same.
+    if (this->resolvedFor == AmcpDevice::getAddress())
+        return this->resolvedTo;
+
     QHostInfo hostInfo = QHostInfo::fromName(AmcpDevice::getAddress());
-    if (hostInfo.error() != QHostInfo::NoError)
-        return "";
+    if (hostInfo.error() != QHostInfo::NoError || hostInfo.addresses().isEmpty())
+        return "";   // not kept: the next call tries again, as before
 
-    if (hostInfo.addresses().isEmpty())
-        return "";
+    this->resolvedFor = AmcpDevice::getAddress();
+    this->resolvedTo = hostInfo.addresses().at(0).toString();
 
-    return hostInfo.addresses().at(0).toString();
+    return this->resolvedTo;
 }
 
 void CasparDevice::refreshData()

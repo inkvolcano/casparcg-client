@@ -29,7 +29,12 @@ void AmcpDevice::connectDevice()
     if (this->connected)
         return;
 
-    this->socket->connectToHost(this->address, this->port);
+    // Only when the socket is idle. Told to connect while a previous attempt is
+    // still looking up or connecting, Qt refuses and warns - once every five
+    // seconds, for as long as the far end does not answer. The timer re-arms
+    // either way, so a device that never answers keeps being tried.
+    if (this->socket->state() == QAbstractSocket::UnconnectedState)
+        this->socket->connectToHost(this->address, this->port);
 
     QTimer::singleShot(5000, this, SLOT(connectDevice()));
 }

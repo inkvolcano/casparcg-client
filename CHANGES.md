@@ -1782,6 +1782,21 @@ about.
 
 ---
 
+## Two Small Things The Log Showed
+
+A rundown opened from a repository URL keeps a newsroom connection to that
+host for the life of the tab, and it tried to connect **every five seconds
+while the previous attempt was still pending** — Qt refused each one with a
+warning, and the log filled with them. A new attempt now starts only when the
+socket is idle; the timer still runs, so a host that never answers keeps being
+tried, just not on top of itself.
+
+And a CasparCG server named by hostname rather than IP was looked up with a
+blocking DNS call on the interface thread every time an OSC filter was built
+for it — on every selection of a movie or audio item. It is resolved once and
+kept for as long as the address stays the same. Servers named by IP, which is
+nearly all of them, were never affected.
+
 ## The Preview Panel Is Legacy Again, By Default
 
 The newer preview opened something on every click: a web view for a template,

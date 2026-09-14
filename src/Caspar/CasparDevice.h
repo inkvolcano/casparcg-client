@@ -17,7 +17,16 @@ class CASPAR_EXPORT CasparDevice : public AmcpDevice
     public:
         explicit CasparDevice(const QString& address, int port = 5250, QObject* parent = 0);
 
+        // The address as an IP, resolving a hostname once and keeping the answer:
+        // QHostInfo::fromName blocks the calling thread, and this is called on the
+        // GUI thread for every OSC filter built for the device.
         const QString resolveIpAddress() const;
+
+    private:
+        mutable QString resolvedFor;
+        mutable QString resolvedTo;
+
+    public:
 
         void refreshData();
         void refreshMedia();
