@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## NDI Viewers Off The Interface Thread
+
+Round 16 of the performance work.
+
+- **NDI viewers no longer tie up the interface.** Every frame from every NDI
+  source was resized to fit its tile by the part of the client that also
+  handles clicks, keys and redraws - about 5 ms a frame, so four viewers at
+  full frame rate used most of its time and the client felt sluggish with the
+  NDI panel open. Each viewer now resizes its frames on its own background
+  thread, and the interface only puts the finished picture on screen. The
+  picture is the same.
+
 ## A Big Media Server Refreshes Without Freezing
 
 Round 15 of the performance work.

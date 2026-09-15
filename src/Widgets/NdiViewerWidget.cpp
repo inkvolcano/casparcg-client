@@ -240,9 +240,22 @@ void NdiViewerWidget::onVideoFrame(const QImage& image)
         restartLabelHide();
     }
 
-    QPixmap pixmap = QPixmap::fromImage(image);
-    this->videoLabel->setPixmap(pixmap.scaled(
-        this->videoLabel->size(), Qt::KeepAspectRatio, scalingMode_));
+    // Frames normally arrive already scaled to the label (the receiver does it on
+    // its own thread). One that does not fit - the first frames, or the one in
+    // flight while the grid was resized - is scaled here as before, and the next
+    // frame arrives at the new size.
+    const QSize area = this->videoLabel->size();
+    const QSize fitted = image.size().scaled(area, Qt::KeepAspectRatio);
+    if (image.size() == fitted)
+        this->videoLabel->setPixmap(QPixmap::fromImage(image));
+    else
+        this->videoLabel->setPixmap(QPixmap::fromImage(image).scaled(area, Qt::KeepAspectRatio, scalingMode_));
+
+    if (this->receiver != nullptr)
+    {
+        this->receiver->setTargetSize(area.width(), area.height());
+        this->receiver->setScalingMode(scalingMode_);
+    }
 
     // Ready for the next one. A frame from a receiver already replaced can only
     // release the new receiver's hold one frame early, which is still one frame.

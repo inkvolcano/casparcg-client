@@ -112,6 +112,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P5 | Library vs server comparison: nested loops with a copy per inner step, for media (three passes), templates, data and thumbnails, on the GUI thread every refresh | **done 252** - measured at 10,000 clips: 14,289 ms as written, 4 ms with hash lookups, identical deletes, inserts and detail rows. All four comparisons now use QSet/QHash; the media detail pass keeps the first library row of a name, as its early break did |
 
+## Round 16 - build 253
+
+| # | Item | Status |
+|---|------|--------|
+| P11b | NDI viewer converted and scaled every full frame on the GUI thread | **done 253** - measured: QPixmap::fromImage(1080p) + scaled to a 480x270 tile, 4.68 ms per frame (3.88 fast mode); four viewers at 50 fps is ~940 ms of GUI time a second. The receiver now scales to the label size on its own thread (4.2 ms there) and the GUI converts the small image, 0.05 ms. A frame that does not fit the label (first frames, a resize in flight) is still scaled on the GUI as before |
+
 ## Checked, not worth changing
 
 | # | Item | Measurement |
@@ -131,6 +137,5 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | # | Item | Where | Risk |
 |---|------|-------|------|
 | P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
-| P11b | NDI viewer scales each full frame on the GUI thread | NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |

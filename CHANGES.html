@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-16">NDI Off The Interface Thread</a><br>
 <a href="#perf-round-15">Big Libraries Refresh Fast</a><br>
 <a href="#perf-round-14">A Lighter Activity Panel</a><br>
 <a href="#sheets-outage">Sheets Through An Outage</a><br>
@@ -1844,6 +1845,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-16">NDI Viewers Off The Interface Thread</h2>
+
+<p>Round 16 of the performance work.</p>
+
+<ul>
+<li><b>NDI viewers no longer tie up the interface.</b> Every frame from every NDI source was resized to fit its tile by the part of the client that also handles clicks, keys and redraws &mdash; about 5 ms a frame, so four viewers at full frame rate used most of its time and the client felt sluggish with the NDI panel open. Each viewer now resizes its frames on its own background thread, and the interface only puts the finished picture on screen. The picture is the same.</li>
+</ul>
 
 <h2 id="perf-round-15">A Big Media Server Refreshes Without Freezing</h2>
 

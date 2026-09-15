@@ -29,6 +29,12 @@ public:
     // is, the receiver drops new frames instead of queueing them.
     void frameShown();
 
+    // The size the viewer shows frames at, and how smoothly. Frames are scaled to
+    // it here, on the receiver's thread, instead of arriving at full size and
+    // being scaled on the GUI thread. Zero means not known yet: full size is sent.
+    void setTargetSize(int width, int height);
+    void setScalingMode(int mode);
+
     Q_SIGNAL void videoFrameReceived(const QImage& image);
     Q_SIGNAL void connectionStateChanged(bool connected);
     Q_SIGNAL void finished();
@@ -50,6 +56,10 @@ private:
     // nothing limited how many could wait there: a GUI thread busy for a second
     // held a second's worth of frames, per viewer.
     std::atomic<bool> framePending{false};
+
+    std::atomic<int> targetWidth{0};
+    std::atomic<int> targetHeight{0};
+    std::atomic<int> scalingMode{1};   // Qt::SmoothTransformation
     NDIlib_recv_bandwidth_e bandwidth_ = NDIlib_recv_bandwidth_highest;
 
     QAudioSink* audioSink = nullptr;
