@@ -21,10 +21,12 @@ class WEB_EXPORT HttpRequest : public QObject
         void sendPost(const QString& url, const QUrlQuery& query);
 
     private:
-        QNetworkAccessManager* networkManager;
-        QString pendingGetUrl;
-        QString pendingPostUrl;
+        // One for the life of the item, made on first use. A manager per request
+        // meant no connection reuse, and a second send before the first answered
+        // overwrote the pointer: the first answer then deleted the second
+        // request's manager, cancelling it, and was logged under its URL.
+        QNetworkAccessManager* networkManager = nullptr;
 
-        Q_SLOT void sendGetFinished(QNetworkReply*);
-        Q_SLOT void sendPostFinished(QNetworkReply*);
+        QNetworkAccessManager* manager();
+        void logReply(const QString& method, const QString& url, QNetworkReply* reply);
 };

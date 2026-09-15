@@ -22,6 +22,7 @@
 #include "Models/DeviceModel.h"
 #include "Models/KeyValueModel.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -305,7 +306,7 @@ void InspectorTemplateWidget::showAddTemplateDataDialog(const ShowAddTemplateDat
     int index = this->treeWidgetTemplateData->invisibleRootItem()->childCount() - 1;
     this->treeWidgetTemplateData->setCurrentItem(this->treeWidgetTemplateData->invisibleRootItem()->child(index));
 
-    KeyValueDialog* dialog = new KeyValueDialog(this);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
     dialog->setTitle("New Template Data");
     dialog->setKey(QString("f%1").arg(this->fieldCounter));
     if (dialog->exec() == QDialog::Accepted)
@@ -454,8 +455,8 @@ void InspectorTemplateWidget::updateTemplateDataModels()
 
 bool InspectorTemplateWidget::addRow()
 {
-    KeyValueDialog* dialog = new KeyValueDialog(this);
-    DialogPosition::moveNearCursor(dialog);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
+    DialogPosition::moveNearCursor(dialog.data());
     dialog->setTitle("New Template Data");
     dialog->setKey(QString("f%1").arg(this->fieldCounter));
     if (dialog->exec() == QDialog::Accepted)
@@ -480,8 +481,8 @@ bool InspectorTemplateWidget::editRow()
     if (this->treeWidgetTemplateData->currentItem() == NULL)
         return true;
 
-    KeyValueDialog* dialog = new KeyValueDialog(this);
-    DialogPosition::moveNearCursor(dialog);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
+    DialogPosition::moveNearCursor(dialog.data());
     dialog->setTitle("Edit Template Data");
     dialog->setKey(this->treeWidgetTemplateData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetTemplateData->currentItem()->text(1));

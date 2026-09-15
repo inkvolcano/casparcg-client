@@ -28,6 +28,7 @@
 #include "Models/DeviceModel.h"
 #include "Models/GpiModel.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QCheckBox>
@@ -2656,7 +2657,7 @@ void SettingsDialog::showImportDeviceDialog()
 
     if (!path.isEmpty())
     {
-        ImportDeviceDialog* dialog = new ImportDeviceDialog(this);
+        QScopedPointer<ImportDeviceDialog, QScopedPointerDeleteLater> dialog(new ImportDeviceDialog(this));
         dialog->setImportFile(path);
         if (dialog->exec() == QDialog::Accepted)
         {
@@ -2679,7 +2680,7 @@ void SettingsDialog::showImportDeviceDialog()
 
 void SettingsDialog::showAddDeviceDialog()
 {
-    DeviceDialog* dialog = new DeviceDialog(this);
+    QScopedPointer<DeviceDialog, QScopedPointerDeleteLater> dialog(new DeviceDialog(this));
     if (dialog->exec() == QDialog::Accepted)
     {
         QString error = DatabaseManager::getInstance().insertDevice(DeviceModel(0, dialog->getName(), dialog->getAddress(),
@@ -2703,7 +2704,7 @@ void SettingsDialog::showAddDeviceDialog()
 
 void SettingsDialog::showAddOscOutputDialog()
 {
-    OscOutputDialog* dialog = new OscOutputDialog(this);
+    QScopedPointer<OscOutputDialog, QScopedPointerDeleteLater> dialog(new OscOutputDialog(this));
     if (dialog->exec() == QDialog::Accepted)
     {
         DatabaseManager::getInstance().insertOscOutput(OscOutputModel(0, dialog->getName(), dialog->getAddress(),
@@ -2747,7 +2748,7 @@ void SettingsDialog::deviceItemDoubleClicked(QTreeWidgetItem* current, int index
 
     DeviceModel model = DatabaseManager::getInstance().getDeviceById(current->text(0).toInt());
 
-    DeviceDialog* dialog = new DeviceDialog(this);
+    QScopedPointer<DeviceDialog, QScopedPointerDeleteLater> dialog(new DeviceDialog(this));
     dialog->setDeviceModel(model);
     if (dialog->exec() == QDialog::Accepted)
     {
@@ -2773,7 +2774,7 @@ void SettingsDialog::oscOutputItemDoubleClicked(QTreeWidgetItem* current, int in
 
     OscOutputModel model = DatabaseManager::getInstance().getOscOutputByAddress(current->text(3));
 
-    OscOutputDialog* dialog = new OscOutputDialog(this);
+    QScopedPointer<OscOutputDialog, QScopedPointerDeleteLater> dialog(new OscOutputDialog(this));
     dialog->setDeviceModel(model);
     if (dialog->exec() == QDialog::Accepted)
     {

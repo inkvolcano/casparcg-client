@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-2">Fewer Leftovers</a><br>
 <a href="#perf-round-1">Faster Clicks And Loads</a><br>
 <a href="#choose-build">Choose A Build, Roll Back</a><br>
 <a href="#drop-spot">Where A Drop Lands</a><br>
@@ -1829,6 +1830,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-2">Fewer Leftovers: Dialogs, HTTP Items, Thumbnails</h2>
+
+<p>Round 2 of the performance work.</p>
+
+<ul>
+<li><b>Dialogs are freed when they close.</b> Settings, About, Help, Open Rundown From URL, Save as Preset, the device and OSC output editors and the key/value editors each left a complete copy of themselves behind every time they were opened, for as long as the client ran. A left-behind Settings dialog stayed connected to the relay and publisher, updating widgets nobody could see.</li>
+<li><b>HTTP GET and POST items reuse one connection manager.</b> Each request made a new one. Firing an item a second time before the first request answered also cancelled the second request and logged the answer under the wrong address; both requests now complete and are logged as themselves.</li>
+<li><b>The thumbnail fetcher no longer spins on a missing server.</b> A thumbnail queued for a server that was removed, or a shadow server, was looked at again every two seconds for as long as the client ran.</li>
+</ul>
 
 <h2 id="perf-round-1">Faster Clicks, Refreshes And Rundown Loads</h2>
 

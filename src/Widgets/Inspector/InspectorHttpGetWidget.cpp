@@ -7,6 +7,7 @@
 #include "EventManager.h"
 #include "Models/KeyValueModel.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtCore/QDebug>
 
 #include <QtGui/QClipboard>
@@ -60,7 +61,7 @@ void InspectorHttpGetWidget::showAddHttpGetDataDialog(const ShowAddHttpGetDataDi
     int index = this->treeWidgetHttpData->invisibleRootItem()->childCount() - 1;
     this->treeWidgetHttpData->setCurrentItem(this->treeWidgetHttpData->invisibleRootItem()->child(index));
 
-    KeyValueDialog* dialog = new KeyValueDialog(this);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
     dialog->setTitle("New HTTP GET Data");
     if (dialog->exec() == QDialog::Accepted)
     {
@@ -136,8 +137,8 @@ void InspectorHttpGetWidget::updateHttpDataModels()
 
 bool InspectorHttpGetWidget::addRow()
 {
-    KeyValueDialog* dialog = new KeyValueDialog(this);
-    DialogPosition::moveNearCursor(dialog);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
+    DialogPosition::moveNearCursor(dialog.data());
     dialog->setTitle("New HTTP GET Data");
     if (dialog->exec() == QDialog::Accepted)
     {
@@ -157,8 +158,8 @@ bool InspectorHttpGetWidget::editRow()
     if (this->treeWidgetHttpData->currentItem() == NULL)
         return true;
 
-    KeyValueDialog* dialog = new KeyValueDialog(this);
-    DialogPosition::moveNearCursor(dialog);
+    QScopedPointer<KeyValueDialog, QScopedPointerDeleteLater> dialog(new KeyValueDialog(this));
+    DialogPosition::moveNearCursor(dialog.data());
     dialog->setTitle("Edit HTTP GET Data");
     dialog->setKey(this->treeWidgetHttpData->currentItem()->text(0));
     dialog->setValue(this->treeWidgetHttpData->currentItem()->text(1));

@@ -43,7 +43,13 @@ void ThumbnailWorker::process()
 
     const QSharedPointer<DeviceModel> model = DeviceManager::getInstance().getDeviceModelByAddress(this->currentAddress);
     if (model == NULL || model->getShadow() == "Yes")
+    {
+        // Dropped, not retried. Returning with the entry still at the head meant
+        // the same entry was looked at again every two seconds for as long as the
+        // client ran - the timer never stopped for a removed or shadow server.
+        this->thumbnailModels.removeAt(0);
         return;
+    }
 
     const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(model->getName());
     if (!device->isConnected())
@@ -57,7 +63,10 @@ void ThumbnailWorker::process()
     EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(QString("Retrieving thumbnail %1...").arg(this->currentName)));
     qDebug("Retrieving thumbnail %s", qPrintable(this->currentName));
 
-    QObject::connect(device.data(), SIGNAL(thumbnailRetrieveChanged(const QString&, CasparDevice&)), this, SLOT(thumbnailRetrieveChanged(const QString&, CasparDevice&)));
+    // Once. This ran on every tick, and a reply slower than two seconds found a
+    // second connection added before the first was removed, so it was stored
+    // twice.
+    QObject::connect(device.data(), SIGNAL(thumbnailRetrieveChanged(const QString&, CasparDevice&)), this, SLOT(thumbnailRetrieveChanged(const QString&, CasparDevice&)), Qt::UniqueConnection);
     device->retrieveThumbnail(this->currentName);
 
     this->thumbnailModels.removeAt(0);

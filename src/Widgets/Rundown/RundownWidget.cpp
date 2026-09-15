@@ -13,6 +13,7 @@
 
 #include "AutoSaveNaming.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtCore/QDir>
 #include <QtCore/QDebug>
 #include <QtCore/QFile>
@@ -1162,7 +1163,7 @@ void RundownWidget::openRundownFromUrl(const OpenRundownFromUrlEvent& event)
 
     if (event.getPath().isEmpty())
     {
-        OpenRundownFromUrlDialog* dialog = new OpenRundownFromUrlDialog(this);
+        QScopedPointer<OpenRundownFromUrlDialog, QScopedPointerDeleteLater> dialog(new OpenRundownFromUrlDialog(this));
         if (dialog->exec() == QDialog::Accepted)
             path = dialog->getPath();
     }

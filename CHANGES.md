@@ -1838,6 +1838,23 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Fewer Leftovers: Dialogs, HTTP Items, Thumbnails
+
+Round 2 of the performance work.
+
+- **Dialogs are freed when they close.** Settings, About, Help, Open Rundown
+  From URL, Save as Preset, the device and OSC output editors and the key/value
+  editors each left a complete copy of themselves behind every time they were
+  opened, for as long as the client ran. A left-behind Settings dialog stayed
+  connected to the relay and publisher, updating widgets nobody could see.
+- **HTTP GET and POST items reuse one connection manager.** Each request made a
+  new one. Firing an item a second time before the first request answered also
+  cancelled the second request and logged the answer under the wrong address;
+  both requests now complete and are logged as themselves.
+- **The thumbnail fetcher no longer spins on a missing server.** A thumbnail
+  queued for a server that was removed, or a shadow server, was looked at again
+  every two seconds for as long as the client ran.
+
 ## Faster Clicks, Refreshes And Rundown Loads
 
 The first round from a performance audit of the whole client: the changes that

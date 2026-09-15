@@ -2,6 +2,7 @@
 
 #include "../Common/PanelFit.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtGui/QScreen>
 #include "AboutDialog.h"
 #include "ClockWidget.h"
@@ -793,7 +794,7 @@ void MainWindow::reloadRundown()
 
 void MainWindow::showAboutDialog()
 {
-    AboutDialog* dialog = new AboutDialog(this);
+    QScopedPointer<AboutDialog, QScopedPointerDeleteLater> dialog(new AboutDialog(this));
     dialog->exec();
 }
 
@@ -825,7 +826,7 @@ void MainWindow::showWhatsNewDialog()
 
 void MainWindow::showHelpDialog()
 {
-    HelpDialog* dialog = new HelpDialog(this);
+    QScopedPointer<HelpDialog, QScopedPointerDeleteLater> dialog(new HelpDialog(this));
     dialog->exec();
 }
 
@@ -957,9 +958,12 @@ void MainWindow::showSettingsDialog()
     // Reset inspector panel.
     EventManager::getInstance().fireEmptyRundownEvent(EmptyRundownEvent());
 
-    SettingsDialog* dialog = new SettingsDialog(this);
-    QObject::connect(dialog, SIGNAL(gpiBindingChanged(int, Playout::PlayoutType)), this->widgetRundown, SLOT(gpiBindingChanged(int, Playout::PlayoutType)));
-    QObject::connect(dialog, SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
+    // Freed when this returns. Every opening used to leave a whole Settings dialog
+    // behind, parented to the main window and still connected to the relay and
+    // publisher singletons, so each one went on updating its hidden widgets.
+    QScopedPointer<SettingsDialog, QScopedPointerDeleteLater> dialog(new SettingsDialog(this));
+    QObject::connect(dialog.data(), SIGNAL(gpiBindingChanged(int, Playout::PlayoutType)), this->widgetRundown, SLOT(gpiBindingChanged(int, Playout::PlayoutType)));
+    QObject::connect(dialog.data(), SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
 
     dialog->exec();
 

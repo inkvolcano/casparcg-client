@@ -77,6 +77,7 @@
 
 #include "AutoSaveNaming.h"
 
+#include <QtCore/QScopedPointer>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -4146,7 +4147,7 @@ void RundownTreeWidget::saveAsPreset()
     if (!copySelectedItems())
         return;
 
-    PresetDialog* dialog = new PresetDialog(this);
+    QScopedPointer<PresetDialog, QScopedPointerDeleteLater> dialog(new PresetDialog(this));
     if (dialog->exec() == QDialog::Accepted)
     {
         DatabaseManager::getInstance().insertPreset(PresetModel(0, dialog->getName(), qApp->clipboard()->text()));

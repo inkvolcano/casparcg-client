@@ -21,16 +21,21 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P7 | No indexes on Configuration / Library; thumbnail query did not join Library to Device | **done 237** - migration 260; query now matches the item's own server |
 | - | Update download held the whole package in memory before hashing | **done 236** - streamed to a part file |
 
-## Round 2 - next
+## Round 2 - build 238
+
+| # | Item | Status |
+|---|------|--------|
+| P13 | Dialogs created with `new` on every open and never freed (Settings stayed connected to singletons; the URL dialog kept an app-wide event filter) | **done 238** - 16 sites freed on return via QScopedPointerDeleteLater, after every getter is read |
+| P16 | HTTP items made a network manager per request; a second send before the first answered cancelled the second and logged the wrong URL | **done 238** - one manager per item, each reply logs its own URL |
+| P21 | ThumbnailWorker connected its reply slot on every tick; a removed or shadow server's entry was retried every 2 s forever | **done 238** |
+| P20 | AMCP/RRUP reply parsing removes each line from the front of the buffer | **checked: not worth it** - measured 40,000 lines at 41 ms old vs 20 ms offset-based; Qt 6 trims a string's front cheaply, so the predicted quadratic cost is not there |
+
+## Next
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
 | P1 | One click fires RundownItemSelectedEvent 2-3 times (itemSelectionChanged, itemClicked, currentItemChanged); ~49 listeners redo their work each time | RundownTreeWidget.cpp itemSelectionChanged / itemClicked / currentItemChanged | medium: multi-select refresh must survive |
 | P2 | Every selection refills the Inspector target combo from a full library query | InspectorOutputWidget::fillTargetCombo | low |
-| P13 | Dialogs created with `new` on every open and never freed; SettingsDialog stays connected to singletons, OpenRundownFromUrlDialog keeps a qApp event filter | MainWindow, RundownWidget, RundownTreeWidget, Inspector Http/Template, SettingsDialog | low |
-| P16 | HTTP GET/POST items create a QNetworkAccessManager per request; a second send leaks the first | Web/HttpRequest.cpp | low |
-| P21 | ThumbnailWorker connects the reply signal on every tick; NULL model retries forever | Core/ThumbnailWorker.cpp | low |
-| P20 | AMCP reply parsing shifts the whole buffer once per line (quadratic on CLS/TLS) | Caspar/AmcpDevice.cpp | low |
 
 ## Open - later rounds
 
