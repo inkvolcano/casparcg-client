@@ -141,6 +141,59 @@ int main(int argc, char** argv)
     }
     expectTrue(agreed == names.count(), QString("the cache agrees with the table on all %1 names").arg(names.count()));
 
+    out << "\nDevices and formats\n";
+
+    exec("CREATE TABLE Device (Id INTEGER PRIMARY KEY, Name TEXT, Address TEXT, Port INTEGER, Username TEXT, Password TEXT, "
+         "Description TEXT, Version TEXT, Shadow TEXT, Channels INTEGER, ChannelFormats TEXT, PreviewChannel INTEGER, "
+         "LockedChannel INTEGER, TemplatePath TEXT, MediaPath TEXT, ServerPath TEXT)");
+    exec("CREATE TABLE Format (Id INTEGER PRIMARY KEY, Name TEXT, Width INTEGER, Height INTEGER, FramesPerSecond TEXT)");
+    exec("INSERT INTO Format (Name, Width, Height, FramesPerSecond) VALUES ('1080i5000', 1920, 1080, '25'), ('1080p5000', 1920, 1080, '50')");
+    exec("INSERT INTO Device (Name, Address, Port, Username, Password, Description, Version, Shadow, Channels, ChannelFormats, "
+         "PreviewChannel, LockedChannel, TemplatePath, MediaPath, ServerPath) "
+         "VALUES ('Server A', '10.0.0.1', 5250, '', '', '', '2.3', 'No', 2, '1080i5000,1080p5000', 0, 0, '', '', '')");
+
+    const auto tableFormats = [](const QString& name) {
+        QSqlQuery sql;
+        sql.prepare("SELECT ChannelFormats FROM Device WHERE Name = :Name");
+        sql.bindValue(":Name", name);
+        sql.exec();
+        return sql.first() ? sql.value(0).toString() : QString();
+    };
+
+    expectTrue(manager.getDeviceByName("Server A").getChannelFormats() == "1080i5000,1080p5000", "a device reads back");
+    expectTrue(manager.getDeviceByName("Server A").getChannelFormats() == "1080i5000,1080p5000", "and again from memory, the same");
+    expectTrue(manager.getFormat("1080p5000").getFramesPerSecond() == "50", "a format reads back");
+    expectTrue(manager.getFormat("1080p5000").getFramesPerSecond() == "50", "and again from memory, the same");
+    expectTrue(manager.getFormat("nonsense").getFramesPerSecond().isEmpty(), "an unknown format is empty, as the query returned");
+
+    DeviceModel changed(0, "Server A", "10.0.0.1", 5250, "", "", "", "2.3", "No", 2, "1080p5000,1080p5000", 0, 0, "", "", "");
+    manager.updateDeviceChannelFormats(changed);
+    expectTrue(tableFormats("Server A") == "1080p5000,1080p5000", "the channel formats changed in the table");
+    expectTrue(manager.getDeviceByName("Server A").getChannelFormats() == "1080p5000,1080p5000",
+               "and the device read after it has them - the cached copy was let go");
+
+    const int idA = manager.getDeviceByName("Server A").getId();
+    DeviceModel renamed(idA, "Server B", "10.0.0.1", 5250, "", "", "", "2.3", "No", 2, "1080p5000,1080p5000", 0, 0, "", "", "");
+    manager.updateDevice(renamed);
+    expectTrue(manager.getDeviceByName("Server A").getId() == 0, "a renamed device is no longer found by its old name");
+    expectTrue(manager.getDeviceByName("Server B").getId() == idA, "and is found by its new one");
+
+    DeviceModel added(0, "Server C", "10.0.0.2", 5250, "", "", "", "", "No", 1, "1080i5000", 0, 0, "", "", "");
+    expectTrue(manager.getDeviceByName("Server C").getId() == 0, "a device not yet added is empty");
+    manager.insertDevice(added);
+    expectTrue(manager.getDeviceByName("Server C").getId() > 0, "and found as soon as it is added, though its absence was remembered");
+
+    manager.updateDeviceVersion(DeviceModel(0, "", "10.0.0.2", 0, "", "", "", "2.4", "", 0, "", 0, 0, "", "", ""));
+    expectTrue(manager.getDeviceByName("Server C").getVersion() == "2.4", "a version written by address is seen by name");
+
+    manager.updateDeviceChannels(DeviceModel(0, "", "10.0.0.2", 0, "", "", "", "", "", 4, "", 0, 0, "", "", ""));
+    expectTrue(manager.getDeviceByName("Server C").getChannels() == 4, "a channel count written by address is seen by name");
+
+    exec("CREATE TABLE Thumbnail (Id INTEGER PRIMARY KEY, Data TEXT, Timestamp TEXT, Size TEXT)");
+    exec("CREATE TABLE Library (Id INTEGER PRIMARY KEY, Name TEXT, DeviceId INTEGER, TypeId INTEGER, ThumbnailId INTEGER, Timecode TEXT, Size INTEGER DEFAULT -1, Timestamp TEXT)");
+    manager.deleteDevice(manager.getDeviceByName("Server C").getId());
+    expectTrue(manager.getDeviceByName("Server C").getId() == 0, "a deleted device is gone");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

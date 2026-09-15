@@ -133,4 +133,14 @@ class CORE_EXPORT DatabaseManager
         bool settingsLoaded = false;
 
         void loadSettings();
+
+        // Devices and formats by name, remembered once read. Every rundown item
+        // asked for its server's frame rate - a device query and a format query -
+        // two to four times while loading and again every 200 ms while a still
+        // with a duration plays; getDeviceByName has 81 callers and getFormat 54.
+        // The Device table is only written by the six device functions below,
+        // which clear this; the Format table only by a new database or the change
+        // scripts, which clear both.
+        QHash<QString, DeviceModel> devicesByName;
+        QHash<QString, FormatModel> formatsByName;
 };

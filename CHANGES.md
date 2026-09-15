@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundowns Load With Fewer Database Queries
+
+Round 19 of the performance work.
+
+- **Servers and video formats are read from the database once.** Every
+  rundown item looked up its server and that server's video format - to show
+  delays and durations in frames - two to four times while a rundown opened,
+  and a still with a duration did so five times a second while it played. With
+  a large rundown that was thousands of queries per open, paste or undo. The
+  answers are now remembered, and read again as soon as a server is added,
+  changed or removed.
+
 ## Less Going On In The Background
 
 Round 18 of the performance work.

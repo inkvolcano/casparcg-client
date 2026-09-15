@@ -133,6 +133,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P45 | Each connectDevice and each disconnect started its own 5 s single-shot chain | **done 255** - AmcpDevice and RrupDevice keep one single-shot QTimer and start it only when not already pending |
 | P44 | GPI serial connect retried every 300 ms with an exception each time when no box is attached | **done 255** - retry delay doubles from 300 ms to 5 s while the port will not open, reset to 300 ms when a box connects |
 
+## Round 19 - build 256
+
+| # | Item | Status |
+|---|------|--------|
+| P28 | Every rundown item looked up its server's frame rate with two uncached queries (device, format) 2-4 times while loading, and every 200 ms while a still with a duration plays | **done 256** - DatabaseManager remembers devices and formats by name (81 and 54 callers). All six Device writers clear the device cache under the same lock; a new database and the change scripts clear both. tools/test-settingscache now writes through every device writer and checks the next read matches the table (16 -> 30) |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -140,7 +146,6 @@ against the code, and measured where it is a claim about time, before it is chan
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P28 | getChannelFps runs getDeviceByName + getFormat (uncached queries) 2-4 times per row on load, mostly discarded (value 0 or ms unit); every 200 ms per playing still | RundownWidgetHelper.h getChannelFps, formatDelay/formatDuration | low |
 | P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
 | P30 | A host name that does not resolve is looked up synchronously again on every call (6 per subscription rebuild) | CasparDevice::resolveIpAddress, RepositoryDevice | low |
 | P32 | Activity progress bars animated at display rate during playback; opacity effect attached permanently | ActivityPanelWidget.cpp | low |

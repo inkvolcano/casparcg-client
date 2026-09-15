@@ -72,6 +72,8 @@ void DatabaseManager::initialize()
 void DatabaseManager::createDatabase()
 {
     this->settingsLoaded = false;
+    this->devicesByName.clear();
+    this->formatsByName.clear();
 
     QFile file(":/Scripts/Sql/Schema.sql");
     if (file.open(QFile::ReadOnly))
@@ -120,8 +122,10 @@ void DatabaseManager::createDatabase()
 void DatabaseManager::upgradeDatabase()
 {
     // The change scripts write settings directly, so whatever was read before
-    // them is read again after.
+    // them is read again after. The same for devices and formats.
     this->settingsLoaded = false;
+    this->devicesByName.clear();
+    this->formatsByName.clear();
 
     QSqlQuery sql;
     if (!sql.exec("SELECT c.Id, c.Name, c.Value FROM Configuration c WHERE c.Name = 'DatabaseVersion'"))
@@ -336,6 +340,10 @@ FormatModel DatabaseManager::getFormat(const QString& name)
 {
     QMutexLocker locker(&mutex);
 
+    const auto cached = this->formatsByName.constFind(name);
+    if (cached != this->formatsByName.constEnd())
+        return cached.value();
+
     QSqlQuery sql;
     sql.prepare("SELECT f.Id, f.Name, f.Width, f.Height, f.FramesPerSecond FROM Format f "
                 "WHERE f.Name = :Name");
@@ -346,8 +354,13 @@ FormatModel DatabaseManager::getFormat(const QString& name)
 
     sql.first();
 
-    return FormatModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Width").toInt(),
-                       sql.value("Height").toInt(), sql.value("FramesPerSecond").toString());
+    const FormatModel model(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Width").toInt(),
+                            sql.value("Height").toInt(), sql.value("FramesPerSecond").toString());
+
+    // A name with no row is remembered too, as the same empty answer; only a new
+    // database or a change script adds formats, and both clear this.
+    this->formatsByName.insert(name, model);
+    return model;
 }
 
 QList<LayoutPresetModel> DatabaseManager::getLayoutPresets(const QString& scope)
@@ -907,6 +920,10 @@ DeviceModel DatabaseManager::getDeviceByName(const QString& name)
 {
     QMutexLocker locker(&mutex);
 
+    const auto cached = this->devicesByName.constFind(name);
+    if (cached != this->devicesByName.constEnd())
+        return cached.value();
+
     QSqlQuery sql;
     sql.prepare("SELECT d.Id, d.Name, d.Address, d.Port, d.Username, d.Password, d.Description, d.Version, d.Shadow, d.Channels, d.ChannelFormats, d.PreviewChannel, d.LockedChannel, d.TemplatePath, d.MediaPath, d.ServerPath FROM Device d "
                 "WHERE d.Name = :Name");
@@ -917,10 +934,13 @@ DeviceModel DatabaseManager::getDeviceByName(const QString& name)
 
     sql.first();
 
-    return DeviceModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
-                       sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
-                       sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
-                       sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString());
+    const DeviceModel model(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Address").toString(), sql.value("Port").toInt(),
+                            sql.value("Username").toString(), sql.value("Password").toString(), sql.value("Description").toString(), sql.value("Version").toString(),
+                            sql.value("Shadow").toString(), sql.value("Channels").toInt(), sql.value("ChannelFormats").toString(), sql.value("PreviewChannel").toInt(), sql.value("LockedChannel").toInt(),
+                            sql.value("TemplatePath").toString(), sql.value("MediaPath").toString(), sql.value("ServerPath").toString());
+
+    this->devicesByName.insert(name, model);
+    return model;
 }
 
 DeviceModel DatabaseManager::getDeviceByAddress(const QString& address)
@@ -946,6 +966,7 @@ DeviceModel DatabaseManager::getDeviceByAddress(const QString& address)
 QString DatabaseManager::insertDevice(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
@@ -983,6 +1004,7 @@ QString DatabaseManager::insertDevice(const DeviceModel& model)
 void DatabaseManager::updateDevice(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
@@ -1015,6 +1037,7 @@ void DatabaseManager::updateDevice(const DeviceModel& model)
 void DatabaseManager::updateDeviceVersion(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
@@ -1033,6 +1056,7 @@ void DatabaseManager::updateDeviceVersion(const DeviceModel& model)
 void DatabaseManager::updateDeviceChannels(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
@@ -1051,6 +1075,7 @@ void DatabaseManager::updateDeviceChannels(const DeviceModel& model)
 void DatabaseManager::updateDeviceChannelFormats(const DeviceModel& model)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
@@ -1069,6 +1094,7 @@ void DatabaseManager::updateDeviceChannelFormats(const DeviceModel& model)
 void DatabaseManager::deleteDevice(int id)
 {
     QMutexLocker locker(&mutex);
+    this->devicesByName.clear();   // read again after this write
 
     QSqlDatabase::database().transaction();
 
