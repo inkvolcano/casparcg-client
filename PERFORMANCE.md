@@ -93,6 +93,13 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P27a | Audio meter fall timer (40 ms) ran for every meter while hidden | **done 248** - stopped in hideEvent, caught up and restarted in showEvent. The fall is computed from elapsed wall time (MeterBallistics::advanceTo), so a meter shown again lands where it would have been |
 | P25 | Simple Mode restyled every key's tally on every fire | **done 248** - setStyleSheetIfChanged, so only the key that lit and the one that went dark are restyled |
 
+## Round 13 - build 249
+
+| # | Item | Status |
+|---|------|--------|
+| P11a | NDI receiver posted a deep-copied frame (~8 MB at 1080p) to the GUI per frame with no bound: a busy GUI thread let them pile up | **done 249** - an atomic pending flag; the receiver drops a frame (before copying it) while the last one has not been drawn. At most one frame waits per viewer. Scaling on the GUI thread is unchanged (P11b, open) |
+| P27b | Sheet row cache never trimmed | **done 249** - entries at or past the 10 s age fetchRows already refuses are removed on the existing 10 s report tick |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -104,9 +111,9 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|-------|------|
 | P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
-| P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
+| P11b | NDI viewer scales each full frame on the GUI thread | NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
 | P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |
 | P26 | OSC subscription unsubscribe is linear per item on a shared list | Core/OscSubscriptionRegistry.cpp | low |
-| P27b | Sheet row cache never trimmed; OSC dispatch for unsubscribed paths | SheetDataResolver.cpp, OscMonitorListener.cpp | low |
+| P27c | OSC dispatch for unsubscribed paths | OscMonitorListener.cpp | low |

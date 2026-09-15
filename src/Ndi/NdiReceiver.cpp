@@ -122,6 +122,15 @@ void NdiReceiver::run()
                 lastFrameEmitMs = nowMs;
             }
 
+            // The GUI has not drawn the last frame yet: this one is dropped here,
+            // before it is copied, rather than queued behind it. The viewer shows
+            // the newest frame it can keep up with, and memory stays at one frame.
+            if (framePending.exchange(true))
+            {
+                p_NDI->recv_free_video_v2(recv, &video);
+                break;
+            }
+
             // BGRX/BGRA -> QImage::Format_ARGB32 (native Qt byte order on little-endian).
             QImage img(video.p_data, video.xres, video.yres,
                        video.line_stride_in_bytes, QImage::Format_ARGB32);
@@ -235,4 +244,9 @@ void NdiReceiver::setupAudioSink(int sampleRate, int channels)
     audioSink = new QAudioSink(defaultDevice, format);
     audioDevice = audioSink->start();
     qDebug("NDI Receiver: Audio sink started, device=%p", (void*)audioDevice);
+}
+
+void NdiReceiver::frameShown()
+{
+    framePending = false;
 }

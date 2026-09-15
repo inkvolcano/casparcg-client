@@ -30,6 +30,7 @@ SheetDataResolver::SheetDataResolver()
     this->reportTimer = new QTimer(this);
     this->reportTimer->setInterval(10000);
     QObject::connect(this->reportTimer, &QTimer::timeout, this, &SheetDataResolver::publishStrain);
+    QObject::connect(this->reportTimer, &QTimer::timeout, this, &SheetDataResolver::trimRowCache);
     this->reportTimer->start();
 
     // Not a schedule: this only ever runs while something is waiting to be warmed,
@@ -37,6 +38,21 @@ SheetDataResolver::SheetDataResolver()
     this->warmTimer = new QTimer(this);
     this->warmTimer->setSingleShot(true);
     QObject::connect(this->warmTimer, &QTimer::timeout, this, &SheetDataResolver::processWarmQueue);
+}
+
+void SheetDataResolver::trimRowCache()
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    // The same age fetchRows refuses a held copy at, so nothing that could still
+    // be answered from memory is removed.
+    for (auto it = this->rowCache.begin(); it != this->rowCache.end();)
+    {
+        if (now - it.value().takenAt >= 10000)
+            it = this->rowCache.erase(it);
+        else
+            ++it;
+    }
 }
 
 SheetDataResolver& SheetDataResolver::getInstance()

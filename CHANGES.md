@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## No More Memory Pile-Ups From NDI Or Sheets
+
+Round 13 of the performance work.
+
+- **NDI viewers can no longer fill memory with waiting frames.** Every video
+  frame from an NDI source was copied in full - about 8 MB for HD - and queued
+  for the screen, with no limit on how many could wait. Whenever the client
+  was busy for a moment, frames piled up by the hundred megabytes. A viewer
+  now skips a frame while the previous one is still waiting to be drawn, so
+  at most one frame waits and the picture is always the newest one the
+  screen can keep up with.
+- **Sheet data read by templates and the Inspector is released.** A copy of
+  each tab's rows is kept for ten seconds so a burst of reads does not become
+  a burst of requests, but old copies were never let go. They now are.
+
 ## Quieter When Nobody Is Looking
 
 Round 12 of the performance work.

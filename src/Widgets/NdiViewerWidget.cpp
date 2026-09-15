@@ -243,6 +243,11 @@ void NdiViewerWidget::onVideoFrame(const QImage& image)
     QPixmap pixmap = QPixmap::fromImage(image);
     this->videoLabel->setPixmap(pixmap.scaled(
         this->videoLabel->size(), Qt::KeepAspectRatio, scalingMode_));
+
+    // Ready for the next one. A frame from a receiver already replaced can only
+    // release the new receiver's hold one frame early, which is still one frame.
+    if (this->receiver != nullptr)
+        this->receiver->frameShown();
 }
 
 void NdiViewerWidget::onConnectionStateChanged(bool connected)

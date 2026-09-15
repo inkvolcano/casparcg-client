@@ -289,6 +289,11 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
 
         QMap<QString, CachedRows> rowCache;
 
+        // A held copy is only ever used while it is under ten seconds old, and
+        // nothing removed one, so every tab ever read stayed in memory with all its
+        // rows for the life of the client. Dropped on the existing ten-second tick.
+        void trimRowCache();
+
         QTimer* reportTimer = nullptr;
 
         Q_SLOT void publishStrain();

@@ -25,6 +25,10 @@ public:
     void setFpsLimit(int fps);  // 0 = no limit
     void requestStop();
 
+    // Called on the GUI thread once the last frame sent has been drawn. Until it
+    // is, the receiver drops new frames instead of queueing them.
+    void frameShown();
+
     Q_SIGNAL void videoFrameReceived(const QImage& image);
     Q_SIGNAL void connectionStateChanged(bool connected);
     Q_SIGNAL void finished();
@@ -40,6 +44,12 @@ private:
     std::atomic<bool> stopFlag{false};
     std::atomic<bool> muted{false};
     std::atomic<int> fpsLimit{0};
+
+    // A frame is on its way to the GUI and has not been drawn yet. Each video
+    // frame is a deep copy - about 8 MB at 1080p - posted to the GUI thread, and
+    // nothing limited how many could wait there: a GUI thread busy for a second
+    // held a second's worth of frames, per viewer.
+    std::atomic<bool> framePending{false};
     NDIlib_recv_bandwidth_e bandwidth_ = NDIlib_recv_bandwidth_highest;
 
     QAudioSink* audioSink = nullptr;

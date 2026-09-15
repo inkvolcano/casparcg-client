@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-13">No Memory Pile-Ups</a><br>
 <a href="#perf-round-12">Quieter When Hidden</a><br>
 <a href="#perf-round-11">Missing-Media Check</a><br>
 <a href="#perf-round-10">NDI Only When Used</a><br>
@@ -1840,6 +1841,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-13">No More Memory Pile-Ups From NDI Or Sheets</h2>
+
+<p>Round 13 of the performance work.</p>
+
+<ul>
+<li><b>NDI viewers can no longer fill memory with waiting frames.</b> Every video frame from an NDI source was copied in full &mdash; about 8 MB for HD &mdash; and queued for the screen, with no limit on how many could wait. Whenever the client was busy for a moment, frames piled up by the hundred megabytes. A viewer now skips a frame while the previous one is still waiting to be drawn, so at most one frame waits and the picture is always the newest one the screen can keep up with.</li>
+<li><b>Sheet data read by templates and the Inspector is released.</b> A copy of each tab's rows is kept for ten seconds so a burst of reads does not become a burst of requests, but old copies were never let go. They now are.</li>
+</ul>
 
 <h2 id="perf-round-12">Quieter When Nobody Is Looking</h2>
 
