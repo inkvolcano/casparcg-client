@@ -155,6 +155,7 @@ qt_add_library(widgets
     ClockWidget.cpp ClockWidget.h ClockWidget.ui
     StatusBarWidget.cpp StatusBarWidget.h
     ServerStatusPanelWidget.cpp ServerStatusPanelWidget.h ServerStatusPanelWidget.ui
+    ServerProcessControl.cpp ServerProcessControl.h
     ActivityPanelWidget.cpp ActivityPanelWidget.h ActivityPanelWidget.ui
     TriggerBanksPanelWidget.cpp TriggerBanksPanelWidget.h TriggerBanksPanelWidget.ui
     WhatsNewDialog.cpp WhatsNewDialog.h

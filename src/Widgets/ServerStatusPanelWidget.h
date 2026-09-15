@@ -13,8 +13,10 @@
 
 #include <QtCore/QMap>
 #include <QtCore/QObject>
-#include <QtCore/QProcess>
+#include <QtCore/QSet>
 #include <QtCore/QTimer>
+
+#include <functional>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QPushButton>
@@ -83,14 +85,29 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
             QLabel* labelConnectionDot;
             QLabel* labelMediaDot;
             QPushButton* buttonConnect;
-            QPushButton* buttonStart = nullptr;
-            QPushButton* buttonRestart = nullptr;
-            QProcess* serverProcess = nullptr;
+            QToolButton* buttonProcess = nullptr;
             QString deviceName;
-            QString serverPath;
             bool connected;
             bool mediaReceived;
         };
+
+        // The per-server menu (the button beside Connect): start, stop and restart
+        // that server's casparcg.exe and scanner.exe on this machine, whoever
+        // started them. See ServerProcessControl.h.
+        enum class ProcessAction { StartServer, StopServer, RestartServer, StartScanner, StopScanner, RestartScanner };
+
+        // Servers with a stop or start under way, so a second click waits for it.
+        QSet<QString> processBusy;
+
+        void fillProcessMenu(QMenu* menu, const QString& deviceName);
+        void runProcessAction(const QString& deviceName, ProcessAction action);
+
+        // Ends these processes, then calls done once they are gone - polled, so
+        // the panel keeps drawing while a server takes its time to exit.
+        void stopThen(const QList<quint32>& pids, const QString& deviceName, const std::function<void(bool)>& done);
+        void setProcessBusy(const QString& deviceName, bool busy, const QString& what = QString());
+
+        static QString serverExecutableOf(const QString& deviceName);
 
         QVBoxLayout* serverLayout;
         QMap<QString, ServerEntry> serverEntries;

@@ -18,8 +18,15 @@
 
 #include "DatabaseManager.h"
 
+#include "ServerProcessControl.h"
+
+#include <memory>
+
 #include <QtCore/QDateTime>
+#include <QtCore/QDir>
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QFileInfo>
+#include <QtWidgets/QMenu>
 #include <QtCore/QSet>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGridLayout>
@@ -419,9 +426,7 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
     QString deviceName;
     int channels = 0;
 
-    QString serverPath;
-
-    // Find the device model to get its name, channel count, and server path.
+    // Find the device model to get its name and channel count.
     QList<DeviceModel> models = DeviceManager::getInstance().getDeviceModels();
     for (const DeviceModel& model : models)
     {
@@ -429,7 +434,6 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
         {
             deviceName = model.getName();
             channels = model.getChannels();
-            serverPath = model.getServerPath();
             break;
         }
     }
@@ -506,111 +510,25 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
         }
     });
 
-    // Start/Restart buttons (only when server path is configured).
-    entry.serverPath = serverPath;
-    if (!serverPath.isEmpty())
-    {
-        static const QString btnStyle =
-            "QPushButton { font-size: 9px; padding: 1px 6px; border-radius: 3px; "
-            "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
-            "QPushButton:hover { background-color: rgba(80, 80, 80, 200); }";
-
-        entry.buttonStart = new QPushButton("Start", entry.row);
-        entry.buttonStart->setFixedHeight(20);
-        entry.buttonStart->setStyleSheet(btnStyle);
-        rowLayout->addWidget(entry.buttonStart, 0);
-
-        entry.buttonRestart = new QPushButton("Restart", entry.row);
-        entry.buttonRestart->setFixedHeight(20);
-        entry.buttonRestart->setStyleSheet(btnStyle);
-        entry.buttonRestart->setEnabled(false);
-        rowLayout->addWidget(entry.buttonRestart, 0);
-
-        // Start/Stop handler.
-        QObject::connect(entry.buttonStart, &QPushButton::clicked, [this, deviceName]() {
-            ServerEntry& e = this->serverEntries[deviceName];
-            if (e.serverProcess != nullptr && e.serverProcess->state() != QProcess::NotRunning)
-            {
-                // Stop.
-                if (QMessageBox::question(this, "Stop Server",
-                        QString("Stop CasparCG server '%1'?\nThis will interrupt all outputs.").arg(deviceName),
-                        QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
-                    return;
-
-                auto device = DeviceManager::getInstance().getDeviceByName(deviceName);
-                if (device != nullptr && device->isConnected())
-                    device->disconnectDevice();
-
-                e.serverProcess->kill();
-            }
-            else
-            {
-                // Start.
-                if (QMessageBox::question(this, "Start Server",
-                        QString("Start CasparCG server '%1'?").arg(deviceName),
-                        QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
-                    return;
-
-                if (e.serverProcess == nullptr)
-                {
-                    e.serverProcess = new QProcess(this);
-                    QObject::connect(e.serverProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                                     [this, deviceName](int, QProcess::ExitStatus) {
-                        if (!this->serverEntries.contains(deviceName))
-                            return;
-                        ServerEntry& e2 = this->serverEntries[deviceName];
-                        e2.buttonStart->setText("Start");
-                        e2.buttonRestart->setEnabled(false);
-                    });
-                }
-
-                QFileInfo fi(e.serverPath);
-                e.serverProcess->setWorkingDirectory(fi.absolutePath());
-                e.serverProcess->start(e.serverPath);
-                e.buttonStart->setText("Stop");
-                e.buttonRestart->setEnabled(true);
-
-                // Auto-reconnect after a short delay.
-                QTimer::singleShot(3000, [deviceName]() {
-                    auto device = DeviceManager::getInstance().getDeviceByName(deviceName);
-                    if (device != nullptr && !device->isConnected())
-                        device->connectDevice();
-                });
-            }
-        });
-
-        // Restart handler.
-        QObject::connect(entry.buttonRestart, &QPushButton::clicked, [this, deviceName]() {
-            ServerEntry& e = this->serverEntries[deviceName];
-            if (e.serverProcess == nullptr || e.serverProcess->state() == QProcess::NotRunning)
-                return;
-
-            if (QMessageBox::question(this, "Restart Server",
-                    QString("Restart CasparCG server '%1'?\nOutputs will be interrupted briefly.").arg(deviceName),
-                    QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes)
-                return;
-
-            auto device = DeviceManager::getInstance().getDeviceByName(deviceName);
-            if (device != nullptr && device->isConnected())
-                device->disconnectDevice();
-
-            e.serverProcess->kill();
-            e.serverProcess->waitForFinished(5000);
-
-            QFileInfo fi(e.serverPath);
-            e.serverProcess->setWorkingDirectory(fi.absolutePath());
-            e.serverProcess->start(e.serverPath);
-            e.buttonStart->setText("Stop");
-            e.buttonRestart->setEnabled(true);
-
-            QTimer::singleShot(3000, [deviceName]() {
-                auto device = DeviceManager::getInstance().getDeviceByName(deviceName);
-                if (device != nullptr && !device->isConnected())
-                    device->connectDevice();
-            });
-        });
-    }
-
+    // The server menu: start, stop and restart this server's casparcg.exe and
+    // scanner.exe. Filled each time it opens, so it shows what is running now and
+    // follows a path changed in Settings.
+    entry.buttonProcess = new QToolButton(entry.row);
+    entry.buttonProcess->setText(QString::fromUtf8("\xe2\x89\xa1"));
+    entry.buttonProcess->setFixedSize(22, 20);
+    entry.buttonProcess->setToolTip("Start, stop or restart this server and its scanner");
+    entry.buttonProcess->setPopupMode(QToolButton::InstantPopup);
+    entry.buttonProcess->setStyleSheet(
+        "QToolButton { font-size: 12px; padding: 0px; border-radius: 3px; "
+        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
+        "QToolButton:hover { background-color: rgba(80, 80, 80, 200); }"
+        "QToolButton::menu-indicator { image: none; width: 0px; }");
+    QMenu* processMenu = new QMenu(entry.buttonProcess);
+    entry.buttonProcess->setMenu(processMenu);
+    QObject::connect(processMenu, &QMenu::aboutToShow, this, [this, processMenu, deviceName]() {
+        fillProcessMenu(processMenu, deviceName);
+    });
+    rowLayout->addWidget(entry.buttonProcess, 0);
     // Apply visibility settings.
     entry.row->setVisible(this->showServers);
     entry.buttonConnect->setVisible(this->disconnectMode != "hidden");
@@ -638,6 +556,271 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
         this->maxChannels = channels;
 
     rebuildChannelLockGrid();
+}
+
+QString ServerStatusPanelWidget::serverExecutableOf(const QString& deviceName)
+{
+    for (const DeviceModel& model : DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getName() == deviceName)
+            return ServerProcessControl::serverExecutableFor(model.getServerPath());
+    }
+
+    return QString();
+}
+
+void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& deviceName)
+{
+    using namespace ServerProcessControl;
+
+    menu->clear();
+
+    auto note = [menu](const QString& text) {
+        QAction* action = menu->addAction(text);
+        action->setEnabled(false);
+    };
+    auto item = [this, menu, deviceName](const QString& text, ProcessAction what, bool enabled) {
+        QAction* action = menu->addAction(text);
+        action->setEnabled(enabled);
+        // Run once the menu has closed: the confirmation is a dialog of its own,
+        // and this menu is rebuilt, and its row can be, while it is open.
+        QObject::connect(action, &QAction::triggered, this, [this, deviceName, what]() {
+            QTimer::singleShot(0, this, [this, deviceName, what]() { runProcessAction(deviceName, what); });
+        });
+    };
+
+    if (this->processBusy.contains(deviceName))
+    {
+        note("Working on it...");
+        return;
+    }
+
+    const QString server = serverExecutableOf(deviceName);
+    if (server.isEmpty())
+    {
+        note("No server executable is set for this server.");
+        note(QString::fromUtf8("Set it in Settings \xe2\x86\x92 Servers."));
+        return;
+    }
+
+    const bool canFind = supported();
+    const bool serverExists = QFileInfo(server).isFile();
+    const QString scanner = scannerPathFor(server);
+    const bool scannerExists = QFileInfo(scanner).isFile();
+    const bool serverRunning = canFind && !runningFrom(server).isEmpty();
+    const bool scannerRunning = canFind && !runningFrom(scanner).isEmpty();
+
+    if (!serverExists)
+        note(QString("Not found: %1").arg(QDir::toNativeSeparators(server)));
+    else if (canFind)
+        note(serverRunning ? "Server is running" : "Server is not running");
+
+    item("Start Server", ProcessAction::StartServer, serverExists && !serverRunning);
+    item("Restart Server", ProcessAction::RestartServer, serverExists && serverRunning);
+    item("Stop Server", ProcessAction::StopServer, serverRunning);
+
+    menu->addSeparator();
+
+    if (!scannerExists)
+        note("No scanner.exe beside the server");
+    else if (canFind)
+        note(scannerRunning ? "Scanner is running" : "Scanner is not running");
+
+    item("Start Scanner", ProcessAction::StartScanner, scannerExists && !scannerRunning);
+    item("Restart Scanner", ProcessAction::RestartScanner, scannerExists && scannerRunning);
+    item("Stop Scanner", ProcessAction::StopScanner, scannerRunning);
+
+    if (!canFind)
+    {
+        menu->addSeparator();
+        note("Stopping and restarting work on Windows only, for now.");
+    }
+}
+
+void ServerStatusPanelWidget::setProcessBusy(const QString& deviceName, bool busy, const QString& what)
+{
+    if (busy)
+        this->processBusy.insert(deviceName);
+    else
+        this->processBusy.remove(deviceName);
+
+    if (!this->serverEntries.contains(deviceName))
+        return;
+
+    QToolButton* button = this->serverEntries[deviceName].buttonProcess;
+    if (button == nullptr)
+        return;
+
+    button->setEnabled(!busy);
+    button->setToolTip(busy ? what : QString("Start, stop or restart this server and its scanner"));
+}
+
+void ServerStatusPanelWidget::stopThen(const QList<quint32>& pids, const QString& deviceName, const std::function<void(bool)>& done)
+{
+    QList<quint32> stopping;
+    for (quint32 pid : pids)
+    {
+        if (ServerProcessControl::terminate(pid))
+            stopping.append(pid);
+    }
+
+    if (stopping.isEmpty())
+    {
+        done(pids.isEmpty());
+        return;
+    }
+
+    setProcessBusy(deviceName, true, "Stopping...");
+
+    // Polled rather than waited for: Restart used to block the whole window for
+    // up to five seconds in waitForFinished.
+    QTimer* poll = new QTimer(this);
+    poll->setInterval(200);
+    auto started = std::make_shared<QElapsedTimer>();
+    started->start();
+    const int refused = pids.count() - stopping.count();
+
+    QObject::connect(poll, &QTimer::timeout, this, [this, poll, started, stopping, refused, deviceName, done]() {
+        bool alive = false;
+        for (quint32 pid : stopping)
+            alive = alive || ServerProcessControl::isRunning(pid);
+
+        if (alive && started->elapsed() < 10000)
+            return;
+
+        poll->stop();
+        poll->deleteLater();
+        setProcessBusy(deviceName, false);
+        done(!alive && refused == 0);
+    });
+    poll->start();
+}
+
+void ServerStatusPanelWidget::runProcessAction(const QString& deviceName, ProcessAction action)
+{
+    using namespace ServerProcessControl;
+
+    if (this->processBusy.contains(deviceName))
+        return;
+
+    const QString server = serverExecutableOf(deviceName);
+    if (server.isEmpty())
+        return;
+
+    const QString scanner = scannerPathFor(server);
+
+    auto confirm = [this](const QString& title, const QString& text) {
+        return QMessageBox::question(this, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes;
+    };
+
+    auto refusedToStop = [this](const QString& what) {
+        QMessageBox::warning(this, "Not Stopped",
+            QString("%1 did not stop. It may be running as administrator or as a Windows service, "
+                    "which a client running as a normal user cannot stop.").arg(what));
+    };
+
+    // The client connects again on its own once the server answers: a device
+    // that is not connected is retried every five seconds.
+    auto reconnect = [deviceName]() {
+        auto device = DeviceManager::getInstance().getDeviceByName(deviceName);
+        if (device != nullptr && !device->isConnected())
+            device->connectDevice();
+    };
+
+    auto startScannerIfStopped = [scanner]() -> QString {
+        if (!QFileInfo(scanner).isFile())
+            return QString();
+        if (supported() && !runningFrom(scanner).isEmpty())
+            return QString();
+        return startDetached(scanner) ? QString() : QString("scanner.exe did not start: %1").arg(QDir::toNativeSeparators(scanner));
+    };
+
+    // Starting the server starts its scanner with it, when the scanner is not
+    // already running: without it the server lists no media.
+    auto startServer = [this, server, reconnect, startScannerIfStopped]() {
+        QStringList problems;
+
+        const QString scannerProblem = startScannerIfStopped();
+        if (!scannerProblem.isEmpty())
+            problems.append(scannerProblem);
+
+        // Something else - a watchdog script, a service - may have started it
+        // again already while the old one was stopping.
+        if (!supported() || runningFrom(server).isEmpty())
+        {
+            if (!startDetached(server))
+                problems.append(QString("casparcg.exe did not start: %1").arg(QDir::toNativeSeparators(server)));
+        }
+
+        if (!problems.isEmpty())
+            QMessageBox::warning(this, "Not Started", problems.join("\n"));
+
+        reconnect();
+    };
+
+    switch (action)
+    {
+        case ProcessAction::StartServer:
+            if (!confirm("Start Server", QString("Start CasparCG server '%1'?\n\n%2\n\nIts scanner is started with it if it is not running.")
+                                             .arg(deviceName, QDir::toNativeSeparators(server))))
+                return;
+            startServer();
+            break;
+
+        case ProcessAction::StopServer:
+            if (!confirm("Stop Server", QString("Stop CasparCG server '%1'?\n\nEvery output of this server stops.").arg(deviceName)))
+                return;
+            stopThen(runningFrom(server), deviceName, [refusedToStop](bool stopped) {
+                if (!stopped)
+                    refusedToStop("The server");
+            });
+            break;
+
+        case ProcessAction::RestartServer:
+            if (!confirm("Restart Server", QString("Restart CasparCG server '%1'?\n\nEvery output of this server stops until it is back.").arg(deviceName)))
+                return;
+            stopThen(runningFrom(server), deviceName, [refusedToStop, startServer](bool stopped) {
+                if (!stopped)
+                {
+                    refusedToStop("The server");
+                    return;
+                }
+                startServer();
+            });
+            break;
+
+        case ProcessAction::StartScanner:
+        {
+            const QString problem = startScannerIfStopped();
+            if (!problem.isEmpty())
+                QMessageBox::warning(this, "Not Started", problem);
+            break;
+        }
+
+        case ProcessAction::StopScanner:
+            if (!confirm("Stop Scanner", QString("Stop the scanner of '%1'?\n\nThe server lists no media, templates or thumbnails until it runs again.").arg(deviceName)))
+                return;
+            stopThen(runningFrom(scanner), deviceName, [refusedToStop](bool stopped) {
+                if (!stopped)
+                    refusedToStop("The scanner");
+            });
+            break;
+
+        case ProcessAction::RestartScanner:
+            if (!confirm("Restart Scanner", QString("Restart the scanner of '%1'?").arg(deviceName)))
+                return;
+            stopThen(runningFrom(scanner), deviceName, [this, refusedToStop, startScannerIfStopped](bool stopped) {
+                if (!stopped)
+                {
+                    refusedToStop("The scanner");
+                    return;
+                }
+                const QString problem = startScannerIfStopped();
+                if (!problem.isEmpty())
+                    QMessageBox::warning(this, "Not Started", problem);
+            });
+            break;
+    }
 }
 
 void ServerStatusPanelWidget::deviceRemoved()
@@ -839,9 +1022,20 @@ void ServerStatusPanelWidget::rebuildChannelLockGrid()
                 DeviceManager::getInstance().toggleGlobalChannelLock(ch);
             });
 
-            grid->addWidget(btn, row, ch);
+            grid->addWidget(btn, row, ch, Qt::AlignCenter);
             this->globalLockButtons[ch] = btn;
         }
+    }
+
+    // Every channel column the same width, whatever the server names in the
+    // first column are: without a stretch, the spare width went to whichever
+    // column Qt picked, so the locks of one row did not sit under the channel
+    // numbers of the header or the locks of the next.
+    grid->setColumnStretch(0, 0);
+    for (int ch = 1; ch <= this->maxChannels; ch++)
+    {
+        grid->setColumnStretch(ch, 1);
+        grid->setColumnMinimumWidth(ch, 30);
     }
 
     this->serverLayout->addWidget(this->channelLockGrid);

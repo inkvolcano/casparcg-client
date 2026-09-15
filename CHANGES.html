@@ -144,6 +144,7 @@ hr {
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
 <a href="#server-messages-clear">Server Messages Clear Themselves</a><br>
+<a href="#server-menu">Start And Stop Servers From Server Status</a><br>
 <a href="#thumbnail-pacing">Thumbnails Sooner</a><br>
 <a href="#template-preview-fix">Template Preview Fixed</a><br>
 <a href="#perf-round-25">One Click, One Update</a><br>
@@ -1864,6 +1865,22 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <li><b>A server's error message goes away by itself once the server is fine.</b> A message like "501 CLS FAILED" used to stay up until something refreshed the library &mdash; a restart, a reconnect, Ctrl+R &mdash; and automatic library refresh is off by default. While a message is showing, the client now asks that server again every thirty seconds for the list it could not give, and the message clears as soon as the list comes back. Nothing extra is sent while no message is showing, or to a server that is not connected.</li>
 <li><b>Each server's messages are its own.</b> With more than one server, a good answer from one used to clear a message about another that was still failing. Messages are now kept per server and cleared only by that server, and the message says which server it is about.</li>
 <li>The message shown is now always the newest one; with several standing, an older one could be shown instead.</li>
+</ul>
+
+<h2 id="server-menu">Start And Stop Servers From Server Status</h2>
+
+<ul>
+<li><b>Each server in Server Status has a menu button beside Connect.</b> It starts, stops and restarts that server's CasparCG server and its scanner, and says which of the two are running right now.</li>
+<li><b>It works on a server however it was started</b> &mdash; a shortcut, a startup script, or the client. A running server is recognised by the folder it runs from, so a second installation in another folder is never touched. The old Start and Restart buttons only worked on a server the client had started itself, and closing the client stopped it.</li>
+<li><b>Starting or restarting the server starts its scanner too</b>, when the scanner is not already running. The scanner also has its own Start, Restart and Stop.</li>
+<li>Stopping and restarting ask first. The window keeps responding while a server stops; Restart used to freeze it for up to five seconds.</li>
+<li>The menu needs the server's executable, or its folder, set in Settings &rarr; Servers. Finding and stopping a running server works on Windows only, for now.</li>
+</ul>
+
+<h2 id="lock-grid-columns">Channel Locks Line Up</h2>
+
+<ul>
+<li>The channel lock buttons in Server Status now sit in even columns under their channel numbers, on every server's row and on the All row.</li>
 </ul>
 
 <h2 id="thumbnail-pacing">Thumbnails Arrive In Minutes, Not Half An Hour</h2>

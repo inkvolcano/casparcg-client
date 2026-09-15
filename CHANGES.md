@@ -1854,6 +1854,29 @@ than included. The rule is tested against every secret the client stores.
 - The message shown is now always the newest one; with several standing, an
   older one could be shown instead.
 
+## Start And Stop Servers From Server Status
+
+- **Each server in Server Status has a menu button beside Connect.** It starts,
+  stops and restarts that server's CasparCG server and its scanner, and says
+  which of the two are running right now.
+- **It works on a server however it was started** - a shortcut, a startup
+  script, or the client. A running server is recognised by the folder it runs
+  from, so a second installation in another folder is never touched. The old
+  Start and Restart buttons only worked on a server the client had started
+  itself, and closing the client stopped it.
+- **Starting or restarting the server starts its scanner too**, when the
+  scanner is not already running. The scanner also has its own Start, Restart
+  and Stop.
+- Stopping and restarting ask first. The window keeps responding while a server
+  stops; Restart used to freeze it for up to five seconds.
+- The menu needs the server's executable, or its folder, set in Settings >
+  Servers. Finding and stopping a running server works on Windows only, for now.
+
+## Channel Locks Line Up
+
+- The channel lock buttons in Server Status now sit in even columns under their
+  channel numbers, on every server's row and on the All row.
+
 ## Thumbnails Arrive In Minutes, Not Half An Hour
 
 - **New clips get their Library thumbnails much sooner.** The client asked the
