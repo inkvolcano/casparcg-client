@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#http-log-bound">The Log Panel Keeps The Last 2,000 Lines</a><br>
 <a href="#perf-round-28">Linked Items Load Faster</a><br>
 <a href="#perf-round-27">Movie Rows Load Faster</a><br>
 <a href="#server-menu">Start And Stop Servers From Server Status</a><br>
@@ -1860,6 +1861,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="http-log-bound">The Log Panel Keeps The Last 2,000 Lines</h2>
+
+<ul>
+<li><b>The HTTP and playout log panel no longer grows without end.</b> It kept every line since the client started &mdash; each HTTP response with the first 500 characters of its answer, and a line for every playout action &mdash; so a client left running for days used more and more memory and drew the panel more slowly. It now keeps the last 2,000 lines and drops the oldest. Clear Log and "show last only" work as before.</li>
+</ul>
 
 <h2 id="perf-round-28">Rundowns With Linked Items Load Faster</h2>
 

@@ -179,6 +179,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
 
+## Round 30 - build 270
+
+| # | Item | Status |
+|---|------|--------|
+| P44 | The HTTP/playout log panel appended for the life of the client with no bound | **done 270** - QPlainTextEdit with no maximumBlockCount: every HTTP response (first 500 characters of the body) and, with playout logging on (the default), every playout action was kept in the document for as long as the client ran. Now capped at 2,000 blocks, which also keeps the panel's drawing cost flat. Found while checking the long-lived stores for growth; the sheet row cache (per spreadsheet and tab), the template scan cache (64 entries), the Activity entries (per channel and layer) and HttpResponseLog (signal only, stores nothing) are all bounded. Not changed: the client writes one log file per day and never deletes an old one - that is the user's diagnostic history to remove |
+
 ## Round 29 - build 269
 
 | # | Item | Status |

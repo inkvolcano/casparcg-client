@@ -23,6 +23,13 @@ HttpResponsePanelWidget::HttpResponsePanelWidget(QWidget* parent)
 
     this->setFixedHeight(Panel::DEFAULT_HTTPLOG_HEIGHT);
 
+    // The last few thousand lines, not every line since the client started. Each
+    // HTTP response adds its first 500 characters of body and every playout
+    // action a line, both kept for the life of the client: a show that runs for
+    // days grew this document without limit, and a long document also costs the
+    // panel time whenever it draws. The oldest lines drop off the top instead.
+    this->plainTextEditLog->setMaximumBlockCount(2000);
+
     QString val = DatabaseManager::getInstance().getConfigurationByName("HttpLogLastOnly").getValue();
     this->showLastOnly = val.isEmpty() || val == "true";
 

@@ -1838,6 +1838,15 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## The Log Panel Keeps The Last 2,000 Lines
+
+- **The HTTP and playout log panel no longer grows without end.** It kept every
+  line since the client started - each HTTP response with the first 500
+  characters of its answer, and a line for every playout action - so a client
+  left running for days used more and more memory and drew the panel more
+  slowly. It now keeps the last 2,000 lines and drops the oldest. Clear Log and
+  "show last only" work as before.
+
 ## Rundowns With Linked Items Load Faster
 
 Round 28 of the performance work.
