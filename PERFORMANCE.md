@@ -164,11 +164,9 @@ against the code, and measured where it is a claim about time, before it is chan
 | P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
-| P37 | SQLite commits flush fully on the GUI thread | **declined by the user: the database stays one file, so no WAL.** Any saving here has to come from skipping unchanged writes (device version, channels, formats rewritten on every refresh) | low |
 | P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
 | P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
 | P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
-| P43 | Sheet cache server reads its file from disk on the GUI thread per request | SheetCacheServer.cpp | low |
 
 ## Checked, not worth changing
 
@@ -178,6 +176,8 @@ against the code, and measured where it is a claim about time, before it is chan
 | P26 | OSC subscription registry "linear per item" | Already a hash of path to subscriber list; unsubscribe walks only the subscribers of one exact path |
 | P27c | OSC dispatch for unsubscribed paths | 3,000 distinct paths per batch against 60 subscriptions: 0.88 ms per batch. Batches run every 200 ms (OscRefreshRate default), and messages are merged per path between batches, so about 4.4 ms a second at that load |
 | P10b | Active-item flash setStyleSheet per frame | 0.11 ms per frame on a leaf label, ~2.4 ms per flash |
+| P37 | SQLite commits on the GUI thread | WAL declined by the user (the database stays one file). The one-file alternative, skipping unchanged device writes, measured on a real SQLite file: an unchanged UPDATE commit 0.18 ms, the same as a guarded one that changes nothing - three per server per refresh |
+| P43 | Sheet cache server reads its file per request | The real cache files are 1-80 KB (DREAMFORCE25, CNX24 sheets_data) and served from the OS file cache after the first read; a fraction of a millisecond per template request, and an in-memory copy would add a staleness rule |
 
 ## Next
 
