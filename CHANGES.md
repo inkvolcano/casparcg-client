@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Adding A Server Leaves Other Rundown Items Alone
+
+Round 17 of the performance work.
+
+- **Adding or reconnecting a server only touches the items that use it.**
+  Every item in every open rundown reacted to every server being added - at
+  startup, and whenever closing Settings brought a server in - by re-checking
+  its connection and rebuilding its OSC subscriptions, and resetting its time
+  display while it did so. With several servers and a large rundown that was
+  thousands of rebuilds, and a playing item's progress display could jump. Now
+  an item only reacts to its own server.
+- **Opacity items no longer multiply their work on a flaky connection.** Each
+  time a server connected or disconnected, an Opacity item doubled the number
+  of times it would handle the next change. It now handles each change once,
+  like every other item.
+
 ## NDI Viewers Off The Interface Thread
 
 Round 16 of the performance work.

@@ -118,6 +118,38 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P11b | NDI viewer converted and scaled every full frame on the GUI thread | **done 253** - measured: QPixmap::fromImage(1080p) + scaled to a 480x270 tile, 4.68 ms per frame (3.88 fast mode); four viewers at 50 fps is ~940 ms of GUI time a second. The receiver now scales to the label size on its own thread (4.2 ms there) and the GUI converts the small image, 0.05 ms. A frame that does not fit the label (first frames, a resize in flight) is still scaled on the GUI as before |
 
+## Round 17 - build 254
+
+| # | Item | Status |
+|---|------|--------|
+| P31 | deviceAdded made every row of every type re-check its connection (resetting its time display) and, for media rows, rebuild its OSC subscriptions, for every server added | **done 254** - all 33 handlers return unless the added device is the row's own, compared by device object (by name lookup), which also removes a possible null dereference and tells apart two servers sharing an address |
+| - | Found while checking P31: RundownOpacityWidget::deviceConnectionStateChanged connected the signal to itself again on every call, doubling the handlers on each connection change | **fixed 254** - same body as every other row type |
+
+## Second audit (2026-09-15) - open
+
+A second read-only sweep of areas the first did not cover. Each item is checked
+against the code, and measured where it is a claim about time, before it is changed.
+
+| # | Item | Where | Risk |
+|---|------|-------|------|
+| P28 | getChannelFps runs getDeviceByName + getFormat (uncached queries) 2-4 times per row on load, mostly discarded (value 0 or ms unit); every 200 ms per playing still | RundownWidgetHelper.h getChannelFps, formatDelay/formatDuration | low |
+| P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
+| P30 | A host name that does not resolve is looked up synchronously again on every call (6 per subscription rebuild) | CasparDevice::resolveIpAddress, RepositoryDevice | low |
+| P32 | Activity progress bars animated at display rate during playback; opacity effect attached permanently | ActivityPanelWidget.cpp | low |
+| P33 | Selecting a sheet-bound template rediscovers every project folder on disk (reads project.js twice each) | SheetsProjectRegistry::discover, InspectorTemplateWidget::requestExpectedRows | low |
+| P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
+| P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
+| P36 | Performance panel polls every 2 s (process snapshot, restyles) even when not placed | PerformancePanelWidget.cpp | low |
+| P37 | SQLite uses the default rollback journal with synchronous=FULL; recurring GUI-thread commits | Shell/Main.cpp database open | low-medium |
+| P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
+| P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
+| P40 | Status bar: a new 3 s single-shot per message that is never cancelled; rich text and restyle per message | StatusBarWidget.cpp | low |
+| P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
+| P42 | Autosave serialises each rundown twice and rewrites an unchanged recovery copy | RundownWidget/RundownTreeWidget autosave | low |
+| P43 | Sheet cache server reads its file from disk on the GUI thread per request | SheetCacheServer.cpp | low |
+| P44 | GPI serial connect retried every 300 ms forever with an exception each time on machines with no GPI box | Gpi/gpio-client.cpp, GpiManager | low |
+| P45 | Each Connect/Start press on a down server starts another parallel 5 s reconnect chain | AmcpDevice.cpp, RrupDevice.cpp | low |
+
 ## Checked, not worth changing
 
 | # | Item | Measurement |

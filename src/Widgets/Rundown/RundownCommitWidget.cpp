@@ -468,6 +468,15 @@ void RundownCommitWidget::deviceConnectionStateChanged(CasparDevice& device)
 
 void RundownCommitWidget::deviceAdded(CasparDevice& device)
 {
+    // Only this item's own server. Every row hears every server being added -
+    // each one at startup, and again for each one a Settings change adds - and
+    // used to re-check its connection (which also resets its time display) and
+    // rebuild its OSC subscriptions for all of them. Compared by the device
+    // object rather than by address, so two servers on one address are told
+    // apart; and the address lookup this replaces could return null.
+    if (DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName()).data() != &device)
+        return;
+
     if (DeviceManager::getInstance().getDeviceModelByAddress(device.getAddress())->getName() == this->model.getDeviceName())
         QObject::connect(&device, SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
 
