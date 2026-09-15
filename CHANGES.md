@@ -1838,6 +1838,20 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Library That Fills In An Instant
+
+Round 4 of the performance work.
+
+- **The Library lists fill about forty times faster.** Videos, images, audio,
+  templates and stored data were each put into their list one row at a time,
+  with the list redrawing its bookkeeping for every row. Measured with 10,000
+  clips, filling a list took well over two seconds - on every library refresh,
+  every filter change and every server reconnect - and now takes about fifty
+  milliseconds. The rows, their order and their columns are the same.
+- **Sorting by date, size or length is quicker too.** Each clip's sort values
+  are worked out once instead of on every comparison: 10,000 clips by length
+  went from about 400 ms to about 25 ms, in exactly the same order.
+
 ## A Quicker Inspector On A Big Library
 
 Round 3 of the performance work.

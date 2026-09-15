@@ -37,6 +37,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P2 | Every selection refilled the Inspector target list from a full library query, one name at a time | **done 239** - measured on 10,000 files / 2,500 movies: query 26-29 ms + addItem 31-65 ms per fill, up to 3 fills per click. Now a per-server, per-kind name cache (cleared by media/template events) added in one batch: 2.4 ms |
 | P1 | One click sends the selection event up to three times | **measuring 239** - the log now records any selection whose listeners take 40 ms or more. With P2 removed, the remaining cost decides whether coalescing (medium risk) is worth it |
 
+## Round 4 - build 240
+
+| # | Item | Status |
+|---|------|--------|
+| P4 | Library lists filled one row at a time into the live tree, a new QIcon per row, a copy per model; sort comparator rebuilt keys and parsed timecodes per comparison | **done 240** - measured at 10,000 clips: fill 2,340-2,674 ms -> 53-56 ms (rows built detached, one addTopLevelItems, updates off, one icon per kind); sort by length 407 ms -> 26 ms with keys built once, same order verified. Media, templates and stored data. OGraf folder walk not yet changed |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -46,7 +52,7 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P4 | Library panel fill: per-row inserts, per-row QIcon, copying loop, sort comparator re-parsing timecodes, OGraf folder walk on every template change | Library/LibraryWidget.cpp | low |
+| P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
 | P10 | setStyleSheet per row at build time and ~20 times per active-flash animation | RundownWidgetHelper.h, Rundown*Widget, ActiveAnimation.cpp | medium |
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
