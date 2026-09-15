@@ -179,6 +179,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
 
+## Round 29 - build 269
+
+| # | Item | Status |
+|---|------|--------|
+| - | No field evidence for what building rundown rows costs on the user's real shows | **done 269** - RundownTreeBaseWidget::pasteXml, the one path every open, paste, drop and undo restore goes through, logs "Building N rundown items took M ms" at 150 ms or more. The same approach as the 239 selection log, which is what showed the three events per click later fixed in 262 |
+
 ## Round 28 - build 268
 
 | # | Item | Status |

@@ -1848,6 +1848,10 @@ Round 28 of the performance work.
   and reading them back. That work is now done once, from the item's finished
   state, so linked items end up exactly as they did. Editing a linked item
   still updates its partners straight away.
+- **A slow rundown open is written to the log.** If building the items of a
+  rundown takes longer than 150 ms - opening a file, pasting, dropping, or
+  undoing - the log records how long it took and how many items it was, so a
+  slow open on a real show can be read back rather than guessed at.
 
 ## Movie, Audio And Recorder Rows Load Faster
 

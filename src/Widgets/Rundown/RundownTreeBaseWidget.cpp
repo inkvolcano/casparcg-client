@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include <QtCore/QDebug>
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QUuid>
 
 #include <QtGui/QDrag>
@@ -509,6 +510,13 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
 
 bool RundownTreeBaseWidget::pasteXml(const QString& xml, bool repositoryRundown, bool preserveCloneLinks)
 {
+    // Every rundown that is opened, pasted, dropped or restored is built here, so
+    // this is where the cost of building rows shows up in the field. Logged only
+    // when it is long enough to be felt, with the number of items, so a slow open
+    // can be read from an ordinary client log rather than guessed at.
+    QElapsedTimer buildClock;
+    buildClock.start();
+
     UndoScope undo(this, "Paste Items");
 
     std::wstringstream wstringstream;
@@ -737,6 +745,10 @@ bool RundownTreeBaseWidget::pasteXml(const QString& xml, bool repositoryRundown,
     checkEmptyRundown();
 
     emit itemsChanged();
+
+    const qint64 built = buildClock.elapsed();
+    if (built >= 150)
+        qDebug("Building %d rundown items took %lld ms", this->pasteCount, built);
 
     return true;
 }
