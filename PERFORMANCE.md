@@ -179,6 +179,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
 
+## Round 31 - build 271
+
+| # | Item | Status |
+|---|------|--------|
+| P22b | All 44 Inspector sections built eagerly at startup | **measuring first, 271** - making them lazy is not free: each section listens for the selection and shows or hides itself, so laziness means building on first need and replaying the current selection, in 44 places. Before taking that risk for a startup-only gain, the client now logs what it costs: the Inspector logs "Building the Inspector's sections took N ms" at 100 ms or more, and every start logs "Starting the client took N ms, of which the window took N ms". Decide from the user's own numbers |
+
 ## Round 30 - build 270
 
 | # | Item | Status |

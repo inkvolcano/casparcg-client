@@ -20,6 +20,8 @@
     #include "Mac/AppNap.h"
 #endif
 
+#include <QtCore/QDebug>
+#include <QtCore/QElapsedTimer>
 #include <QtCore5Compat/QRegExp>
 #include <QtCore/QDir>
 #include <QtCore/QMutex>
@@ -367,6 +369,9 @@ int main(int argc, char* argv[])
             return 0;
     }
 
+    QElapsedTimer startClock;
+    startClock.start();
+
     QSplashScreen splashScreen(QPixmap(":/Graphics/Images/SplashScreen.png"));
     splashScreen.show();
 
@@ -379,12 +384,24 @@ int main(int argc, char* argv[])
     EventManager::getInstance().initialize();
     GpiManager::getInstance().initialize();
 
+    // How long the client takes to be on screen, split into the window's own
+    // construction - every panel, and the Inspector's sections inside it - and
+    // everything before it. Written once per start, so a slow startup on the
+    // user's machine can be read from an ordinary log.
+    QElapsedTimer windowClock;
+    windowClock.start();
+
     MainWindow window;
+    const qint64 windowBuilt = windowClock.elapsed();
+
     splashScreen.finish(&window);
 
     loadConfiguration(window, &args);
 
     window.show();
+
+    qDebug("Starting the client took %lld ms, of which the window took %lld ms",
+           startClock.elapsed(), windowBuilt);
 
     LibraryManager::getInstance().initialize();
     DeviceManager::getInstance().initialize();

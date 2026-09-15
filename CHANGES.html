@@ -1875,6 +1875,7 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <ul>
 <li><b>A linked item copies itself to its partners once, instead of once per setting.</b> Loading a linked item sent its whole set of properties to every item it is linked with about twenty times over, each time writing them out and reading them back. That work is now done once, from the item's finished state, so linked items end up exactly as they did. Editing a linked item still updates its partners straight away.</li>
 <li><b>A slow rundown open is written to the log.</b> If building the items of a rundown takes longer than 150 ms &mdash; opening a file, pasting, dropping, or undoing &mdash; the log records how long it took and how many items it was, so a slow open on a real show can be read back rather than guessed at.</li>
+<li><b>Startup time is written to the log.</b> Every start records how long the client took to appear and how much of that was building the window, and the Inspector records how long its sections took when that is 100 ms or more. It says where a slow start actually goes.</li>
 </ul>
 
 <h2 id="perf-round-27">Movie, Audio And Recorder Rows Load Faster</h2>

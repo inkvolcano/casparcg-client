@@ -1861,6 +1861,10 @@ Round 28 of the performance work.
   rundown takes longer than 150 ms - opening a file, pasting, dropping, or
   undoing - the log records how long it took and how many items it was, so a
   slow open on a real show can be read back rather than guessed at.
+- **Startup time is written to the log.** Every start records how long the
+  client took to appear and how much of that was building the window, and the
+  Inspector records how long its sections took when that is 100 ms or more. It
+  says where a slow start actually goes.
 
 ## Movie, Audio And Recorder Rows Load Faster
 

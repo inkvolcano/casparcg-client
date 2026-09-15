@@ -51,6 +51,8 @@
 
 #include "EventManager.h"
 
+#include <QtCore/QDebug>
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QTimer>
 #include <QtWidgets/QVBoxLayout>
 #include "Commands/AbstractCommand.h"
@@ -93,6 +95,14 @@
 InspectorWidget::InspectorWidget(QWidget *parent)
     : QWidget(parent)
 {
+    // Every section below is built here, at startup, whether or not an item that
+    // uses it is ever selected. Whether that is worth making lazy - each section
+    // listens for the selection and shows or hides itself, so laziness is not
+    // free - depends on what it actually costs on a real machine, which this
+    // says. Logged only when it is long enough to be felt.
+    QElapsedTimer sectionClock;
+    sectionClock.start();
+
     setupUi(this);
 
     // Wrap the QToolBox content in a QTabWidget for a consistent panel header.
@@ -269,6 +279,10 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     // Wheel-guard every input in every section: boxes only react to the mouse
     // wheel after being clicked; otherwise the wheel scrolls the inspector page.
     WheelGuard::applyToInputs(this);
+
+    const qint64 built = sectionClock.elapsed();
+    if (built >= 100)
+        qDebug("Building the Inspector's sections took %lld ms", built);
 }
 
 // Sections are referred to throughout this file by the order they are declared in,
