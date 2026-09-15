@@ -120,6 +120,9 @@ void ServerStatusPanelWidget::setupMenus()
 
 void ServerStatusPanelWidget::setupServerPanel()
 {
+    this->recheckTimer.setInterval(30000);
+    QObject::connect(&this->recheckTimer, &QTimer::timeout, this, &ServerStatusPanelWidget::recheckStandingFailures);
+
     // Set up Server content layout.
     QVBoxLayout* serverOuterLayout = new QVBoxLayout(this->widgetServer);
     serverOuterLayout->setContentsMargins(4, 2, 4, 2);
@@ -661,12 +664,19 @@ void ServerStatusPanelWidget::deviceRemoved()
 
     // Re-add all current devices.
     QList<DeviceModel> models = DeviceManager::getInstance().getDeviceModels();
+    QStringList names;
     for (const DeviceModel& model : models)
     {
+        names.append(model.getName());
+
         auto device = DeviceManager::getInstance().getDeviceByName(model.getName());
         if (device != nullptr)
             deviceAdded(*device);
     }
+
+    // A removed server's refusals go with it, and so does its re-checking.
+    this->standingFailures.keepOnly(names);
+    showStandingFailures();
 }
 
 void ServerStatusPanelWidget::deviceConnectionStateChanged(CasparDevice& device)
@@ -698,7 +708,7 @@ void ServerStatusPanelWidget::deviceConnectionStateChanged(CasparDevice& device)
 
 void ServerStatusPanelWidget::deviceMediaChanged(const QList<CasparMedia>& mediaList, CasparDevice& device)
 {
-    listingSucceeded("CLS");
+    listingSucceeded(device, "CLS");
 
     Q_UNUSED(mediaList);
 
@@ -1014,28 +1024,62 @@ void ServerStatusPanelWidget::updatePreviewButtonStyle()
 // Deliberately not a dialog: this arrives while a refresh is happening, possibly
 // repeatedly, and a modal on every failed command would be worse than the silence
 // it replaces.
-void ServerStatusPanelWidget::deviceTemplateChanged(const QList<CasparTemplate>&, CasparDevice&)
+void ServerStatusPanelWidget::deviceTemplateChanged(const QList<CasparTemplate>&, CasparDevice& device)
 {
-    listingSucceeded("TLS");
+    listingSucceeded(device, "TLS");
 }
 
-void ServerStatusPanelWidget::deviceDataChanged(const QList<CasparData>&, CasparDevice&)
+void ServerStatusPanelWidget::deviceDataChanged(const QList<CasparData>&, CasparDevice& device)
 {
-    listingSucceeded("DATA LIST");
+    listingSucceeded(device, "DATA LIST");
 }
 
-void ServerStatusPanelWidget::deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&)
+void ServerStatusPanelWidget::deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice& device)
 {
-    listingSucceeded("THUMBNAIL LIST");
+    listingSucceeded(device, "THUMBNAIL LIST");
 }
 
-// A listing came back: the refusal of that same command, if one was standing,
-// is over - and so is any non-listing refusal, since a server that answers a
-// listing is answering. Until build 224 the banner was shown and never hidden,
-// so it stayed up after the _media fix until the client was restarted.
-void ServerStatusPanelWidget::listingSucceeded(const QString& command)
+QString ServerStatusPanelWidget::serverNameOf(CasparDevice& device)
 {
-    if (this->standingFailures.remove(command) + this->standingFailures.remove("*") == 0)
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (DeviceManager::getInstance().getDeviceByName(model.getName()).data() == &device)
+            return model.getName();
+    }
+
+    return QString("%1:%2").arg(device.getAddress()).arg(device.getPort());
+}
+
+void ServerStatusPanelWidget::recheckStandingFailures()
+{
+    const auto checks = this->standingFailures.toRecheck();
+    for (const auto& check : checks)
+    {
+        const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(check.first);
+
+        // A server that is not connected cannot answer; its connection state is
+        // shown on its own row and it reconnects by itself.
+        if (device == nullptr || !device->isConnected())
+            continue;
+
+        if (check.second == "CLS")
+            device->refreshMedia();
+        else if (check.second == "TLS")
+            device->refreshTemplate();
+        else if (check.second == "DATA LIST")
+            device->refreshData();
+        else if (check.second == "THUMBNAIL LIST")
+            device->refreshThumbnail();
+    }
+}
+
+// A listing came back: that server's refusal of the same command, if one was
+// standing, is over - and so is that server's non-listing refusal, since it is
+// answering. Other servers' refusals stay. Until build 224 the banner was shown
+// and never hidden; until 265 one server's listing cleared every server's.
+void ServerStatusPanelWidget::listingSucceeded(CasparDevice& device, const QString& command)
+{
+    if (!this->standingFailures.listingSucceeded(serverNameOf(device), command))
         return;
 
     showStandingFailures();
@@ -1048,35 +1092,30 @@ void ServerStatusPanelWidget::showStandingFailures()
 
     if (this->standingFailures.isEmpty())
     {
+        this->recheckTimer.stop();
         this->labelServerFailure->setVisible(false);
         return;
     }
 
-    // The most recent is the one shown; the tooltip carries all of them.
-    QStringList all = this->standingFailures.values();
-    this->labelServerFailure->setText(all.last());
-    this->labelServerFailure->setToolTip(all.join("\n"));
+    if (!this->recheckTimer.isActive())
+        this->recheckTimer.start();
+
+    // The most recent is the one shown; the tooltip carries all of them. With more
+    // than one server, each says which server it came from.
+    const bool nameServers = DeviceManager::getInstance().getDeviceCount() > 1;
+    this->labelServerFailure->setText(this->standingFailures.banner(nameServers));
+    this->labelServerFailure->setToolTip(this->standingFailures.tooltip(nameServers));
     this->labelServerFailure->setVisible(true);
 }
 
 void ServerStatusPanelWidget::commandFailed(int code, const QString& line, CasparDevice& device)
 {
-    Q_UNUSED(device);
-
     if (code < 400)
         return;
 
     // "501 CLS FAILED" -> CLS, "501 THUMBNAIL LIST FAILED" -> THUMBNAIL LIST. A
     // refusal of anything that is not a listing is filed under "*".
-    QStringList words = line.trimmed().toUpper().split(' ', Qt::SkipEmptyParts);
-    if (!words.isEmpty() && words.first().toInt() > 0)
-        words.removeFirst();
-    if (!words.isEmpty() && (words.last() == "FAILED" || words.last() == "ERROR"))
-        words.removeLast();
-    QString command = words.join(' ');
-
-    static const QStringList listings = { "CLS", "TLS", "DATA LIST", "THUMBNAIL LIST" };
-    const QString key = listings.contains(command) ? command : QString("*");
+    const QString key = StandingFailures::commandOf(line);
 
     QString advice;
 
@@ -1092,9 +1131,8 @@ void ServerStatusPanelWidget::commandFailed(int code, const QString& line, Caspa
 
     const QString text = QString("%1%2").arg(line.trimmed(), advice);
 
-    // Re-inserted so the newest is last, which is the one the banner shows.
-    this->standingFailures.remove(key);
-    this->standingFailures.insert(key, text);
+    // Filed under this server; the same server and command becomes the newest.
+    this->standingFailures.record(serverNameOf(device), key, text);
 
     showStandingFailures();
 }

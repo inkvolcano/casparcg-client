@@ -41,6 +41,7 @@ SUITES = [
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
+    ('test-standingfailures', False, 'server refusals kept per server, cleared by that server, and what to ask again'),
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
     ('test-clientrelease', False, 'which build is published, whether it is newer, and which asset belongs here'),
     ('test-updater', False, 'the script that replaces the client, run against a throwaway installation'),

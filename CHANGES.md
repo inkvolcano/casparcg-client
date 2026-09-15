@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Server Messages That Clear Themselves
+
+- **A server's error message goes away by itself once the server is fine.** A
+  message like "501 CLS FAILED" used to stay up until something refreshed the
+  library - a restart, a reconnect, Ctrl+R - and automatic library refresh is
+  off by default. While a message is showing, the client now asks that server
+  again every thirty seconds for the list it could not give, and the message
+  clears as soon as the list comes back. Nothing extra is sent while no message
+  is showing, or to a server that is not connected.
+- **Each server's messages are its own.** With more than one server, a good
+  answer from one used to clear a message about another that was still failing.
+  Messages are now kept per server and cleared only by that server, and the
+  message says which server it is about.
+- The message shown is now always the newest one; with several standing, an
+  older one could be shown instead.
+
 ## Thumbnails Arrive In Minutes, Not Half An Hour
 
 - **New clips get their Library thumbnails much sooner.** The client asked the

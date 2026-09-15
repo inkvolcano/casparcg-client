@@ -4,6 +4,7 @@
 #include "ui_ServerStatusPanelWidget.h"
 
 #include "Global.h"
+#include "StandingFailures.h"
 
 #include "Models/CasparData.h"
 #include "Models/CasparMedia.h"
@@ -124,14 +125,22 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
         Q_SLOT void deviceDataChanged(const QList<CasparData>&, CasparDevice&);
         Q_SLOT void deviceThumbnailChanged(const QList<CasparThumbnail>&, CasparDevice&);
 
-        // The refusals currently standing, by the command that was refused, so
-        // each clears when its own command succeeds again and not before.
-        // Listing failures (CLS, TLS, DATA LIST, THUMBNAIL LIST) are keyed by
-        // command; anything else goes under "*" and clears on the next listing
-        // of any kind, which is proof the server is answering again.
-        QMap<QString, QString> standingFailures;
-        void listingSucceeded(const QString& command);
+        // The refusals currently standing, per server and command, newest last
+        // (see StandingFailures.h). Each clears when that server's own listing
+        // succeeds again.
+        StandingFailures standingFailures;
+        void listingSucceeded(CasparDevice& device, const QString& command);
         void showStandingFailures();
+
+        // While any refusal stands, each server with one is asked again every 30 s
+        // for the list it refused - so a message goes away on its own once the
+        // server is fine, without waiting for a library refresh. Stopped when
+        // nothing is standing, so a healthy estate sends nothing extra.
+        QTimer recheckTimer;
+        Q_SLOT void recheckStandingFailures();
+
+        // The configured name of a device, for filing its refusals.
+        static QString serverNameOf(CasparDevice& device);
         Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
         Q_SLOT void timedLockTick(const QString& deviceName, int channel, int remainingSecs);
         Q_SLOT void previewModeChanged(bool active);
