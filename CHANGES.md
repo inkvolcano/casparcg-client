@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Thumbnails Arrive In Minutes, Not Half An Hour
+
+- **New clips get their Library thumbnails much sooner.** The client asked the
+  server for one thumbnail every two seconds whether or not the last one had
+  come back, so a folder of a thousand new clips took more than half an hour to
+  fill in. It now asks for the next one a quarter of a second after each answer.
+  A thumbnail the server does not answer for is still given up on after two
+  seconds, as before, so nothing is slower than it was, and the server is never
+  asked more than four times a second.
+
 ## Template Preview That Shows The Template
 
 The Preview panel's template rendering - turned on with Show templates in the

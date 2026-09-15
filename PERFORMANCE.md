@@ -173,6 +173,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P1-log | The slow-selection log added in 239 showed selections of 587-967 ms on this machine, each straight after dropping library items into a rundown (and 47-176 ms otherwise) | Evidence for the next item |
 | P46 | Selecting a big template for the first time read and scanned the whole file: on the real rolling graphics (18-28 MB, ~2 KB of which is not embedded image) read 411-596 ms and scans 205-353 ms | **done 261** - TemplateScan::readScannable leaves base64 payloads out at byte level before decoding; used by the Invoke function scan and the sheetConnection declaration, and remembered per file (size + mtime, 64 files) so the second scan and later selections do not read again. On the real files readScannable is 153-248 ms cold against 380-596 ms read + 209-391 ms scans, and 0 ms scans after. Same matches verified on the three real files and in tools/test-templatescan (22 -> 32). Not used where a value is read out of the template (debugData defaults can be data URIs) |
 
+## Round 26 - build 264
+
+| # | Item | Status |
+|---|------|--------|
+| P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -183,7 +189,6 @@ against the code, and measured where it is a claim about time, before it is chan
 | P29b | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget | medium: clone sync and change tracking listen to those signals |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
-| P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
 
 ## Checked, not worth changing
 
@@ -196,6 +201,7 @@ against the code, and measured where it is a claim about time, before it is chan
 | P37 | SQLite commits on the GUI thread | WAL declined by the user (the database stays one file). The one-file alternative, skipping unchanged device writes, measured on a real SQLite file: an unchanged UPDATE commit 0.18 ms, the same as a guarded one that changes nothing - three per server per refresh |
 | P43 | Sheet cache server reads its file per request | The real cache files are 1-80 KB (DREAMFORCE25, CNX24 sheets_data) and served from the OS file cache after the first read; a fraction of a millisecond per template request, and an in-memory copy would add a staleness rule |
 | P38 | OSC receive thread per-message work | 3,291 ns per message as written, 2,396 ns with fromLatin1 paths and /control skipped first: 33 vs 24 ms a second at 10,000 messages, on the OSC thread, not the GUI. The QMap insert is most of it and stays: its sorted order is the order paths reach subscribers within a batch |
+| P18 | Whole-tree walk into a QSet on each selection change | 0.088 ms per selection at 1,000 items (50 groups of 10). It is the guard against a dangling-pointer crash after undo, so it stays |
 
 ## Next
 
@@ -208,4 +214,3 @@ against the code, and measured where it is a claim about time, before it is chan
 |---|------|-------|------|
 | P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
-| P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |

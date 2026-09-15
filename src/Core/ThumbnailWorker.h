@@ -23,6 +23,15 @@ class CORE_EXPORT ThumbnailWorker : public QObject
         void start();
 
     private:
+        // Paced by the server's answers rather than by a fixed clock. One thumbnail
+        // every two seconds, answered or not, meant a thousand new clips took more
+        // than half an hour to get their pictures in the Library. The next request
+        // now goes out a quarter of a second after an answer; a request that is not
+        // answered is given up on after two seconds, as long as a request ever got
+        // before, so no case is slower than it was.
+        static const int GAP_AFTER_ANSWER_MS = 250;
+        static const int WAIT_FOR_ANSWER_MS = 2000;
+
         QTimer thumbnailTimer;
 
         QString currentName;

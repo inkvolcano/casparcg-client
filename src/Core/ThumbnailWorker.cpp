@@ -17,13 +17,15 @@ ThumbnailWorker::ThumbnailWorker(const QList<ThumbnailModel>& thumbnailModels, Q
     : QObject(parent),
       thumbnailModels(thumbnailModels)
 {
+    this->thumbnailTimer.setSingleShot(true);
     QObject::connect(&this->thumbnailTimer, SIGNAL(timeout()), this, SLOT(process()));
 }
 
 void ThumbnailWorker::start()
 {
-    this->thumbnailTimer.setInterval(2000); // Settings?
-    this->thumbnailTimer.start();
+    // The first request waits as long as it always did, so a refresh that has just
+    // asked the server for its lists is not answered with a burst straight away.
+    this->thumbnailTimer.start(WAIT_FOR_ANSWER_MS);
 }
 
 void ThumbnailWorker::process()
@@ -48,6 +50,7 @@ void ThumbnailWorker::process()
         // the same entry was looked at again every two seconds for as long as the
         // client ran - the timer never stopped for a removed or shadow server.
         this->thumbnailModels.removeAt(0);
+        this->thumbnailTimer.start(GAP_AFTER_ANSWER_MS);
         return;
     }
 
@@ -70,10 +73,17 @@ void ThumbnailWorker::process()
     device->retrieveThumbnail(this->currentName);
 
     this->thumbnailModels.removeAt(0);
+
+    // Given up on if no answer comes; an answer brings the next request forward.
+    this->thumbnailTimer.start(WAIT_FOR_ANSWER_MS);
 }
 
 void ThumbnailWorker::thumbnailRetrieveChanged(const QString& data, CasparDevice& device)
 {
     QObject::disconnect(&device, SIGNAL(thumbnailRetrieveChanged(const QString&, CasparDevice&)), this, SLOT(thumbnailRetrieveChanged(const QString&, CasparDevice&)));
     DatabaseManager::getInstance().updateThumbnail(ThumbnailModel(0, data, this->currentTimestamp, this->currentSize, this->currentName, this->currentAddress));
+
+    // Answered: the next one shortly, rather than when the two seconds are up.
+    if (this->thumbnailTimer.isActive())
+        this->thumbnailTimer.start(GAP_AFTER_ANSWER_MS);
 }
