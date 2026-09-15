@@ -73,6 +73,13 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P19 | Sheets panel cleared and rebuilt every row and row button on every poll, unchanged or not, resetting scroll and selection | **done 245** - a poll that returns the same headers and rows for the same project and tab is not drawn again. Polling itself is kept: it also warms the sheet cache templates and the Inspector read. Toggles, column visibility and action edits still redraw directly |
 
+## Round 10 - build 246
+
+| # | Item | Status |
+|---|------|--------|
+| P22a | The NDI panel loaded the NDI runtime and started a network discovery thread in its constructor, which the main window runs whether or not the layout places the panel | **done 246** - started on the panel's first showEvent. A layout without NDI never loads it; a layout with it starts it as the window appears, as before. Nothing outside the panel uses NdiManager (checked) |
+| P22b | All 44 Inspector sections built eagerly at startup | **open** - medium risk, not started |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -87,7 +94,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
-| P22 | Startup builds NDI (loads the DLL, starts discovery) and all 44 Inspector sections before the window shows | MainWindow.cpp, NdiPanelWidget.cpp, InspectorWidget.cpp | low (NDI) / medium (Inspector) |
 | P23 | Missing-media check stats files on the GUI thread even for items already in the library | MissingMediaScanner.cpp | low, check verdictFor first |
 | P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |
 | P25 | Simple Mode restyles every tally on every fire, visible or not | SimpleModeWidget.cpp | low |

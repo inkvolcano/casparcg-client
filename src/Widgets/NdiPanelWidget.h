@@ -82,5 +82,12 @@ private:
 
     // NDI availability.
     bool ndiAvailable = false;
+
+    // NDI is started the first time the panel is shown, not when it is built.
+    // The main window builds every panel whether or not the layout places it, and
+    // starting NDI loads its runtime and runs a discovery thread on the network
+    // for the rest of the session - for a panel nobody could see.
+    bool ndiStarted = false;
+    void startNdi();
     QLabel* errorLabel = nullptr;
 };

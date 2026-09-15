@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## NDI Only When The NDI Panel Is Used
+
+Round 10 of the performance work.
+
+- **A layout without the NDI panel no longer loads NDI.** The panel started the
+  NDI runtime and a network search for NDI sources as the client started,
+  whether or not the panel was placed anywhere, and kept searching for the
+  rest of the session. It now starts the first time the panel appears. With
+  the panel in the layout nothing changes; without it, NDI is never loaded.
+
 ## A Sheets Panel That Stays Where You Left It
 
 Round 9 of the performance work.

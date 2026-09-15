@@ -49,6 +49,15 @@ NdiPanelWidget::NdiPanelWidget(QWidget* parent)
     // Center the gridContainer horizontally and vertically in its parent tab area.
     this->verticalLayoutTab->setAlignment(this->gridContainer, Qt::AlignCenter);
 
+}
+
+void NdiPanelWidget::startNdi()
+{
+    if (this->ndiStarted)
+        return;
+
+    this->ndiStarted = true;
+
     // Try to initialize NDI.
     ndiAvailable = NdiManager::getInstance().initialize();
     if (!ndiAvailable)
@@ -542,6 +551,9 @@ void NdiPanelWidget::resizeEvent(QResizeEvent* event)
 
 void NdiPanelWidget::showEvent(QShowEvent* event)
 {
+    // First time on screen: only now is NDI loaded and discovery started.
+    startNdi();
+
     QWidget::showEvent(event);
     // After rebuildLayout() reparents and re-shows this widget,
     // recalculate the grid to match the new container dimensions.
