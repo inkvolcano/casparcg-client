@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Undo That Does Not Eat Memory
+
+Round 7 of the performance work.
+
+- **Undo history takes about seventy times less memory.** Every move, delete,
+  drag, group and paste keeps a copy of the rundown from before and after, and
+  each tab remembers fifty of them. For the largest rundown on the test machine
+  that was around 100 MB of memory for one tab's undo history; the copies are
+  now stored compressed, about 1.4 MB for the same history. Undo and redo work
+  exactly as before, a millisecond or two slower at most.
+
 ## Opening A Rundown Leaves The Clipboard Alone
 
 Round 6 of the performance work.

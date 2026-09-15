@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-7">Undo Without The Memory</a><br>
 <a href="#perf-round-6">Clipboard Left Alone</a><br>
 <a href="#perf-round-5">Less Restyling On Open</a><br>
 <a href="#perf-round-4">A Library That Fills Fast</a><br>
@@ -1834,6 +1835,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-7">Undo That Does Not Eat Memory</h2>
+
+<p>Round 7 of the performance work.</p>
+
+<ul>
+<li><b>Undo history takes about seventy times less memory.</b> Every move, delete, drag, group and paste keeps a copy of the rundown from before and after, and each tab remembers fifty of them. For the largest rundown on the test machine that was around 100 MB of memory for one tab's undo history; the copies are now stored compressed, about 1.4 MB for the same history. Undo and redo work exactly as before, a millisecond or two slower at most.</li>
+</ul>
 
 <h2 id="perf-round-6">Opening A Rundown Leaves The Clipboard Alone</h2>
 

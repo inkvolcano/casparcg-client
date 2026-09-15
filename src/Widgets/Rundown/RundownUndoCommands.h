@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RundownTreeBaseWidget.h"
+#include "UndoSnapshot.h"
 
 #include <QtGui/QUndoCommand>
 #include <QtCore/QString>
@@ -39,8 +40,8 @@ class TreeSnapshotCommand : public QUndoCommand
                             const QString& afterXml)
             : QUndoCommand(description)
             , m_tree(tree)
-            , m_beforeXml(beforeXml)
-            , m_afterXml(afterXml)
+            , m_before(UndoSnapshot::pack(beforeXml))
+            , m_after(UndoSnapshot::pack(afterXml))
         {
         }
 
@@ -51,7 +52,9 @@ class TreeSnapshotCommand : public QUndoCommand
 
     private:
         RundownTreeBaseWidget* m_tree;
-        QString m_beforeXml;
-        QString m_afterXml;
+        // Compressed: two whole rundowns per step, fifty steps per tab, came to
+        // about 100 MB for the largest real rundown and is about 1.4 MB like this.
+        QByteArray m_before;
+        QByteArray m_after;
         bool m_firstRedo = true;
 };

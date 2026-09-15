@@ -29,7 +29,7 @@
 #include <QtWidgets/QApplication>
 
 // TreeSnapshotCommand implementation.
-void TreeSnapshotCommand::undo() { m_tree->restoreFromSnapshot(m_beforeXml); }
+void TreeSnapshotCommand::undo() { m_tree->restoreFromSnapshot(UndoSnapshot::unpack(m_before)); }
 
 void TreeSnapshotCommand::redo()
 {
@@ -39,7 +39,7 @@ void TreeSnapshotCommand::redo()
         m_firstRedo = false;
         return;
     }
-    m_tree->restoreFromSnapshot(m_afterXml);
+    m_tree->restoreFromSnapshot(UndoSnapshot::unpack(m_after));
 }
 
 RundownTreeBaseWidget* RundownTreeBaseWidget::dragSourceWidget = nullptr;

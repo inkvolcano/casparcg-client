@@ -55,6 +55,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P14 | Opening a rundown (file or URL) and inserting a preset went through the system clipboard | **done 242** - pasteXml takes the XML directly. Justified on correctness rather than time: the rundown landed in Windows clipboard history, a clipboard held by another program meant the wrong content was pasted, and a preset insert overwrote the operator's clipboard for good. The file is read with one readAll in text mode, so the change-detection hash is unchanged. Duplicate and Paste as Linked Clones still use the clipboard, by design |
 
+## Round 7 - build 243
+
+| # | Item | Status |
+|---|------|--------|
+| P15 | Undo kept every step's before and after rundown as UTF-16 text, 50 steps per tab | **done 243** - measured on the real rundowns: 1,017 KB held per copy for the largest (520 KB on disk), about 100 MB of undo for one tab; qCompress level 1 stores it in 14 KB (2.35 ms to compress, 1.04 ms to restore), about 1.4 MB for the same history. Round trip exact, tested (`tools/test-undosnapshot`). The double serialisation per edit is unchanged |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -68,7 +74,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
-| P15 | Undo keeps full before/after rundown XML per step, serialised twice per structural edit | RundownTreeBaseWidget.cpp, RundownUndoCommands.h | low |
 | P17 | A channel spin-box tick rebuilds every group widget in every tab, with a synchronous layout | RundownTreeBaseWidget::updateAllGroupWidgets | low |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
 | P19 | Sheets panel rebuilds all rows on every poll, even unchanged and hidden | SheetsPanelWidget.cpp | low |
