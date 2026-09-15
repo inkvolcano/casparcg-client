@@ -1838,6 +1838,27 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## The Rolling Graphics, Read In Forty Milliseconds
+
+Build 230 stopped reading the rolling graphics on selection and remembered
+the ones it had read, and they were still slow: the first selection of each,
+every Refresh of a sheet binding, and the debug-data import all paid the
+twenty seconds once more. So the read itself was measured, step by step, on
+the real 28 MB file. Opening it, reading it and decoding it takes 40 ms. The
+six regular expressions the client runs over it take under half a second
+together. The twenty seconds were one call: `QTextStream::readAll()` on the
+open file, which grows its buffer and re-decodes as it goes and takes 10 to
+24 seconds on 18 to 28 MB.
+
+Every reader of a template or project file now reads it in one piece: the
+Invoke section's function scan, the Inspector's debug-data import, the
+sheetConnection declaration, the preview's template fields and the three
+readers of `project.js`. With the read that cheap the 4 MB gate from build
+230 is raised to 64 MB, so the rolling graphics are scanned on selection
+like any other template - once, and remembered - and Discover Functions and
+the debug-data import work on them without the wait. A harness reads a 28 MB
+file and fails if it takes more than three seconds.
+
 ## The Twenty-Second Hang On The Rolling Graphics
 
 Selecting one of the Dreamforce rolling graphics froze the client for twenty

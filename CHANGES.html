@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#template-read">Rolling Graphics, Read Fast</a><br>
 <a href="#template-scan">Rolling Graphics Hang</a><br>
 <a href="#reconnect-guard">Reconnect Guard</a><br>
 <a href="#preview-legacy">Preview Legacy By Default</a><br>
@@ -1825,6 +1826,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="template-read">The Rolling Graphics, Read In Forty Milliseconds</h2>
+
+<p>Build 230 stopped reading the rolling graphics on selection and remembered the ones it had read, and they were still slow: the first selection of each, every Refresh of a sheet binding, and the debug-data import all paid the twenty seconds once more. So the read itself was measured, step by step, on the real 28 MB file. Opening it, reading it and decoding it takes <b>40 ms</b>. The six regular expressions the client runs over it take under half a second together. The twenty seconds were one call: <code>QTextStream::readAll()</code> on the open file, which grows its buffer and re-decodes as it goes and takes 10 to 24 seconds on 18 to 28 MB.</p>
+
+<p>Every reader of a template or project file now reads it in one piece: the Invoke section's function scan, the Inspector's debug-data import, the sheetConnection declaration, the preview's template fields and the three readers of <code>project.js</code>. With the read that cheap the 4 MB gate from build 230 is raised to 64 MB, so the rolling graphics are scanned on selection like any other template &mdash; once, and remembered &mdash; and <b>Discover Functions</b> and the debug-data import work on them without the wait. A harness reads a 28 MB file and fails if it takes more than three seconds.</p>
 
 <h2 id="template-scan">The Twenty-Second Hang On The Rolling Graphics</h2>
 

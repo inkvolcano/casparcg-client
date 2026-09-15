@@ -467,12 +467,9 @@ QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath, b
         return {};
     }
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString content;
+    if (!TemplateScan::readText(filePath, &content))
         return {};
-
-    QString content = QTextStream(&file).readAll();
-    file.close();
 
     // Detect raw JS function declarations in the template:
     //   function name(...)   window.name = function   const/let/var name = function/arrow

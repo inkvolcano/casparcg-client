@@ -1,4 +1,5 @@
 #include "PreviewWidget.h"
+#include "TemplateScan.h"
 
 #include "Global.h"
 #include "PanelHelper.h"
@@ -839,12 +840,9 @@ QString PreviewWidget::templateDataJson() const
     if (filePath.isEmpty())
         return "{}";
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString content;
+    if (!TemplateScan::readText(filePath, &content))
         return "{}";
-
-    QString content = QTextStream(&file).readAll();
-    file.close();
 
     QRegularExpression debugDataRegex("window\\.debugData\\s*=\\s*\\{([^}]*)\\}");
     QRegularExpressionMatch match = debugDataRegex.match(content);

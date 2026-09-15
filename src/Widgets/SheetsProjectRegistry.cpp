@@ -1,4 +1,5 @@
 #include "SheetsProjectRegistry.h"
+#include "TemplateScan.h"
 
 #include "DatabaseManager.h"
 #include "Models/DeviceModel.h"
@@ -38,12 +39,9 @@ void SheetsProjectRegistry::discover()
 
         foreach (const QString& folder, candidates)
         {
-            QFile file(QDir(folder).filePath("project.js"));
-            if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
+            QString content;
+            if (!TemplateScan::readText(QDir(folder).filePath("project.js"), &content))
                 continue;
-
-            QString content = QTextStream(&file).readAll();
-            file.close();
 
             QRegularExpression idRegex("spreadsheetId\\s*=\\s*[\"']([^\"']+)[\"']");
             QRegularExpression keyRegex("apiKey\\s*=\\s*[\"']([^\"']+)[\"']");
@@ -112,12 +110,9 @@ bool SheetsProjectRegistry::readLocalFlag(const QString& projectFolder, bool* fo
     if (found != nullptr)
         *found = false;
 
-    QFile file(QDir(projectFolder).filePath("project.js"));
-    if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString content;
+    if (!TemplateScan::readText(QDir(projectFolder).filePath("project.js"), &content))
         return false;
-
-    QString content = QTextStream(&file).readAll();
-    file.close();
 
     QRegularExpressionMatch match = localFlagRegex().match(content);
     if (!match.hasMatch())
@@ -216,12 +211,9 @@ static QRegularExpression apiKeyRegex()
 
 QString SheetsProjectRegistry::readApiKey(const QString& projectFolder)
 {
-    QFile file(QDir(projectFolder).filePath("project.js"));
-    if (!file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString content;
+    if (!TemplateScan::readText(QDir(projectFolder).filePath("project.js"), &content))
         return QString();
-
-    QString content = QTextStream(&file).readAll();
-    file.close();
 
     QRegularExpressionMatch match = apiKeyRegex().match(content);
     return match.hasMatch() ? match.captured(2) : QString();

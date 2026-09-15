@@ -1,4 +1,5 @@
 #include "SheetDataResolver.h"
+#include "TemplateScan.h"
 
 #include <algorithm>
 
@@ -848,12 +849,9 @@ TemplateSheetConnection SheetDataResolver::parseConnection(const QString& templa
 {
     TemplateSheetConnection connection;
 
-    QFile file(templateFilePath);
-    if (templateFilePath.isEmpty() || !file.exists() || !file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString content;
+    if (templateFilePath.isEmpty() || !TemplateScan::readText(templateFilePath, &content))
         return connection;
-
-    QString content = QTextStream(&file).readAll();
-    file.close();
 
     // Read the same way the other declarations are read: the object is flat, inline
     // and quoted, so it can be taken without running any of the template.

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtCore/QDateTime>
+#include <QtCore/QFile>
 #include <QtCore/QFileInfo>
 #include <QtCore/QHash>
 #include <QtCore/QString>
@@ -16,17 +17,38 @@
 // read, decode to UTF-16 and scan, on the interface thread, per click. Every
 // other template is under 100 KB, which is why only those hung.
 //
-// Two rules, both here so they can be tested on their own:
+// Three rules, all here so they can be tested on their own:
+//   - the file is read with readText() below. The twenty seconds were not the
+//     file: QTextStream::readAll() on a QFile grows and re-decodes as it goes,
+//     and takes 10 to 24 seconds on 18 to 28 MB (measured on Qt 6.5.3). The
+//     same file as one readAll() and one fromUtf8() takes 40 ms;
 //   - a file over the limit is not scanned on selection; the operator presses
 //     Discover Functions to scan it on purpose, and is told why it was skipped;
 //   - a file that has been scanned is not read again while its size and
 //     modification time are unchanged.
 namespace TemplateScan
 {
-    // Above this a template is not scanned when it is merely selected. Large
-    // enough that a real template never hits it, small enough that a page with
-    // its media embedded always does.
-    const qint64 SCAN_ON_SELECTION_LIMIT = 4 * 1024 * 1024;
+    // The whole file as text, the fast way. Line endings are kept as they are:
+    // every reader of these files matches on \s, which takes a \r. A UTF-8
+    // byte-order mark is dropped, as QTextStream would have dropped it.
+    inline bool readText(const QString& path, QString* content)
+    {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+            return false;
+
+        *content = QString::fromUtf8(file.readAll());
+        if (content->startsWith(QChar(0xFEFF)))
+            content->remove(0, 1);
+
+        return true;
+    }
+
+    // Above this a template is not scanned when it is merely selected. With the
+    // read at 40 ms and the scan itself under half a second on a 28 MB page,
+    // the rolling graphics fit under it and are scanned once, then remembered;
+    // the limit is there for a file no template should ever be.
+    const qint64 SCAN_ON_SELECTION_LIMIT = 64 * 1024 * 1024;
 
     inline bool scanOnSelection(qint64 fileSize)
     {

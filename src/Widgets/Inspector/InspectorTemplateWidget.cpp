@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "../SheetDataResolver.h"
+#include "TemplateScan.h"
 #include "../SheetsProjectRegistry.h"
 #include "../WheelGuard.h"
 #include "DialogPosition.h"
@@ -688,16 +689,13 @@ void InspectorTemplateWidget::loadDebugData()
 
         QString filePath = QDir(templatePath).filePath(templateName + ".html");
 
-        QFile file(filePath);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        QString content;
+        if (!TemplateScan::readText(filePath, &content))
         {
             EventManager::getInstance().fireStatusbarEvent(
                 StatusbarEvent("Could not open template file: " + filePath));
             return;
         }
-
-        QString content = QTextStream(&file).readAll();
-        file.close();
 
         QRegularExpression debugDataRegex("window\\.debugData\\s*=\\s*\\{([^}]*)\\}");
         QRegularExpressionMatch match = debugDataRegex.match(content);
