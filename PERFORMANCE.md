@@ -106,6 +106,15 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P24 | Activity rows faded out over 25 s through a QGraphicsOpacityEffect at the display rate | **done 251** - measured 0.33 ms per row per frame (1.76 ms for six) under the client's style sheet, ~60 frames a second. The long fade is now a linear QTimeLine stepped every 200 ms with the same key values (0.3 at 80 %, 0 at the end): about twelve times fewer re-renders, steps under 0.02 opacity. The 300 ms fade-in on a loop restart stays a smooth animation |
 
+## Checked, not worth changing
+
+| # | Item | Measurement |
+|---|------|-------------|
+| P20 | AMCP/RRUP line parsing | 40,000 lines: 41 ms old vs 20 ms offset-based. Qt 6 trims a string's front cheaply |
+| P26 | OSC subscription registry "linear per item" | Already a hash of path to subscriber list; unsubscribe walks only the subscribers of one exact path |
+| P27c | OSC dispatch for unsubscribed paths | 3,000 distinct paths per batch against 60 subscriptions: 0.88 ms per batch. Batches run every 200 ms (OscRefreshRate default), and messages are merged per path between batches, so about 4.4 ms a second at that load |
+| P10b | Active-item flash setStyleSheet per frame | 0.11 ms per frame on a leaf label, ~2.4 ms per flash |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -120,5 +129,3 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11b | NDI viewer scales each full frame on the GUI thread | NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
-| P26 | OSC subscription unsubscribe is linear per item on a shared list | Core/OscSubscriptionRegistry.cpp | low |
-| P27c | OSC dispatch for unsubscribed paths | OscMonitorListener.cpp | low |
