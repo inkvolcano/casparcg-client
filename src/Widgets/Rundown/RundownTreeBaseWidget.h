@@ -59,6 +59,14 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
 
         bool pasteSelectedItems(bool repositoryRundown = false, bool preserveCloneLinks = false);
 
+        // The same paste, from rundown XML handed in rather than read off the
+        // system clipboard. Opening a file or a URL and inserting a preset used to
+        // put the whole rundown on the clipboard, paste it, and put the old text
+        // back - which left every opened rundown in Windows clipboard history, and
+        // pasted whatever was already there when another program held the
+        // clipboard at that moment.
+        bool pasteXml(const QString& xml, bool repositoryRundown = false, bool preserveCloneLinks = false);
+
         // Why the last parse refused, when it did. Set by every path that reads
         // rundown XML, so an open can tell the operator what is wrong with a file
         // instead of the client disappearing.

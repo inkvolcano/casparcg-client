@@ -479,8 +479,10 @@ void RundownTreeWidget::addPresetItem(const AddPresetItemEvent& event)
 
 void RundownTreeWidget::insertPresetItem(const QString& preset)
 {
-    qApp->clipboard()->setText(preset);
-    pasteSelectedItems();
+    // Pasted directly. This used to replace whatever the operator had on the
+    // clipboard with the preset's XML, and never put it back.
+    this->treeWidgetRundown->pasteXml(preset, this->repositoryRundown);
+    wireAllGatewayWidgets();
     this->treeWidgetRundown->selectItemBelow();
 }
 
@@ -1428,26 +1430,22 @@ void RundownTreeWidget::openRundown(const QString& path)
     {
         this->activeRundown = path;
 
-        QTextStream stream(&file);
-        stream.setEncoding(QStringConverter::Utf8);
-
-        // Save the latest value stored in the clipboard.
-        QString latest = qApp->clipboard()->text();
-        QString data = stream.readAll();
+        // Read in one piece (QTextStream::readAll is superlinear on large input,
+        // see TemplateScan.h). Still opened in text mode, so line endings arrive
+        // as they did and the change-detection hash below is the same value; a
+        // UTF-8 byte-order mark is dropped, as the stream dropped it.
+        QString data = QString::fromUtf8(file.readAll());
+        if (data.startsWith(QChar(0xFEFF)))
+            data.remove(0, 1);
 
         this->hexHash = QString(QCryptographicHash::hash(data.toUtf8(), QCryptographicHash::Md5).toHex());
         qDebug("Hash is %s", qPrintable(this->hexHash));
 
-        qApp->clipboard()->setText(data);
-
         // A rundown that cannot be read is refused rather than ending the client,
         // so this is where whoever opened it finds out which file and why.
         const bool loaded =
-            this->treeWidgetRundown->pasteSelectedItems(false, true); // preserveCloneLinks = true for file load.
+            this->treeWidgetRundown->pasteXml(data, false, true); // preserveCloneLinks = true for file load.
         wireAllGatewayWidgets();
-
-        // Set previous stored clipboard value.
-        qApp->clipboard()->setText(latest);
 
         if (!loaded)
         {
@@ -1509,19 +1507,13 @@ void RundownTreeWidget::doOpenRundownFromUrl(QNetworkReply* reply)
 {
     this->repositoryRundown = true;
 
-    // Save the latest value stored in the clipboard.
-    QString latest = qApp->clipboard()->text();
     QString data = QString::fromUtf8(reply->readAll());
 
     this->hexHash = QString(QCryptographicHash::hash(data.toUtf8(), QCryptographicHash::Md5).toHex());
     qDebug("Hash is %s", qPrintable(this->hexHash));
 
-    qApp->clipboard()->setText(data);
-    this->treeWidgetRundown->pasteSelectedItems(false, true); // preserveCloneLinks = true for URL load.
+    this->treeWidgetRundown->pasteXml(data, false, true); // preserveCloneLinks = true for URL load.
     wireAllGatewayWidgets();
-
-    // Set previous stored clipboard value.
-    qApp->clipboard()->setText(latest);
 
     if (this->treeWidgetRundown->invisibleRootItem()->childCount() > 0)
         this->treeWidgetRundown->setCurrentItem(this->treeWidgetRundown->invisibleRootItem()->child(0));

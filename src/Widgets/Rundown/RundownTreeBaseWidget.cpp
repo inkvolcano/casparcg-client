@@ -504,10 +504,15 @@ bool RundownTreeBaseWidget::pasteItemPropertiesNoData()
 
 bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool preserveCloneLinks)
 {
+    return pasteXml(qApp->clipboard()->text(), repositoryRundown, preserveCloneLinks);
+}
+
+bool RundownTreeBaseWidget::pasteXml(const QString& xml, bool repositoryRundown, bool preserveCloneLinks)
+{
     UndoScope undo(this, "Paste Items");
 
     std::wstringstream wstringstream;
-    wstringstream << qApp->clipboard()->text().toStdWString();
+    wstringstream << xml.toStdWString();
 
     int offset = this->pasteOffset; // 1: after the current item. A drop aimed at the top half of a row: 0.
     this->pasteCount = 0;

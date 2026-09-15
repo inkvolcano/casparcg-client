@@ -49,6 +49,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P10 | Row style sheets at build time and during the active flash | **done 241 (the part that measured)** - under the client's real application style sheet, restyling a row costs 2.35 ms; every row did it twice on open (default colour, then the saved colour, usually identical). All 49 row setColor calls now skip a sheet the row already has: about half the row-styling cost of opening a rundown. The active flash measured 0.11 ms per frame (~2.4 ms per flash) on its leaf label: **checked: not worth it** |
 
+## Round 6 - build 242
+
+| # | Item | Status |
+|---|------|--------|
+| P14 | Opening a rundown (file or URL) and inserting a preset went through the system clipboard | **done 242** - pasteXml takes the XML directly. Justified on correctness rather than time: the rundown landed in Windows clipboard history, a clipboard held by another program meant the wrong content was pasted, and a preset insert overwrote the operator's clipboard for good. The file is read with one readAll in text mode, so the change-detection hash is unchanged. Duplicate and Paste as Linked Clones still use the clipboard, by design |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -62,7 +68,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
-| P14 | Opening a rundown pushes the whole XML through the system clipboard (and Windows clipboard history) | RundownTreeWidget.cpp open paths, pasteSelectedItems | low |
 | P15 | Undo keeps full before/after rundown XML per step, serialised twice per structural edit | RundownTreeBaseWidget.cpp, RundownUndoCommands.h | low |
 | P17 | A channel spin-box tick rebuilds every group widget in every tab, with a synchronous layout | RundownTreeBaseWidget::updateAllGroupWidgets | low |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |

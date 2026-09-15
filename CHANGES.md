@@ -1838,6 +1838,20 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Opening A Rundown Leaves The Clipboard Alone
+
+Round 6 of the performance work.
+
+- **Opening a rundown no longer goes through the clipboard.** The client used
+  to copy the whole rundown onto the Windows clipboard, paste it into the tab,
+  and put the previous clipboard text back. Every opened rundown ended up in
+  Windows clipboard history (Win+V), and if another program - a remote desktop
+  session, a clipboard manager - was holding the clipboard at that moment, the
+  tab could be filled from whatever was there instead. Rundowns opened from a
+  file or a URL are now read straight in.
+- **Inserting a saved preset keeps what you copied.** It used to replace the
+  clipboard with the preset and never put it back.
+
 ## Rundowns Open With Less Restyling
 
 Round 5 of the performance work.
