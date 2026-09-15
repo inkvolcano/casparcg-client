@@ -1838,6 +1838,19 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Quieter Clicks And Progress Bars
+
+Round 21 of the performance work.
+
+- **Clicking a template that reads a Google Sheet no longer searches the disk.**
+  Every such click went through every template folder looking for sheet
+  projects, reading each project's settings file twice. The projects already
+  found are used now; the folders are searched again only for a project not
+  seen before, or when Refresh is pressed.
+- **Activity progress bars redraw only when they move.** A playing item's bar
+  redrew for every frame of the clip, even when the filled part had not moved a
+  single pixel. It now redraws when it visibly changes, and still glides.
+
 ## Small Things That Added Up
 
 Round 20 of the performance work.

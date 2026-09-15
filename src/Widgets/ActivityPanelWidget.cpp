@@ -716,14 +716,27 @@ void ActivityPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
         int rangeMax = static_cast<int>(outTime * entry.fps);
         int targetValue = static_cast<int>(event.getTime() * entry.fps);
 
-        entry.progressBar->setRange(rangeMin, rangeMax);
+        // The bar counts in its own pixels rather than in clip frames. It redrew
+        // whenever its value changed, and in frames that is 25 to 50 times a
+        // second per playing layer - 0.34 ms a redraw, measured - while the fill on
+        // a bar a few hundred pixels wide moves one pixel every several frames.
+        // In pixels it redraws when the fill actually moves, and still animates
+        // smoothly between OSC updates. The time label and the finished check below
+        // still use frames.
+        const int barWidth = qMax(1, entry.progressBar->width());
+        int pixelTarget = 0;
+        if (rangeMax > rangeMin)
+            pixelTarget = qBound(0, qRound(double(targetValue - rangeMin) * barWidth / double(rangeMax - rangeMin)), barWidth);
+
+        if (entry.progressBar->minimum() != 0 || entry.progressBar->maximum() != barWidth)
+            entry.progressBar->setRange(0, barWidth);
 
         // Animate smoothly to new value (skip if unchanged, e.g. paused clips).
-        if (targetValue != entry.animation->endValue().toInt())
+        if (pixelTarget != entry.animation->endValue().toInt())
         {
             entry.animation->stop();
             entry.animation->setStartValue(entry.progressBar->value());
-            entry.animation->setEndValue(targetValue);
+            entry.animation->setEndValue(pixelTarget);
             entry.animation->start();
         }
 

@@ -1000,8 +1000,19 @@ void InspectorTemplateWidget::requestExpectedRows(bool forceReload)
     if (this->command.isNull() || this->model == NULL || !this->sheetConnection.isValid())
         return;
 
-    SheetsProjectRegistry::getInstance().discover();
+    // The projects already found answer first. Rediscovering on every selection
+    // walked every template folder and read each project.js twice - about a
+    // hundred file opens per click with fifty folders, on a share as often as
+    // not. The folders are walked again only when this template's project is not
+    // known yet, or when Refresh asks for a fresh read, which is also how an
+    // edited project.js is picked up here.
     SheetsProject project = SheetsProjectRegistry::getInstance().projectForTemplate(this->command->getTemplateName());
+    if (forceReload || !project.isValid())
+    {
+        SheetsProjectRegistry::getInstance().discover();
+        project = SheetsProjectRegistry::getInstance().projectForTemplate(this->command->getTemplateName());
+    }
+
     if (!project.isValid())
     {
         this->expectedStatus->setText(tr("no sheet project for this template"));

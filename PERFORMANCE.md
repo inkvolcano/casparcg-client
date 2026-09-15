@@ -147,6 +147,13 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P40 | Status bar started a 3 s single-shot per message and never cancelled the earlier ones, so a message could be cleared early by the previous one's timer; restyled on every message | **done 257** - one single-shot timer restarted by the newest message (stopped for a message with no timeout); the line's style set only when it changes |
 | P42 | Autosave serialised each rundown twice per tick and rewrote an unchanged recovery copy | **done 257** - one serialisation for both the change check and the write; the write is skipped when the same content was written to the same file and that file still exists |
 
+## Round 21 - build 258
+
+| # | Item | Status |
+|---|------|--------|
+| P33 | Selecting a sheet-bound template rediscovered every project folder (reading each project.js twice) | **done 258** - the known projects answer first; discover runs only when the template's project is not known yet or Refresh forces a reload |
+| P32 | Activity progress bars redrew on every clip frame during playback | **done 258** - measured 0.34 ms per redraw of a playing row at full opacity (the opacity effect is not the cost: Qt skips it at 1.0). The bar now counts in its own pixels, so it redraws when the fill moves, still animated between OSC updates. The permanent opacity effect was left as is |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -155,11 +162,9 @@ against the code, and measured where it is a claim about time, before it is chan
 | # | Item | Where | Risk |
 |---|------|-------|------|
 | P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
-| P32 | Activity progress bars animated at display rate during playback; opacity effect attached permanently | ActivityPanelWidget.cpp | low |
-| P33 | Selecting a sheet-bound template rediscovers every project folder on disk (reads project.js twice each) | SheetsProjectRegistry::discover, InspectorTemplateWidget::requestExpectedRows | low |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
-| P37 | SQLite uses the default rollback journal with synchronous=FULL; recurring GUI-thread commits | Shell/Main.cpp database open | low-medium |
+| P37 | SQLite commits flush fully on the GUI thread | **declined by the user: the database stays one file, so no WAL.** Any saving here has to come from skipping unchanged writes (device version, channels, formats rewritten on every refresh) | low |
 | P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
 | P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
 | P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
