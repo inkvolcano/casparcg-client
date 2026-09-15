@@ -6,6 +6,7 @@
 
 class QObject;
 class QTcpSocket;
+class QTimer;
 class QTextDecoder;
 
 class CASPAR_EXPORT AmcpDevice : public QObject
@@ -84,6 +85,9 @@ class CASPAR_EXPORT AmcpDevice : public QObject
         QString address;
 
         int port;
+
+        QTimer* reconnectTimer = nullptr;
+        void scheduleReconnect();
 
         bool connected = false;
         bool disableCommands = false;

@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Less Going On In The Background
+
+Round 18 of the performance work.
+
+- **The Performance panel only measures while it is on screen.** It took a
+  snapshot of every process on the machine every two seconds for the whole
+  session, whether or not the panel was part of the layout.
+- **Pressing Connect on a server that is down no longer piles up retries.** Each
+  press started another loop retrying every five seconds, all running at once
+  until the server came back. A server now has one pending retry at most. The
+  same goes for newsroom connections.
+- **A machine without a GPI box stops hammering its serial port.** The client
+  tried to open the port three times a second for as long as it ran. It now
+  waits longer between tries, up to five seconds, and still picks the box up
+  when one is plugged in.
+
 ## Adding A Server Leaves Other Rundown Items Alone
 
 Round 17 of the performance work.

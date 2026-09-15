@@ -20,6 +20,14 @@ class WIDGETS_EXPORT PerformancePanelWidget : public QWidget, Ui::PerformancePan
 public:
     explicit PerformancePanelWidget(QWidget* parent = nullptr);
 
+protected:
+    // The poll runs only while the panel can be seen. Built for every layout,
+    // placed or not, it used to take a snapshot of every process on the machine,
+    // open each server process and restyle its labels every two seconds for the
+    // whole session.
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+
 private:
     void setupMenus();
     void updateStats();

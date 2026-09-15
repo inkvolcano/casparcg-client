@@ -3,6 +3,7 @@
 #include "Shared.h"
 
 #include <QtCore/QObject>
+#include <QtCore/QTimer>
 #include <QtCore5Compat/QTextDecoder>
 
 #include <QtNetwork/QTcpSocket>
@@ -57,6 +58,9 @@ class REPOSITORY_EXPORT RrupDevice : public QObject
         QString address;
         QTextDecoder* decoder;
         QString fragments;
+
+        QTimer* reconnectTimer = nullptr;
+        void scheduleReconnect();
 
         RrupDeviceCommand translateCommand(const QString& command);
 

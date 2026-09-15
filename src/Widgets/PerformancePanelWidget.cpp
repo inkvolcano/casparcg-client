@@ -98,13 +98,32 @@ PerformancePanelWidget::PerformancePanelWidget(QWidget* parent)
     this->gridLayout->addWidget(this->sheetsBox, 4, 0, 1, 3);
     this->sheetsBox->setVisible(false);
 
-    // Poll every 2 seconds.
+    // Poll every 2 seconds, while shown (see showEvent).
     this->updateTimer = new QTimer(this);
+    this->updateTimer->setInterval(2000);
     QObject::connect(this->updateTimer, &QTimer::timeout, this, &PerformancePanelWidget::updateStats);
-    this->updateTimer->start(2000);
 
     // Prime the CPU delta counters with an initial reading.
     updateStats();
+}
+
+void PerformancePanelWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+
+    if (!this->updateTimer->isActive())
+    {
+        // A reading straight away, so the panel is not two seconds out of date
+        // when it appears; the CPU figures cover the time since the last one.
+        updateStats();
+        this->updateTimer->start();
+    }
+}
+
+void PerformancePanelWidget::hideEvent(QHideEvent* event)
+{
+    QWidget::hideEvent(event);
+    this->updateTimer->stop();
 }
 
 // ---- Collapse button ----

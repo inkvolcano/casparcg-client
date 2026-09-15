@@ -125,6 +125,14 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P31 | deviceAdded made every row of every type re-check its connection (resetting its time display) and, for media rows, rebuild its OSC subscriptions, for every server added | **done 254** - all 33 handlers return unless the added device is the row's own, compared by device object (by name lookup), which also removes a possible null dereference and tells apart two servers sharing an address |
 | - | Found while checking P31: RundownOpacityWidget::deviceConnectionStateChanged connected the signal to itself again on every call, doubling the handlers on each connection change | **fixed 254** - same body as every other row type |
 
+## Round 18 - build 255
+
+| # | Item | Status |
+|---|------|--------|
+| P36 | Performance panel polled every 2 s (process snapshot, OpenProcess per server, restyles) for the whole session, placed or not | **done 255** - timer runs between showEvent and hideEvent; a reading is taken on show. updateStats has no side effects outside the panel (checked: it only reads quota figures) |
+| P45 | Each connectDevice and each disconnect started its own 5 s single-shot chain | **done 255** - AmcpDevice and RrupDevice keep one single-shot QTimer and start it only when not already pending |
+| P44 | GPI serial connect retried every 300 ms with an exception each time when no box is attached | **done 255** - retry delay doubles from 300 ms to 5 s while the port will not open, reset to 300 ms when a box connects |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -139,7 +147,6 @@ against the code, and measured where it is a claim about time, before it is chan
 | P33 | Selecting a sheet-bound template rediscovers every project folder on disk (reads project.js twice each) | SheetsProjectRegistry::discover, InspectorTemplateWidget::requestExpectedRows | low |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
-| P36 | Performance panel polls every 2 s (process snapshot, restyles) even when not placed | PerformancePanelWidget.cpp | low |
 | P37 | SQLite uses the default rollback journal with synchronous=FULL; recurring GUI-thread commits | Shell/Main.cpp database open | low-medium |
 | P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
 | P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
@@ -147,8 +154,6 @@ against the code, and measured where it is a claim about time, before it is chan
 | P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
 | P42 | Autosave serialises each rundown twice and rewrites an unchanged recovery copy | RundownWidget/RundownTreeWidget autosave | low |
 | P43 | Sheet cache server reads its file from disk on the GUI thread per request | SheetCacheServer.cpp | low |
-| P44 | GPI serial connect retried every 300 ms forever with an exception each time on machines with no GPI box | Gpi/gpio-client.cpp, GpiManager | low |
-| P45 | Each Connect/Start press on a down server starts another parallel 5 s reconnect chain | AmcpDevice.cpp, RrupDevice.cpp | low |
 
 ## Checked, not worth changing
 

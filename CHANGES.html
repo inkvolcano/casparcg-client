@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-18">Less In The Background</a><br>
 <a href="#perf-round-17">Server Added, Items Left Alone</a><br>
 <a href="#perf-round-16">NDI Off The Interface Thread</a><br>
 <a href="#perf-round-15">Big Libraries Refresh Fast</a><br>
@@ -1846,6 +1847,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-18">Less Going On In The Background</h2>
+
+<p>Round 18 of the performance work.</p>
+
+<ul>
+<li><b>The Performance panel only measures while it is on screen.</b> It took a snapshot of every process on the machine every two seconds for the whole session, whether or not the panel was part of the layout.</li>
+<li><b>Pressing Connect on a server that is down no longer piles up retries.</b> Each press started another loop retrying every five seconds, all running at once until the server came back. A server now has one pending retry at most. The same goes for newsroom connections.</li>
+<li><b>A machine without a GPI box stops hammering its serial port.</b> The client tried to open the port three times a second for as long as it ran. It now waits longer between tries, up to five seconds, and still picks the box up when one is plugged in.</li>
+</ul>
 
 <h2 id="perf-round-17">Adding A Server Leaves Other Rundown Items Alone</h2>
 

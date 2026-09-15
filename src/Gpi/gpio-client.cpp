@@ -1,5 +1,6 @@
 #include "gpio-client.h"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <queue>
@@ -348,6 +349,13 @@ namespace gpio
         bool writing;
         bool got_keep_alive;
         serial_port_state state;
+
+        // How long before the next attempt to open the port. Starts at 300 ms and
+        // doubles to 5 s while the port cannot be opened; back to 300 ms once a
+        // box answers. With no GPI box attached the port never opens, and trying
+        // every 300 ms threw and caught an exception three times a second for the
+        // whole session.
+        long connect_retry_millis = 300;
         connection_listener conn_listener;
         boost::promise<int> gpi_fetched;
         boost::promise<int> gpo_fetched;
@@ -395,7 +403,9 @@ namespace gpio
 
         void schedule_connect()
         {
-            delay(300, std::bind(&impl::connect, this));
+            const long wait = connect_retry_millis;
+            connect_retry_millis = std::min(connect_retry_millis * 2, 5000L);
+            delay(wait, std::bind(&impl::connect, this));
         }
 
         void connect()
@@ -432,6 +442,7 @@ namespace gpio
 
         void connected()
         {
+            connect_retry_millis = 300;
             state = CONNECTED;
             conn_listener(true);
 

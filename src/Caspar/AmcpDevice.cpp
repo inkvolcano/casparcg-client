@@ -36,7 +36,25 @@ void AmcpDevice::connectDevice()
     if (this->socket->state() == QAbstractSocket::UnconnectedState)
         this->socket->connectToHost(this->address, this->port);
 
-    QTimer::singleShot(5000, this, SLOT(connectDevice()));
+    scheduleReconnect();
+}
+
+void AmcpDevice::scheduleReconnect()
+{
+    // One pending retry at most. Every connectDevice and every disconnect used to
+    // start its own five-second chain with QTimer::singleShot, and a chain only
+    // ends when the device connects - so each Connect or Start pressed while a
+    // server was down added another chain trying in parallel.
+    if (this->reconnectTimer == nullptr)
+    {
+        this->reconnectTimer = new QTimer(this);
+        this->reconnectTimer->setSingleShot(true);
+        this->reconnectTimer->setInterval(5000);
+        QObject::connect(this->reconnectTimer, SIGNAL(timeout()), this, SLOT(connectDevice()));
+    }
+
+    if (!this->reconnectTimer->isActive())
+        this->reconnectTimer->start();
 }
 
 void AmcpDevice::disconnectDevice()
@@ -66,7 +84,7 @@ void AmcpDevice::setDisconnected()
 
     sendNotification();
 
-    QTimer::singleShot(5000, this, SLOT(connectDevice()));
+    scheduleReconnect();
 }
 
 void AmcpDevice::setDisableCommands(bool disable)
