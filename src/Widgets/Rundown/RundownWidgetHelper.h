@@ -553,9 +553,23 @@ namespace RundownWidgetHelper
         });
         updateCloneBadge(cloneBadge, command->getCloneGroupId());
 
-        QObject::connect(command, &AbstractCommand::propertyChanged, widget, [command]() {
-            if (!command->getCloneGroupId().isEmpty())
-                CloneGroupRegistry::getInstance().syncFromSource(command->getCloneGroupId(), command);
+        // One sync per turn, not one per property. A sync writes the item's
+        // properties to XML and parses them back before handing them to every
+        // linked sibling: 88 us before the siblings are touched. A row being
+        // loaded sets about twenty properties after its clone group is known,
+        // each of which asked for a full sync of the group. The requests are
+        // gathered and the sync runs once, from the item's final state, so the
+        // siblings end up with what they would have ended up with anyway.
+        QObject::connect(command, &AbstractCommand::propertyChanged, widget, [widget, command]() {
+            if (command->getCloneGroupId().isEmpty() || command->property("cloneSyncQueued").toBool())
+                return;
+
+            command->setProperty("cloneSyncQueued", true);
+            QTimer::singleShot(0, widget, [command]() {
+                command->setProperty("cloneSyncQueued", false);
+                if (!command->getCloneGroupId().isEmpty())
+                    CloneGroupRegistry::getInstance().syncFromSource(command->getCloneGroupId(), command);
+            });
         });
     }
 

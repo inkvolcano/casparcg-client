@@ -179,6 +179,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
 
+## Round 28 - build 268
+
+| # | Item | Status |
+|---|------|--------|
+| P35 | Every property set on a linked item ran a full XML write and parse sync of its clone group | **done 268** - measured on a command's real property set: the source side of one sync (QXmlStreamWriter out, boost read_xml back) is 88 us, before any sibling is touched. A row being loaded sets about twenty properties after its clone group id is read, so a pair of linked rows spent about 3.5 ms on it, more per extra sibling. RundownWidgetHelper::setupCloneSupport now queues one sync for the next event loop turn (a `cloneSyncQueued` dynamic property on the command, with the widget as the timer context), run from the item's final state. Siblings' signals are still blocked during the sync, so nothing cascades, and an edit still syncs within the turn it is made. The setters still emit on unchanged values |
+
 ## Round 27 - build 267
 
 | # | Item | Status |
@@ -192,7 +198,6 @@ against the code, and measured where it is a claim about time, before it is chan
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
 
 ## Checked, not worth changing
 

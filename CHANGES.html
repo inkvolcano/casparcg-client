@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-28">Linked Items Load Faster</a><br>
 <a href="#perf-round-27">Movie Rows Load Faster</a><br>
 <a href="#server-menu">Start And Stop Servers From Server Status</a><br>
 <a href="#server-messages-clear">Server Messages Clear Themselves</a><br>
@@ -1859,6 +1860,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-28">Rundowns With Linked Items Load Faster</h2>
+
+<p>Round 28 of the performance work.</p>
+
+<ul>
+<li><b>A linked item copies itself to its partners once, instead of once per setting.</b> Loading a linked item sent its whole set of properties to every item it is linked with about twenty times over, each time writing them out and reading them back. That work is now done once, from the item's finished state, so linked items end up exactly as they did. Editing a linked item still updates its partners straight away.</li>
+</ul>
 
 <h2 id="perf-round-27">Movie, Audio And Recorder Rows Load Faster</h2>
 

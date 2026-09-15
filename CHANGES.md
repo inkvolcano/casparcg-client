@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundowns With Linked Items Load Faster
+
+Round 28 of the performance work.
+
+- **A linked item copies itself to its partners once, instead of once per
+  setting.** Loading a linked item sent its whole set of properties to every
+  item it is linked with about twenty times over, each time writing them out
+  and reading them back. That work is now done once, from the item's finished
+  state, so linked items end up exactly as they did. Editing a linked item
+  still updates its partners straight away.
+
 ## Movie, Audio And Recorder Rows Load Faster
 
 Round 27 of the performance work.
