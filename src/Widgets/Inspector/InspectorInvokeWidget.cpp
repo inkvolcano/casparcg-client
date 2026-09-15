@@ -468,7 +468,8 @@ QStringList InspectorInvokeWidget::scanTemplateFunctions(QString* outFilePath, b
     }
 
     QString content;
-    if (!TemplateScan::readText(filePath, &content))
+    // Function names only, so the embedded images are left out of the scan.
+    if (!TemplateScan::readScannable(filePath, &content))
         return {};
 
     // Detect raw JS function declarations in the template:

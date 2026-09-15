@@ -1838,6 +1838,19 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Dropping A Big Template Into A Rundown No Longer Stalls
+
+Round 24 of the performance work.
+
+- **Selecting a large template for the first time is quick.** The client's own
+  log showed a pause of up to a second each time one of the big rolling
+  graphics was dropped into a rundown. Those files are 18 to 28 MB, and all but
+  about 2 KB of that is images embedded in the page - yet the client read and
+  searched all of it to find the template's functions and its sheet connection.
+  It now leaves the embedded images out of that search, which finds exactly the
+  same things in a fraction of the time. Reading field defaults from a template
+  still reads the whole file.
+
 ## Gateways Redraw Only When Something Changed
 
 Round 23 of the performance work.

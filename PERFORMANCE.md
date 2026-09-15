@@ -166,6 +166,13 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P39 | Gateway rows deleted, recreated and restyled their exit buttons and laid out the whole tree on every paste/drop, per saved label on load, and every 30 s with a time condition | **done 260** - all three gateway types skip a rebuild whose inputs (exit labels and selected exit, or exit; tree item and tree; width; time condition on) match the last build while buttons exist. The labels are still looked up each time, so a changed exit list or a time-driven change of the effective exit still rebuilds |
 
+## Round 24 - build 261
+
+| # | Item | Status |
+|---|------|--------|
+| P1-log | The slow-selection log added in 239 showed selections of 587-967 ms on this machine, each straight after dropping library items into a rundown (and 47-176 ms otherwise) | Evidence for the next item |
+| P46 | Selecting a big template for the first time read and scanned the whole file: on the real rolling graphics (18-28 MB, ~2 KB of which is not embedded image) read 411-596 ms and scans 205-353 ms | **done 261** - TemplateScan::readScannable leaves base64 payloads out at byte level before decoding; used by the Invoke function scan and the sheetConnection declaration, and remembered per file (size + mtime, 64 files) so the second scan and later selections do not read again. On the real files readScannable is 153-248 ms cold against 380-596 ms read + 209-391 ms scans, and 0 ms scans after. Same matches verified on the three real files and in tools/test-templatescan (22 -> 32). Not used where a value is read out of the template (debugData defaults can be data URIs) |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked

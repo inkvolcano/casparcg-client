@@ -90,6 +90,96 @@ int main(int argc, char** argv)
         expectTrue(took < 3000, QString("and in under three seconds, not twenty: %1 ms").arg(took));
     }
 
+    out << "\nLeaving out embedded images\n";
+    {
+        // A template shaped like the rolling graphics: script with every kind of
+        // declaration the Invoke scan and the sheet declaration look for, around
+        // images in an <img>, in CSS url(), in a JS string and in a template literal.
+        QByteArray payload(200000, 'A');
+        for (int i = 0; i < payload.size(); i += 7)
+            payload[i] = "Zz09+/="[i % 7];
+
+        QByteArray page;
+        page += "<html><head><style>.bg { background: url(data:image/png;base64," + payload + ") }</style></head><body>\n";
+        page += "<img src=\"data:image/png;base64," + payload + "\">\n";
+        page += "<script>\n";
+        page += "window.sheetConnection = { \"tab\": \"LINEUP\", \"key\": \"homelineup\" };\n";
+        page += "const logo = 'data:image/png;base64," + payload + "';\n";
+        page += "function showLower(name) { }\n";
+        page += "window.hideLower = async function () { };\n";
+        page += "const nextSlide = (a = `data:image/jpeg;base64," + payload + "`) => a;\n";
+        page += "let base64 = 1; var encoded = function() { return 'base64,'; };\n";
+        page += "</script></body></html>\n";
+
+        const QByteArray lean = TemplateScan::withoutBase64Payloads(page);
+        expectTrue(lean.size() < 1000, QString("four 200 KB images are left out: %1 bytes remain").arg(lean.size()));
+
+        const auto matches = [](const QString& content) {
+            QStringList found;
+            const char* patterns[] = {
+                "\\bfunction\\s+([A-Za-z_$][\\w$]*)\\s*\\(",
+                "window\\.([A-Za-z_$][\\w$]*)\\s*=\\s*(?:async\\s+)?function",
+                "(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:async\\s+)?(?:function\\b|\\([^)]*\\)\\s*=>)",
+                "window\\.sheetConnection\\s*=\\s*\\{([^}]*)\\}",
+            };
+            for (const char* p : patterns)
+            {
+                QRegularExpressionMatchIterator it = QRegularExpression(p).globalMatch(content);
+                while (it.hasNext())
+                {
+                    const QRegularExpressionMatch m = it.next();
+                    found << m.captured(1);
+                }
+            }
+            return found;
+        };
+
+        const QStringList whole = matches(QString::fromUtf8(page));
+        const QStringList scannable = matches(QString::fromUtf8(lean));
+        expectTrue(whole == scannable, QString("the scans find exactly the same names and declaration: %1").arg(scannable.join(", ")));
+        expectTrue(scannable.contains("showLower") && scannable.contains("hideLower") && scannable.contains("nextSlide")
+                   && scannable.contains("encoded"), "including a declaration written after an image");
+
+        QByteArray noImages = "<script>function plain() {}</script>";
+        expectTrue(TemplateScan::withoutBase64Payloads(noImages) == noImages, "a template with no images is untouched");
+        expectTrue(TemplateScan::withoutBase64Payloads("x base64,") == "x base64,", "a marker at the very end is kept");
+
+        const QString leanPath = QDir(sandbox.path()).filePath("rolling.html");
+        {
+            QFile f(leanPath);
+            f.open(QIODevice::WriteOnly);
+            f.write(page);
+        }
+        QString read;
+        expectTrue(TemplateScan::readScannable(leanPath, &read) && matches(read) == whole, "readScannable reads the file the same way");
+
+        QString again;
+        expectTrue(TemplateScan::readScannable(leanPath, &again) && again == read, "and gives the same text when asked again");
+
+        QThread::msleep(1100);   // file times are whole seconds on some file systems
+        {
+            QFile f(leanPath);
+            f.open(QIODevice::WriteOnly | QIODevice::Truncate);
+            f.write("<script>function changedSince() {}</script>");
+        }
+        QString changed;
+        expectTrue(TemplateScan::readScannable(leanPath, &changed) && changed.contains("changedSince"),
+                   "a file saved again is read again, not answered from memory");
+
+        QString missing = "untouched";
+        expectTrue(!TemplateScan::readScannable(QDir(sandbox.path()).filePath("gone.html"), &missing), "a missing file is false");
+
+        // The real thing's size: 28 MB, nearly all image.
+        QByteArray big = "<script>function a(){}</script><img src=\"data:image/png;base64,";
+        big += QByteArray(28 * MB, 'Q');
+        big += "\"><script>function b(){}</script>";
+        QElapsedTimer bigClock;
+        bigClock.start();
+        const QByteArray bigLean = TemplateScan::withoutBase64Payloads(big);
+        const qint64 bigMs = bigClock.elapsed();
+        expectTrue(bigLean.size() < 200 && bigMs < 1500, QString("a 28 MB image is skipped in %1 ms").arg(bigMs));
+    }
+
     out << "\nThe once-per-file cache\n";
 
     const QString path = QDir(sandbox.path()).filePath("t.html");

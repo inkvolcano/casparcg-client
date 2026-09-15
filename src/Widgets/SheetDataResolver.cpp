@@ -891,7 +891,9 @@ TemplateSheetConnection SheetDataResolver::parseConnection(const QString& templa
     TemplateSheetConnection connection;
 
     QString content;
-    if (templateFilePath.isEmpty() || !TemplateScan::readText(templateFilePath, &content))
+    // The declaration holds a tab and field names, never an image, so the
+    // embedded images are left out of the scan.
+    if (templateFilePath.isEmpty() || !TemplateScan::readScannable(templateFilePath, &content))
         return connection;
 
     // Read the same way the other declarations are read: the object is flat, inline

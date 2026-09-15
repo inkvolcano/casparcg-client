@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QtCore/QByteArray>
 #include <QtCore/QDateTime>
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
@@ -40,6 +41,112 @@ namespace TemplateScan
         *content = QString::fromUtf8(file.readAll());
         if (content->startsWith(QChar(0xFEFF)))
             content->remove(0, 1);
+
+        return true;
+    }
+
+    // The file's bytes with every base64 payload taken out: from "base64," up to
+    // the first byte that cannot be part of base64 ([A-Za-z0-9+/=]). What is left
+    // is the template's own markup and script.
+    //
+    // The rolling graphics are 18 to 28 MB of which all but about 2 KB is embedded
+    // images. Reading, decoding and running the selection scans over the whole of
+    // one took most of a second, measured on the real files, and the client's own
+    // log showed selections of 587 to 967 ms after dropping them into a rundown.
+    // Without the payloads the same scans run in about a millisecond and find
+    // exactly the same matches: a declaration needs spaces, parentheses, braces or
+    // quotes, and a base64 payload holds none, so no match can start, end or cross
+    // inside one. tools/test-templatescan holds that.
+    //
+    // Only for scans that look for names and declarations. Anything that reads a
+    // value out of the template - window.debugData defaults, which can themselves
+    // be data URIs - must read the whole file with readText.
+    inline QByteArray withoutBase64Payloads(const QByteArray& bytes)
+    {
+        static const QByteArray marker("base64,");
+
+        QByteArray out;
+        int from = 0;
+        while (true)
+        {
+            int at = bytes.indexOf(marker, from);
+            if (at < 0)
+            {
+                if (from == 0)
+                    return bytes;   // nothing to take out: no copy
+
+                out.append(bytes.constData() + from, bytes.size() - from);
+                return out;
+            }
+
+            if (out.isEmpty())
+                out.reserve(4096);
+
+            at += marker.size();
+            out.append(bytes.constData() + from, at - from);
+
+            const char* data = bytes.constData();
+            const int size = bytes.size();
+            int end = at;
+            while (end < size)
+            {
+                const char c = data[end];
+                const bool base64 = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '+' || c == '/' || c == '=';
+                if (!base64)
+                    break;
+                ++end;
+            }
+
+            from = end;
+        }
+    }
+
+    // readText, with the base64 payloads left out before decoding - for the scans
+    // that only look for names and declarations (see withoutBase64Payloads).
+    //
+    // The result is remembered per file while its size and modification time are
+    // unchanged: a first selection runs two scans (functions, sheet declaration)
+    // that each read the file, and the same template selected again in another
+    // rundown reads it again. Without its images a template is a few KB, so this
+    // holds little; it is capped at 64 files all the same.
+    inline bool readScannable(const QString& path, QString* content)
+    {
+        struct Held
+        {
+            qint64 size = -1;
+            QDateTime modified;
+            QString text;
+        };
+        static QHash<QString, Held> held;
+
+        const QFileInfo info(path);
+        if (!info.exists())
+            return false;
+
+        const auto found = held.constFind(path);
+        if (found != held.constEnd() && found->size == info.size() && found->modified == info.lastModified())
+        {
+            *content = found->text;
+            return true;
+        }
+
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+            return false;
+
+        *content = QString::fromUtf8(withoutBase64Payloads(file.readAll()));
+        if (content->startsWith(QChar(0xFEFF)))
+            content->remove(0, 1);
+
+        if (held.size() >= 64 && !held.contains(path))
+            held.clear();
+
+        Held entry;
+        entry.size = info.size();
+        entry.modified = info.lastModified();
+        entry.text = *content;
+        held.insert(path, entry);
 
         return true;
     }
