@@ -421,6 +421,18 @@ bool RundownWidget::eventFilter(QObject* watched, QEvent* event)
         }
         else if (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove || event->type() == QEvent::Drop)
         {
+            // A drag's events arrive here first on the QWindow, which is not a
+            // QWidget, so w is null for that delivery. Everything below reads
+            // through w, and from build 226 to 232 this branch did so anyway:
+            // the log line that names the widget dereferenced null on the very
+            // first DragEnter of every tab drag, and the client died before the
+            // tab had gone anywhere. Found from the disassembly at the fault
+            // offset in the field's crash record. The QWindow's copy is left to
+            // Qt, which hands the same event to the widget under the cursor -
+            // and that delivery is the one this branch is for.
+            if (w == nullptr)
+                return false;
+
             // QDragEnterEvent and QDragMoveEvent are both QDropEvents.
             QDropEvent* drop = static_cast<QDropEvent*>(event);
 

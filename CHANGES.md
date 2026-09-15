@@ -1782,6 +1782,23 @@ about.
 
 ---
 
+## The Tab Drag Crash, Actually Found
+
+232 said the tab drag crashed because a drop closed the split from inside the
+drag. That was a real hazard and it stays fixed, but it was not what happened:
+the crash came within a second of the drag starting, before any drop. A local
+reproduction and the disassembly at the fault offset — the same code in the
+field record from 229 and the local one from 231 — put it in the drag branch of
+the event filter, on the line that logs which widget the drag entered. A drag's
+events arrive first on the window, which is not a widget, and that line read
+through a null pointer. **Every tab drag since 226 died on its first
+DragEnter.** It now steps aside for the window's copy of the event and handles
+the widget's, which is the one it was written for.
+
+Two lessons kept: a crash record's offset is worth a disassembly even without
+symbols — the imports around it named the line — and from 232 every release
+carries a `.pdb`, so next time it is a line number outright.
+
 ## A Tab Drag Could Take The Client Down
 
 A production client died on build 229 with an access violation in the client

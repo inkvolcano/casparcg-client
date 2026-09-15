@@ -140,6 +140,7 @@ hr {
 <a href="#ograf-switch">OGraf As One Switch</a><br>
 <a href="#panel-split">Three Panels, Three Files</a><br>
 <a href="#push-root">Push Tool Pack List Fix</a><br>
+<a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
 <a href="#template-scan">Rolling Graphics Hang</a><br>
@@ -1804,6 +1805,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>Now a locked rundown refuses them, and <b>says so</b> rather than quietly doing nothing. The cursor refuses on the way in too: a "yes" cursor over a target that then ignores the drop reads as the client having lost the drag.</p>
 
 <p>A drag from another application is still ignored in silence, locked or not. Dragging a file across the window is not something to interrupt an operator about.</p>
+
+<h2 id="tab-drag-found">The Tab Drag Crash, Actually Found</h2>
+
+<p>232 said the tab drag crashed because a drop closed the split from inside the drag. That was a real hazard and it stays fixed, but it was not what happened: the crash came within a second of the drag starting, before any drop. A local reproduction and the disassembly at the fault offset &mdash; the same code in the field record from 229 and the local one from 231 &mdash; put it in the drag branch of the event filter, on the line that logs which widget the drag entered. A drag's events arrive first on the window, which is not a widget, and that line read through a null pointer. <b>Every tab drag since 226 died on its first DragEnter.</b> It now steps aside for the window's copy of the event and handles the widget's, which is the one it was written for.</p>
+
+<p>Two lessons kept: a crash record's offset is worth a disassembly even without symbols &mdash; the imports around it named the line &mdash; and from 232 every release carries a <code>.pdb</code>, so next time it is a line number outright.</p>
 
 <h2 id="tab-drag-crash">A Tab Drag Could Take The Client Down</h2>
 

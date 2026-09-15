@@ -39,7 +39,7 @@ Full suite after the changes: 1583 assertions, 0 failed, network suites included
 | | What was done | Checked by |
 |---|---|---|
 | **F33** | `SimpleModeMarker` connected each command's `showInSimpleModeChanged` to a lambda with `Qt::UniqueConnection`, which Qt refuses outright (the log warned on every rundown load), so the badge never followed a tick after the first sweep. One tracked connection per command now, replaced on re-sweep and dropped when the command goes | no automated cover; the warning line is gone from the log on load |
-| **F32** | The tab drag's `QDrag` is parented to the `RundownWidget`, not the tab bar; a drop never closes the split from inside `drag->exec()`; `startTabDrag` closes it after `exec()` returns | no automated cover — window code. Field evidence: `windows-crash.txt` (fault in `casparcg-client.exe`, `0xc0000005`, offset `0x313461`, build 229) and the log's last line `Tab drag started from secondary, tab 0` |
+| **F32** | 233: the drag branch of `eventFilter` returns early when `watched` is not a QWidget — the QWindow delivery — instead of dereferencing a null `w` in its log line. 232 (kept): `QDrag` parented to the `RundownWidget`, split closed after `exec()` | no automated cover — window code. Evidence: disassembly at the fault offset of both the field record (229, `0x313461`) and a local repro (231, `0x315511`): `qPrintable` → `mov rcx,[r15]` → `className`, i.e. the log line reading `w` |
 
 Release builds carry a `.pdb` from 232 on, kept out of the published zip, so the
 next offset in our own exe can be symbolised instead of read from the log.
@@ -92,7 +92,7 @@ sessions rather than inherited.
 
 | Pri | ID | Finding | Area | Size of fix |
 |---|---|---|---|---|
-| done | F32 | Dragging a tab out of a pane can destroy the bar mid-drag | Rundown | fixed in 232 |
+| done | F32 | Dragging a tab crashes on its first DragEnter (null `w` for the QWindow) | Rundown | fixed in 233 |
 | done | F33 | The Simple Mode badge never follows an Inspector tick — **mine** | Simple Mode | fixed in 232 |
 | done | F31 | Selecting a video with no audio track crashes the client | Preview | fixed in 222 |
 | done | F28 | One malformed UDP datagram terminates the client | OSC | fixed in 220 |
@@ -138,10 +138,16 @@ Replaced by one tracked connection per command.
 
 ### F32. Dragging a tab out of a pane can destroy the bar mid-drag
 
-**FIXED in build 232.** The `QDrag` is parented to the widget that outlives the
-drag; the split is closed after `exec()` returns, never from the drop inside it.
-No automated cover; the exact instruction was not symbolised (no `.pdb` existed
-for 229 — from 232 there is one).
+**FIXED in build 233 — and 232's fix was for a different, unproven hazard.**
+The disassembly at the field offset (`0x313461`, 229) and at a local repro
+(`0x315511`, 231) is the same code: the DragEnter branch of
+`RundownWidget::eventFilter`, `mov rcx,[r15]` right after `qPrintable` and
+before `QMetaObject::className` — the log line dereferencing `w`, which is
+`qobject_cast<QWidget*>(watched)` and **null when the watched object is the
+QWindow**, where a drag's events arrive first. Every tab drag since 226 died on
+its first DragEnter. 233 returns `false` for a non-widget `watched` before the
+branch reads through `w`. 232's change (QDrag parented to the widget, split
+closed after `exec()`) stays: a real hazard, but not the one that fired.
 
 **Rundown · found in the field, 2026-09-14, build 229 — mine, build 226**
 
