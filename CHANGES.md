@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Big Media Server Refreshes Without Freezing
+
+Round 15 of the performance work.
+
+- **Refreshing a library with thousands of clips no longer freezes the client.**
+  On every refresh the client compared the server's list of media, templates,
+  stored data and thumbnails against its own library by checking every item
+  against every other item. With 10,000 clips that took about fourteen seconds,
+  with the whole interface frozen, for each server, on every refresh. It now
+  looks names up directly and takes a few milliseconds. What is added, removed
+  and updated is exactly the same.
+
 ## A Lighter Activity Panel
 
 Round 14 of the performance work.

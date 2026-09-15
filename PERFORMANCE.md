@@ -106,6 +106,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P24 | Activity rows faded out over 25 s through a QGraphicsOpacityEffect at the display rate | **done 251** - measured 0.33 ms per row per frame (1.76 ms for six) under the client's style sheet, ~60 frames a second. The long fade is now a linear QTimeLine stepped every 200 ms with the same key values (0.3 at 80 %, 0 at the end): about twelve times fewer re-renders, steps under 0.02 opacity. The 300 ms fade-in on a loop restart stays a smooth animation |
 
+## Round 15 - build 252
+
+| # | Item | Status |
+|---|------|--------|
+| P5 | Library vs server comparison: nested loops with a copy per inner step, for media (three passes), templates, data and thumbnails, on the GUI thread every refresh | **done 252** - measured at 10,000 clips: 14,289 ms as written, 4 ms with hash lookups, identical deletes, inserts and detail rows. All four comparisons now use QSet/QHash; the media detail pass keeps the first library row of a name, as its early break did |
+
 ## Checked, not worth changing
 
 | # | Item | Measurement |
@@ -125,7 +131,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | # | Item | Where | Risk |
 |---|------|-------|------|
 | P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
-| P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
 | P11b | NDI viewer scales each full frame on the GUI thread | NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
