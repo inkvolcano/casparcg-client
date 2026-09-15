@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Small Things That Added Up
+
+Round 20 of the performance work.
+
+- **A server name that does not resolve no longer stalls the client.** With a
+  server entered by name rather than address, and no DNS to answer, every item
+  in a rundown asked again and waited for the answer. A failed lookup is now
+  remembered for thirty seconds before it is tried again.
+- **Status messages stay up for their full three seconds.** Each message
+  started its own timer to clear the line and earlier ones kept running, so a
+  message that arrived just after another could vanish almost at once.
+- **Auto-save writes each rundown once, and only when it changed.** It worked
+  the rundown out twice every time, and rewrote a recovery copy that was already
+  up to date.
+
 ## Rundowns Load With Fewer Database Queries
 
 Round 19 of the performance work.

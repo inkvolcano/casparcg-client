@@ -26,6 +26,12 @@ class CASPAR_EXPORT CasparDevice : public AmcpDevice
         mutable QString resolvedFor;
         mutable QString resolvedTo;
 
+        // A name that did not resolve, and when that was found out. Asked again
+        // straight away, a lookup that is going to fail blocks the GUI thread for as
+        // long as DNS takes to say so - six times per rundown item's subscriptions.
+        mutable QString failedFor;
+        mutable qint64 failedAt = 0;
+
     public:
 
         void refreshData();

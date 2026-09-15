@@ -154,6 +154,12 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         QString activeRundown;
         QString hexHash;
 
+        // The content of the recovery copy last written, by hash, so an unchanged
+        // rundown is not written again every tick. A copy is only skipped while its
+        // file is still there.
+        mutable QString autoSaveHash;
+        mutable QString autoSavePath;
+
         QMenu* contextMenuTools;
         QMenu* contextMenuColor;
         QMenu* contextMenuMark;

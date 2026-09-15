@@ -139,6 +139,14 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P28 | Every rundown item looked up its server's frame rate with two uncached queries (device, format) 2-4 times while loading, and every 200 ms while a still with a duration plays | **done 256** - DatabaseManager remembers devices and formats by name (81 and 54 callers). All six Device writers clear the device cache under the same lock; a new database and the change scripts clear both. tools/test-settingscache now writes through every device writer and checks the next read matches the table (16 -> 30) |
 
+## Round 20 - build 257
+
+| # | Item | Status |
+|---|------|--------|
+| P30 | A server host name that does not resolve was looked up again, blocking the GUI thread, on every call | **done 257** - CasparDevice keeps a failure for 30 s, then tries again; a success is still kept as before. RepositoryDevice not changed |
+| P40 | Status bar started a 3 s single-shot per message and never cancelled the earlier ones, so a message could be cleared early by the previous one's timer; restyled on every message | **done 257** - one single-shot timer restarted by the newest message (stopped for a message with no timeout); the line's style set only when it changes |
+| P42 | Autosave serialised each rundown twice per tick and rewrote an unchanged recovery copy | **done 257** - one serialisation for both the change check and the write; the write is skipped when the same content was written to the same file and that file still exists |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -147,7 +155,6 @@ against the code, and measured where it is a claim about time, before it is chan
 | # | Item | Where | Risk |
 |---|------|-------|------|
 | P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
-| P30 | A host name that does not resolve is looked up synchronously again on every call (6 per subscription rebuild) | CasparDevice::resolveIpAddress, RepositoryDevice | low |
 | P32 | Activity progress bars animated at display rate during playback; opacity effect attached permanently | ActivityPanelWidget.cpp | low |
 | P33 | Selecting a sheet-bound template rediscovers every project folder on disk (reads project.js twice each) | SheetsProjectRegistry::discover, InspectorTemplateWidget::requestExpectedRows | low |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
@@ -155,9 +162,7 @@ against the code, and measured where it is a claim about time, before it is chan
 | P37 | SQLite uses the default rollback journal with synchronous=FULL; recurring GUI-thread commits | Shell/Main.cpp database open | low-medium |
 | P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
 | P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
-| P40 | Status bar: a new 3 s single-shot per message that is never cancelled; rich text and restyle per message | StatusBarWidget.cpp | low |
 | P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
-| P42 | Autosave serialises each rundown twice and rewrites an unchanged recovery copy | RundownWidget/RundownTreeWidget autosave | low |
 | P43 | Sheet cache server reads its file from disk on the GUI thread per request | SheetCacheServer.cpp | low |
 
 ## Checked, not worth changing

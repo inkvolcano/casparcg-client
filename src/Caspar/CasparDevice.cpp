@@ -9,6 +9,7 @@
 
 #include "../Core/DatabaseManager.h"
 
+#include <QtCore/QDateTime>
 #include <QtCore/QStringList>
 
 #include <QtNetwork/QHostInfo>
@@ -32,9 +33,22 @@ const QString CasparDevice::resolveIpAddress() const
     if (this->resolvedFor == AmcpDevice::getAddress())
         return this->resolvedTo;
 
+    // A failure is kept for thirty seconds, then tried again, so a server whose
+    // name starts resolving - DNS back, the venue network up - is found within
+    // half a minute without every call in between waiting on the network.
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (this->failedFor == AmcpDevice::getAddress() && now - this->failedAt < 30000)
+        return "";
+
     QHostInfo hostInfo = QHostInfo::fromName(AmcpDevice::getAddress());
     if (hostInfo.error() != QHostInfo::NoError || hostInfo.addresses().isEmpty())
-        return "";   // not kept: the next call tries again, as before
+    {
+        this->failedFor = AmcpDevice::getAddress();
+        this->failedAt = QDateTime::currentMSecsSinceEpoch();
+        return "";
+    }
+
+    this->failedFor.clear();
 
     this->resolvedFor = AmcpDevice::getAddress();
     this->resolvedTo = hostInfo.addresses().at(0).toString();

@@ -71,13 +71,30 @@ void StatusBarWidget::statusbar(const StatusbarEvent& event)
     }
 
     // Clear the current label after timeout (history keeps the message).
-    if (event.getTimeout() > 0)
+    if (this->clearTimer == nullptr)
     {
-        QTimer::singleShot(event.getTimeout(), this, [this]() {
+        this->clearTimer = new QTimer(this);
+        this->clearTimer->setSingleShot(true);
+        QObject::connect(this->clearTimer, &QTimer::timeout, this, [this]() {
             this->currentLabel->clear();
-            this->currentLabel->setStyleSheet("font-size: 10px; color: rgba(190, 190, 190, 200); padding: 2px 4px;");
+            setLabelStyle("font-size: 10px; color: rgba(190, 190, 190, 200); padding: 2px 4px;");
         });
     }
+
+    // The newest message decides: its own timeout restarts the clock, and one
+    // with no timeout stays until something replaces it.
+    if (event.getTimeout() > 0)
+        this->clearTimer->start(event.getTimeout());
+    else
+        this->clearTimer->stop();
+}
+
+// The line's style, set only when it changes. Most messages are not errors, and
+// setting the same style again still re-polished the label on every message.
+void StatusBarWidget::setLabelStyle(const QString& style)
+{
+    if (this->currentLabel->styleSheet() != style)
+        this->currentLabel->setStyleSheet(style);
 }
 
 void StatusBarWidget::showLatestMessage()
@@ -94,9 +111,9 @@ void StatusBarWidget::showLatestMessage()
     this->currentLabel->setTextFormat(Qt::RichText);
 
     if (latest.isError)
-        this->currentLabel->setStyleSheet("font-size: 10px; color: #ff4444; font-weight: bold; padding: 2px 4px;");
+        setLabelStyle("font-size: 10px; color: #ff4444; font-weight: bold; padding: 2px 4px;");
     else
-        this->currentLabel->setStyleSheet("font-size: 10px; color: rgba(190, 190, 190, 200); padding: 2px 4px;");
+        setLabelStyle("font-size: 10px; color: rgba(190, 190, 190, 200); padding: 2px 4px;");
 }
 
 void StatusBarWidget::toggleExpanded()

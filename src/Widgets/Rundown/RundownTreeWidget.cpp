@@ -1781,10 +1781,16 @@ QString RundownTreeWidget::autoSaveStemFor(const QString& activeRundown)
 
 bool RundownTreeWidget::writeAutoSaveCopy(const QString& directory) const
 {
-    // Only rundowns with something in them and something changed. checkForSave()
-    // already rules out empty and repository rundowns, so a copy is only ever made
-    // of work that would otherwise be lost.
-    if (!checkForSave())
+    // Only rundowns with something in them and something changed - the same rules
+    // as checkForSave(), applied to one serialisation. checkForSave() serialised
+    // the rundown to hash it, and this serialised it again to write it.
+    if (this->treeWidgetRundown->invisibleRootItem()->childCount() == 0 || this->repositoryRundown)
+        return false;
+
+    const QByteArray rundown = serialiseRundown();
+    const QString contentHash = QString(QCryptographicHash::hash(rundown, QCryptographicHash::Md5).toHex());
+
+    if (contentHash == this->hexHash)
         return false;
 
     QDir().mkpath(directory);
@@ -1798,12 +1804,17 @@ bool RundownTreeWidget::writeAutoSaveCopy(const QString& directory) const
     payload.append(AutoSaveNaming::marker());
     payload.append(this->activeRundown.toUtf8().toPercentEncoding());
     payload.append(" -->\n");
-    payload.append(serialiseRundown());
+    payload.append(rundown);
 
     // Written to a temporary name and renamed into place, so a recovery file is
     // never a half-written one: the crash this protects against can land here.
     QString finalPath = QString("%1/%2.xml").arg(directory, safeStem);
     QString partPath = finalPath + ".part";
+
+    // The same content already written to the same place, and still there: the
+    // recovery copy is already what it would be, so it is left alone.
+    if (contentHash == this->autoSaveHash && finalPath == this->autoSavePath && QFile::exists(finalPath))
+        return false;
 
     QFile part(partPath);
     if (!part.open(QFile::WriteOnly | QFile::Truncate))
@@ -1824,6 +1835,9 @@ bool RundownTreeWidget::writeAutoSaveCopy(const QString& directory) const
         QFile::remove(partPath);
         return false;
     }
+
+    this->autoSaveHash = contentHash;
+    this->autoSavePath = finalPath;
 
     return true;
 }
