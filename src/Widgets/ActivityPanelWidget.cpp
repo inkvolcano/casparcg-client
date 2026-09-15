@@ -22,6 +22,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QFileInfo>
 #include <QtCore/QSet>
+#include <QtCore/QPointer>
+#include <QtCore/QTimeLine>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QInputDialog>
@@ -244,18 +246,28 @@ QString ActivityPanelWidget::channelColorStyle(int channel) const
     return ChannelBadge::style(channel, this->bigBoldMode);
 }
 
+// Stops and frees the row's fade, whichever kind it is.
+static void stopRowFade(QObject*& fade)
+{
+    if (fade == nullptr)
+        return;
+
+    if (QAbstractAnimation* animation = qobject_cast<QAbstractAnimation*>(fade))
+        animation->stop();
+    else if (QTimeLine* timeline = qobject_cast<QTimeLine*>(fade))
+        timeline->stop();
+
+    delete fade;
+    fade = nullptr;
+}
+
 void ActivityPanelWidget::removeActivityEntry(const QString& key)
 {
     if (!this->activityEntries.contains(key))
         return;
 
     ActivityEntry& entry = this->activityEntries[key];
-    if (entry.rowFadeAnim != nullptr)
-    {
-        entry.rowFadeAnim->stop();
-        delete entry.rowFadeAnim;
-        entry.rowFadeAnim = nullptr;
-    }
+    stopRowFade(entry.rowFadeAnim);
     if (entry.animation != nullptr)
         entry.animation->stop();
     this->activityLayout->removeWidget(entry.row);
@@ -732,23 +744,38 @@ void ActivityPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
             if (isDone)
             {
                 // Stop any existing fade animation before starting a new one.
-                if (entry.rowFadeAnim != nullptr)
-                {
-                    entry.rowFadeAnim->stop();
-                    delete entry.rowFadeAnim;
-                    entry.rowFadeAnim = nullptr;
-                }
+                stopRowFade(entry.rowFadeAnim);
 
                 // Gradually fade to gray over 20s, then fade away over 5s.
                 // Opacity reduction on the dark background naturally desaturates colors.
-                entry.rowFadeAnim = new QPropertyAnimation(entry.rowOpacity, "opacity", entry.row);
-                entry.rowFadeAnim->setDuration(25000);
-                entry.rowFadeAnim->setKeyValueAt(0.0, entry.rowOpacity->opacity());
-                entry.rowFadeAnim->setKeyValueAt(0.8, 0.3);  // Fade to near-gray over 20s
-                entry.rowFadeAnim->setKeyValueAt(1.0, 0.0);   // Fade away over 5s
-                entry.rowFadeAnim->start();
+                //
+                // Stepped five times a second rather than animated at the display
+                // rate. Every opacity change re-renders the whole row through its
+                // graphics effect: 0.33 ms a row, 1.76 ms for six, sixty times a
+                // second for 25 seconds after items finish (measured under the
+                // client's style sheet). At this pace each step moves opacity by
+                // under 0.02, which does not read as a step.
+                QTimeLine* fade = new QTimeLine(25000, entry.row);
+                fade->setUpdateInterval(200);
+                fade->setEasingCurve(QEasingCurve::Linear);   // QTimeLine eases in and out by default
 
-                QObject::connect(entry.rowFadeAnim, &QPropertyAnimation::finished, this, [this, key]() {
+                const qreal startOpacity = entry.rowOpacity->opacity();
+                QPointer<QGraphicsOpacityEffect> effect = entry.rowOpacity;
+                QObject::connect(fade, &QTimeLine::valueChanged, this, [effect, startOpacity](qreal t) {
+                    if (effect.isNull())
+                        return;
+
+                    // The same key values as before: to 0.3 at 80%, to 0 at the end.
+                    const qreal opacity = (t <= 0.8)
+                        ? startOpacity + (0.3 - startOpacity) * (t / 0.8)
+                        : 0.3 * (1.0 - (t - 0.8) / 0.2);
+                    effect->setOpacity(opacity);
+                });
+
+                entry.rowFadeAnim = fade;
+                fade->start();
+
+                QObject::connect(fade, &QTimeLine::finished, this, [this, key]() {
                     if (this->activityEntries.contains(key) && this->activityEntries[key].done
                         && !this->activityEntries[key].suppressed)
                     {
@@ -774,20 +801,17 @@ void ActivityPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
                 if (entry.rowOpacity != nullptr)
                 {
                     // Stop any existing fade animation before starting a new one.
-                    if (entry.rowFadeAnim != nullptr)
-                    {
-                        entry.rowFadeAnim->stop();
-                        delete entry.rowFadeAnim;
-                        entry.rowFadeAnim = nullptr;
-                    }
+                    stopRowFade(entry.rowFadeAnim);
 
-                    entry.rowFadeAnim = new QPropertyAnimation(entry.rowOpacity, "opacity", entry.row);
-                    entry.rowFadeAnim->setDuration(300);
-                    entry.rowFadeAnim->setStartValue(entry.rowOpacity->opacity());
-                    entry.rowFadeAnim->setEndValue(1.0);
-                    entry.rowFadeAnim->start();
+                    // Short, so it stays smooth.
+                    QPropertyAnimation* fadeIn = new QPropertyAnimation(entry.rowOpacity, "opacity", entry.row);
+                    fadeIn->setDuration(300);
+                    fadeIn->setStartValue(entry.rowOpacity->opacity());
+                    fadeIn->setEndValue(1.0);
+                    entry.rowFadeAnim = fadeIn;
+                    fadeIn->start();
 
-                    QObject::connect(entry.rowFadeAnim, &QPropertyAnimation::finished, this, [this, key]() {
+                    QObject::connect(fadeIn, &QPropertyAnimation::finished, this, [this, key]() {
                         if (this->activityEntries.contains(key))
                             this->activityEntries[key].rowFadeAnim = nullptr;
                     });

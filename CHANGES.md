@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Lighter Activity Panel
+
+Round 14 of the performance work.
+
+- **Finished items fade out without keeping the client busy.** When an item
+  finishes, its row in the Activity panel fades to grey over twenty seconds and
+  then away. That fade was redrawn sixty times a second, re-rendering the whole
+  row each time - measured at about ten percent of the interface's time with a
+  handful of rows fading together. It now moves in small steps five times a
+  second, which looks the same and costs about a twelfth as much.
+
 ## Sheet Data Through An Internet Outage
 
 - **The last rows read from each sheet tab are kept, and used when the internet

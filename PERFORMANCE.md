@@ -100,6 +100,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11a | NDI receiver posted a deep-copied frame (~8 MB at 1080p) to the GUI per frame with no bound: a busy GUI thread let them pile up | **done 249** - an atomic pending flag; the receiver drops a frame (before copying it) while the last one has not been drawn. At most one frame waits per viewer. Scaling on the GUI thread is unchanged (P11b, open) |
 | P27b | Sheet row cache never trimmed | **changed in 250, by decision** - the cache is meant to cover internet outages, so 249's ten-second trim was too short. Each tab's last copy is now kept for 24 hours (trimmed on the 10 s tick), and 250 serves it, marked cached with its real age, when every network read for the tab fails |
 
+## Round 14 - build 251
+
+| # | Item | Status |
+|---|------|--------|
+| P24 | Activity rows faded out over 25 s through a QGraphicsOpacityEffect at the display rate | **done 251** - measured 0.33 ms per row per frame (1.76 ms for six) under the client's style sheet, ~60 frames a second. The long fade is now a linear QTimeLine stepped every 200 ms with the same key values (0.3 at 80 %, 0 at the end): about twelve times fewer re-renders, steps under 0.02 opacity. The 300 ms fade-in on a loop restart stays a smooth animation |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -114,6 +120,5 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11b | NDI viewer scales each full frame on the GUI thread | NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
-| P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |
 | P26 | OSC subscription unsubscribe is linear per item on a shared list | Core/OscSubscriptionRegistry.cpp | low |
 | P27c | OSC dispatch for unsubscribed paths | OscMonitorListener.cpp | low |

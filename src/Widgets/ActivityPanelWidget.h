@@ -60,7 +60,10 @@ class WIDGETS_EXPORT ActivityPanelWidget : public QWidget, Ui::ActivityPanelWidg
             QProgressBar* progressBar = nullptr;
             QPropertyAnimation* animation = nullptr;
             QGraphicsOpacityEffect* rowOpacity = nullptr;
-            QPropertyAnimation* rowFadeAnim = nullptr;  // Current opacity fade; stopped before starting a new one.
+            // Current opacity fade; stopped before starting a new one. A short
+            // QPropertyAnimation for a loop restart, a stepped QTimeLine for the
+            // long fade of a finished item - see stopRowFade.
+            QObject* rowFadeAnim = nullptr;
             qint64 lastUpdate = 0;
             double fps = 0;
             int channel = 0;
