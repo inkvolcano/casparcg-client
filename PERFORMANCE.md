@@ -179,6 +179,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P41 | Thumbnails fetched on a fixed 2 s clock, answered or not: 1,000 new clips took over half an hour to get pictures | **done 264** - the worker's timer is single-shot: 2 s after a request (the old interval, so an unanswered request costs what it always did), cut to 250 ms when the answer arrives. At most four requests a second to the server; the first still waits 2 s. Removed or shadow servers still drop out, a disconnected server still stops the worker, and the Library still refreshes at the end |
 
+## Round 27 - build 267
+
+| # | Item | Status |
+|---|------|--------|
+| P29b | Loading a row rebuilt its OSC subscriptions once per property read | **done 267** - measured with the real OscSubscription and registry: 70 us per rebuild, and a movie row rebuilt 4 times while loading (constructor, channel, layer, trigger id), so 182 ms at 500 movie rows against 35 ms for one each. Only three row types rebuild more than once (movie 8 call sites, file recorder 6, audio 5; every other row once, from its constructor). Their calls now queue one rebuild for the next event loop turn, which reads the row's final settings; OSC is only delivered from the event loop, so nothing arrives in between. The setters still emit on unchanged values: that part belongs to P35, since clone sync listens to those signals |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -186,8 +192,6 @@ against the code, and measured where it is a claim about time, before it is chan
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P29b | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget | medium: clone sync and change tracking listen to those signals |
-| P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
 
 ## Checked, not worth changing
@@ -201,6 +205,7 @@ against the code, and measured where it is a claim about time, before it is chan
 | P37 | SQLite commits on the GUI thread | WAL declined by the user (the database stays one file). The one-file alternative, skipping unchanged device writes, measured on a real SQLite file: an unchanged UPDATE commit 0.18 ms, the same as a guarded one that changes nothing - three per server per refresh |
 | P43 | Sheet cache server reads its file per request | The real cache files are 1-80 KB (DREAMFORCE25, CNX24 sheets_data) and served from the OS file cache after the first read; a fraction of a millisecond per template request, and an in-memory copy would add a staleness rule |
 | P38 | OSC receive thread per-message work | 3,291 ns per message as written, 2,396 ns with fromLatin1 paths and /control skipped first: 33 vs 24 ms a second at 10,000 messages, on the OSC thread, not the GUI. The QMap insert is most of it and stays: its sorted order is the order paths reach subscribers within a batch |
+| P34 | Every OSC batch reaching every movie row on its layer | Measured the name handler, the only one doing work for a row that is not playing: 1,468 ns per row per batch (two toLower copies), 121 ns without copies. At 100 movie rows on one layer and 5 batches a second: 0.73 ms a second. The time, clip and fps handlers return at once for such a row |
 | P18 | Whole-tree walk into a QSet on each selection change | 0.088 ms per selection at 1,000 items (50 groups of 10). It is the guard against a dangling-pointer crash after undo, so it stays |
 
 ## Next

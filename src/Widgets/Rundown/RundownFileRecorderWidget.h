@@ -89,6 +89,13 @@ class WIDGETS_EXPORT RundownFileRecorderWidget : public QWidget, Ui::RundownFile
         void checkGpiConnection();
         void checkDeviceConnection();
         void configureOscSubscriptions();
+        // Every property read while a row loads - channel, layer, trigger id - asked
+        // for a rebuild of its OSC subscriptions, about 70 us each: four per row. The
+        // requests are gathered and the rebuild runs once, on the next event loop turn,
+        // with the row's final settings. OSC is only delivered from the event loop, so
+        // nothing can arrive in between.
+        bool oscRebuildQueued = false;
+        void queueOscSubscriptions();
 
         Q_SLOT void executePlay();
         Q_SLOT void executeStop();

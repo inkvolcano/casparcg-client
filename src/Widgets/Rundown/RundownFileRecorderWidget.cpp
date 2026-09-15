@@ -11,6 +11,7 @@
 #include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Utils/ItemScheduler.h"
 
+#include <QtCore/QTimer>
 #include <QtCore/QObject>
 
 #include <QtWidgets/QGraphicsOpacityEffect>
@@ -77,7 +78,7 @@ RundownFileRecorderWidget::RundownFileRecorderWidget(const LibraryModel& model, 
     checkGpiConnection();
     checkDeviceConnection();
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 
     this->widgetOscTime->setVisible(false);
     this->widgetOscTime->setRecordOnly(true);
@@ -91,7 +92,7 @@ void RundownFileRecorderWidget::channelChanged(const ChannelChangedEvent& event)
     if (!this->selected)
         return;
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownFileRecorderWidget::labelChanged(const LabelChangedEvent& event)
@@ -140,7 +141,7 @@ void RundownFileRecorderWidget::deviceChanged(const DeviceChangedEvent& event)
 
     checkEmptyDevice();
     checkDeviceConnection();
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 AbstractRundownWidget* RundownFileRecorderWidget::clone()
@@ -366,7 +367,7 @@ void RundownFileRecorderWidget::channelChanged(int channel)
     this->labelChannel->setText(QString("%1").arg(channel));
     RundownWidgetHelper::updateChannelBadge(this->labelColor, channel, this->command.getVideolayer());
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownFileRecorderWidget::delayChanged(int delay)
@@ -391,6 +392,18 @@ void RundownFileRecorderWidget::checkDeviceConnection()
         this->labelDisconnected->setVisible(true);
     else
         this->labelDisconnected->setVisible(!device->isConnected());
+}
+
+void RundownFileRecorderWidget::queueOscSubscriptions()
+{
+    if (this->oscRebuildQueued)
+        return;
+
+    this->oscRebuildQueued = true;
+    QTimer::singleShot(0, this, [this]() {
+        this->oscRebuildQueued = false;
+        configureOscSubscriptions();
+    });
 }
 
 void RundownFileRecorderWidget::configureOscSubscriptions()
@@ -532,12 +545,12 @@ void RundownFileRecorderWidget::outputChanged(const QString& output)
 {
     Q_UNUSED(output);
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownFileRecorderWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
 {
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 
     if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
         this->labelRemoteTriggerId->setText("");

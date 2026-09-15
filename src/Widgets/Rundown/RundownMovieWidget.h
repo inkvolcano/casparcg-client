@@ -113,6 +113,13 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         void checkGpiConnection();
         void checkDeviceConnection();
         void configureOscSubscriptions();
+        // Every property read while a row loads - channel, layer, trigger id - asked
+        // for a rebuild of its OSC subscriptions, about 70 us each: four per row. The
+        // requests are gathered and the rebuild runs once, on the next event loop turn,
+        // with the row's final settings. OSC is only delivered from the event loop, so
+        // nothing can arrive in between.
+        bool oscRebuildQueued = false;
+        void queueOscSubscriptions();
         void setTimecode(const QString& timecode);
 
         Q_SLOT void channelChanged(int);

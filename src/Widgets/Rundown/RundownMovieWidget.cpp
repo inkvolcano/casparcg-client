@@ -12,6 +12,7 @@
 #include "Events/Rundown/PlaybackProgressEvent.h"
 #include "Utils/ItemScheduler.h"
 
+#include <QtCore/QTimer>
 #include <QtCore/QObject>
 #include <QtCore/QFileInfo>
 
@@ -121,7 +122,7 @@ RundownMovieWidget::RundownMovieWidget(const LibraryModel& model, QWidget* paren
     checkGpiConnection();
     checkDeviceConnection();
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 
     this->widgetOscTime->setStartTime(this->model.getTimecode(), this->reverseOscTime);
     {
@@ -138,7 +139,7 @@ void RundownMovieWidget::videolayerChanged(const VideolayerChangedEvent& event)
     if (!this->selected)
         return;
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownMovieWidget::channelChanged(const ChannelChangedEvent& event)
@@ -149,7 +150,7 @@ void RundownMovieWidget::channelChanged(const ChannelChangedEvent& event)
     if (!this->selected)
         return;
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownMovieWidget::labelChanged(const LabelChangedEvent& event)
@@ -201,7 +202,7 @@ void RundownMovieWidget::deviceChanged(const DeviceChangedEvent& event)
 
     checkEmptyDevice();
     checkDeviceConnection();
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 AbstractRundownWidget* RundownMovieWidget::clone()
@@ -880,6 +881,18 @@ void RundownMovieWidget::checkDeviceConnection()
     }
 }
 
+void RundownMovieWidget::queueOscSubscriptions()
+{
+    if (this->oscRebuildQueued)
+        return;
+
+    this->oscRebuildQueued = true;
+    QTimer::singleShot(0, this, [this]() {
+        this->oscRebuildQueued = false;
+        configureOscSubscriptions();
+    });
+}
+
 void RundownMovieWidget::configureOscSubscriptions()
 {
     if (DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName()) == NULL)
@@ -1059,7 +1072,7 @@ void RundownMovieWidget::channelChanged(int channel)
     this->labelChannel->setText(QString("%1").arg(channel));
     RundownWidgetHelper::updateChannelBadge(this->labelColor, channel, this->command.getVideolayer());
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownMovieWidget::videolayerChanged(int videolayer)
@@ -1067,7 +1080,7 @@ void RundownMovieWidget::videolayerChanged(int videolayer)
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
     RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
 
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownMovieWidget::delayChanged(int delay)
@@ -1116,7 +1129,7 @@ void RundownMovieWidget::gpiConnectionStateChanged(bool connected, GpiDevice* de
 
 void RundownMovieWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
 {
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 
     if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
         this->labelRemoteTriggerId->setText("");
@@ -1146,7 +1159,7 @@ void RundownMovieWidget::deviceAdded(CasparDevice& device)
         QObject::connect(&device, SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
 
     checkDeviceConnection();
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownMovieWidget::timeSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)

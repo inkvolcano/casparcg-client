@@ -10,6 +10,7 @@
 #include "Events/ConnectionStateChangedEvent.h"
 #include "Utils/ItemScheduler.h"
 
+#include <QtCore/QTimer>
 #include <QtCore/QObject>
 
 #include <QtGui/QPixmap>
@@ -86,7 +87,7 @@ RundownAudioWidget::RundownAudioWidget(const LibraryModel& model, QWidget* paren
     checkEmptyDevice();
     checkGpiConnection();
     checkDeviceConnection();
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownAudioWidget::labelChanged(const LabelChangedEvent& event)
@@ -595,6 +596,18 @@ void RundownAudioWidget::checkDeviceConnection()
         this->labelDisconnected->setVisible(!device->isConnected());
 }
 
+void RundownAudioWidget::queueOscSubscriptions()
+{
+    if (this->oscRebuildQueued)
+        return;
+
+    this->oscRebuildQueued = true;
+    QTimer::singleShot(0, this, [this]() {
+        this->oscRebuildQueued = false;
+        configureOscSubscriptions();
+    });
+}
+
 void RundownAudioWidget::configureOscSubscriptions()
 {
     // File playback OSC subscriptions (always active when device is available).
@@ -752,14 +765,14 @@ void RundownAudioWidget::channelChanged(int channel)
 {
     this->labelChannel->setText(QString("%1").arg(channel));
     RundownWidgetHelper::updateChannelBadge(this->labelColor, channel, this->command.getVideolayer());
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownAudioWidget::videolayerChanged(int videolayer)
 {
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
     RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownAudioWidget::delayChanged(int delay)
@@ -801,7 +814,7 @@ void RundownAudioWidget::gpiConnectionStateChanged(bool connected, GpiDevice* de
 
 void RundownAudioWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
 {
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 
     if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
         this->labelRemoteTriggerId->setText("");
@@ -831,7 +844,7 @@ void RundownAudioWidget::deviceAdded(CasparDevice& device)
         QObject::connect(&device, SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
 
     checkDeviceConnection();
-    configureOscSubscriptions();
+    queueOscSubscriptions();
 }
 
 void RundownAudioWidget::stopControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)

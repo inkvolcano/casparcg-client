@@ -1838,21 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
-## Server Messages That Clear Themselves
+## Movie, Audio And Recorder Rows Load Faster
 
-- **A server's error message goes away by itself once the server is fine.** A
-  message like "501 CLS FAILED" used to stay up until something refreshed the
-  library - a restart, a reconnect, Ctrl+R - and automatic library refresh is
-  off by default. While a message is showing, the client now asks that server
-  again every thirty seconds for the list it could not give, and the message
-  clears as soon as the list comes back. Nothing extra is sent while no message
-  is showing, or to a server that is not connected.
-- **Each server's messages are its own.** With more than one server, a good
-  answer from one used to clear a message about another that was still failing.
-  Messages are now kept per server and cleared only by that server, and the
-  message says which server it is about.
-- The message shown is now always the newest one; with several standing, an
-  older one could be shown instead.
+Round 27 of the performance work.
+
+- **Opening a rundown with many movie rows is quicker.** While a movie, audio or
+  file recorder row loaded, each setting it read - channel, layer, trigger id -
+  made it set up its time and progress display again from scratch, about four
+  times per row. Measured at 500 movie rows, that was 180 ms where 35 ms does.
+  The row now sets it up once, with its final settings.
+- Checked and left as it is: every movie row on a layer hears that layer's
+  playback updates, not only the one playing. Measured at 100 movie rows on one
+  layer, that costs under a millisecond per second.
 
 ## Start And Stop Servers From Server Status
 
@@ -1876,6 +1873,22 @@ than included. The rule is tested against every secret the client stores.
 
 - The channel lock buttons in Server Status now sit in even columns under their
   channel numbers, on every server's row and on the All row.
+
+## Server Messages That Clear Themselves
+
+- **A server's error message goes away by itself once the server is fine.** A
+  message like "501 CLS FAILED" used to stay up until something refreshed the
+  library - a restart, a reconnect, Ctrl+R - and automatic library refresh is
+  off by default. While a message is showing, the client now asks that server
+  again every thirty seconds for the list it could not give, and the message
+  clears as soon as the list comes back. Nothing extra is sent while no message
+  is showing, or to a server that is not connected.
+- **Each server's messages are its own.** With more than one server, a good
+  answer from one used to clear a message about another that was still failing.
+  Messages are now kept per server and cleared only by that server, and the
+  message says which server it is about.
+- The message shown is now always the newest one; with several standing, an
+  older one could be shown instead.
 
 ## Thumbnails Arrive In Minutes, Not Half An Hour
 
