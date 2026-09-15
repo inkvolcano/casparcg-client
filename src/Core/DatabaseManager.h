@@ -21,6 +21,7 @@
 #include "Models/PresetModel.h"
 #include "Models/OscOutputModel.h"
 
+#include <QtCore/QHash>
 #include <QtCore/QRecursiveMutex>
 #include <QtCore/QObject>
 
@@ -116,4 +117,20 @@ class CORE_EXPORT DatabaseManager
 
         void createDatabase();
         void upgradeDatabase();
+
+        // Every setting, read once. getConfigurationByName has 210 callers,
+        // several on the paths an operator feels - firing an item, changing the
+        // selection, building each rundown row - and each was a prepared query.
+        // Every write to Configuration goes through updateConfiguration, which
+        // keeps this in step; the migrations and a new database clear it.
+        struct CachedSetting
+        {
+            int id = 0;
+            QString value;
+        };
+
+        QHash<QString, CachedSetting> settings;
+        bool settingsLoaded = false;
+
+        void loadSettings();
 };

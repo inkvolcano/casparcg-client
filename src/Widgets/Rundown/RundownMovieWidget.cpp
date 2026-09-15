@@ -296,6 +296,15 @@ LibraryModel* RundownMovieWidget::getLibraryModel()
 
 void RundownMovieWidget::setThumbnail()
 {
+    // The row's thumbnail label is hidden in the constructor and nothing ever
+    // shows it. Loading it anyway cost a database query, a base64 and PNG decode,
+    // a pixmap held for the life of the row, and - with ShowThumbnailTooltip on,
+    // the default - the whole base64 image again as a tooltip on a label that can
+    // never be hovered, for every movie and still in every open rundown, again
+    // on every target change.
+    if (this->labelThumbnail->isHidden())
+        return;
+
     if (this->model.getType() == "AUDIO")
     {
         this->labelThumbnail->setVisible(false);

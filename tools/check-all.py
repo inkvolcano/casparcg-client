@@ -38,6 +38,7 @@ SUITES = [
     ('test-layoutpreset', False, 'named layouts: which settings a preset owns, and the round trip'),
     ('test-mediacheck', False, 'missing media: when it is claimed, and when nothing is claimed'),
     ('test-droprules', False, 'whether a rundown accepts a drop, including into a locked one'),
+    ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
     ('test-clientrelease', False, 'which build is published, whether it is newer, and which asset belongs here'),
     ('test-updater', False, 'the script that replaces the client, run against a throwaway installation'),

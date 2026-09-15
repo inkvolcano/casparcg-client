@@ -22,6 +22,7 @@
 
 #include <QtCore5Compat/QRegExp>
 #include <QtCore/QDir>
+#include <QtCore/QMutex>
 #include <QtCore/QFile>
 #include <QtCore/QString>
 #include <QtCore/QTextStream>
@@ -84,19 +85,44 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 
     fprintf(stderr, "%s\n", qPrintable(logMessage));
 
-    QString path = QString("%1/.CasparCG/Client/Logs").arg(QDir::homePath());
+    // One file, kept open, behind a lock. Every line used to check the folder,
+    // open the file, write and close it - a file-system round trip per line, with
+    // a virus scanner looking at every close - from whichever thread logged: the
+    // GUI on every AMCP command and reply, and the OSC, NDI and thumbnail threads
+    // besides, with nothing stopping two appends interleaving. The file is
+    // reopened when the date changes, so each day still gets its own log, and
+    // flushed after each line, so a crash loses nothing that was written.
+    //
+    // Allocated and never freed, on purpose. A static object is destroyed at exit,
+    // and Qt still logs from its own global destructors after that - a database
+    // connection still in use, a thread still running - which would then write
+    // through a destroyed file and lock while the client closes. Every line is
+    // flushed, so nothing is left unwritten when the process ends.
+    static QMutex* logMutex = new QMutex();
+    static QFile* logFile = new QFile();
+    static QString* logDate = new QString();
 
-    QDir directory(path);
-    if (!directory.exists())
-        directory.mkpath(".");
+    QMutexLocker locker(logMutex);
 
-    QFile logFile(QString("%1/Client_%2.log").arg(path).arg(QDateTime::currentDateTime().toString("yyyy-MM-dd")));
-    logFile.open(QIODevice::WriteOnly | QIODevice::Append);
+    const QString today = QDateTime::currentDateTime().toString("yyyy-MM-dd");
+    if (!logFile->isOpen() || today != *logDate)
+    {
+        logFile->close();
 
-    QTextStream logStream(&logFile);
-    logStream << logMessage << Qt::endl;
+        QString path = QString("%1/.CasparCG/Client/Logs").arg(QDir::homePath());
+        QDir().mkpath(path);
 
-    logFile.close();
+        logFile->setFileName(QString("%1/Client_%2.log").arg(path).arg(today));
+        logFile->open(QIODevice::WriteOnly | QIODevice::Append);
+        *logDate = today;
+    }
+
+    if (logFile->isOpen())
+    {
+        logFile->write(logMessage.toUtf8());
+        logFile->write(QByteArrayLiteral("\n"));
+        logFile->flush();
+    }
 
     if (type == QtFatalMsg)
        abort();

@@ -1838,6 +1838,31 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Faster Clicks, Refreshes And Rundown Loads
+
+The first round from a performance audit of the whole client: the changes that
+remove the most repeated work for the least risk. Nothing about what the client
+does changes.
+
+- **Settings are read once.** The client asked the database for a setting more
+  than two hundred different ways - on every item fired, every selection change,
+  and several times for every rundown row built - and each ask was a query. They
+  are now answered from memory, kept up to date by the one place settings are
+  saved.
+- **A library refresh no longer rebuilds the Library for nothing.** After every
+  refresh of every server, a thumbnail pass with nothing to fetch still told the
+  Library to clear and refill all its lists two seconds later, losing the
+  selection. It now only does so when there is something new.
+- **The log file stays open.** Every log line used to open the file, append and
+  close it again, from several threads at once. It is now kept open and written
+  one line at a time, still one file per day, still flushed after each line.
+- **Rundown rows no longer load a thumbnail nobody can see.** Movie, still and
+  image-scroller rows hide their thumbnail, yet each one read it from the
+  database, decoded it and kept it - and the whole image again as a tooltip.
+- **The database has indexes** for settings and library lookups (migration
+  260), and the thumbnail lookup now matches the item's own server instead of
+  any server with a file of that name.
+
 ## Choose A Build, Roll Back, And A Download That Is Not Forgotten
 
 **Check for Updates lists every published build**, newest first, each marked as

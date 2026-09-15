@@ -341,6 +341,13 @@ void LibraryManager::thumbnailChanged(const QList<CasparThumbnail>& thumbnailIte
                                                    thumbnailItem.getName(), device.getAddress()));
     }
 
+    // Nothing new to fetch is nothing to do. A worker started with an empty list
+    // still fired MediaChangedEvent two seconds later, and every Library tree was
+    // cleared and rebuilt - losing its selection - after every refresh of every
+    // connected server, for thumbnails that had not changed.
+    if (processModels.isEmpty())
+        return;
+
     bool storeThumbnailsInDatabase = (DatabaseManager::getInstance().getConfigurationByName("StoreThumbnailsInDatabase").getValue() == "true") ? true : false;
     if (storeThumbnailsInDatabase)
     {

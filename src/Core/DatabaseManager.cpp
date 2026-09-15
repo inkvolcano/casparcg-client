@@ -71,6 +71,8 @@ void DatabaseManager::initialize()
 
 void DatabaseManager::createDatabase()
 {
+    this->settingsLoaded = false;
+
     QFile file(":/Scripts/Sql/Schema.sql");
     if (file.open(QFile::ReadOnly))
     {
@@ -117,6 +119,10 @@ void DatabaseManager::createDatabase()
 
 void DatabaseManager::upgradeDatabase()
 {
+    // The change scripts write settings directly, so whatever was read before
+    // them is read again after.
+    this->settingsLoaded = false;
+
     QSqlQuery sql;
     if (!sql.exec("SELECT c.Id, c.Name, c.Value FROM Configuration c WHERE c.Name = 'DatabaseVersion'"))
        qFatal("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
@@ -212,6 +218,8 @@ void DatabaseManager::updateConfiguration(const ConfigurationModel& model)
     if (!sql.exec())
        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
 
+    const bool updated = sql.lastError().type() == QSqlError::NoError;
+
     if (sql.numRowsAffected() == 0)
     {
         QSqlQuery insertSql;
@@ -220,27 +228,76 @@ void DatabaseManager::updateConfiguration(const ConfigurationModel& model)
         insertSql.bindValue(":Value", model.getValue());
 
         if (!insertSql.exec())
+        {
             qCritical("Failed to insert configuration: %s, Error: %s", qPrintable(insertSql.lastQuery()), qPrintable(insertSql.lastError().text()));
+        }
+        else if (this->settingsLoaded)
+        {
+            CachedSetting setting;
+            setting.id = insertSql.lastInsertId().toInt();
+            setting.value = model.getValue();
+            this->settings.insert(model.getName(), setting);
+        }
+    }
+    else if (updated && this->settingsLoaded)
+    {
+        // Every row of that name was updated, so the cached one changes too.
+        auto found = this->settings.find(model.getName());
+        if (found != this->settings.end())
+            found->value = model.getValue();
+        else
+            this->settingsLoaded = false;   // a row the cache never saw: read again
     }
 
     QSqlDatabase::database().commit();
+}
+
+void DatabaseManager::loadSettings()
+{
+    this->settings.clear();
+
+    QSqlQuery sql;
+    if (!sql.exec("SELECT c.Id, c.Name, c.Value FROM Configuration c ORDER BY c.Id"))
+    {
+        qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+        return;   // not marked loaded, so the next read tries again
+    }
+
+    while (sql.next())
+    {
+        const QString name = sql.value(1).toString();
+
+        // A name stored twice answered with its first row before, since the query
+        // took the first match in rowid order. The same row answers now.
+        if (this->settings.contains(name))
+            continue;
+
+        CachedSetting setting;
+        setting.id = sql.value(0).toInt();
+        setting.value = sql.value(2).toString();
+        this->settings.insert(name, setting);
+    }
+
+    this->settingsLoaded = true;
 }
 
 ConfigurationModel DatabaseManager::getConfigurationByName(const QString& name)
 {
     QMutexLocker locker(&mutex);
 
-    QSqlQuery sql;
-    sql.prepare("SELECT c.Id, c.Name, c.Value FROM Configuration c "
-                "WHERE c.Name = :Name");
-    sql.bindValue(":Name", name);
+    if (!this->settingsLoaded)
+        loadSettings();
 
-    if (!sql.exec())
-       qCritical("Failed to execute sql query: %s, Error: %s", qPrintable(sql.lastQuery()), qPrintable(sql.lastError().text()));
+    const auto found = this->settings.constFind(name);
+    if (found == this->settings.constEnd())
+    {
+        // Exactly what the query returned for a missing name: no row, so an Id of
+        // zero and an empty name and value. Callers compare the value to "true"
+        // or test it for empty, and both behave as before.
+        return ConfigurationModel(0, QString(), QString());
+    }
 
-    sql.first();
-
-    return ConfigurationModel(sql.value("Id").toInt(), sql.value("Name").toString(), sql.value("Value").toString());
+    return ConfigurationModel(found->id, name, found->value);
 }
 
 QMap<QString, QString> DatabaseManager::getAllConfigurations()
@@ -1660,7 +1717,7 @@ ThumbnailModel DatabaseManager::getThumbnailByNameAndDeviceName(const QString& n
 
     QSqlQuery sql;
     sql.prepare("SELECT t.Id, t.Data, t.Timestamp, t.Size, l.Name, d.Name, d.Address FROM Thumbnail t, Library l, Device d "
-                "WHERE l.Name = :Name AND d.Name = :DeviceName AND l.ThumbnailId = t.Id");
+                "WHERE l.Name = :Name AND d.Name = :DeviceName AND l.DeviceId = d.Id AND l.ThumbnailId = t.Id");
     sql.bindValue(":Name", name);
     sql.bindValue(":DeviceName", deviceName);
 
