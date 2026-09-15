@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#drop-spot">Where A Drop Lands</a><br>
 <a href="#template-read">Rolling Graphics, Read Fast</a><br>
 <a href="#template-scan">Rolling Graphics Hang</a><br>
 <a href="#reconnect-guard">Reconnect Guard</a><br>
@@ -1826,6 +1827,12 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="drop-spot">Where A Dropped Item Lands</h2>
+
+<p>Dragging an item within a rundown sometimes put it at the bottom of the list instead of where it was let go. The original client did this too, and the reason is in how Qt reports a drop to a tree: it names a container and a row, and only a cursor in the middle of a row names that row. A cursor in the top or bottom margin of a row names the row's container instead &mdash; for a top-level row, the root &mdash; and the rundown, which pastes after its current item, made that container current and pasted after nothing: the end of the list. Tall rows made the middle wide and the margins narrow, which is why it was "sometimes".</p>
+
+<p>The drop now reads the cursor itself and places by one rule. The <b>upper half of a row lands the item before it; the lower half lands it after</b>. The lower half of an open group with items in it lands the item first inside the group. Past the last row is the end of the list. The blue indicator line is drawn by the same rule &mdash; on the row's top edge when the item will land before it, its bottom edge when after it &mdash; so the line shows where the drop will go, and it is now possible to drop something at the very top of a rundown. Library drops, preset drops, Ctrl-drag clones and drags from the other pane all place the same way. The rule is tested on its own.</p>
 
 <h2 id="template-read">The Rolling Graphics, Read In Forty Milliseconds</h2>
 

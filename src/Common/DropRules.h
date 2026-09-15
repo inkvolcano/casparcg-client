@@ -71,4 +71,60 @@ namespace DropRules
 
         return QString();
     }
+
+    // Where a dropped item lands, read from the cursor.
+    //
+    // Qt hands a tree's dropMimeData a container and a row number, and only a
+    // cursor in the middle of a row names that row: the top and bottom margin
+    // of a row name its container instead. The rundown pastes after its current
+    // item, so it made the container current - and for a top-level row that is
+    // the root, which has no row, and pasting after nothing is the end of the
+    // list. That is where a drop a few pixels from a row's edge went, in the
+    // original client and every build since.
+    //
+    // The rule now reads the cursor itself: the upper half of a row lands before
+    // it, the lower half after it. The lower half of an open group with children
+    // lands first inside it, which is where the eye puts a line drawn under the
+    // group's header. Past the last row is the end of the list. The indicator
+    // line is drawn by the same rule, so it shows where the drop will go.
+    enum class Place { Before, After, Into, End };
+
+    inline Place placeFor(bool overRow, int cursorY, int rowTop, int rowHeight, bool openGroupWithChildren)
+    {
+        if (!overRow)
+            return Place::End;
+
+        if (cursorY < rowTop + rowHeight / 2)
+            return Place::Before;
+
+        if (openGroupWithChildren)
+            return Place::Into;
+
+        return Place::After;
+    }
+
+    // The line's y: the row's top edge when landing before it, its bottom edge
+    // otherwise.
+    inline int indicatorY(Place place, int rowTop, int rowBottom)
+    {
+        return place == Place::Before ? rowTop : rowBottom;
+    }
+
+    // What the paste adds to the anchor row's number. Before lands on the
+    // anchor's own row, pushing it down; After lands on the next. Into anchors
+    // on the group's first child and lands on its row.
+    inline int pasteOffset(Place place)
+    {
+        return (place == Place::Before || place == Place::Into) ? 0 : 1;
+    }
+
+    // What the operator is told when a drop placed nothing: every dragged item
+    // was refused by the paste, which is what happens to a group let go inside
+    // a group. The move branches used to delete the originals regardless, and
+    // with the upper half of a group's child now landing inside the group that
+    // is one drop away. Nothing landed, so nothing is taken.
+    inline QString nothingLandedNotice()
+    {
+        return QString("Nothing was moved: a group cannot be placed inside a group.");
+    }
 }

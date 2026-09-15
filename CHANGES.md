@@ -1838,6 +1838,28 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Where A Dropped Item Lands
+
+Dragging an item within a rundown sometimes put it at the bottom of the list
+instead of where it was let go. The original client did this too, and the
+reason is in how Qt reports a drop to a tree: it names a container and a row,
+and only a cursor in the middle of a row names that row. A cursor in the top
+or bottom margin of a row names the row's container instead - for a top-level
+row, the root - and the rundown, which pastes after its current item, made
+that container current and pasted after nothing: the end of the list. Tall
+rows made the middle wide and the margins narrow, which is why it was
+"sometimes".
+
+The drop now reads the cursor itself and places by one rule. The **upper
+half of a row lands the item before it; the lower half lands it after**. The
+lower half of an open group with items in it lands the item first inside the
+group. Past the last row is the end of the list. The blue indicator line is
+drawn by the same rule - on the row's top edge when the item will land before
+it, its bottom edge when after it - so the line shows where the drop will
+go, and it is now possible to drop something at the very top of a rundown.
+Library drops, preset drops, Ctrl-drag clones and drags from the other pane
+all place the same way. The rule is tested on its own.
+
 ## The Rolling Graphics, Read In Forty Milliseconds
 
 Build 230 stopped reading the rolling graphics on selection and remembered

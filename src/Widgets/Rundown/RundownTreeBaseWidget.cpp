@@ -509,7 +509,8 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
     std::wstringstream wstringstream;
     wstringstream << qApp->clipboard()->text().toStdWString();
 
-    int offset = 1; // Drop offset.
+    int offset = this->pasteOffset; // 1: after the current item. A drop aimed at the top half of a row: 0.
+    this->pasteCount = 0;
     boost::property_tree::wptree pt;
 
     // A file that is truncated, not well formed, or simply not a rundown is
@@ -604,7 +605,7 @@ bool RundownTreeBaseWidget::pasteSelectedItems(bool repositoryRundown, bool pres
         }
 
         QTreeWidget::setItemWidget(parentItem, 0, dynamic_cast<QWidget*>(parentWidget));
-        //QTreeWidget::setCurrentItem(parentItem);
+        this->pasteCount++;
 
         if (parentWidget->isGroup())
         {
@@ -1970,20 +1971,77 @@ void RundownTreeBaseWidget::dragMoveEvent(QDragMoveEvent* event)
 
     QTreeWidget::dragMoveEvent(event);
 
-    QModelIndex idx = indexAt(event->position().toPoint());
-    if (idx.isValid())
+    // Drawn by the rule the drop is placed by, so the line tells the truth: the
+    // row's top edge when the item will land before it, its bottom edge when
+    // after it or first inside it, under the last row when past the end.
+    const DropSpot spot = resolveDropSpot(event->position().toPoint());
+    int lineY = -1;
+    if (spot.item != nullptr)
     {
-        QRect itemRect = visualRect(idx);
-        // Draw the indicator line at the bottom edge of the item under cursor.
-        m_dropIndicatorRect = QRect(0, itemRect.bottom(), viewport()->width(), 2);
-        m_showDropIndicator = true;
+        const QRect rowRect = visualItemRect(spot.place == DropRules::Place::Into ? spot.item->parent() : spot.item);
+        lineY = DropRules::indicatorY(spot.place, rowRect.top(), rowRect.bottom());
     }
-    else
+    else if (QTreeWidgetItem* last = lastVisibleItem())
     {
-        m_showDropIndicator = false;
+        lineY = visualItemRect(last).bottom();
     }
 
+    m_showDropIndicator = lineY >= 0;
+    if (m_showDropIndicator)
+        m_dropIndicatorRect = QRect(0, lineY, viewport()->width(), 2);
+
     viewport()->update();
+}
+
+RundownTreeBaseWidget::DropSpot RundownTreeBaseWidget::resolveDropSpot(const QPoint& viewportPos) const
+{
+    DropSpot spot;
+
+    QTreeWidgetItem* item = QTreeWidget::itemAt(viewportPos);
+    if (item == nullptr)
+        return spot;
+
+    const QRect row = QTreeWidget::visualItemRect(item);
+    const AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
+    const bool openGroup = widget != nullptr && widget->isGroup() && item->isExpanded() && item->childCount() > 0;
+
+    spot.place = DropRules::placeFor(true, viewportPos.y(), row.top(), row.height(), openGroup);
+    spot.item = (spot.place == DropRules::Place::Into) ? item->child(0) : item;
+
+    return spot;
+}
+
+QTreeWidgetItem* RundownTreeBaseWidget::lastVisibleItem() const
+{
+    QTreeWidgetItem* item = QTreeWidget::topLevelItem(QTreeWidget::topLevelItemCount() - 1);
+    while (item != nullptr && item->isExpanded() && item->childCount() > 0)
+        item = item->child(item->childCount() - 1);
+
+    return item;
+}
+
+void RundownTreeBaseWidget::dropEvent(QDropEvent* event)
+{
+    // Qt tells dropMimeData a container and a row, and only the middle of a row
+    // names the row itself; a row's top and bottom margin name its container,
+    // which for a top-level row is the root - and the paste that followed put
+    // "after the root" at the end of the list. The cursor is read here, once,
+    // and every branch of dropMimeData places by it through aimAtDropSpot().
+    this->dropSpot = resolveDropSpot(event->position().toPoint());
+
+    QTreeWidget::dropEvent(event);
+
+    this->dropSpot = DropSpot();
+    this->pasteOffset = 1;
+}
+
+// Makes the drop's anchor the current item and tells the paste which side of
+// it to land on. Every branch of dropMimeData used the "parent" Qt passed for
+// this, which named the row only when the cursor was in its middle.
+void RundownTreeBaseWidget::aimAtDropSpot()
+{
+    QTreeWidget::setCurrentItem(this->dropSpot.item);
+    this->pasteOffset = DropRules::pasteOffset(this->dropSpot.place);
 }
 
 void RundownTreeBaseWidget::dragLeaveEvent(QDragLeaveEvent* event)
@@ -2013,6 +2071,8 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
 
     UndoScope undo(this, "Drag & Drop");
 
+    // Neither names where the cursor was: see dropEvent.
+    Q_UNUSED(parent);
     Q_UNUSED(index);
     Q_UNUSED(action);
 
@@ -2040,7 +2100,7 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
             dndData.startsWith("<treeWidgetImage>") ||
             dndData.startsWith("<treeWidgetAudio>")) // External drop from the library.
         {
-            QTreeWidget::setCurrentItem(parent);
+            aimAtDropSpot();
 
             setUpdatesEnabled(false);
 
@@ -2060,7 +2120,7 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
         }
         else if (dndData.startsWith("<treeWidgetPreset>")) // External drop from the preset library.
         {
-            QTreeWidget::setCurrentItem(parent);
+            aimAtDropSpot();
 
             QStringList dataSplit = dndData.split(",,");
             emit presetItemDropped(dataSplit.at(3));
@@ -2077,13 +2137,14 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
                 RundownTreeBaseWidget* sourceTree = (dragSourceWidget != nullptr) ? dragSourceWidget : this;
                 QList<QTreeWidgetItem*> sourceItems = sourceTree->selectedItems();
 
-                QTreeWidget::setCurrentItem(parent);
+                aimAtDropSpot();
+                QTreeWidgetItem* anchor = QTreeWidget::currentItem();
                 int row = QTreeWidget::currentIndex().row();
 
-                bool inGroup = (parent != nullptr && parent->parent() != nullptr);
-                QTreeWidgetItem* groupParent = inGroup ? parent->parent() : nullptr;
+                bool inGroup = (anchor != nullptr && anchor->parent() != nullptr);
+                QTreeWidgetItem* groupParent = inGroup ? anchor->parent() : nullptr;
 
-                int offset = 1;
+                int offset = this->pasteOffset;
                 for (QTreeWidgetItem* srcItem : sourceItems)
                 {
                     AbstractRundownWidget* srcWidget = dynamic_cast<AbstractRundownWidget*>(sourceTree->itemWidget(srcItem, 0));
@@ -2124,10 +2185,18 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
             else if (dragSourceWidget != nullptr && dragSourceWidget != this)
             {
                 // Cross-tree drop: paste here, delete from source.
-                QTreeWidget::setCurrentItem(parent);
+                aimAtDropSpot();
 
                 if (!pasteSelectedItems())
                     return false;
+
+                if (lastPasteCount() == 0)
+                {
+                    // Every dragged item was refused - a group let go inside a
+                    // group. Nothing landed, so nothing is taken from the source.
+                    EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(DropRules::nothingLandedNotice()));
+                    return false;
+                }
 
                 selectItemBelow();
 
@@ -2174,10 +2243,18 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
                 // Same-tree drop: existing behavior.
                 QList<QTreeWidgetItem*> items = QTreeWidget::selectedItems();
 
-                QTreeWidget::setCurrentItem(parent);
+                aimAtDropSpot();
 
                 if (!pasteSelectedItems())
                     return false;
+
+                if (lastPasteCount() == 0)
+                {
+                    // Every dragged item was refused - a group let go inside a
+                    // group. Nothing landed, so nothing is taken from the source.
+                    EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(DropRules::nothingLandedNotice()));
+                    return false;
+                }
 
                 selectItemBelow();
 

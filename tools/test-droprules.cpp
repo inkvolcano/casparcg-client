@@ -121,6 +121,39 @@ static void theCursorAndTheDropCannotDisagree()
     }
 }
 
+static void theDropLandsWhereTheLineIs()
+{
+    using DropRules::Place;
+
+    // A row from y=100 to y=159. The bug this exists to close: Qt named the
+    // row only for a cursor in its middle, and its margins named the container,
+    // which for a top-level row meant the end of the list.
+    expectTrue(DropRules::placeFor(true, 100, 100, 60, false) == Place::Before, "the row's top pixel lands before it");
+    expectTrue(DropRules::placeFor(true, 129, 100, 60, false) == Place::Before, "so does the last pixel of the upper half");
+    expectTrue(DropRules::placeFor(true, 130, 100, 60, false) == Place::After, "the first pixel of the lower half lands after it");
+    expectTrue(DropRules::placeFor(true, 157, 100, 60, false) == Place::After, "and so does three pixels from its bottom edge - not the end of the list");
+    expectTrue(DropRules::placeFor(true, 102, 100, 60, false) == Place::Before, "two pixels from its top edge lands before it - not the end of the list");
+
+    expectTrue(DropRules::placeFor(true, 150, 100, 60, true) == Place::Into, "the lower half of an open group lands first inside it");
+    expectTrue(DropRules::placeFor(true, 110, 100, 60, true) == Place::Before, "its upper half lands before the group");
+    expectTrue(DropRules::placeFor(true, 150, 100, 60, false) == Place::After, "a closed or empty group is a row like any other");
+
+    expectTrue(DropRules::placeFor(false, 900, 0, 0, false) == Place::End, "past the last row is the end of the list");
+
+    expectTrue(DropRules::indicatorY(Place::Before, 100, 159) == 100, "the line sits on the top edge for Before");
+    expectTrue(DropRules::indicatorY(Place::After, 100, 159) == 159, "on the bottom edge for After");
+    expectTrue(DropRules::indicatorY(Place::Into, 100, 159) == 159, "and on the bottom edge of the group's header for Into");
+
+    expectTrue(DropRules::pasteOffset(Place::Before) == 0, "Before pastes on the anchor's own row");
+    expectTrue(DropRules::pasteOffset(Place::Into) == 0, "Into pastes on the first child's row");
+    expectTrue(DropRules::pasteOffset(Place::After) == 1, "After pastes on the next row");
+    expectTrue(DropRules::pasteOffset(Place::End) == 1, "End keeps the keyboard paste's offset; with no current item that is the end");
+
+    // A drop that placed nothing must say so, because the alternative was the
+    // originals disappearing.
+    expectTrue(DropRules::nothingLandedNotice().contains("group"), "a refused group drop names the reason");
+}
+
 int main(int argc, char* argv[])
 {
     Q_UNUSED(argc);
@@ -133,6 +166,7 @@ int main(int argc, char* argv[])
     somethingElseEntirelyIsNotOurs();
     aRefusalThatMattersIsExplained();
     theCursorAndTheDropCannotDisagree();
+    theDropLandsWhereTheLineIs();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 

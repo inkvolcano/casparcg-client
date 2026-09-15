@@ -2,6 +2,7 @@
 
 #include "../Shared.h"
 #include "AbstractRundownWidget.h"
+#include "DropRules.h"
 
 #include "Global.h"
 
@@ -62,6 +63,12 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         // rundown XML, so an open can tell the operator what is wrong with a file
         // instead of the client disappearing.
         QString lastParseError() const { return this->parseError; }
+
+        // How many top-level items the last paste placed. A paste that read its
+        // XML but refused every item - a group into a group - returns true with
+        // nothing placed, and a drop that moves must not delete the originals
+        // of items that never landed.
+        int lastPasteCount() const { return this->pasteCount; }
         bool pasteAsLinkedClones();
         bool pasteItemProperties();
         bool pasteItemPropertiesNoData();
@@ -97,6 +104,11 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
 
         virtual bool dropMimeData(QTreeWidgetItem* parent, int index, const QMimeData* data, Qt::DropAction action);
 
+        // What a paste adds to the current item's row: 1 lands after it, which is
+        // every keyboard paste; a drop aimed at the upper half of a row sets 0
+        // for the length of that drop, so the library's insert lands there too.
+        int dropPasteOffset() const { return this->pasteOffset; }
+
         QUndoStack* undoStack() const { return m_undoStack; }
         QString serializeTree() const;
         void restoreFromSnapshot(const QString& xml);
@@ -116,6 +128,7 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void mousePressEvent(QMouseEvent* event);
         void dragMoveEvent(QDragMoveEvent* event);
         void dragLeaveEvent(QDragLeaveEvent* event);
+        void dropEvent(QDropEvent* event);
         void paintEvent(QPaintEvent* event);
 
     private:
@@ -134,6 +147,24 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         QPoint dragStartPosition;
         QRect m_dropIndicatorRect;
         bool m_showDropIndicator = false;
+
+        // Where the drag in progress would land: the row it anchors on and which
+        // side of it. Read from the cursor by resolveDropSpot(), drawn by
+        // dragMoveEvent, fixed by dropEvent for the length of the drop and used
+        // by every branch of dropMimeData through aimAtDropSpot().
+        struct DropSpot
+        {
+            QTreeWidgetItem* item = nullptr;
+            DropRules::Place place = DropRules::Place::End;
+        };
+
+        DropSpot resolveDropSpot(const QPoint& viewportPos) const;
+        void aimAtDropSpot();
+        QTreeWidgetItem* lastVisibleItem() const;
+
+        DropSpot dropSpot;
+        int pasteOffset = 1;
+        int pasteCount = 0;
 
         QList<RepositoryChangeModel> repositoryChanges;
 

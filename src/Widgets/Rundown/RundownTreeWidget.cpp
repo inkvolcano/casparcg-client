@@ -634,10 +634,10 @@ void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
             if (this->treeWidgetRundown->currentItem() == NULL)
                 this->treeWidgetRundown->invisibleRootItem()->addChild(treeItem);
             else if (this->treeWidgetRundown->currentItem()->parent() == NULL)
-                this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + 1, treeItem);
+                this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), treeItem);
             else
             {
-                this->treeWidgetRundown->currentItem()->parent()->insertChild(this->treeWidgetRundown->currentIndex().row() + 1, treeItem);
+                this->treeWidgetRundown->currentItem()->parent()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), treeItem);
                 w->setInGroup(true);
             }
             this->treeWidgetRundown->setItemWidget(treeItem, 0, dynamic_cast<QWidget*>(w));
@@ -706,10 +706,10 @@ void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
     if (this->treeWidgetRundown->currentItem() == NULL) // There is no item selected.
         this->treeWidgetRundown->invisibleRootItem()->addChild(item); // Add item to the bottom of the rundown.
     else if (this->treeWidgetRundown->currentItem()->parent() == NULL) // Top level item.
-        this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + 1, item); // Insert item below.
+        this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), item); // Insert item below.
     else if (this->treeWidgetRundown->currentItem()->parent() != NULL) // Goup item.
     {
-        this->treeWidgetRundown->currentItem()->parent()->insertChild(this->treeWidgetRundown->currentIndex().row() + 1, item); // Insert item below.
+        this->treeWidgetRundown->currentItem()->parent()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), item); // Insert item below.
         widget->setInGroup(true);
     }
 
