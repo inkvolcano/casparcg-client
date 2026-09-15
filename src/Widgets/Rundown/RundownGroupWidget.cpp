@@ -729,30 +729,35 @@ void RundownGroupWidget::updateGroupInfo(QTreeWidgetItem* groupItem)
     this->labelTypeList->setText(html);
 
     // Update channel badge text and color based on children's channels.
+    // Each part is only set when it differs: this runs for every group on every
+    // structural change and every channel tick, and a font or style sheet set to
+    // what it already is still re-polishes the label and relays out the row.
     QFont badgeFont = this->labelColor->font();
+    QString badgeText;
+    QString badgeStyle;
     if (channels.isEmpty())
     {
         badgeFont.setPixelSize(16);
-        this->labelColor->setFont(badgeFont);
-        this->labelColor->setText("-");
-        QColor color = RundownWidgetHelper::channelColor(0);
-        this->labelColor->setStyleSheet(QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
+        badgeText = "-";
+        badgeStyle = QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(RundownWidgetHelper::channelColor(0).name());
     }
     else if (channels.size() == 1)
     {
         badgeFont.setPixelSize(16);
-        this->labelColor->setFont(badgeFont);
-        this->labelColor->setText(QString::number(*channels.begin()));
-        QColor color = RundownWidgetHelper::channelColor(*channels.begin());
-        this->labelColor->setStyleSheet(QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
+        badgeText = QString::number(*channels.begin());
+        badgeStyle = QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(RundownWidgetHelper::channelColor(*channels.begin()).name());
     }
     else
     {
         badgeFont.setPixelSize(10);
-        this->labelColor->setFont(badgeFont);
-        this->labelColor->setText("mix");
-        this->labelColor->setStyleSheet("background-color: #444444; color: white; border: 2px solid #1a1a1a;");
+        badgeText = "mix";
+        badgeStyle = "background-color: #444444; color: white; border: 2px solid #1a1a1a;";
     }
+
+    if (this->labelColor->font() != badgeFont)
+        this->labelColor->setFont(badgeFont);
+    this->labelColor->setText(badgeText);   // QLabel ignores an unchanged text itself
+    RundownWidgetHelper::setStyleSheetIfChanged(this->labelColor, badgeStyle);
 
     // Calculate needed height based on type lines.
     int lineHeight = 16;

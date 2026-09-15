@@ -138,6 +138,7 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void dragLeaveEvent(QDragLeaveEvent* event);
         void dropEvent(QDropEvent* event);
         void paintEvent(QPaintEvent* event);
+        void showEvent(QShowEvent* event);
 
     private:
         QString parseError;
@@ -171,6 +172,10 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         QTreeWidgetItem* lastVisibleItem() const;
 
         DropSpot dropSpot;
+
+        // A channel changed while this tab was not on screen. Its groups are
+        // refreshed when it is shown rather than on every tick of the spin box.
+        bool groupsStale = false;
         int pasteOffset = 1;
         int pasteCount = 0;
 

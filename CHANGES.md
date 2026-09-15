@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Channel Changes Touch Only What Is On Screen
+
+Round 8 of the performance work.
+
+- **Changing an item's channel no longer refreshes every open rundown.** Each
+  tick of the Inspector's channel box rebuilt the group summaries and layout of
+  every rundown tab, including the ones hidden behind others. A hidden tab now
+  catches up when it is shown, so with several rundowns open, scrolling through
+  channels stays smooth.
+- **Group channel badges only restyle when they change.** The badge used to be
+  restyled on every refresh even when its colour and text were already right.
+
 ## Undo That Does Not Eat Memory
 
 Round 7 of the performance work.

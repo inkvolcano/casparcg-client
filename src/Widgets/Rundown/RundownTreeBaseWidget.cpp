@@ -1821,7 +1821,28 @@ void RundownTreeBaseWidget::channelChanged(const ChannelChangedEvent& event)
 {
     Q_UNUSED(event);
 
+    // Every open tab hears this, on every tick of the Inspector's channel spin
+    // box, and each rebuilt all of its group summaries and laid itself out again.
+    // A tab nobody can see does that when it is next shown instead - the same
+    // result, the moment it can be looked at.
+    if (!isVisible())
+    {
+        this->groupsStale = true;
+        return;
+    }
+
     updateAllGroupWidgets();
+}
+
+void RundownTreeBaseWidget::showEvent(QShowEvent* event)
+{
+    QTreeWidget::showEvent(event);
+
+    if (this->groupsStale)
+    {
+        this->groupsStale = false;
+        updateAllGroupWidgets();
+    }
 }
 
 void RundownTreeBaseWidget::undoLimitChanged(int limit)

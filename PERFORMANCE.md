@@ -61,6 +61,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P15 | Undo kept every step's before and after rundown as UTF-16 text, 50 steps per tab | **done 243** - measured on the real rundowns: 1,017 KB held per copy for the largest (520 KB on disk), about 100 MB of undo for one tab; qCompress level 1 stores it in 14 KB (2.35 ms to compress, 1.04 ms to restore), about 1.4 MB for the same history. Round trip exact, tested (`tools/test-undosnapshot`). The double serialisation per edit is unchanged |
 
+## Round 8 - build 244
+
+| # | Item | Status |
+|---|------|--------|
+| P17 | A channel spin-box tick rebuilt every group summary in every open tab, each followed by a synchronous layout | **done 244** - a tab that is not visible marks itself stale and refreshes on show; the group channel badge sets font and style sheet only when they differ. Output identical. Not timed in the running client: the change removes work for hidden tabs outright and re-polishes only on a real change |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -74,7 +80,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
-| P17 | A channel spin-box tick rebuilds every group widget in every tab, with a synchronous layout | RundownTreeBaseWidget::updateAllGroupWidgets | low |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
 | P19 | Sheets panel rebuilds all rows on every poll, even unchanged and hidden | SheetsPanelWidget.cpp | low |
 | P22 | Startup builds NDI (loads the DLL, starts discovery) and all 44 Inspector sections before the window shows | MainWindow.cpp, NdiPanelWidget.cpp, InspectorWidget.cpp | low (NDI) / medium (Inspector) |
