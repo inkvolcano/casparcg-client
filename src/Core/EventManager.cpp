@@ -1,5 +1,6 @@
 #include "EventManager.h"
 
+#include <QtCore/QElapsedTimer>
 #include <QtWidgets/QApplication>
 
 Q_GLOBAL_STATIC(EventManager, eventManager)
@@ -173,7 +174,18 @@ void EventManager::fireOscOutputChangedEvent(const OscOutputChangedEvent& event)
 
 void EventManager::fireRundownItemSelectedEvent(const RundownItemSelectedEvent& event)
 {
+    // Every Inspector section, the preview, the meters and Simple Mode redo their
+    // work on this, and one click sends it up to three times (PERFORMANCE.md P1).
+    // Before that is changed, the log says what it actually costs on a real
+    // library: only a slow one is written, so an ordinary click adds nothing.
+    QElapsedTimer clock;
+    clock.start();
+
     emit rundownItemSelected(event);
+
+    const qint64 took = clock.elapsed();
+    if (took >= 40)
+        qDebug("Selecting a rundown item took %lld ms in its listeners", took);
 }
 
 void EventManager::fireLibraryItemSelectedEvent(const LibraryItemSelectedEvent& event)

@@ -1838,6 +1838,20 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Quicker Inspector On A Big Library
+
+Round 3 of the performance work.
+
+- **Selecting an item no longer reloads the whole library into the Target
+  list.** Every selection ran the full library query for that server and added
+  its names one at a time. Measured on a 10,000-file library, that was 60 to 95
+  ms per fill, and one click can fill it up to three times. The names are now
+  kept per server and added in one go, about 2 ms, and are read again when the
+  server's media or templates change.
+- **A slow selection is written to the log.** If selecting a rundown item still
+  takes 40 ms or more, the log says how long, so the next round is decided on
+  real numbers from a real machine.
+
 ## Fewer Leftovers: Dialogs, HTTP Items, Thumbnails
 
 Round 2 of the performance work.

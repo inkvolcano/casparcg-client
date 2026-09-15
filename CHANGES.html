@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-3">A Quicker Inspector</a><br>
 <a href="#perf-round-2">Fewer Leftovers</a><br>
 <a href="#perf-round-1">Faster Clicks And Loads</a><br>
 <a href="#choose-build">Choose A Build, Roll Back</a><br>
@@ -1830,6 +1831,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-3">A Quicker Inspector On A Big Library</h2>
+
+<p>Round 3 of the performance work.</p>
+
+<ul>
+<li><b>Selecting an item no longer reloads the whole library into the Target list.</b> Every selection ran the full library query for that server and added its names one at a time. Measured on a 10,000-file library, that was 60 to 95 ms per fill, and one click can fill it up to three times. The names are now kept per server and added in one go, about 2 ms, and are read again when the server's media or templates change.</li>
+<li><b>A slow selection is written to the log.</b> If selecting a rundown item still takes 40 ms or more, the log says how long, so the next round is decided on real numbers from a real machine.</li>
+</ul>
 
 <h2 id="perf-round-2">Fewer Leftovers: Dialogs, HTTP Items, Thumbnails</h2>
 

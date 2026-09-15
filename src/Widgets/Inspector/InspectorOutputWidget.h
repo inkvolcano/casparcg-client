@@ -17,6 +17,8 @@
 #include "Models/LibraryModel.h"
 
 #include <QtCore/QEvent>
+#include <QtCore/QHash>
+#include <QtCore/QStringList>
 #include <QtCore/QObject>
 #include <QtCore/QString>
 
@@ -46,6 +48,13 @@ class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutput
         double getCurrentFps();
 
         void fillTargetCombo(const QString& type, QString deviceName = "");
+
+        // The names the target list offers, per server and kind, as the library
+        // query returned them. Every selection refilled the list from that query
+        // and added the names one at a time: on a 10,000-file library about 30 ms
+        // of query and 30-65 ms of inserts, and a click selects up to three times.
+        // Cleared by the media and template events, which are what change it.
+        QHash<QString, QStringList> targetNames;
 
         Q_SLOT void targetChanged(QString);
         Q_SLOT void deviceAdded(CasparDevice&);

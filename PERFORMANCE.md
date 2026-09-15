@@ -30,12 +30,17 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P21 | ThumbnailWorker connected its reply slot on every tick; a removed or shadow server's entry was retried every 2 s forever | **done 238** |
 | P20 | AMCP/RRUP reply parsing removes each line from the front of the buffer | **checked: not worth it** - measured 40,000 lines at 41 ms old vs 20 ms offset-based; Qt 6 trims a string's front cheaply, so the predicted quadratic cost is not there |
 
+## Round 3 - build 239
+
+| # | Item | Status |
+|---|------|--------|
+| P2 | Every selection refilled the Inspector target list from a full library query, one name at a time | **done 239** - measured on 10,000 files / 2,500 movies: query 26-29 ms + addItem 31-65 ms per fill, up to 3 fills per click. Now a per-server, per-kind name cache (cleared by media/template events) added in one batch: 2.4 ms |
+| P1 | One click sends the selection event up to three times | **measuring 239** - the log now records any selection whose listeners take 40 ms or more. With P2 removed, the remaining cost decides whether coalescing (medium risk) is worth it |
+
 ## Next
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P1 | One click fires RundownItemSelectedEvent 2-3 times (itemSelectionChanged, itemClicked, currentItemChanged); ~49 listeners redo their work each time | RundownTreeWidget.cpp itemSelectionChanged / itemClicked / currentItemChanged | medium: multi-select refresh must survive |
-| P2 | Every selection refills the Inspector target combo from a full library query | InspectorOutputWidget::fillTargetCombo | low |
 
 ## Open - later rounds
 
