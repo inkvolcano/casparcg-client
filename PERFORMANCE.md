@@ -35,7 +35,7 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | # | Item | Status |
 |---|------|--------|
 | P2 | Every selection refilled the Inspector target list from a full library query, one name at a time | **done 239** - measured on 10,000 files / 2,500 movies: query 26-29 ms + addItem 31-65 ms per fill, up to 3 fills per click. Now a per-server, per-kind name cache (cleared by media/template events) added in one batch: 2.4 ms |
-| P1 | One click sends the selection event up to three times | **measuring 239** - the log now records any selection whose listeners take 40 ms or more. With P2 removed, the remaining cost decides whether coalescing (medium risk) is worth it |
+| P1 | One click sends the selection event up to three times | **done 262** - the log from 239 showed one click as three selections of 117-176 ms about 120 ms apart (14:42:26). RundownTreeWidget::sendItemSelected drops a repeat of the same selection within 500 ms when nothing else has retargeted the Inspector since (EventManager::inspectorTargetGeneration, raised by rundown, library and empty-rundown events); items are compared through QPointer so one rebuilt by undo at a reused address is never "the same". Pane activation still always sends |
 
 ## Round 4 - build 240
 

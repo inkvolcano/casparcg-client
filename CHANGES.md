@@ -1838,6 +1838,19 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## One Click, One Inspector Update
+
+Round 25 of the performance work.
+
+- **Clicking a rundown item updates the Inspector once, not three times.** A
+  single click told the Inspector, preview, meters and Simple Mode about the
+  selection when the mouse went down - twice - and again when it came up, and
+  each of them redid all of its work every time. The client's log showed one
+  click taking three rounds of 120 to 180 ms. Repeats of exactly the same
+  selection are now dropped, so a click does that work once. Selecting a
+  different item, selecting several, choosing something in the Library, or
+  switching panes always updates the Inspector as before.
+
 ## Dropping A Big Template Into A Rundown No Longer Stalls
 
 Round 24 of the performance work.

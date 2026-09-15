@@ -213,6 +213,12 @@ class CORE_EXPORT EventManager : public QObject
         void fireCloseRundownEvent(const CloseRundownEvent&);
         void fireActiveRundownChangedEvent(const ActiveRundownChangedEvent&);
         void fireRundownItemSelectedEvent(const RundownItemSelectedEvent&);
+
+        // Goes up each time something tells the Inspector what it is showing: a
+        // rundown item, a library item, or an empty rundown. A sender can compare
+        // it with the value after its own last send to know nothing else has
+        // retargeted the Inspector since.
+        quint64 inspectorTargetGeneration() const { return this->inspectorTarget; }
         void fireLibraryItemSelectedEvent(const LibraryItemSelectedEvent&);
         void fireDeleteRundownEvent(const DeleteRundownEvent&);
         void fireStatusbarEvent(const StatusbarEvent& event);
@@ -227,6 +233,11 @@ class CORE_EXPORT EventManager : public QObject
         void fireImportPresetEvent(const ImportPresetEvent&);
         void fireExportPresetEvent(const ExportPresetEvent&);
         void fireEmptyRundownEvent(const EmptyRundownEvent&);
+
+    private:
+        quint64 inspectorTarget = 0;
+
+    public:
         void firePresetChangedEvent(const PresetChangedEvent&);
         void fireRefreshLibraryEvent(const RefreshLibraryEvent&);
         void fireAutoRefreshLibraryEvent(const AutoRefreshLibraryEvent&);

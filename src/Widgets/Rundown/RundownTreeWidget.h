@@ -29,12 +29,14 @@
 #include "Events/Rundown/InsertRepositoryChangesEvent.h"
 #include "Events/Rundown/CurrentItemChangedEvent.h"
 #include "Events/Rundown/AssignBankEvent.h"
+#include "Events/Rundown/RundownItemSelectedEvent.h"
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <QtCore/QEvent>
 #include <QtCore/QMap>
+#include <QtCore/QPointer>
 #include <QtCore/QSet>
 #include <QtCore/QObject>
 #include <QtCore/QPair>
@@ -129,6 +131,28 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         void requestCrossTabFocusGateway(const QString& gatewayId, bool fromIsExit, const QString& exitLabel);
 
     private:
+        // One click on an item reached the Inspector up to three times - from
+        // currentItemChanged and itemSelectionChanged on the press and itemClicked on
+        // the release - and every one of its ~49 listeners redid its work each time.
+        // The client's own log showed one click as three selections of 117-176 ms,
+        // about 120 ms apart. The same selection sent again is dropped when all of
+        // this holds: it is the same item, parent and set of selected items, all
+        // still alive (guarded pointers, so an item rebuilt by undo at the same
+        // address never counts as the same); it is within half a second; and nothing
+        // else has told the Inspector what to show since.
+        struct SentSelection
+        {
+            QPointer<AbstractCommand> command;
+            QPointer<QWidget> source;
+            QPointer<QWidget> parent;
+            bool hadParent = false;
+            QList<QPointer<AbstractCommand>> allCommands;
+            qint64 sentAt = 0;
+            quint64 generation = 0;
+        };
+        SentSelection lastSelection;
+        void sendItemSelected(const RundownItemSelectedEvent& event);
+
         // Outlives each sweep: it stays connected to the commands it marked, so a
         // flag ticked in the Inspector updates its own row.
         SimpleModeMarker* simpleModeMarker = nullptr;

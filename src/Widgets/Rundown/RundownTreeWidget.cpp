@@ -77,6 +77,7 @@
 
 #include "AutoSaveNaming.h"
 
+#include <QtCore/QDateTime>
 #include <QtCore/QScopedPointer>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
@@ -2542,6 +2543,39 @@ void RundownTreeWidget::extractTransforms()
         StatusbarEvent(QString("Extracted %1 transform(s) from item").arg(extracted)));
 }
 
+void RundownTreeWidget::sendItemSelected(const RundownItemSelectedEvent& event)
+{
+    EventManager& events = EventManager::getInstance();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const SentSelection& last = this->lastSelection;
+
+    bool same = now - last.sentAt < 500
+        && events.inspectorTargetGeneration() == last.generation
+        && !last.command.isNull() && last.command.data() == event.getCommand()
+        && !last.source.isNull() && last.source.data() == event.getSource()
+        && (event.getParent() == nullptr ? !last.hadParent
+                                         : (!last.parent.isNull() && last.parent.data() == event.getParent()))
+        && last.allCommands.count() == event.getAllCommands().count();
+
+    for (int i = 0; same && i < last.allCommands.count(); i++)
+        same = !last.allCommands.at(i).isNull() && last.allCommands.at(i).data() == event.getAllCommands().at(i);
+
+    if (same)
+        return;
+
+    events.fireRundownItemSelectedEvent(event);
+
+    this->lastSelection.command = event.getCommand();
+    this->lastSelection.source = event.getSource();
+    this->lastSelection.parent = event.getParent();
+    this->lastSelection.hadParent = event.getParent() != nullptr;
+    this->lastSelection.allCommands.clear();
+    for (AbstractCommand* command : event.getAllCommands())
+        this->lastSelection.allCommands.append(command);
+    this->lastSelection.sentAt = now;
+    this->lastSelection.generation = events.inspectorTargetGeneration();
+}
+
 void RundownTreeWidget::itemSelectionChanged()
 {
     QList<QTreeWidgetItem*> selected = this->treeWidgetRundown->selectedItems();
@@ -2644,8 +2678,7 @@ void RundownTreeWidget::itemSelectionChanged()
             allCommands.append(rw->getCommand());
     }
 
-    EventManager::getInstance().fireRundownItemSelectedEvent(
-        RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
+    sendItemSelected(RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
 }
 
 void RundownTreeWidget::itemClicked(QTreeWidgetItem* current, int index)
@@ -2682,7 +2715,7 @@ void RundownTreeWidget::itemClicked(QTreeWidgetItem* current, int index)
                 allCommands.append(rw->getCommand());
         }
 
-        EventManager::getInstance().fireRundownItemSelectedEvent(RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
+        sendItemSelected(RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
         EventManager::getInstance().fireSaveAsPresetMenuEvent(SaveAsPresetMenuEvent(true));
     }
 }
@@ -2745,7 +2778,7 @@ void RundownTreeWidget::currentItemChanged(QTreeWidgetItem* current, QTreeWidget
                 allCommands.append(rw->getCommand());
         }
 
-        EventManager::getInstance().fireRundownItemSelectedEvent(RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
+        sendItemSelected(RundownItemSelectedEvent(command, model, currentItemWidget, currentItemWidgetParent, allCommands));
         EventManager::getInstance().fireSaveAsPresetMenuEvent(SaveAsPresetMenuEvent(true));
     }
     else if (currentItem == NULL && previous != NULL && this->treeWidgetRundown->invisibleRootItem()->childCount() == 1) // Last item was removed form the rundown.

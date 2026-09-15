@@ -181,6 +181,7 @@ void EventManager::fireRundownItemSelectedEvent(const RundownItemSelectedEvent& 
     QElapsedTimer clock;
     clock.start();
 
+    this->inspectorTarget++;
     emit rundownItemSelected(event);
 
     const qint64 took = clock.elapsed();
@@ -190,6 +191,7 @@ void EventManager::fireRundownItemSelectedEvent(const RundownItemSelectedEvent& 
 
 void EventManager::fireLibraryItemSelectedEvent(const LibraryItemSelectedEvent& event)
 {
+    this->inspectorTarget++;
     emit libraryItemSelected(event);
 }
 
@@ -260,6 +262,7 @@ void EventManager::fireExportPresetEvent(const ExportPresetEvent& event)
 
 void EventManager::fireEmptyRundownEvent(const EmptyRundownEvent& event)
 {
+    this->inspectorTarget++;
     emit emptyRundown(event);
 }
 

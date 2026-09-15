@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#perf-round-25">One Click, One Update</a><br>
 <a href="#perf-round-24">Big Templates Drop Fast</a><br>
 <a href="#perf-round-23">Gateways Redraw Less</a><br>
 <a href="#perf-round-22">Rows Restyle Less</a><br>
@@ -1853,6 +1854,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="perf-round-25">One Click, One Inspector Update</h2>
+
+<p>Round 25 of the performance work.</p>
+
+<ul>
+<li><b>Clicking a rundown item updates the Inspector once, not three times.</b> A single click told the Inspector, preview, meters and Simple Mode about the selection when the mouse went down &mdash; twice &mdash; and again when it came up, and each of them redid all of its work every time. The client's log showed one click taking three rounds of 120 to 180 ms. Repeats of exactly the same selection are now dropped, so a click does that work once. Selecting a different item, selecting several, choosing something in the Library, or switching panes always updates the Inspector as before.</li>
+</ul>
 
 <h2 id="perf-round-24">Dropping A Big Template Into A Rundown No Longer Stalls</h2>
 
