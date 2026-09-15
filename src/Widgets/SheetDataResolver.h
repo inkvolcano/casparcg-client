@@ -287,11 +287,15 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
             SheetRowsOrigin origin;
         };
 
+        // One copy per tab, kept for 24 hours, on purpose: it is the last thing known
+        // about a sheet when the internet is gone. Under ten seconds old it answers
+        // a read outright; up to 24 hours old it answers one whose network reads have
+        // all failed. (Build 249 trimmed it at ten seconds, which left nothing for an
+        // outage; 250 keeps it a day.)
         QMap<QString, CachedRows> rowCache;
 
-        // A held copy is only ever used while it is under ten seconds old, and
-        // nothing removed one, so every tab ever read stayed in memory with all its
-        // rows for the life of the client. Dropped on the existing ten-second tick.
+        // How long a held copy is kept for outage cover.
+        static const qint64 ROW_CACHE_KEEP_MS = 24LL * 60LL * 60LL * 1000LL;
         void trimRowCache();
 
         QTimer* reportTimer = nullptr;

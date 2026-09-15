@@ -40,15 +40,15 @@ SheetDataResolver::SheetDataResolver()
     QObject::connect(this->warmTimer, &QTimer::timeout, this, &SheetDataResolver::processWarmQueue);
 }
 
+// Copies older than 24 hours go. Checked on the existing ten-second tick, so a
+// copy lives a day and at most ten seconds more.
 void SheetDataResolver::trimRowCache()
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
 
-    // The same age fetchRows refuses a held copy at, so nothing that could still
-    // be answered from memory is removed.
     for (auto it = this->rowCache.begin(); it != this->rowCache.end();)
     {
-        if (now - it.value().takenAt >= 10000)
+        if (now - it.value().takenAt > ROW_CACHE_KEEP_MS)
             it = this->rowCache.erase(it);
         else
             ++it;
@@ -259,6 +259,31 @@ void SheetDataResolver::requestFromApi(const SheetsProject& project, const QStri
 
         if (reply->error() != QNetworkReply::NoError)
         {
+            // The cache service did not answer and neither did the sheet: the
+            // internet is likely gone. The last rows this client held for the tab,
+            // if under 24 hours old, are still the best answer there is, so they are
+            // given - marked as a cached copy, with the time that copy was actually
+            // made, so the Inspector shows how old they are instead of passing them
+            // off as live.
+            const QString key = warmKey(captured.spreadsheetId, capturedTab);
+            if (this->rowCache.contains(key) && !this->rowCache.value(key).rows.isEmpty()
+                && QDateTime::currentMSecsSinceEpoch() - this->rowCache.value(key).takenAt <= ROW_CACHE_KEEP_MS)
+            {
+                const CachedRows held = this->rowCache.value(key);
+
+                SheetRowsOrigin origin = held.origin;
+                origin.source = SheetRowsOrigin::Memory;
+                if (!origin.cachedAt.isValid())
+                    origin.cachedAt = QDateTime::fromMSecsSinceEpoch(held.takenAt);
+
+                qWarning("Sheet %s tab %s unreachable (%s); answering from the copy held since %s",
+                         qPrintable(captured.spreadsheetId), qPrintable(capturedTab),
+                         qPrintable(reply->errorString()), qPrintable(origin.cachedAt.toString(Qt::ISODate)));
+
+                emit rowsReady(requestId, held.rows, origin);
+                return;
+            }
+
             emit rowsFailed(requestId, QString("Sheet unreachable: %1").arg(reply->errorString()));
             return;
         }

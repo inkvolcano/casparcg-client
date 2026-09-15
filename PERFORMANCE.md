@@ -98,7 +98,7 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | # | Item | Status |
 |---|------|--------|
 | P11a | NDI receiver posted a deep-copied frame (~8 MB at 1080p) to the GUI per frame with no bound: a busy GUI thread let them pile up | **done 249** - an atomic pending flag; the receiver drops a frame (before copying it) while the last one has not been drawn. At most one frame waits per viewer. Scaling on the GUI thread is unchanged (P11b, open) |
-| P27b | Sheet row cache never trimmed | **done 249** - entries at or past the 10 s age fetchRows already refuses are removed on the existing 10 s report tick |
+| P27b | Sheet row cache never trimmed | **changed in 250, by decision** - the cache is meant to cover internet outages, so 249's ten-second trim was too short. Each tab's last copy is now kept for 24 hours (trimmed on the 10 s tick), and 250 serves it, marked cached with its real age, when every network read for the tab fails |
 
 ## Next
 

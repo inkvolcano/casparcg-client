@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Sheet Data Through An Internet Outage
+
+- **The last rows read from each sheet tab are kept, and used when the internet
+  is gone.** Build 249 let those copies go after ten seconds; 250 keeps each
+  tab's last copy for 24 hours. And they now do the job they are kept for: when
+  the cache service and the sheet both fail to answer, the Inspector shows the
+  last rows it had for that tab, if they are under 24 hours old, instead of
+  "Sheet unreachable" - labelled as a cached copy, with how old it is.
+- The cache on disk that templates read through was never affected: it is only
+  emptied by the Clear button in Settings.
+
 ## No More Memory Pile-Ups From NDI Or Sheets
 
 Round 13 of the performance work.
@@ -1849,9 +1860,8 @@ Round 13 of the performance work.
   now skips a frame while the previous one is still waiting to be drawn, so
   at most one frame waits and the picture is always the newest one the
   screen can keep up with.
-- **Sheet data read by templates and the Inspector is released.** A copy of
-  each tab's rows is kept for ten seconds so a burst of reads does not become
-  a burst of requests, but old copies were never let go. They now are.
+- *(Build 249 also released old sheet copies after ten seconds. That was
+  undone in 250: those copies are there for internet outages - see below.)*
 
 ## Quieter When Nobody Is Looking
 
