@@ -291,6 +291,25 @@ void AudioMeterWidget::decayTick()
         update();
 }
 
+void AudioMeterWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+
+    // Catch up on the time it was hidden before the first frame, then fall again.
+    decayTick();
+    if (!this->decayTimer->isActive())
+        this->decayTimer->start(40);
+}
+
+void AudioMeterWidget::hideEvent(QHideEvent* event)
+{
+    QWidget::hideEvent(event);
+
+    // Every meter in a panel that is collapsed, unplaced or behind another tab
+    // used to wake 25 times a second to work out a fall nobody could see.
+    this->decayTimer->stop();
+}
+
 void AudioMeterWidget::mousePressEvent(QMouseEvent* event)
 {
     Q_UNUSED(event);

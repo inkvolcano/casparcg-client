@@ -32,6 +32,12 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
         // it is what every mixer in the building already does.
         void mousePressEvent(QMouseEvent* event) override;
 
+        // The fall timer runs only while the meter can be seen. The fall is worked
+        // out from the clock, not counted in ticks, so a meter shown again goes
+        // straight to where it would have fallen to.
+        void showEvent(QShowEvent* event) override;
+        void hideEvent(QHideEvent* event) override;
+
     private:
         int channel;
         double currentLevel;

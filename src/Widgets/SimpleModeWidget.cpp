@@ -802,7 +802,10 @@ void SimpleModeWidget::updateTallies()
         int channel = (this->buttonCommands[i] != nullptr) ? this->buttonCommands[i]->getBaseChannel() : 0;
         bool lit = (this->lastFiredByChannel.value(channel, nullptr) == this->cellItems[i]);
 
-        this->cellTallies[i]->setStyleSheet(lit
+        // Only the keys whose tally actually changed are restyled: a fire lights
+        // one key and darkens at most one, and every other key was re-polished
+        // for nothing on every fire, visible or not.
+        RundownWidgetHelper::setStyleSheetIfChanged(this->cellTallies[i], lit
             ? QString("background-color: %1; border: none; border-radius: 2px;")
                   .arg(RundownWidgetHelper::activeColor(channel).name())
             : QString("background-color: transparent; border: none;"));

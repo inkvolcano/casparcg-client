@@ -1838,6 +1838,19 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Quieter When Nobody Is Looking
+
+Round 12 of the performance work.
+
+- **Hidden audio meters stop animating.** Each meter worked out its fall 25
+  times a second even when its panel was collapsed, not placed or behind
+  another tab. The timer now pauses while the meter is hidden; when it comes
+  back it shows the level it would have fallen to, because the fall is timed by
+  the clock rather than counted.
+- **Firing from Simple Mode restyles only the keys that changed.** Every key's
+  tally light was restyled on every fire; now only the key that lights up and
+  the one that goes dark are.
+
 ## The Missing-Media Check Stops Asking Twice
 
 Round 11 of the performance work.

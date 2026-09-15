@@ -86,6 +86,13 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P23 | Missing-media check stat'ed files on the GUI thread even for items the Library already has | **done 247** - MediaCheck::diskDecides: the disk is only asked when the Library does not have the item. test-mediacheck proves over every evidence combination and item type that, with the item in the Library, the verdict and its explanation do not depend on the disk. Up to 13 lookups per extension-less clip saved per item, per rundown open. Not timed on a network share (none here) |
 
+## Round 12 - build 248
+
+| # | Item | Status |
+|---|------|--------|
+| P27a | Audio meter fall timer (40 ms) ran for every meter while hidden | **done 248** - stopped in hideEvent, caught up and restarted in showEvent. The fall is computed from elapsed wall time (MeterBallistics::advanceTo), so a meter shown again lands where it would have been |
+| P25 | Simple Mode restyled every key's tally on every fire | **done 248** - setStyleSheetIfChanged, so only the key that lit and the one that went dark are restyled |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -101,6 +108,5 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
 | P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |
-| P25 | Simple Mode restyles every tally on every fire, visible or not | SimpleModeWidget.cpp | low |
 | P26 | OSC subscription unsubscribe is linear per item on a shared list | Core/OscSubscriptionRegistry.cpp | low |
-| P27 | Audio meter decay timer runs while hidden; sheet row cache never trimmed; OSC dispatch for unsubscribed paths | AudioMeterWidget.cpp, SheetDataResolver.cpp, OscMonitorListener.cpp | low |
+| P27b | Sheet row cache never trimmed; OSC dispatch for unsubscribed paths | SheetDataResolver.cpp, OscMonitorListener.cpp | low |
