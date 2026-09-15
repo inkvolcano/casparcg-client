@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundown Rows Restyle Only What Changed
+
+Round 22 of the performance work.
+
+- **Opening, pasting and undoing restyle less.** As each rundown row was built
+  it set its channel badge colour twice, its label's disabled look, and its
+  server name's colour - almost always to exactly what they already were, and
+  each one costs a small restyle. Those are now skipped when nothing changes,
+  which adds up to a noticeable share of the time to open a large rundown.
+
 ## Quieter Clicks And Progress Bars
 
 Round 21 of the performance work.

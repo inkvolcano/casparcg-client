@@ -251,9 +251,9 @@ void RundownFileRecorderWidget::setColor(const QString& color)
 void RundownFileRecorderWidget::checkEmptyDevice()
 {
     if (this->labelDevice->text() == "Device: ")
-        this->labelDevice->setStyleSheet("color: firebrick;");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
     else
-        this->labelDevice->setStyleSheet("");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
 }
 
 void RundownFileRecorderWidget::clearDelayedCommands()

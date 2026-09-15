@@ -235,9 +235,9 @@ void RundownContrastWidget::setColor(const QString& color)
 void RundownContrastWidget::checkEmptyDevice()
 {
     if (this->labelDevice->text() == "Device: ")
-        this->labelDevice->setStyleSheet("color: firebrick;");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
     else
-        this->labelDevice->setStyleSheet("");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
 }
 
 void RundownContrastWidget::clearDelayedCommands()

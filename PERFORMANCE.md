@@ -154,6 +154,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P33 | Selecting a sheet-bound template rediscovered every project folder (reading each project.js twice) | **done 258** - the known projects answer first; discover runs only when the template's project is not known yet or Refresh forces a reload |
 | P32 | Activity progress bars redrew on every clip frame during playback | **done 258** - measured 0.34 ms per redraw of a playing row at full opacity (the opacity effect is not the cost: Qt skips it at 1.0). The bar now counts in its own pixels, so it redraws when the fill moves, still animated between OSC updates. The permanent opacity effect was left as is |
 
+## Round 22 - build 259
+
+| # | Item | Status |
+|---|------|--------|
+| P29a | Per row on load: channel badge restyled for channel and again for layer, disabled style and font set to what they already were, device label restyled on every check; timecodeToSeconds compiled a regex per call | **done 259** - badge, disabled label and all 66 device-label restyles go through setStyleSheetIfChanged; the italic font is set only when it changes; the separator regex is static. Output identical; a leaf restyle measured 0.11 ms (P10b), three to four of them per row per open, paste and undo |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -161,7 +167,7 @@ against the code, and measured where it is a claim about time, before it is chan
 
 | # | Item | Where | Risk |
 |---|------|-------|------|
-| P29 | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row; unconditional badge/disabled/device restyles; timecodeToSeconds compiles a regex per call | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget, RundownWidgetHelper.h | medium |
+| P29b | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget | medium: clone sync and change tracking listen to those signals |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
 | P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |

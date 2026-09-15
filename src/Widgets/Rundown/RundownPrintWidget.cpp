@@ -216,9 +216,9 @@ void RundownPrintWidget::setColor(const QString& color)
 void RundownPrintWidget::checkEmptyDevice()
 {
     if (this->labelDevice->text() == "Device: ")
-        this->labelDevice->setStyleSheet("color: firebrick;");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
     else
-        this->labelDevice->setStyleSheet("");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
 }
 
 void RundownPrintWidget::clearDelayedCommands()

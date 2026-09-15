@@ -379,9 +379,9 @@ void RundownMovieWidget::setTimecode(const QString& timecode)
 void RundownMovieWidget::checkEmptyDevice()
 {
     if (this->labelDevice->text() == "Device: ")
-        this->labelDevice->setStyleSheet("color: firebrick;");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
     else
-        this->labelDevice->setStyleSheet("");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
 }
 
 void RundownMovieWidget::clearDelayedCommands()

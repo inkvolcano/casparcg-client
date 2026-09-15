@@ -217,9 +217,9 @@ void RundownCommitWidget::setColor(const QString& color)
 void RundownCommitWidget::checkEmptyDevice()
 {
     if (this->labelDevice->text() == "Device: ")
-        this->labelDevice->setStyleSheet("color: firebrick;");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
     else
-        this->labelDevice->setStyleSheet("");
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
 }
 
 void RundownCommitWidget::clearDelayedCommands()

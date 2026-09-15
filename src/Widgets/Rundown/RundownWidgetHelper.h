@@ -388,7 +388,9 @@ namespace RundownWidgetHelper
     {
         labelColor->setText(badgeText(channel, videolayer));
         QColor color = channelColor(channel);
-        labelColor->setStyleSheet(QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
+        // Called for the channel and again for the layer as each row loads, and on
+        // every selection change: only restyled when the colour actually differs.
+        setStyleSheetIfChanged(labelColor, QString("background-color: %1; color: white; border: 2px solid #1a1a1a;").arg(color.name()));
     }
 
     // Gateway badge: shows symbols instead of channel number.
@@ -421,10 +423,15 @@ namespace RundownWidgetHelper
     {
         if (labelLabel != nullptr)
         {
+            // Every row sets this as it loads, nearly always to "not disabled" on a
+            // label that already is; font and style are only touched on a change.
             QFont font = labelLabel->font();
-            font.setItalic(disabled);
-            labelLabel->setFont(font);
-            labelLabel->setStyleSheet(disabled
+            if (font.italic() != disabled)
+            {
+                font.setItalic(disabled);
+                labelLabel->setFont(font);
+            }
+            setStyleSheetIfChanged(labelLabel, disabled
                 ? "color: rgba(140, 140, 140, 200); font-style: italic;"
                 : "");
         }
@@ -665,8 +672,10 @@ namespace RundownWidgetHelper
 
     inline double timecodeToSeconds(const QString& timecode)
     {
-        // Parse "hh:mm:ss:ff" or "hh:mm:ss.ff" format.
-        QStringList parts = timecode.split(QRegularExpression("[:.;]"));
+        // Parse "hh:mm:ss:ff" or "hh:mm:ss.ff" format. The pattern is compiled once
+        // rather than on every call (every row load, every device check).
+        static const QRegularExpression separators("[:.;]");
+        QStringList parts = timecode.split(separators);
         if (parts.count() < 3)
             return 0;
         return parts[0].toDouble() * 3600 + parts[1].toDouble() * 60 + parts[2].toDouble();
