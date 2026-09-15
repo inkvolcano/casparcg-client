@@ -67,6 +67,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P17 | A channel spin-box tick rebuilt every group summary in every open tab, each followed by a synchronous layout | **done 244** - a tab that is not visible marks itself stale and refreshes on show; the group channel badge sets font and style sheet only when they differ. Output identical. Not timed in the running client: the change removes work for hidden tabs outright and re-polishes only on a real change |
 
+## Round 9 - build 245
+
+| # | Item | Status |
+|---|------|--------|
+| P19 | Sheets panel cleared and rebuilt every row and row button on every poll, unchanged or not, resetting scroll and selection | **done 245** - a poll that returns the same headers and rows for the same project and tab is not drawn again. Polling itself is kept: it also warms the sheet cache templates and the Inspector read. Toggles, column visibility and action edits still redraw directly |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -81,7 +87,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
-| P19 | Sheets panel rebuilds all rows on every poll, even unchanged and hidden | SheetsPanelWidget.cpp | low |
 | P22 | Startup builds NDI (loads the DLL, starts discovery) and all 44 Inspector sections before the window shows | MainWindow.cpp, NdiPanelWidget.cpp, InspectorWidget.cpp | low (NDI) / medium (Inspector) |
 | P23 | Missing-media check stats files on the GUI thread even for items already in the library | MissingMediaScanner.cpp | low, check verdictFor first |
 | P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |

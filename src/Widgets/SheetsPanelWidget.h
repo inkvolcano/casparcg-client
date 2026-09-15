@@ -52,6 +52,12 @@ class WIDGETS_EXPORT SheetsPanelWidget : public QWidget, Ui::SheetsPanelWidget
         QMap<QString, SheetsTabActions> tabActions;   // key = tab name, from extensions.json
         QStringList headers;                          // current tab's header row
         QList<QStringList> rows;                      // current tab's data rows
+
+        // Which project and tab the table on screen was drawn for. A poll that
+        // brings back exactly what is already drawn, for the same project and
+        // tab, is not drawn again.
+        QString renderedFor;
+        QString renderKey() const;
         QSet<QString> litToggles;                     // toggle-state keys currently "on air"
         QMap<QString, QString> litToggleTargets;      // toggle key -> "channel/videolayer" it plays on
         QTimer pollTimer;

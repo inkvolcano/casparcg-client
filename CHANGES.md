@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Sheets Panel That Stays Where You Left It
+
+Round 9 of the performance work.
+
+- **The Sheets panel no longer redraws a sheet that has not changed.** On every
+  poll it cleared the table and rebuilt every row and every row's buttons, even
+  when the sheet was exactly the same - and clearing the table scrolled it back
+  to the top and dropped the selection, every few seconds. Now an unchanged poll
+  leaves the table alone, so it stays where it was scrolled; a real change in
+  the sheet is drawn as before, and so is anything done in the panel itself.
+
 ## Channel Changes Touch Only What Is On Screen
 
 Round 8 of the performance work.

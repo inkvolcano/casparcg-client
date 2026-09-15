@@ -373,8 +373,8 @@ void SheetsPanelWidget::fetchValues()
         QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         QJsonArray values = doc.object()["values"].toArray();
 
-        this->headers.clear();
-        this->rows.clear();
+        QStringList fetchedHeaders;
+        QList<QStringList> fetchedRows;
 
         for (int i = 0; i < values.count(); i++)
         {
@@ -383,10 +383,22 @@ void SheetsPanelWidget::fetchValues()
                 row.append(cell.toString());
 
             if (i == 0)
-                this->headers = row;
+                fetchedHeaders = row;
             else
-                this->rows.append(row);
+                fetchedRows.append(row);
         }
+
+        // Most polls bring back the sheet exactly as it was. Rebuilding then cost
+        // every row and every row's buttons, and clearing the table threw away the
+        // operator's scroll position and selection each time - the list jumped to
+        // the top on every poll. Toggles, column changes and action edits draw the
+        // table themselves, so only an unchanged poll is skipped.
+        const bool unchanged = this->renderedFor == renderKey()
+            && fetchedHeaders == this->headers
+            && fetchedRows == this->rows;
+
+        this->headers = fetchedHeaders;
+        this->rows = fetchedRows;
 
         // Shaped the way the cache holds rows, so templates and the inspector get the
         // benefit of a read the panel was making anyway.
@@ -404,8 +416,11 @@ void SheetsPanelWidget::fetchValues()
         if (!cacheRows.isEmpty())
             SheetDataResolver::getInstance().warmCache(warmProject, warmTab, cacheRows);
 
-        renderData();
-        renderStandaloneButtons();
+        if (!unchanged)
+        {
+            renderData();
+            renderStandaloneButtons();
+        }
         setStatus(QString("Fetched %1 \xc2\xb7 %2").arg(currentTab(), QTime::currentTime().toString("HH:mm:ss")));
 
         applyPollInterval();
@@ -525,8 +540,14 @@ void SheetsPanelWidget::buildColumnsMenu()
 
 /* ---------------- rendering ---------------- */
 
+QString SheetsPanelWidget::renderKey() const
+{
+    return this->comboBoxProject->currentText() + "|" + currentTab();
+}
+
 void SheetsPanelWidget::renderData()
 {
+    this->renderedFor = renderKey();
     this->treeWidgetData->clear();
 
     bool hasRowButtons = !this->tabActions.value(currentTab()).rowButtons.isEmpty();
