@@ -80,6 +80,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P22a | The NDI panel loaded the NDI runtime and started a network discovery thread in its constructor, which the main window runs whether or not the layout places the panel | **done 246** - started on the panel's first showEvent. A layout without NDI never loads it; a layout with it starts it as the window appears, as before. Nothing outside the panel uses NdiManager (checked) |
 | P22b | All 44 Inspector sections built eagerly at startup | **open** - medium risk, not started |
 
+## Round 11 - build 247
+
+| # | Item | Status |
+|---|------|--------|
+| P23 | Missing-media check stat'ed files on the GUI thread even for items the Library already has | **done 247** - MediaCheck::diskDecides: the disk is only asked when the Library does not have the item. test-mediacheck proves over every evidence combination and item type that, with the item in the Library, the verdict and its explanation do not depend on the disk. Up to 13 lookups per extension-less clip saved per item, per rundown open. Not timed on a network share (none here) |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -94,7 +100,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P18 | Each selection change walks the whole tree to build a set | RundownTreeWidget.cpp itemSelectionChanged | medium: guards a known dangling-pointer crash |
-| P23 | Missing-media check stats files on the GUI thread even for items already in the library | MissingMediaScanner.cpp | low, check verdictFor first |
 | P24 | Activity panel: opacity effect per row, 25 s fade animations | ActivityPanelWidget.cpp | low |
 | P25 | Simple Mode restyles every tally on every fire, visible or not | SimpleModeWidget.cpp | low |
 | P26 | OSC subscription unsubscribe is linear per item on a shared list | Core/OscSubscriptionRegistry.cpp | low |

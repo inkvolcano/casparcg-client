@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## The Missing-Media Check Stops Asking Twice
+
+Round 11 of the performance work.
+
+- **Opening a rundown looks at the disk less.** The warning for missing media
+  checks each item against the server's Library and against the media folder.
+  It looked in the folder even when the Library already had the item - up to
+  thirteen file lookups for a clip name without an extension, per item, which
+  on a network share adds up to a noticeable pause on a big rundown. The folder
+  is now only checked for items the Library does not have. Which items get the
+  warning, and what it says, is exactly the same.
+
 ## NDI Only When The NDI Panel Is Used
 
 Round 10 of the performance work.

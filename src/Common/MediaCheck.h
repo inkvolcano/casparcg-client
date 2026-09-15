@@ -80,6 +80,16 @@ namespace MediaCheck
         bool pathUsable = false;     // a path is configured and exists on this machine
     };
 
+    // Whether the disk has to be looked at at all. The Library vouching settles
+    // the verdict and there is then nothing to explain, so a file lookup - up to
+    // thirteen of them for a clip name without an extension, each one a round trip
+    // when the media folder is a network share - would change nothing.
+    // tools/test-mediacheck walks every combination to hold that true.
+    inline bool diskDecides(const Evidence& evidence)
+    {
+        return !evidence.inLibrary;
+    }
+
     inline Verdict verdictFor(const QString& type, const QString& name, const Evidence& evidence)
     {
         if (!typeUsesMedia(type))

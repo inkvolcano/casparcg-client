@@ -214,6 +214,7 @@ void MissingMediaScanner::scanItem(QTreeWidget* tree, QTreeWidgetItem* item, Res
 
     evidence.pathUsable = useTemplatePath ? paths.templateUsable : paths.mediaUsable;
     evidence.onDisk = evidence.pathUsable
+        && MediaCheck::diskDecides(evidence)
         && existsUnder(useTemplatePath ? paths.templatePath : paths.mediaPath, name, type);
 
     const MediaCheck::Verdict verdict = MediaCheck::verdictFor(type, name, evidence);

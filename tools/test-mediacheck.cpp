@@ -210,6 +210,50 @@ static void theExplanationSaysWhichSourcesLooked()
                "and neither does a type that names no file");
 }
 
+static void theDiskIsNotAskedWhatTheLibraryAlreadyAnswered()
+{
+    // The scanner skips the file lookups when the Library has the item. That is
+    // only safe if, with inLibrary set, nothing the operator sees depends on
+    // onDisk: every combination of the other evidence, for every kind of item.
+    const QStringList types = QStringList() << "MOVIE" << "STILL" << "AUDIO" << "TEMPLATE" << "IMAGESCROLLER";
+
+    int combinations = 0;
+    int independent = 0;
+    foreach (const QString& type, types)
+    {
+        for (int libraryUsable = 0; libraryUsable <= 1; libraryUsable++)
+        {
+            for (int pathUsable = 0; pathUsable <= 1; pathUsable++)
+            {
+                MediaCheck::Evidence found;
+                found.inLibrary = true;
+                found.libraryUsable = libraryUsable;
+                found.pathUsable = pathUsable;
+                found.onDisk = true;
+
+                MediaCheck::Evidence notFound = found;
+                notFound.onDisk = false;
+
+                combinations++;
+                if (MediaCheck::verdictFor(type, "CLIP", found) == MediaCheck::verdictFor(type, "CLIP", notFound)
+                    && MediaCheck::explain(type, "CLIP", found) == MediaCheck::explain(type, "CLIP", notFound))
+                    independent++;
+            }
+        }
+    }
+
+    expectTrue(independent == combinations,
+               QString("with the item in the Library, the verdict and its explanation ignore the disk (%1 of %2)")
+                   .arg(independent).arg(combinations));
+
+    MediaCheck::Evidence inLibrary;
+    inLibrary.inLibrary = true;
+    expectTrue(!MediaCheck::diskDecides(inLibrary), "so the scanner does not look");
+
+    MediaCheck::Evidence notInLibrary;
+    expectTrue(MediaCheck::diskDecides(notInLibrary), "and it still looks for an item the Library does not have");
+}
+
 int main(int argc, char* argv[])
 {
     Q_UNUSED(argc);
@@ -225,6 +269,7 @@ int main(int argc, char* argv[])
     templatesAreLookedUpUnderTheTemplatePath();
     eachTypeIsTriedAgainstItsOwnExtensions();
     theExplanationSaysWhichSourcesLooked();
+    theDiskIsNotAskedWhatTheLibraryAlreadyAnswered();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 
