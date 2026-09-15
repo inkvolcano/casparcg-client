@@ -184,7 +184,7 @@ QString RundownHttpGetWidget::getColor() const
 void RundownHttpGetWidget::setColor(const QString& color)
 {
     this->color = color;
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownHttpGetWidget::clearDelayedCommands()

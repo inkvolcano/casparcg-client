@@ -268,9 +268,9 @@ void RundownFocusGatewayWidget::setColor(const QString& color)
     this->color = color;
 
     if (this->color.isEmpty())
-        this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(Color::DEFAULT_FOCUSGATEWAY_COLOR));
+        RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(Color::DEFAULT_FOCUSGATEWAY_COLOR));
     else
-        this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+        RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownFocusGatewayWidget::setSelected(bool selected)

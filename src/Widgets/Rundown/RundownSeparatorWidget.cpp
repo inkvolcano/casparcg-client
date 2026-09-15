@@ -119,9 +119,9 @@ void RundownSeparatorWidget::setColor(const QString& color)
     this->color = color;
 
     if (this->color.isEmpty())
-        this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(Color::DEFAULT_SEPARATOR_COLOR));
+        RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(Color::DEFAULT_SEPARATOR_COLOR));
     else
-        this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+        RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownSeparatorWidget::setSelected(bool selected)

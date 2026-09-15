@@ -229,7 +229,7 @@ QString RundownBrightnessWidget::getColor() const
 void RundownBrightnessWidget::setColor(const QString& color)
 {
     this->color = color;
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownBrightnessWidget::checkEmptyDevice()

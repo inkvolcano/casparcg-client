@@ -177,7 +177,7 @@ QString RundownOscOutputWidget::getColor() const
 void RundownOscOutputWidget::setColor(const QString& color)
 {
     this->color = color;
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownOscOutputWidget::clearDelayedCommands()

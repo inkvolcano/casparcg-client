@@ -1838,6 +1838,19 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundowns Open With Less Restyling
+
+Round 5 of the performance work.
+
+- **Each rundown row is styled once when a rundown opens, not twice.** A row
+  set its background colour when it was created and again when its saved
+  colour was read - usually the same colour both times - and each time
+  restyled the row and everything in it, about two milliseconds a row under
+  the client's style sheet. The second, identical styling is skipped, which
+  takes roughly a second off opening a 500-item rundown.
+- The flash when an item fires was measured too, and is already cheap - about
+  two milliseconds a flash - so it is left as it is.
+
 ## A Library That Fills In An Instant
 
 Round 4 of the performance work.

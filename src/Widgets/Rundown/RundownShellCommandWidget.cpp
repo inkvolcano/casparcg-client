@@ -222,7 +222,7 @@ void RundownShellCommandWidget::setColor(const QString& color)
     if (applied.isEmpty() || applied == Color::DEFAULT_TRANSPARENT_COLOR)
         applied = Color::DEFAULT_SHELLCOMMAND_COLOR;
 
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(applied));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(applied));
 }
 
 void RundownShellCommandWidget::clearDelayedCommands()

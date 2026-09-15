@@ -27,6 +27,20 @@
 
 namespace RundownWidgetHelper
 {
+    // A style sheet applied only when it is not already the widget's. Setting one
+    // re-parses it and re-polishes the widget and every child: 2.35 ms for a row
+    // under the client's application style sheet (measured). Every row set its
+    // colour twice while a rundown opened - the default in its constructor, then
+    // the saved colour, which is the same default for most rows - so half of
+    // that was spent producing exactly what was already there. Compared with the
+    // widget's own current sheet, so anything else that restyled the row since
+    // (the autostep highlight does) still gets the colour put back.
+    inline void setStyleSheetIfChanged(QWidget* widget, const QString& style)
+    {
+        if (widget != nullptr && widget->styleSheet() != style)
+            widget->setStyleSheet(style);
+    }
+
     // Cached configuration values — read from DB once, reused by all widget constructors.
     // Call invalidateConfigCache() when settings change (e.g. from SettingsDialog).
     struct ConfigCache

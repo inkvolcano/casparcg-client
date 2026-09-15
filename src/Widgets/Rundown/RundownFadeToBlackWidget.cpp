@@ -222,7 +222,7 @@ QString RundownFadeToBlackWidget::getColor() const
 void RundownFadeToBlackWidget::setColor(const QString& color)
 {
     this->color = color;
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownFadeToBlackWidget::checkEmptyDevice()

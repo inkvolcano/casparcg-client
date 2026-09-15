@@ -212,7 +212,7 @@ QString RundownClearOutputWidget::getColor() const
 void RundownClearOutputWidget::setColor(const QString& color)
 {
     this->color = color;
-    this->setStyleSheet(QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
 }
 
 void RundownClearOutputWidget::checkEmptyDevice()

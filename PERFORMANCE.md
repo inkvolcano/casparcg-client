@@ -43,6 +43,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P4 | Library lists filled one row at a time into the live tree, a new QIcon per row, a copy per model; sort comparator rebuilt keys and parsed timecodes per comparison | **done 240** - measured at 10,000 clips: fill 2,340-2,674 ms -> 53-56 ms (rows built detached, one addTopLevelItems, updates off, one icon per kind); sort by length 407 ms -> 26 ms with keys built once, same order verified. Media, templates and stored data. OGraf folder walk not yet changed |
 
+## Round 5 - build 241
+
+| # | Item | Status |
+|---|------|--------|
+| P10 | Row style sheets at build time and during the active flash | **done 241 (the part that measured)** - under the client's real application style sheet, restyling a row costs 2.35 ms; every row did it twice on open (default colour, then the saved colour, usually identical). All 49 row setColor calls now skip a sheet the row already has: about half the row-styling cost of opening a rundown. The active flash measured 0.11 ms per frame (~2.4 ms per flash) on its leaf label: **checked: not worth it** |
+
 ## Next
 
 | # | Item | Where | Risk |
@@ -54,7 +60,6 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|-------|------|
 | P4b | OGraf folder walk on every template change or filter press (only with OGraf on) | Library/LibraryWidget.cpp appendOgrafGraphics | low |
 | P5 | Library vs server list comparison: nested loops, copies (the media loop already breaks on a match; re-measure templates/data/thumbnails) | Core/LibraryManager.cpp | low |
-| P10 | setStyleSheet per row at build time and ~20 times per active-flash animation | RundownWidgetHelper.h, Rundown*Widget, ActiveAnimation.cpp | medium |
 | P11 | NDI viewer: full-frame deep copy per frame, queued without limit, scaled on the GUI thread | Ndi/NdiReceiver.cpp, NdiViewerWidget.cpp | low-medium |
 | P12 | Preview (non-legacy only): per-frame map + toImage, full-size still decode, folder listing per selection | PreviewWidget.cpp, PreviewContentWidget.cpp | low-medium |
 | P14 | Opening a rundown pushes the whole XML through the system clipboard (and Windows clipboard history) | RundownTreeWidget.cpp open paths, pasteSelectedItems | low |
