@@ -73,6 +73,12 @@ class WIDGETS_EXPORT RundownCommandGatewayWidget : public QWidget, Ui::RundownCo
         QWidget* buttonContainer = nullptr;
         QVBoxLayout* buttonLayout = nullptr;
         QTreeWidgetItem* treeItem = nullptr;
+
+        // What the exit buttons were last built from. Rebuilding deletes and recreates
+        // every button, restyles each, and lays out the whole tree synchronously - on
+        // every paste and drop, for each saved label as the row loads, and every 30 s
+        // for a gateway with a time condition, usually to the same result.
+        QString buttonsBuiltFor;
         QTimer* conditionTimer = nullptr;
 
         Q_SLOT void labelChanged(const LabelChangedEvent&);

@@ -100,6 +100,38 @@ void RundownFocusGatewayWidget::gatewayExitsChanged(const QString& gatewayId)
 
 void RundownFocusGatewayWidget::rebuildExitButtons()
 {
+    // Nothing to do when everything the buttons are built from is as it was: the
+    // exit labels and the selected exit (or that this is an exit), the tree item
+    // and tree it sits in, the width it is laid out in, and whether a time
+    // condition is on. A click that selects another exit, a changed exit list, a
+    // move to another tree or a resize still rebuild.
+    {
+        QString signature;
+        if (this->command.getIsExit())
+        {
+            signature = QStringLiteral("exit");
+        }
+        else
+        {
+            QStringList labels = EventManager::getInstance().getGatewayExitLabels(this->command.getGatewayId());
+            if (labels.isEmpty())
+                labels << this->command.getSelectedExitLabel();
+            signature = labels.join(QChar(0x1F)) + QChar(0x1E) + this->command.getEffectiveExitLabel();
+        }
+
+        const QTreeWidget* tree = (this->treeItem != nullptr) ? this->treeItem->treeWidget() : nullptr;
+        signature += QString("|%1|%2|%3|%4")
+            .arg(quintptr(this->treeItem))
+            .arg(quintptr(tree))
+            .arg(this->frameItem->width())
+            .arg(this->command.getConditionEnabled() ? 1 : 0);
+
+        if (signature == this->buttonsBuiltFor && this->buttonLayout->count() > 0)
+            return;
+
+        this->buttonsBuiltFor = signature;
+    }
+
     // Clear existing buttons.
     QLayoutItem* child;
     while ((child = this->buttonLayout->takeAt(0)) != nullptr)

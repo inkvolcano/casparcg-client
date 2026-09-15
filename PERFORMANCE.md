@@ -160,6 +160,12 @@ template scan gate and cache (230), reconnect guard and cached lookup (229).
 |---|------|--------|
 | P29a | Per row on load: channel badge restyled for channel and again for layer, disabled style and font set to what they already were, device label restyled on every check; timecodeToSeconds compiled a regex per call | **done 259** - badge, disabled label and all 66 device-label restyles go through setStyleSheetIfChanged; the italic font is set only when it changes; the separator regex is static. Output identical; a leaf restyle measured 0.11 ms (P10b), three to four of them per row per open, paste and undo |
 
+## Round 23 - build 260
+
+| # | Item | Status |
+|---|------|--------|
+| P39 | Gateway rows deleted, recreated and restyled their exit buttons and laid out the whole tree on every paste/drop, per saved label on load, and every 30 s with a time condition | **done 260** - all three gateway types skip a rebuild whose inputs (exit labels and selected exit, or exit; tree item and tree; width; time condition on) match the last build while buttons exist. The labels are still looked up each time, so a changed exit list or a time-driven change of the effective exit still rebuilds |
+
 ## Second audit (2026-09-15) - open
 
 A second read-only sweep of areas the first did not cover. Each item is checked
@@ -170,8 +176,6 @@ against the code, and measured where it is a claim about time, before it is chan
 | P29b | Loading a row: setters emit on unchanged values, so OSC subscriptions are rebuilt ~4 times per row | AbstractCommand.cpp setters, RundownMovieWidget/RundownTemplateWidget | medium: clone sync and change tracking listen to those signals |
 | P34 | Every OSC batch reaches every movie row on the layer (fps on the whole channel); name compare allocates | RundownMovieWidget.cpp subscription slots | medium |
 | P35 | Linked clones: each property set while loading or editing runs a full XML write/parse sync of the group | AbstractCommand.cpp setCloneGroupId, CloneGroupRegistry | medium |
-| P38 | OSC receive thread builds a QVariant list, two formatted strings and a QMap insert per message | OscMonitorListener.cpp | low |
-| P39 | Gateway rows rebuild buttons, scan all tabs and lay out the whole tree on every paste/drop and every 30 s | Rundown*GatewayWidget.cpp | low-medium |
 | P41 | Thumbnails fetched on a fixed 2 s clock rather than when the last one arrives (1,000 clips = 33 min) | ThumbnailWorker.cpp | medium |
 
 ## Checked, not worth changing
@@ -184,6 +188,7 @@ against the code, and measured where it is a claim about time, before it is chan
 | P10b | Active-item flash setStyleSheet per frame | 0.11 ms per frame on a leaf label, ~2.4 ms per flash |
 | P37 | SQLite commits on the GUI thread | WAL declined by the user (the database stays one file). The one-file alternative, skipping unchanged device writes, measured on a real SQLite file: an unchanged UPDATE commit 0.18 ms, the same as a guarded one that changes nothing - three per server per refresh |
 | P43 | Sheet cache server reads its file per request | The real cache files are 1-80 KB (DREAMFORCE25, CNX24 sheets_data) and served from the OS file cache after the first read; a fraction of a millisecond per template request, and an in-memory copy would add a staleness rule |
+| P38 | OSC receive thread per-message work | 3,291 ns per message as written, 2,396 ns with fromLatin1 paths and /control skipped first: 33 vs 24 ms a second at 10,000 messages, on the OSC thread, not the GUI. The QMap insert is most of it and stays: its sorted order is the order paths reach subscribers within a batch |
 
 ## Next
 

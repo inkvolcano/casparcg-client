@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Gateways Redraw Only When Something Changed
+
+Round 23 of the performance work.
+
+- **Gateway items no longer rebuild their buttons for nothing.** An AutoPlay,
+  Focus or Command gateway threw away and recreated its exit buttons - and made
+  the whole rundown lay itself out again - every time anything was pasted or
+  dropped, as it loaded, and every thirty seconds when it had a time condition,
+  even when its buttons would come out exactly the same. It now only rebuilds
+  when its exits, its selection, its place or its width change.
+
 ## Rundown Rows Restyle Only What Changed
 
 Round 22 of the performance work.
