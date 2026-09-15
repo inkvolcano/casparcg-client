@@ -1838,6 +1838,30 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Template Preview That Shows The Template
+
+The Preview panel's template rendering - turned on with Show templates in the
+Preview settings - did not work properly. Four things were wrong with it:
+
+- **It showed a corner of the graphic.** A template is laid out for its channel,
+  1920x1080 almost always, and was shown at the size of the panel. The page is
+  now laid out at the channel's size and scaled down to fit the panel, whole and
+  centred.
+- **Its data never reached the template.** Play and Update gave the template its
+  data as a JavaScript object, but a CasparCG template's update() is written for
+  what the server sends - a string of XML or JSON - so it could not read it and
+  quietly did nothing. The data is now sent as a string.
+- **It was not the item's data.** The preview used the sample values written into
+  the template, not the fields filled in on the rundown item. It now sends the
+  item's own fields, built the way they are sent on air: JSON or XML as the item
+  is set, with its uppercase and line-break choices, or the stored data if the
+  item uses it. A template selected from the Library, or an item with no fields,
+  still gets the template's sample values.
+- **Buttons pressed while the page loaded did nothing.** Play, Next, Update and
+  Stop now wait until the page has finished loading, then run in order.
+
+OGraf graphics are unchanged.
+
 ## One Click, One Inspector Update
 
 Round 25 of the performance work.

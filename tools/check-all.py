@@ -40,6 +40,7 @@ SUITES = [
     ('test-droprules', False, 'whether a rundown accepts a drop, including into a locked one'),
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
+    ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
     ('test-clientrelease', False, 'which build is published, whether it is newer, and which asset belongs here'),
     ('test-updater', False, 'the script that replaces the client, run against a throwaway installation'),

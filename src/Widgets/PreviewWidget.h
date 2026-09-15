@@ -10,6 +10,9 @@
 #include "Events/Rundown/RundownItemSelectedEvent.h"
 #include "Models/LibraryModel.h"
 
+#include <QtCore/QPointer>
+#include <QtCore/QSize>
+#include <QtCore/QStringList>
 #include <QtCore/QString>
 #include <QtCore/QTimer>
 #include <QtGui/QImage>
@@ -24,6 +27,8 @@
 
 class QVideoSink;
 class PreviewAudioAnalyser;
+
+class TemplateCommand;
 
 class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
 {
@@ -78,6 +83,27 @@ class WIDGETS_EXPORT PreviewWidget : public QWidget, Ui::PreviewWidget
         // is the one previewed. Empty for a library selection, which has no
         // command and whose model name is correct.
         QString selectedTemplateName;
+
+        // The selected rundown item's template command, so the preview can send the
+        // item's own field values rather than the template's sample data. Guarded:
+        // the item can be deleted while it is still the one previewed.
+        QPointer<TemplateCommand> selectedTemplateCommand;
+
+        // Whether the page in the view has finished loading. Play, Next, Update and
+        // Stop pressed before then used to run against a page with no functions yet
+        // and do nothing; they wait for it now.
+        bool templatePageLoaded = false;
+        QStringList pendingTemplateScripts;
+
+        // Scale the CasparCG template page from its channel's size into the panel.
+        void fitTemplatePage();
+
+        // The data the item would send on air, as the template's update() reads it.
+        QString templateDataString() const;
+
+        // The width and height the template is laid out for: the item's channel
+        // format, or 1920x1080 when it cannot be told.
+        QSize templateDesignSize() const;
 
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;

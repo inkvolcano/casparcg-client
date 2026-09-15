@@ -1,5 +1,6 @@
 #include "PreviewWidget.h"
 #include "TemplateScan.h"
+#include "TemplatePreviewData.h"
 
 #include "Global.h"
 #include "PanelHelper.h"
@@ -11,6 +12,8 @@
 #include "DatabaseManager.h"
 #include "EventManager.h"
 #include "Models/ConfigurationModel.h"
+#include "Models/FormatModel.h"
+#include "Models/KeyValueModel.h"
 #include "Models/LibraryModel.h"
 #include "Models/ThumbnailModel.h"
 #include "Commands/TemplateCommand.h"
@@ -289,6 +292,7 @@ void PreviewWidget::libraryItemSelected(const LibraryItemSelectedEvent& event)
 {
     this->model = event.getLibraryModel();
     this->selectedTemplateName.clear();
+    this->selectedTemplateCommand.clear();
 
     setThumbnail();
 }
@@ -301,6 +305,7 @@ void PreviewWidget::rundownItemSelected(const RundownItemSelectedEvent& event)
     // actually typed rather than the one the item was dragged in with.
     TemplateCommand* templateCommand = dynamic_cast<TemplateCommand*>(event.getCommand());
     this->selectedTemplateName = (templateCommand != nullptr) ? templateCommand->getTemplateName() : QString();
+    this->selectedTemplateCommand = templateCommand;
 
     setThumbnail();
 }
@@ -736,6 +741,23 @@ void PreviewWidget::loadTemplate(const QString& filePath)
         view->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, true);
         view->settings()->setAttribute(QWebEngineSettings::ShowScrollBars, false);
 
+        // Once the page is there: fit a CasparCG template into the panel, then run
+        // whatever was pressed while it loaded, in order.
+        QObject::connect(view, &QWebEngineView::loadFinished, this, [this](bool ok) {
+            if (!ok)
+                return;
+
+            this->templatePageLoaded = true;
+
+            if (!this->showingOgraf)
+                fitTemplatePage();
+
+            const QStringList pending = this->pendingTemplateScripts;
+            this->pendingTemplateScripts.clear();
+            for (const QString& script : pending)
+                runTemplateScript(script);
+        });
+
         this->templateView = view;
         this->verticalLayout->insertWidget(0, this->templateView, 1);
     }
@@ -744,6 +766,8 @@ void PreviewWidget::loadTemplate(const QString& filePath)
     this->templateView->setVisible(true);
     this->templateBar->setVisible(true);
 
+    this->templatePageLoaded = false;
+    this->pendingTemplateScripts.clear();
     static_cast<QWebEngineView*>(this->templateView)->load(QUrl::fromLocalFile(filePath));
 #else
     Q_UNUSED(filePath);
@@ -808,6 +832,8 @@ void PreviewWidget::clearTemplate()
 #ifdef CASPARCG_HAS_WEBENGINE
     // Loading a blank page rather than only hiding the view: a template left
     // loaded keeps running its timers and animations behind the panel.
+    this->templatePageLoaded = false;
+    this->pendingTemplateScripts.clear();
     static_cast<QWebEngineView*>(this->templateView)->setHtml(QString());
 #endif
 
@@ -820,6 +846,12 @@ void PreviewWidget::runTemplateScript(const QString& script)
 #ifdef CASPARCG_HAS_WEBENGINE
     if (this->templateView == nullptr || !this->templateView->isVisible())
         return;
+
+    if (!this->templatePageLoaded)
+    {
+        this->pendingTemplateScripts.append(script);
+        return;
+    }
 
     static_cast<QWebEngineView*>(this->templateView)->page()->runJavaScript(script);
 #else
@@ -851,6 +883,68 @@ QString PreviewWidget::templateDataJson() const
         return "{}";
 
     return "{" + match.captured(1) + "}";
+}
+
+QString PreviewWidget::templateDataString() const
+{
+    // The item's own fields, as they would go to the server - JSON or XML as the
+    // item is set to send, with its uppercase and newline choices.
+    TemplateCommand* command = this->selectedTemplateCommand.data();
+    if (command != nullptr && !command->getTemplateDataModels().isEmpty())
+    {
+        const QList<KeyValueModel>& models = command->getTemplateDataModels();
+
+        // Stored data is a ready string the operator typed, sent as it is.
+        if (command->getUseStoredData())
+            return models.at(0).getValue();
+
+        QList<QPair<QString, QString>> fields;
+        for (const KeyValueModel& model : models)
+            fields.append(qMakePair(model.getKey(), model.getValue()));
+
+        return TemplatePreviewData::dataString(fields, command->getSendAsJson(),
+                                               command->getUseUppercaseData(), command->getNewlineBehavior());
+    }
+
+    // No fields on the item, or a library selection: the template's own sample
+    // values, as a JSON string it can parse.
+    return TemplatePreviewData::debugDataAsJson(templateDataJson());
+}
+
+QSize PreviewWidget::templateDesignSize() const
+{
+    const QSize fallback(1920, 1080);
+
+    TemplateCommand* command = this->selectedTemplateCommand.data();
+    if (command == nullptr || this->model == nullptr)
+        return fallback;
+
+    const QStringList formats = DatabaseManager::getInstance().getDeviceByName(this->model->getDeviceName())
+                                    .getChannelFormats().split(",", Qt::SkipEmptyParts);
+    const int channel = command->getChannel();
+    if (channel <= 0 || channel > formats.count())
+        return fallback;
+
+    const FormatModel format = DatabaseManager::getInstance().getFormat(formats.at(channel - 1).trimmed());
+    if (format.getWidth() <= 0 || format.getHeight() <= 0)
+        return fallback;
+
+    return QSize(format.getWidth(), format.getHeight());
+}
+
+void PreviewWidget::fitTemplatePage()
+{
+#ifdef CASPARCG_HAS_WEBENGINE
+    if (this->templateView == nullptr || !this->templatePageLoaded || this->showingOgraf)
+        return;
+
+    const QSize design = templateDesignSize();
+    const TemplatePreviewData::Fit f = TemplatePreviewData::fit(this->templateView->width(), this->templateView->height(),
+                                                                design.width(), design.height());
+
+    static_cast<QWebEngineView*>(this->templateView)->page()->runJavaScript(
+        TemplatePreviewData::fitScript(f, design.width(), design.height()));
+#endif
 }
 
 QString PreviewWidget::formatTime(qint64 ms)
@@ -927,7 +1021,10 @@ void PreviewWidget::templatePlay()
 
     // A CasparCG template gets its data first, then play: one that reads its
     // fields on play would otherwise animate on empty and populate a frame later.
-    runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(templateDataJson()));
+    // The data goes in as a string, the way the server sends it.
+    const QString data = templateDataString();
+    if (!data.isEmpty())
+        runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(TemplatePreviewData::jsString(data)));
     runTemplateScript("try { if (window.play) window.play(); } catch (e) {}");
 }
 
@@ -954,7 +1051,9 @@ void PreviewWidget::templateUpdate()
         return;
     }
 
-    runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(templateDataJson()));
+    const QString data = templateDataString();
+    if (!data.isEmpty())
+        runTemplateScript(QString("try { if (window.update) window.update(%1); } catch (e) {}").arg(TemplatePreviewData::jsString(data)));
 }
 
 void PreviewWidget::templateStop()
@@ -1018,6 +1117,11 @@ void PreviewWidget::showEvent(QShowEvent* event)
 void PreviewWidget::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
+
+    // The panel's size changed, so the template page is fitted to it again. Sent
+    // after the layout has moved the view, which is when its new size is known.
+    if (this->templateView != nullptr && this->templateView->isVisible())
+        QTimer::singleShot(0, this, [this]() { fitTemplatePage(); });
 
     // Only update thumbnail display if no video is playing.
     if (this->player->playbackState() == QMediaPlayer::StoppedState &&

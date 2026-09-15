@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#template-preview-fix">Template Preview Fixed</a><br>
 <a href="#perf-round-25">One Click, One Update</a><br>
 <a href="#perf-round-24">Big Templates Drop Fast</a><br>
 <a href="#perf-round-23">Gateways Redraw Less</a><br>
@@ -1854,6 +1855,19 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="template-preview-fix">Template Preview That Shows The Template</h2>
+
+<p>The Preview panel's template rendering &mdash; turned on with Show templates in the Preview settings &mdash; did not work properly. Four things were wrong with it:</p>
+
+<ul>
+<li><b>It showed a corner of the graphic.</b> A template is laid out for its channel, 1920x1080 almost always, and was shown at the size of the panel. The page is now laid out at the channel's size and scaled down to fit the panel, whole and centred.</li>
+<li><b>Its data never reached the template.</b> Play and Update gave the template its data as a JavaScript object, but a CasparCG template's update() is written for what the server sends &mdash; a string of XML or JSON &mdash; so it could not read it and quietly did nothing. The data is now sent as a string.</li>
+<li><b>It was not the item's data.</b> The preview used the sample values written into the template, not the fields filled in on the rundown item. It now sends the item's own fields, built the way they are sent on air: JSON or XML as the item is set, with its uppercase and line-break choices, or the stored data if the item uses it. A template selected from the Library, or an item with no fields, still gets the template's sample values.</li>
+<li><b>Buttons pressed while the page loaded did nothing.</b> Play, Next, Update and Stop now wait until the page has finished loading, then run in order.</li>
+</ul>
+
+<p>OGraf graphics are unchanged.</p>
 
 <h2 id="perf-round-25">One Click, One Inspector Update</h2>
 
