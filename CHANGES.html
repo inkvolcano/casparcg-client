@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#choose-build">Choose A Build, Roll Back</a><br>
 <a href="#drop-spot">Where A Drop Lands</a><br>
 <a href="#template-read">Rolling Graphics, Read Fast</a><br>
 <a href="#template-scan">Rolling Graphics Hang</a><br>
@@ -1827,6 +1828,18 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="choose-build">Choose A Build, Roll Back, And A Download That Is Not Forgotten</h2>
+
+<p><b>Check for Updates lists every published build</b>, newest first, each marked as newer, the one running now, or older. Choosing an older one rolls back: it is downloaded, checked against the release's checksum and installed exactly like an upgrade, and the confirmation says it is a rollback and what happens to settings &mdash; the older build opens the same database and ignores what newer builds added.</p>
+
+<p><b>Put Back Previous Build</b> undoes the last install without a download. Every install keeps the build it replaces beside the installation; this copies it back, and keeps the build that was running in its place, so pressing it again goes forward again. Each install now also notes which build it kept, so the button can name it, and copies the settings database beside it as it was before the new build first opened it.</p>
+
+<p><b>A download is remembered.</b> Closing the window after downloading used to lose it: the next time the window opened there was nothing to install until the package was downloaded again. A verified download now leaves a small note beside the package, and the window offers Install and Restart as soon as it opens. The package is checksummed again before it is installed.</p>
+
+<p>The download also no longer sits in memory whole before it is checked: it is written to a part file and hashed as it arrives, and a part file that does not match is deleted.</p>
+
+<p><b>Help has a Bug Report submenu</b>, with Collect a Bug Report and a note that it works on Windows only for now: the report reads the Windows event log and crash folders and zips with PowerShell.</p>
 
 <h2 id="drop-spot">Where A Dropped Item Lands</h2>
 

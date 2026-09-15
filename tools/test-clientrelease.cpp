@@ -336,6 +336,74 @@ static void thisBuildKnowsWhatItIs()
                QString("the compiled platform key \"%1\" is one the assets use").arg(platform));
 }
 
+static void everyPublishedBuildIsAChoice()
+{
+    using ClientRelease::Direction;
+
+    const ClientRelease::Version running = ClientRelease::parse("2.3.1 build 235");
+
+    expectTrue(ClientRelease::directionOf(ClientRelease::parse("v2.3.1-236"), running) == Direction::Upgrade,
+               "a later build is an upgrade");
+    expectTrue(ClientRelease::directionOf(ClientRelease::parse("v2.3.1-233"), running) == Direction::Rollback,
+               "an earlier build is a rollback");
+    expectTrue(ClientRelease::directionOf(ClientRelease::parse("v2.3.1-235"), running) == Direction::Same,
+               "the running build is neither");
+    expectTrue(ClientRelease::directionOf(ClientRelease::parse("v2.3.1-99"), running) == Direction::Rollback,
+               "build 99 is older than 235, numerically");
+    expectTrue(ClientRelease::directionOf(ClientRelease::parse("nightly"), running) == Direction::Unknown,
+               "a tag nobody can read is neither, and so never offered");
+
+    expectTrue(ClientRelease::choiceLabel(ClientRelease::parse("v2.3.1-236"), running, true).contains("newest"),
+               "the newest build says so in the list");
+    expectTrue(ClientRelease::choiceLabel(ClientRelease::parse("v2.3.1-233"), running, false).contains("roll back"),
+               "an older build says what choosing it does");
+    expectTrue(ClientRelease::choiceLabel(ClientRelease::parse("v2.3.1-235"), running, false).contains("running now"),
+               "and the running build is marked");
+}
+
+static void aVerifiedDownloadIsRemembered()
+{
+    ClientRelease::DownloadRecord record;
+    record.tag = "v2.3.1-236";
+    record.asset = "casparcg-client-v2.3.1-236-windows.zip";
+    record.sha256 = QString(64, 'a');
+    record.size = 106000000;
+    record.when = "2026-09-15 14:02";
+
+    const ClientRelease::DownloadRecord back = ClientRelease::parseRecord(ClientRelease::recordText(record));
+    expectTrue(back.valid, "a record reads back as valid");
+    expectTrue(back.tag == record.tag && back.asset == record.asset && back.sha256 == record.sha256
+               && back.size == record.size && back.when == record.when, "with every field as written");
+
+    expectTrue(ClientRelease::parseRecord(ClientRelease::recordText(record).replace("\n", "\r\n")).valid,
+               "and survives Windows line endings");
+
+    ClientRelease::DownloadRecord bad = record;
+    bad.asset = "..\\..\\casparcg-client.exe";
+    expectTrue(!ClientRelease::parseRecord(ClientRelease::recordText(bad)).valid,
+               "a record naming a file outside the updates folder is no record");
+    bad = record;
+    bad.asset = "C:casparcg.zip";
+    expectTrue(!ClientRelease::parseRecord(ClientRelease::recordText(bad)).valid, "nor one with a drive in it");
+    bad = record;
+    bad.sha256 = "abc";
+    expectTrue(!ClientRelease::parseRecord(ClientRelease::recordText(bad)).valid, "nor one with a short hash");
+    bad = record;
+    bad.size = 0;
+    expectTrue(!ClientRelease::parseRecord(ClientRelease::recordText(bad)).valid, "nor one with no size");
+    bad = record;
+    bad.tag = "nightly";
+    expectTrue(!ClientRelease::parseRecord(ClientRelease::recordText(bad)).valid, "nor one whose build is unreadable");
+    expectTrue(!ClientRelease::parseRecord("tag=v2.3.1-236\n").valid, "and half a record is none");
+
+    expectTrue(ClientRelease::parseRecord(QString("tag=v2.3.1-236\nasset=a.zip\nsha256=%1\nsize=5\n")
+                                              .arg(QString(64, 'A'))).sha256 == QString(64, 'a'),
+               "a hash is read in lower case");
+    expectTrue(ClientRelease::isPlainFileName("casparcg-client-v2.3.1-236-windows.zip"), "a package name is a plain name");
+    expectTrue(!ClientRelease::isPlainFileName(".hidden"), "a dot file is not");
+    expectTrue(!ClientRelease::isPlainFileName("sub/file.zip"), "nor a path");
+}
+
 int main(int argc, char* argv[])
 {
     Q_UNUSED(argc);
@@ -357,6 +425,8 @@ int main(int argc, char* argv[])
     buildsComeFromOneKnownPlace();
     aSourceIsReadHoweverItWasWritten();
     thisBuildKnowsWhatItIs();
+    everyPublishedBuildIsAChoice();
+    aVerifiedDownloadIsRemembered();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 

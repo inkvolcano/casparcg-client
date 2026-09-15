@@ -1838,6 +1838,35 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Choose A Build, Roll Back, And A Download That Is Not Forgotten
+
+**Check for Updates lists every published build**, newest first, each marked as
+newer, the one running now, or older. Choosing an older one rolls back: it is
+downloaded, checked against the release's checksum and installed exactly like an
+upgrade, and the confirmation says it is a rollback and what happens to settings
+- the older build opens the same database and ignores what newer builds added.
+
+**Put Back Previous Build** undoes the last install without a download. Every
+install keeps the build it replaces beside the installation; this copies it
+back, and keeps the build that was running in its place, so pressing it again
+goes forward again. Each install now also notes which build it kept, so the
+button can name it, and copies the settings database beside it as it was before
+the new build first opened it.
+
+**A download is remembered.** Closing the window after downloading used to lose
+it: the next time the window opened there was nothing to install until the
+package was downloaded again. A verified download now leaves a small note beside
+the package, and the window offers Install and Restart as soon as it opens. The
+package is checksummed again before it is installed.
+
+The download also no longer sits in memory whole before it is checked: it is
+written to a part file and hashed as it arrives, and a part file that does not
+match is deleted.
+
+**Help has a Bug Report submenu**, with Collect a Bug Report and a note that it
+works on Windows only for now: the report reads the Windows event log and crash
+folders and zips with PowerShell.
+
 ## Where A Dropped Item Lands
 
 Dragging an item within a rundown sometimes put it at the bottom of the list

@@ -2,36 +2,46 @@
 
 #include "Shared.h"
 
+#include "ClientRelease.h"
+
+#include <QtCore/QCryptographicHash>
+#include <QtCore/QFile>
+#include <QtCore/QList>
 #include <QtCore/QString>
 
 #include <QtWidgets/QDialog>
 
 QT_BEGIN_NAMESPACE
+class QComboBox;
 class QLabel;
 class QNetworkAccessManager;
+class QNetworkReply;
 class QProgressBar;
 class QPushButton;
 class QTextEdit;
 QT_END_NAMESPACE
 
-// Is there a newer build of this client, and fetch it if there is.
+// Is there a newer build of this client, fetch it, or go back to an older one.
 //
 // Nothing here happens on its own. There is no poll timer, no startup check and
-// no automatic install: the operator opens this, presses Check, and presses
-// Download if they want to. That is deliberate on a playout machine - the client
-// is not something to have quietly replace itself between shows - and it is why
-// this is a dialog rather than a service.
+// no automatic install: the operator opens this, presses Check, chooses a build
+// and presses Download if they want to. That is deliberate on a playout machine -
+// the client is not something to have quietly replace itself between shows - and
+// it is why this is a dialog rather than a service.
 //
-// It also stops short of installing. The package is downloaded, verified against
-// the release's own checksums file, and left in a folder with the folder opened.
-// Swapping a running program is the one step this will not take on its own:
-// Windows will not let a running executable be overwritten anyway, and on a
-// machine that may be on air the person doing it should be the one who chose the
-// moment.
+// Every published build is offered, not only the newest: going back to an earlier
+// one is the same download and the same install, verified the same way. And the
+// build an install replaced is kept beside the installation, so the last change
+// can be undone without a network at all.
 //
-// The arithmetic - what a tag means, whether it is newer, which asset belongs
-// here, what the checksums file says - is in Common/ClientRelease.h, tested
-// without a network.
+// A verified download is remembered on disk. Closing this window after a
+// download and opening it again offers the install straight away; the package is
+// hashed again before it is installed.
+//
+// The arithmetic - what a tag means, whether it is newer or older, which asset
+// belongs here, what the checksums file says, what a download record holds - is
+// in Common/ClientRelease.h, tested without a network. The scripts that swap the
+// installation are run for real by tools/test-updater.py.
 class WIDGETS_EXPORT UpdateDialog : public QDialog
 {
     Q_OBJECT
@@ -57,30 +67,61 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
         static QString runningVersionText();
 
     private:
+        // One published build that can be installed here.
+        struct Offer
+        {
+            QString tag;
+            ClientRelease::Version version;
+            QString assetName;
+            QString assetUrl;
+            QString sumsUrl;
+            QString notes;
+        };
+
         QLabel* labelRunning = nullptr;
         QLabel* labelSource = nullptr;
         QLabel* labelResult = nullptr;
+        QComboBox* comboVersion = nullptr;
         QTextEdit* textNotes = nullptr;
         QPushButton* buttonCheck = nullptr;
         QPushButton* buttonDownload = nullptr;
         QPushButton* buttonInstall = nullptr;
+        QPushButton* buttonPrevious = nullptr;
         QPushButton* buttonReveal = nullptr;
         QProgressBar* progress = nullptr;
 
         QNetworkAccessManager* network = nullptr;
 
-        // What the last check found, kept so Download knows what to fetch.
+        // What the last check found, newest first.
+        QList<Offer> offers;
+
+        // The build chosen in the list, kept so Download knows what to fetch.
         QString foundTag;
         QString assetName;
         QString assetUrl;
         QString sumsUrl;
         QString expectedSha;
+        bool downloadAllowed = false;
 
-        // Where the finished package landed.
+        // Where the finished, verified package is, and which build it is.
         QString downloadedPath;
+        QString downloadedTag;
+        QString downloadedSha;
+
+        // A download in progress goes to a .part file and is hashed as it arrives,
+        // rather than being held whole in memory until it finishes.
+        QFile partFile;
+        QCryptographicHash partHash{QCryptographicHash::Sha256};
 
         void check();
+        void choose(int index);
         void download();
+
+        // A package downloaded and verified before this window was opened.
+        void restoreDownloaded();
+
+        // Hash the downloaded package again. Returns false with the reason.
+        bool verifyDownloaded(QString* problem) const;
 
         // Write the script that does the swap, start it, and quit so it can.
         //
@@ -102,6 +143,18 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
         // path to it, or empty with the reason in `problem`.
         QString writeUpdaterScript(QString* problem) const;
 
+        // Put back the build the last install replaced, from the copy kept beside
+        // the installation. No network. The two builds trade places, so doing it
+        // again goes forward again.
+        void restorePrevious();
+        QString writeRestoreScript(QString* problem) const;
+
+        // What the kept build is, from the note the install left with it. Empty
+        // when there is no kept build.
+        static QString previousBuildText();
+        static bool hasPreviousBuild();
+        void refreshPrevious();
+
         void requestSums();
         void requestAsset();
 
@@ -112,4 +165,7 @@ class WIDGETS_EXPORT UpdateDialog : public QDialog
         // download that vanished on reboot before anybody installed it would be a
         // second 106 MB download.
         static QString stagingFolder();
+
+        // The settings database, which an install copies beside the kept build.
+        static QString databaseFile();
 };

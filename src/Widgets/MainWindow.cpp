@@ -405,7 +405,23 @@ void MainWindow::setupMenu()
     this->helpMenu->addSeparator();
     this->helpMenu->addAction("What's New...", this, SLOT(showWhatsNewDialog()));
     this->helpMenu->addAction("Check for Updates...", this, SLOT(showUpdateDialog()));
-    this->helpMenu->addAction("Collect a Bug Report...", this, SLOT(collectBugReport()));
+
+    // A submenu rather than one entry, so the limit can sit right beside the
+    // action instead of being discovered when it fails. The report gathers the
+    // Windows event log, Windows Error Reporting's crash folders and a zip made
+    // by PowerShell; none of that exists anywhere else yet.
+    QMenu* bugReportMenu = this->helpMenu->addMenu("Bug Report");
+    QAction* collectAction = bugReportMenu->addAction("Collect a Bug Report...", this, SLOT(collectBugReport()));
+    bugReportMenu->addSeparator();
+    QAction* bugReportNote = bugReportMenu->addAction("Works on Windows only, for now");
+    bugReportNote->setEnabled(false);
+    bugReportNote->setToolTip("The report reads the Windows event log and crash folders and zips with PowerShell.");
+#if !defined(Q_OS_WIN)
+    collectAction->setEnabled(false);
+    collectAction->setToolTip("Not available on this system yet: it needs Windows.");
+#else
+    Q_UNUSED(collectAction);
+#endif
     this->helpMenu->addAction("About CasparCG Client...", this, SLOT(showAboutDialog()));
     action->setEnabled(false);
 

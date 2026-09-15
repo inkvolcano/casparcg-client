@@ -301,4 +301,150 @@ namespace ClientRelease
 
         return QString();
     }
+
+    // ---- choosing a build, not only the newest -----------------------------
+
+    // Which way installing a build moves this machine. Unknown when either side
+    // could not be read, which is never offered as an upgrade.
+    enum class Direction { Unknown, Same, Upgrade, Rollback };
+
+    inline Direction directionOf(const Version& candidate, const Version& running)
+    {
+        if (!candidate.valid || !running.valid)
+            return Direction::Unknown;
+
+        if (isNewer(candidate, running))
+            return Direction::Upgrade;
+
+        if (isNewer(running, candidate))
+            return Direction::Rollback;
+
+        return Direction::Same;
+    }
+
+    // How a build reads in the list the operator chooses from.
+    inline QString choiceLabel(const Version& candidate, const Version& running, bool newest)
+    {
+        QString label = describe(candidate);
+
+        switch (directionOf(candidate, running))
+        {
+            case Direction::Same:
+                label += newest ? "  (running now, newest)" : "  (running now)";
+                break;
+            case Direction::Upgrade:
+                label += newest ? "  (newest)" : "  (newer)";
+                break;
+            case Direction::Rollback:
+                label += "  (older: roll back)";
+                break;
+            default:
+                label += "  (version not understood)";
+                break;
+        }
+
+        return label;
+    }
+
+    // ---- a download remembered on disk -------------------------------------
+    //
+    // Written beside the package once it has matched its checksum, so a window
+    // closed after a download and opened again still knows there is something to
+    // install. Plain "name=value" lines: a person looking in the updates folder
+    // can read it, and nothing needs a JSON parser to trust it.
+
+    inline QString recordFileName() { return QString("downloaded.txt"); }
+
+    // What an install writes into the kept build, naming it.
+    inline QString backupMarkerName() { return QString("update-backup-of.txt"); }
+
+    struct DownloadRecord
+    {
+        bool valid = false;
+
+        QString tag;
+        QString asset;
+        QString sha256;
+        qint64 size = -1;
+        QString when;
+    };
+
+    // A file name and nothing else. The record names a file in the updates
+    // folder, and a record somebody edited must not be able to name one anywhere
+    // else.
+    inline bool isPlainFileName(const QString& name)
+    {
+        if (name.isEmpty() || name.startsWith('.'))
+            return false;
+
+        foreach (const QChar& c, name)
+        {
+            if (c == '/' || c == '\\' || c == ':' || c.unicode() < 32)
+                return false;
+        }
+
+        return true;
+    }
+
+    inline bool isSha256Hex(const QString& hash)
+    {
+        if (hash.length() != 64)
+            return false;
+
+        foreach (const QChar& c, hash)
+        {
+            if (!c.isDigit() && !(c >= 'a' && c <= 'f'))
+                return false;
+        }
+
+        return true;
+    }
+
+    inline QString recordText(const DownloadRecord& record)
+    {
+        return QString("tag=%1\nasset=%2\nsha256=%3\nsize=%4\nwhen=%5\n")
+            .arg(record.tag, record.asset, record.sha256)
+            .arg(record.size)
+            .arg(record.when);
+    }
+
+    // Valid only when every part is present and well formed. A record that is
+    // half there is treated as no record, and the operator downloads again.
+    inline DownloadRecord parseRecord(const QString& text)
+    {
+        DownloadRecord record;
+
+        foreach (const QString& line, text.split('\n'))
+        {
+            const QString trimmed = line.trimmed();
+            const int equals = trimmed.indexOf('=');
+            if (equals <= 0)
+                continue;
+
+            const QString name = trimmed.left(equals).trimmed();
+            const QString value = trimmed.mid(equals + 1).trimmed();
+
+            if (name == "tag")
+                record.tag = value;
+            else if (name == "asset")
+                record.asset = value;
+            else if (name == "sha256")
+                record.sha256 = value.toLower();
+            else if (name == "size")
+            {
+                bool ok = false;
+                const qint64 size = value.toLongLong(&ok);
+                record.size = ok ? size : -1;
+            }
+            else if (name == "when")
+                record.when = value;
+        }
+
+        record.valid = parse(record.tag).valid
+            && isPlainFileName(record.asset)
+            && isSha256Hex(record.sha256)
+            && record.size > 0;
+
+        return record;
+    }
 }

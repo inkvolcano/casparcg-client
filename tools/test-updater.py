@@ -43,11 +43,11 @@ def check(ok, what):
         print("  FAIL  " + what)
 
 
-def build_script(work):
+def build_script(work, function='writeUpdaterScript', running='2.3.1 build 208'):
     """The batch the client would write, with this test's paths in it."""
     text = io.open(SOURCE, encoding='utf-8').read()
 
-    body = text[text.index('QString UpdateDialog::writeUpdaterScript'):]
+    body = text[text.index('QString UpdateDialog::' + function):]
     body = body[:body.index('script.write(')]
 
     substitutions = {
@@ -57,7 +57,17 @@ def build_script(work):
         'folder': os.path.join(work, 'install', 'updates'),
         'exe': os.path.join(work, 'install', 'casparcg-client.exe'),
         'scriptPath': os.path.join(work, 'install', 'updates', 'apply-update.cmd'),
+        # What the client that wrote the script is, and where its settings are.
+        'runningVersion': running,
+        'databaseFile': os.path.join(work, 'profile', 'Database.s3db'),
     }
+
+    # A name the source uses that this table does not know would be dropped from
+    # the script without a sound, and the script would still look fine.
+    unknown = set(re.findall(r'\+\s*([A-Za-z_]\w*)\s*(?:\+|;)', body)) - set(substitutions)
+    unknown -= {'QString', 'text'}
+    if unknown:
+        raise AssertionError('names in %s this test does not substitute: %s' % (function, sorted(unknown)))
 
     # A string literal, or one of those names, whichever comes next. Order is as
     # important as content: set "WORK=" + folder + "\staged" has to come out as one
@@ -116,6 +126,24 @@ def run_updater(make_package, keep_extra=False):
     return result.returncode, contents, install, download
 
 
+def run_restore(running):
+    """The restore script, run over whatever the last run_updater left behind."""
+    install = os.path.join(WORK, 'install')
+    download = os.path.join(install, 'updates')
+
+    script_path = os.path.join(download, 'restore-previous.cmd')
+    io.open(script_path, 'w', encoding='utf-8', newline='').write(
+        build_script(WORK, 'writeRestoreScript', running))
+
+    result = subprocess.run(['cmd.exe', '/c', script_path], input='\n',
+                            capture_output=True, text=True, timeout=180)
+
+    exe = os.path.join(install, 'casparcg-client.exe')
+    contents = io.open(exe).read() if os.path.exists(exe) else '<missing>'
+
+    return result.returncode, contents, install, download
+
+
 def good_package(download):
     staged = os.path.join(WORK, 'make', 'casparcg-client-v2.3.1-209')
     os.makedirs(staged)
@@ -164,6 +192,66 @@ def aNewBuildActuallyReplacesTheOldOne():
     package_in_backup = os.path.join(download, 'previous', 'package.zip')
     check(not os.path.exists(package_in_backup),
           "and the package was not copied into the backup beside it")
+
+
+def theKeptBuildSaysWhatItIs():
+    def with_profile(download):
+        os.makedirs(os.path.join(WORK, 'profile'))
+        io.open(os.path.join(WORK, 'profile', 'Database.s3db'), 'w').write('settings as they were')
+        good_package(download)
+
+    code, contents, install, download = run_updater(with_profile)
+
+    check(code == 0, "an install with a settings database finished")
+    marker = os.path.join(download, 'previous', 'update-backup-of.txt')
+    check(os.path.exists(marker) and io.open(marker).read().strip() == '2.3.1 build 208',
+          "the kept build is named, so Put Back can say which build it is")
+    copy = os.path.join(download, 'previous', 'Database-at-update.s3db')
+    check(os.path.exists(copy) and io.open(copy).read() == 'settings as they were',
+          "and the settings database is copied beside it")
+    check(os.path.exists(os.path.join(WORK, 'profile', 'Database.s3db')),
+          "the database itself is left where it is")
+    check(not os.path.exists(os.path.join(install, 'update-backup-of.txt')),
+          "the note does not land in the installation")
+
+
+def thePreviousBuildComesBackAndCanGoForwardAgain():
+    code, contents, install, download = run_updater(good_package, keep_extra=True)
+    check(code == 0 and contents == 'NEW BUILD 209', "set-up: 209 installed over 208")
+
+    code, contents, install, download = run_restore('2.3.1 build 209')
+    check(code == 0, "putting back the previous build finished without an error")
+    check(contents == 'OLD BUILD 208', "the executable is the previous build again (found: %s)" % contents)
+    check(io.open(os.path.join(install, 'Qt6Core.dll')).read() == 'old qt', "and so are its libraries")
+    check(os.path.exists(os.path.join(install, 'Data', 'local.db')), "files neither build carries were left alone")
+    check(not os.path.exists(os.path.join(install, 'update-backup-of.txt')),
+          "the kept build's note was not copied into the installation")
+
+    kept = os.path.join(download, 'previous', 'casparcg-client.exe')
+    check(os.path.exists(kept) and io.open(kept).read() == 'NEW BUILD 209',
+          "the build that was replaced is now the kept one - they traded places")
+    marker = os.path.join(download, 'previous', 'update-backup-of.txt')
+    check(os.path.exists(marker) and io.open(marker).read().strip() == '2.3.1 build 209',
+          "and it is named as 209")
+    check(not os.path.exists(os.path.join(download, 'replaced')), "nothing is left half-swapped")
+    check(not os.path.exists(os.path.join(download, 'previous', 'updates')),
+          "the updates folder was not copied into itself")
+
+    code, contents, install, download = run_restore('2.3.1 build 208')
+    check(code == 0 and contents == 'NEW BUILD 209', "doing it again goes forward again")
+
+
+def nothingToPutBackChangesNothing():
+    if os.path.exists(WORK):
+        shutil.rmtree(WORK)
+
+    install = os.path.join(WORK, 'install')
+    os.makedirs(os.path.join(install, 'updates'))
+    io.open(os.path.join(install, 'casparcg-client.exe'), 'w').write('ONLY BUILD')
+
+    code, contents, install, download = run_restore('2.3.1 build 208')
+    check(code != 0, "with no kept build, putting one back fails rather than reporting success")
+    check(contents == 'ONLY BUILD', "and the installation is exactly as it was")
 
 
 def aPackageWithNoClientInItChangesNothing():
@@ -242,6 +330,9 @@ def main():
     aPackageWithNoClientInItChangesNothing()
     somethingThatIsNotAZipChangesNothing()
     theRefusalsAreNotJustAlwaysFailing()
+    theKeptBuildSaysWhatItIs()
+    thePreviousBuildComesBackAndCanGoForwardAgain()
+    nothingToPutBackChangesNothing()
 
     if os.path.exists(WORK):
         shutil.rmtree(WORK, ignore_errors=True)
