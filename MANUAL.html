@@ -684,7 +684,7 @@ hr {
 <li>Connection status dot (green/red) per device</li>
 <li>Media data received dot</li>
 <li>Connect/Disconnect button</li>
-<li>Start/Restart buttons (when server path is configured)</li>
+<li>A menu button (&equiv;) to start, stop and restart that server and its scanner</li>
 </ul>
 
 <h3>Channel Lock Grid</h3>
@@ -701,21 +701,29 @@ hr {
 <!-- ══════════════════════════════════════════════════════════════════ -->
 <h2 id="server-management">19. Server Process Management</h2>
 
-<p>Start, stop, and restart CasparCG server processes directly from the Status Panel.</p>
+<p>Start, stop, and restart a CasparCG server and its scanner from the Server Status panel, whether the client started them or not.</p>
 
 <h3>Setup</h3>
 <ol>
 <li>Go to Settings &gt; Devices &gt; Edit device</li>
-<li>Set the <b>Server path</b> to the CasparCG server executable (e.g., <code>C:\CasparCG\casparcg.exe</code>)</li>
-<li>Start and Restart buttons appear in the Status Panel for that device</li>
+<li>Set the <b>Server path</b> to the CasparCG server executable, or to the folder holding it (e.g., <code>C:\CasparCG\casparcg.exe</code>)</li>
+<li>A menu button (&equiv;) appears beside that device's Connect button</li>
 </ol>
 
 <h3>Actions</h3>
 <ul>
-<li><b>Start</b> &mdash; launches the server process; button changes to "Stop"</li>
-<li><b>Stop</b> &mdash; disconnects AMCP and kills the process (with confirmation)</li>
-<li><b>Restart</b> &mdash; stops then immediately restarts (with confirmation)</li>
-<li>Auto-reconnects AMCP 3 seconds after start/restart</li>
+<li><b>Start / Restart / Stop Server</b> &mdash; Stop and Restart ask first. Starting or restarting also starts <code>scanner.exe</code> beside the server, if it is not already running.</li>
+<li><b>Start / Restart / Stop Scanner</b> &mdash; the same for the scanner on its own.</li>
+<li>The menu says which of the two are running, and only offers what applies.</li>
+<li>The client reconnects on its own once the server answers, and keeps the window responsive while a server stops.</li>
+</ul>
+
+<h3>What it will and will not touch</h3>
+<ul>
+<li>Only processes running from that server's configured folder, so a second installation elsewhere is never stopped.</li>
+<li>A server started from the menu keeps running when the client closes.</li>
+<li>A server running as another user or as a Windows service cannot be inspected or stopped by a client running as a normal user; the menu says so rather than offering to start a second one.</li>
+<li>Finding and stopping processes works on Windows only, for now. Elsewhere the menu only offers Start.</li>
 </ul>
 
 <hr>

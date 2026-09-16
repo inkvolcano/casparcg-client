@@ -42,7 +42,7 @@ DeviceDialog::DeviceDialog(QWidget* parent)
         label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
         this->lineEditServerPath = new QLineEdit(this);
-        this->lineEditServerPath->setPlaceholderText("Optional - path to CasparCG server executable");
+        this->lineEditServerPath->setPlaceholderText("Optional - casparcg.exe, or the folder holding it");
 
         QToolButton* browseButton = new QToolButton(this);
         browseButton->setText("...");
