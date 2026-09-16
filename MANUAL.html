@@ -155,6 +155,8 @@ hr {
 <a href="#settings">33. Settings</a>
 <a href="#themes">34. Themes</a>
 <a href="#database">35. Database</a>
+<a href="#updating">36. Updating The Client</a>
+<a href="#bug-report">37. Collecting A Bug Report</a>
 </div>
 
 <hr>
@@ -610,8 +612,22 @@ hr {
 <!-- ══════════════════════════════════════════════════════════════════ -->
 <h2 id="preview">14. Preview Panel</h2>
 
+<h3>What it shows by default</h3>
+<p>Out of the box the Preview panel shows the server's own thumbnail and nothing else: it opens no image, no clip and no template from disk. Everything below is switched on per kind in <b>Settings &gt; Preview</b>, so a client on a show machine never reads a file the operator did not ask it to.</p>
+<table>
+<tr><th>Setting</th><th>Default</th><th>What it adds</th></tr>
+<tr><td>Legacy preview</td><td>On</td><td>Server thumbnails only. Switch off to allow the rest.</td></tr>
+<tr><td>Stills</td><td>Off</td><td>The real image from the media folder instead of the thumbnail</td></tr>
+<tr><td>Movies</td><td>Off</td><td>The clip itself, with transport controls</td></tr>
+<tr><td>Audio meters</td><td>Off</td><td>Meters over the picture; decodes the clip's audio</td></tr>
+<tr><td>Templates</td><td>Off</td><td>Renders the template's HTML in the panel</td></tr>
+</table>
+
 <h3>Video Playback</h3>
-<p>When a video item is selected and the server has a <b>Media path</b> configured, the Preview panel plays the actual video file locally with transport controls (play/pause, seek slider, time display).</p>
+<p>With <b>Movies</b> switched on and the server's <b>Media path</b> configured, the panel plays the file locally with transport controls (play/pause, seek slider, time display).</p>
+
+<h3>Templates</h3>
+<p>With <b>Templates</b> switched on, a selected template is rendered at the channel's own size and scaled to fit the panel, and is sent the item's own fields exactly as they would go to air. Pressing Play on the item plays it in the panel as well.</p>
 
 <h3>Content Zoom</h3>
 <ul>
@@ -787,7 +803,8 @@ hr {
 <ul>
 <li>Timestamp, method (GET/POST), URL, HTTP status code</li>
 <li>Response body (truncated to 500 characters)</li>
-<li>Auto-scrolls to latest; caps at 1000 entries</li>
+<li>Auto-scrolls to latest; keeps the last 2,000 lines and drops the oldest</li>
+<li>Playout actions are logged here too (switch off in the hamburger menu)</li>
 <li>Clear log via hamburger menu</li>
 </ul>
 
@@ -1046,6 +1063,38 @@ hr {
 <div class="warning">
 <b>Backup tip:</b> Before major updates, copy your database file to a safe location. The database contains all device configurations, layout settings, hotkey mappings, and color customizations.
 </div>
+
+<hr>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<h2 id="updating">36. Updating The Client</h2>
+
+<p><b>Help &gt; Check for Updates...</b> lists every published build. Press <b>Check Now</b>, choose a build, and press <b>Install and Restart</b>.</p>
+
+<ul>
+<li>The newest build is chosen for you; choosing an older one rolls back to it.</li>
+<li>The download is checked against its published hash before anything is replaced.</li>
+<li>Your database is copied next to the installation before the swap, so settings, devices and layouts survive.</li>
+<li><b>Put Back Previous Build</b> restores the build that was replaced last.</li>
+<li>A download that finished while the window was closed is found again when it reopens, and is not fetched twice.</li>
+</ul>
+
+<div class="warning">
+<b>Close the client before swapping files by hand.</b> The update replaces the running program; that is why it restarts the client itself.
+</div>
+
+<hr>
+
+<!-- ═════════════════════════════════════════════════════════════════ -->
+<h2 id="bug-report">37. Collecting A Bug Report</h2>
+
+<p><b>Help &gt; Bug Report &gt; Collect a Bug Report...</b> gathers what someone needs to work out what went wrong, into one folder you can send: the client's log files, a copy of the database, and what the machine and build are.</p>
+
+<ul>
+<li>Tokens, API keys and passwords are removed from the database copy. If that cannot be done, the copy is left out rather than sent.</li>
+<li>Nothing is uploaded. The folder stays on your machine until you send it.</li>
+<li>It works on Windows only, for now, which the menu says as well.</li>
+</ul>
 
 <hr>
 
