@@ -89,6 +89,8 @@ namespace PanelRegistry
                             ::Panel::DEFAULT_HTTPLOG_HEIGHT, ::Panel::COMPACT_HTTPLOG_HEIGHT, "fixed" });
             panels.append({ "Sheets", "Google Sheets",
                             ::Panel::DEFAULT_SHEETS_HEIGHT, ::Panel::COMPACT_SHEETS_HEIGHT, "resizable" });
+            panels.append({ "Shotbox", "Shotbox",
+                            ::Panel::DEFAULT_SHOTBOX_HEIGHT, ::Panel::COMPACT_SHOTBOX_HEIGHT, "resizable" });
             panels.append({ "Inspector", "Inspector", 0, 25, "expanding" });
             panels.append({ "SimpleInspector", "Simple Inspector",
                             ::Panel::DEFAULT_SIMPLE_INSPECTOR_HEIGHT, 25, "resizable" });

@@ -35,6 +35,7 @@
 
 class ClockWidget;
 class HttpResponsePanelWidget;
+class ShotboxPanelWidget;
 class NdiPanelWidget;
 class PerformancePanelWidget;
 class SheetsPanelWidget;
@@ -63,6 +64,7 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         NdiPanelWidget* widgetNdi;
         PerformancePanelWidget* widgetPerformance;
         HttpResponsePanelWidget* widgetHttpLog;
+        ShotboxPanelWidget* widgetShotbox;
         SheetsPanelWidget* widgetSheets;
         SimpleModeWidget* widgetSimpleMode;
         SimpleInspectorWidget* widgetSimpleInspector;

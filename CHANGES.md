@@ -1838,6 +1838,27 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Shotbox Panel
+
+- **A new panel for the normal layout**: add **Shotbox** in the layout editor.
+  It holds up to eight items, each on a row with its own **Play**, **Stop** and
+  **Next** buttons.
+- **Drag items in** from a rundown or from the Library. The rundown keeps its
+  items: the Shotbox takes its own copy, with the item's settings at the moment
+  it was dropped. Editing or deleting the rundown item later does not change the
+  Shotbox.
+- **One Shotbox for the whole client.** It is the same whatever rundown is open,
+  and it is still there after a restart.
+- **Buttons behave like the rundown's.** A locked channel is refused, preview
+  mode sends the item to the preview channel, the action is logged, and the
+  Activity panel shows it. Next does what the item's own Next does, and nothing
+  for an item that has none. A playing row is shown green until you press its
+  Stop.
+- Drag a row up or down to reorder it; right-click a row to remove it; **Clear
+  Shotbox...** in the panel menu empties it.
+- Groups and gateways cannot go in, because they only work inside a rundown.
+  The status bar says so, and says when the Shotbox is full.
+
 ## Log Files Are Kept For 30 Days
 
 - **The client's daily log files no longer pile up.** The client writes one log

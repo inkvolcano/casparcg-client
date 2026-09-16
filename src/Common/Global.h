@@ -693,6 +693,8 @@ namespace Panel
     static const int COMPACT_HTTPLOG_HEIGHT = 25;
     static const int DEFAULT_SHEETS_HEIGHT = 320;
     static const int COMPACT_SHEETS_HEIGHT = 25;
+    static const int DEFAULT_SHOTBOX_HEIGHT = 300; // header + 8 rows of 30 px
+    static const int COMPACT_SHOTBOX_HEIGHT = 25;
     static const int DEFAULT_SIMPLE_INSPECTOR_HEIGHT = 320;
 }
 

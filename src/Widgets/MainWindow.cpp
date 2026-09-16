@@ -8,6 +8,7 @@
 #include "ClockWidget.h"
 #include "HelpDialog.h"
 #include "HttpResponsePanelWidget.h"
+#include "ShotboxPanelWidget.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
 #include "SimpleInspectorWidget.h"
@@ -116,6 +117,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetPerformance = new PerformancePanelWidget(this);
     this->widgetHttpLog = new HttpResponsePanelWidget(this);
     this->widgetSheets = new SheetsPanelWidget(this);
+    this->widgetShotbox = new ShotboxPanelWidget(this);
     this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
     this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
@@ -1278,7 +1280,7 @@ void MainWindow::rebuildLayout()
     QList<QWidget*> movable = {
         widgetAudioLevels, widgetPreview, widgetLibrary,
         widgetDuration, serverTab, activityTab, banksTab,
-        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetSheets, widgetInspector,
+        widgetLive, widgetNdi, widgetPerformance, widgetHttpLog, widgetSheets, widgetShotbox, widgetInspector,
         widgetSimpleInspector, widgetStatusBar, widgetClock
     };
     for (auto* w : movable)
@@ -1991,6 +1993,7 @@ QWidget* MainWindow::widgetById(const QString& id)
     if (id == "Performance") return widgetPerformance;
     if (id == "HttpLog") return widgetHttpLog;
     if (id == "Sheets") return widgetSheets;
+    if (id == "Shotbox") return widgetShotbox;
     if (id == "SimpleInspector") return widgetSimpleInspector;
     if (id == "Inspector") return widgetInspector;
     if (id == "StatusBar") return widgetStatusBar;

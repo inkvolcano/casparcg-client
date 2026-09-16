@@ -159,6 +159,7 @@ hr {
 <a href="#bug-report">37. Collecting A Bug Report</a>
 <a href="#simple-mode">38. Simple Mode</a>
 <a href="#sheets">39. Google Sheets Panel</a>
+<a href="#shotbox">40. Shotbox Panel</a>
 </div>
 
 <hr>
@@ -229,6 +230,7 @@ hr {
 <tr><td>Server Status</td><td>Connection status, channel locks, PVW/STEP toggles</td></tr>
 <tr><td>Activity</td><td>Live "now playing" with progress bars and countdown timers</td></tr>
 <tr><td>Trigger Banks</td><td>Quick-access bank assignments (B1-B9)</td></tr>
+<tr><td>Shotbox</td><td>Up to eight items with their own Play, Stop and Next</td></tr>
 <tr><td>Performance</td><td>CPU/RAM stats for client, server, and system</td></tr>
 <tr><td>HTTP Log</td><td>Response log for HTTP GET/POST commands</td></tr>
 <tr><td>Status Bar</td><td>Foldable message log with timestamps</td></tr>
@@ -1144,6 +1146,22 @@ hr {
 <li>A template can declare which sheet tab and row key it reads. The rundown item then stores only the row, and its fields are filled from the sheet and shown read-only in the Inspector.</li>
 <li>Sheet answers are cached on this machine and kept for 24 hours. If the internet goes down, the last copy is used and the log says so, so graphics keep their data through an outage.</li>
 <li>The cache service, hosting the cache in this client, the per-project API keys and warming are set in <b>Settings &gt; Sheets</b>.</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="shotbox">40. Shotbox Panel</h2>
+
+<p>A short list of items to fire by hand in the normal layout, next to the rundown. Add it with the layout editor.</p>
+
+<ul>
+<li><b>A new panel for the normal layout</b>: add <b>Shotbox</b> in the layout editor. It holds up to eight items, each on a row with its own <b>Play</b>, <b>Stop</b> and <b>Next</b> buttons.</li>
+<li><b>Drag items in</b> from a rundown or from the Library. The rundown keeps its items: the Shotbox takes its own copy, with the item's settings at the moment it was dropped. Editing or deleting the rundown item later does not change the Shotbox.</li>
+<li><b>One Shotbox for the whole client.</b> It is the same whatever rundown is open, and it is still there after a restart.</li>
+<li><b>Buttons behave like the rundown's.</b> A locked channel is refused, preview mode sends the item to the preview channel, the action is logged, and the Activity panel shows it. Next does what the item's own Next does, and nothing for an item that has none. A playing row is shown green until you press its Stop.</li>
+<li>Drag a row up or down to reorder it; right-click a row to remove it; <b>Clear Shotbox...</b> in the panel menu empties it.</li>
+<li>Groups and gateways cannot go in, because they only work inside a rundown. The status bar says so, and says when the Shotbox is full.</li>
 </ul>
 
 <hr>
