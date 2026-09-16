@@ -157,6 +157,8 @@ hr {
 <a href="#database">35. Database</a>
 <a href="#updating">36. Updating The Client</a>
 <a href="#bug-report">37. Collecting A Bug Report</a>
+<a href="#simple-mode">38. Simple Mode</a>
+<a href="#sheets">39. Google Sheets Panel</a>
 </div>
 
 <hr>
@@ -1094,6 +1096,53 @@ hr {
 <li>Tokens, API keys and passwords are removed from the database copy. If that cannot be done, the copy is left out rather than sent.</li>
 <li>Nothing is uploaded. The folder stays on your machine until you send it.</li>
 <li>It works on Windows only, for now, which the menu says as well.</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="simple-mode">38. Simple Mode</h2>
+
+<p><b>View &gt; Simple Mode</b> swaps the rundown for a grid of large keys, laid out like a Stream Deck, for operators who fire a fixed set of items. The rundown keeps running underneath: hotkeys, autoplay and remote triggers work as before. Simple Mode has its own panel layout, set in <b>Settings &gt; Simple Mode</b>.</p>
+
+<h3>Putting items on the grid</h3>
+<ul>
+<li>Select an item and tick <b>Show as button</b> in the Inspector's Simple Mode section.</li>
+<li>A key keeps its place: removing another key, or reordering the rundown, does not move it. To move one, press Move, then click a free slot. Keys never push each other aside.</li>
+<li>Right-click a key for its label size, an icon, its width and height, or to remove it from the grid. Removing a key leaves the rundown item where it is.</li>
+</ul>
+
+<h3>Using the keys</h3>
+<ul>
+<li>Clicking a key selects that item, so the function keys act on it. The arrow keys move between keys.</li>
+<li>Keys can carry Play, Stop, Next and Preview controls; which ones is set in Settings &gt; Simple Mode.</li>
+<li>A template's labelled invokes appear as buttons on its key. A group can show its children's invokes, and can act as a dropdown that picks which child it fires.</li>
+<li>The coloured strip at the top of a key lights for the item last fired on its channel, and the badge shows its channel and layer.</li>
+</ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="sheets">39. Google Sheets Panel</h2>
+
+<p>The Sheets panel shows the rows of a show's Google Sheet, so the operator sees real names and results rather than row numbers, and can fire graphics straight from a row.</p>
+
+<h3>Connection</h3>
+<ul>
+<li>The panel reads the same <code>project.js</code> the HTML templates use, found in a server's template folder: the spreadsheet ID and the API key. No sign-in is needed.</li>
+<li>Each tab of the sheet is a tab in the panel. The panel refreshes on its own and on request, and only redraws when the data changed.</li>
+<li>Columns can be hidden per tab from the panel's menu.</li>
+</ul>
+
+<h3>Buttons</h3>
+<ul>
+<li><b>Edit Actions...</b> in the panel's menu defines buttons per tab: one on every row, or standalone. A button plays, stops, updates or toggles a template on a channel and layer, and its data can take values from the row, written as <code>{COLUMN}</code>.</li>
+<li>The buttons are stored in <code>extensions.json</code> beside <code>project.js</code>.</li>
+</ul>
+
+<h3>Templates bound to a sheet</h3>
+<ul>
+<li>A template can declare which sheet tab and row key it reads. The rundown item then stores only the row, and its fields are filled from the sheet and shown read-only in the Inspector.</li>
+<li>Sheet answers are cached on this machine and kept for 24 hours. If the internet goes down, the last copy is used and the log says so, so graphics keep their data through an outage.</li>
+<li>The cache service, hosting the cache in this client, the per-project API keys and warming are set in <b>Settings &gt; Sheets</b>.</li>
 </ul>
 
 <hr>
