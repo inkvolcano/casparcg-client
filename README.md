@@ -24,7 +24,9 @@ Each release carries four things:
 
 From **build 210** onwards the client updates itself: **Help &rarr; Check for
 Updates**, which verifies the download against the release's own checksums and
-then puts it in place. Nothing is checked or installed unless you ask.
+then puts it in place. Nothing is checked or installed unless you ask. The same
+window lists every published build, so you can choose an older one to roll back
+to, and **Put Back Previous Build** restores the one that was replaced last.
 
 ## Installation
 
@@ -81,6 +83,7 @@ and **they have to be the same folders**. This is the step people skip.
 | Port | `5250` |
 | Template path | the `template-path` from the config |
 | Media path | the `media-path` from the config |
+| Server path | optional: `casparcg.exe`, or the folder holding it |
 
 Leave Username, Password and Description empty unless you know you need them.
 
@@ -97,7 +100,11 @@ you lose is everything the client wants to do locally:
 - **Template path** lets the Inspector read a template and show you its fields
   instead of making you remember them. It is also where the Sheets panel discovers
   projects, and where template packs land if you use the relay or a repository.
-- **Media path** lets the Preview panel find a clip and show you a thumbnail.
+- **Media path** lets the Preview panel open the clip or image itself, once that
+  is switched on under Preview in **Settings &rarr; General**. Out of the box the
+  preview shows the server's thumbnail and reads nothing from disk.
+- **Server path** gives the server's row in **Server Status** a menu to start,
+  stop and restart the server and its scanner, whoever started them.
 
 If the client is on a **different machine from the server**, these have to be paths
 *this* machine can reach: a UNC path like `\\SERVER\CasparCG\templates`, or a mapped
@@ -122,8 +129,8 @@ None of this is needed to run a show, and each is documented on its own.
 - **Updating templates on machines at a venue you do not control**:
   [tools/php/relay/](tools/php/relay/README.md), or a private repository with
   [tools/php/relay/GITHUB.md](tools/php/relay/GITHUB.md)
-- **A stream-deck style grid** for operating without a mouse: Simple Mode, in the
-  layout settings
+- **A stream-deck style grid** for operating without a mouse: **View &rarr; Simple
+  Mode**, set up in **Settings &rarr; Simple Mode**
 - **Everything this fork adds**, in order: [CHANGES.md](CHANGES.md), or
   **Help &rarr; What's New** in the client itself
 
@@ -181,18 +188,21 @@ knows the real total. See [tools/php/sheets/README.md](tools/php/sheets/README.m
 
 ### Previewing without a server
 
-The Preview panel shows the thing that is selected rather than a thumbnail of it,
-and it needs no CasparCG server running to do it. Images come off disk, videos
-play with a timebar you can scrub, and **HTML templates render**, with buttons
-that call what a template understands: play, next, update, stop. Update feeds the
-template the sample values it already carries, so a preview shows a populated
-graphic without anything being typed.
+The Preview panel can show the thing that is selected rather than a thumbnail of
+it, and it needs no CasparCG server running to do it. Images come off disk, videos
+play with a timebar you can scrub, and **HTML templates render** at the channel's
+own size, with buttons that call what a template understands: play, next, update,
+stop. A template is sent the item's own fields exactly as they would go to air,
+or its sample values when the item has none.
 
 Audio meters are drawn over the picture. The levels are decoded from the file
 rather than tapped from the player, which means they cannot drift, scrubbing
 moves them, and a paused frame still shows what that moment sounds like.
 
-A **legacy preview** setting puts the panel back exactly as it was.
+**All of this is off by default.** A show machine should not open files nobody
+asked it to, so the panel starts in **legacy preview** - the server's thumbnail,
+nothing read from disk - and stills, movies, audio meters and templates are each
+switched on in **Settings &rarr; General**, under Preview.
 
 ### OGraf
 
