@@ -1894,6 +1894,7 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <li><b>It works on a server however it was started</b> &mdash; a shortcut, a startup script, or the client. A running server is recognised by the folder it runs from, so a second installation in another folder is never touched. The old Start and Restart buttons only worked on a server the client had started itself, and closing the client stopped it.</li>
 <li><b>Starting or restarting the server starts its scanner too</b>, when the scanner is not already running. The scanner also has its own Start, Restart and Stop.</li>
 <li>Stopping and restarting ask first. The window keeps responding while a server stops; Restart used to freeze it for up to five seconds.</li>
+<li><b>A server this client cannot control says so.</b> A CasparCG server started by another user, or running as a Windows service, appears in the process list but cannot be inspected or stopped by a client running as a normal user. The menu now says that instead of calling it "not running", and does not offer to start a second one on the same channels.</li>
 <li>The menu needs the server's executable, or its folder, set in Settings &rarr; Servers. Finding and stopping a running server works on Windows only, for now.</li>
 </ul>
 

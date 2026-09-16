@@ -1894,6 +1894,11 @@ Round 27 of the performance work.
   and Stop.
 - Stopping and restarting ask first. The window keeps responding while a server
   stops; Restart used to freeze it for up to five seconds.
+- **A server this client cannot control says so.** A CasparCG server started
+  by another user, or running as a Windows service, appears in the process list
+  but cannot be inspected or stopped by a client running as a normal user. The
+  menu now says that instead of calling it "not running", and does not offer to
+  start a second one on the same channels.
 - The menu needs the server's executable, or its folder, set in Settings >
   Servers. Finding and stopping a running server works on Windows only, for now.
 

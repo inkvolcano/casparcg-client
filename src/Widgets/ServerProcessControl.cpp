@@ -156,6 +156,42 @@ namespace ServerProcessControl
 #endif
     }
 
+    Availability availabilityFor(const QString& what, bool executableExists, bool canFind, int running, int unreadable)
+    {
+        Availability state;
+
+        if (!executableExists)
+        {
+            state.note = QString("%1 was not found where this server says it is").arg(what);
+            return state;
+        }
+
+        if (!canFind)
+        {
+            state.canStart = true;
+            state.note = "Stopping and restarting work on Windows only, for now";
+            return state;
+        }
+
+        if (running > 0)
+        {
+            state.canStop = true;
+            state.note = running > 1 ? QString("%1 is running (%2 of them)").arg(what).arg(running)
+                                     : QString("%1 is running").arg(what);
+            return state;
+        }
+
+        if (unreadable > 0)
+        {
+            state.note = QString("%1 is running as another user or as a service, and cannot be controlled from here").arg(what);
+            return state;
+        }
+
+        state.canStart = true;
+        state.note = QString("%1 is not running").arg(what);
+        return state;
+    }
+
     bool startDetached(const QString& executable, const QStringList& arguments)
     {
         const QFileInfo info(executable);

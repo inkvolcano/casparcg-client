@@ -604,37 +604,51 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
     }
 
     const bool canFind = supported();
-    const bool serverExists = QFileInfo(server).isFile();
     const QString scanner = scannerPathFor(server);
-    const bool scannerExists = QFileInfo(scanner).isFile();
-    const bool serverRunning = canFind && !runningFrom(server).isEmpty();
-    const bool scannerRunning = canFind && !runningFrom(scanner).isEmpty();
 
-    if (!serverExists)
-        note(QString("Not found: %1").arg(QDir::toNativeSeparators(server)));
-    else if (canFind)
-        note(serverRunning ? "Server is running" : "Server is not running");
+    // A process of another user, or one the service manager started, is in the
+    // list but its path cannot be read. Counted apart from the ones known to be
+    // this server, so the menu can say so instead of calling it "not running"
+    // and offering a Start that would put a second server on the same channels.
+    auto count = [](const QString& executable, int& running, int& unreadable) {
+        running = 0;
+        unreadable = 0;
+        if (executable.isEmpty())
+            return;
 
-    item("Start Server", ProcessAction::StartServer, serverExists && !serverRunning);
-    item("Restart Server", ProcessAction::RestartServer, serverExists && serverRunning);
-    item("Stop Server", ProcessAction::StopServer, serverRunning);
+        for (const Running& process : runningNamed(QFileInfo(executable).fileName()))
+        {
+            if (process.path.isEmpty())
+                unreadable++;
+            else if (samePath(process.path, executable))
+                running++;
+        }
+    };
+
+    int serverRunning = 0, serverUnreadable = 0, scannerRunning = 0, scannerUnreadable = 0;
+    if (canFind)
+    {
+        count(server, serverRunning, serverUnreadable);
+        count(scanner, scannerRunning, scannerUnreadable);
+    }
+
+    const Availability serverState = availabilityFor("The server", QFileInfo(server).isFile(), canFind, serverRunning, serverUnreadable);
+    const Availability scannerState = availabilityFor("The scanner", QFileInfo(scanner).isFile(), canFind, scannerRunning, scannerUnreadable);
+
+    note(QFileInfo(server).isFile() ? serverState.note
+                                    : QString("Not found: %1").arg(QDir::toNativeSeparators(server)));
+
+    item("Start Server", ProcessAction::StartServer, serverState.canStart);
+    item("Restart Server", ProcessAction::RestartServer, serverState.canStop);
+    item("Stop Server", ProcessAction::StopServer, serverState.canStop);
 
     menu->addSeparator();
 
-    if (!scannerExists)
-        note("No scanner.exe beside the server");
-    else if (canFind)
-        note(scannerRunning ? "Scanner is running" : "Scanner is not running");
+    note(QFileInfo(scanner).isFile() ? scannerState.note : "No scanner.exe beside the server");
 
-    item("Start Scanner", ProcessAction::StartScanner, scannerExists && !scannerRunning);
-    item("Restart Scanner", ProcessAction::RestartScanner, scannerExists && scannerRunning);
-    item("Stop Scanner", ProcessAction::StopScanner, scannerRunning);
-
-    if (!canFind)
-    {
-        menu->addSeparator();
-        note("Stopping and restarting work on Windows only, for now.");
-    }
+    item("Start Scanner", ProcessAction::StartScanner, scannerState.canStart);
+    item("Restart Scanner", ProcessAction::RestartScanner, scannerState.canStop);
+    item("Stop Scanner", ProcessAction::StopScanner, scannerState.canStop);
 }
 
 void ServerStatusPanelWidget::setProcessBusy(const QString& deviceName, bool busy, const QString& what)

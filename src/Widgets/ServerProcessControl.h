@@ -55,4 +55,23 @@ namespace ServerProcessControl
 
     // Whether finding and stopping processes works on this system.
     WIDGETS_EXPORT bool supported();
+
+    // What the menu may offer for one executable, and what to say about it.
+    //
+    // A process started by another user, or by the Windows service manager, can
+    // be seen in the process list but its path cannot be read: this client
+    // cannot tell whether that casparcg.exe is the one configured here. Offering
+    // Start then risks a second server on the same channels, so it is refused
+    // and the reason is said out loud rather than shown as "not running".
+    struct Availability
+    {
+        bool canStart = false;
+        bool canStop = false;
+        QString note;
+    };
+
+    // running: processes found at exactly this path. unreadable: processes with
+    // the same file name whose path this client is not allowed to read.
+    WIDGETS_EXPORT Availability availabilityFor(const QString& what, bool executableExists, bool canFind,
+                                                int running, int unreadable);
 }

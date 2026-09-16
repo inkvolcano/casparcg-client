@@ -40,6 +40,20 @@ int main(int argc, char** argv)
     expectTrue(serverExecutableFor("   ").isEmpty(), "nothing set is no server");
     expectTrue(serverExecutableFor("C:/CasparCG/Server/casparcg.exe") == "C:/CasparCG/Server/casparcg.exe", "an executable is kept as it is");
 
+    Availability state = availabilityFor("The server", false, true, 0, 0);
+    expectTrue(!state.canStart && !state.canStop && state.note.contains("not found"), "an executable that is not there cannot be started");
+    state = availabilityFor("The server", true, true, 0, 0);
+    expectTrue(state.canStart && !state.canStop && state.note == "The server is not running", "one that is there and not running can");
+    state = availabilityFor("The server", true, true, 1, 0);
+    expectTrue(!state.canStart && state.canStop && state.note == "The server is running", "a running one is stopped, not started again");
+    state = availabilityFor("The server", true, true, 2, 0);
+    expectTrue(state.note.contains("2 of them"), "and says when more than one is running");
+    state = availabilityFor("The server", true, true, 0, 1);
+    expectTrue(!state.canStart && !state.canStop && state.note.contains("another user or as a service"),
+               "one running as a service is neither started nor called stopped");
+    state = availabilityFor("The scanner", true, false, 0, 0);
+    expectTrue(state.canStart && !state.canStop && state.note.contains("Windows only"), "without process control, only starting is offered");
+
 #if defined(Q_OS_WIN)
     QTemporaryDir sandbox;
     const QString fake = QDir(sandbox.path()).filePath("casparcg.exe");
