@@ -3,6 +3,7 @@
 
 #include "Application.h"
 
+#include "../Common/LogRetention.h"
 #include "../Core/DatabaseManager.h"
 #include "../Core/EventManager.h"
 #include "../Core/GpiManager.h"
@@ -117,6 +118,15 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
         logFile->setFileName(QString("%1/Client_%2.log").arg(path).arg(today));
         logFile->open(QIODevice::WriteOnly | QIODevice::Append);
         *logDate = today;
+
+        // A new day's file, at startup or at midnight: the client's own logs
+        // older than 30 days go (LogRetention.h). Nothing else in the folder is
+        // touched. Nothing is logged about it either - this runs inside the log
+        // handler, holding its lock, and a line from here would wait on itself.
+        const QDir logDir(path);
+        const QStringList names = logDir.entryList(QStringList() << "Client_*.log", QDir::Files);
+        for (const QString& name : LogRetention::expired(names, QDate::currentDate()))
+            QFile::remove(logDir.filePath(name));
     }
 
     if (logFile->isOpen())

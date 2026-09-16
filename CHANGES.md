@@ -1838,6 +1838,13 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Log Files Are Kept For 30 Days
+
+- **The client's daily log files no longer pile up.** The client writes one log
+  file a day and never removed any. Files older than 30 days are now deleted
+  when the client starts and at midnight. Only the client's own daily logs are
+  touched; anything else in the log folder stays.
+
 ## The Log Panel Keeps The Last 2,000 Lines
 
 - **The HTTP and playout log panel no longer grows without end.** It kept every

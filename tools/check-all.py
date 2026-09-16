@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are thirty-three test suites and a syntax checker. Twenty-three commands that each take a
+There are thirty-four test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -41,6 +41,7 @@ SUITES = [
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
+    ('test-logretention', False, 'which daily log files the client deletes: only its own, only past 30 days'),
     ('test-serverprocess', False, 'finding, starting and stopping a server by its path, against a real process'),
     ('test-standingfailures', False, 'server refusals kept per server, cleared by that server, and what to ask again'),
     ('test-checkin',  False, 'where a client reports what it holds, including on the GitHub route'),
