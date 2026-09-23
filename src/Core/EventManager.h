@@ -184,6 +184,9 @@ class CORE_EXPORT EventManager : public QObject
         Q_SIGNAL void rundownStructureChanged();
         // An item was fired — the rundown's "last fired" marker for that channel.
         Q_SIGNAL void rundownItemFired(QTreeWidgetItem* item, int channel);
+        // An item was stopped or cleared, so it is no longer what is up on that
+        // channel. wholeChannel: the channel itself was cleared, so nothing is.
+        Q_SIGNAL void rundownItemStopped(QTreeWidgetItem* item, int channel, bool wholeChannel);
         Q_SIGNAL void previewModeChanged(bool active);
         Q_SIGNAL void previewModifierHeld(bool held);
         Q_SIGNAL void autostepModeChanged(bool active);
@@ -282,6 +285,7 @@ class CORE_EXPORT EventManager : public QObject
         void fireStopAllAutoLoopsEvent();
         void fireRundownStructureChangedEvent();
         void fireRundownItemFiredEvent(QTreeWidgetItem* item, int channel);
+        void fireRundownItemStoppedEvent(QTreeWidgetItem* item, int channel, bool wholeChannel);
         void fireMuteAudioEvent(bool mute);
         void fireDisconnectStreamEvent();
         void fireGatewayExitsChangedEvent(const QString& gatewayId);

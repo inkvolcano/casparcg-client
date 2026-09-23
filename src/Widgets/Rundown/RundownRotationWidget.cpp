@@ -286,6 +286,10 @@ bool RundownRotationWidget::executeCommand(Playout::PlayoutType type)
     }
     else if (type == Playout::PlayoutType::PlayNow)
         executePlay();
+    // "Trigger on Next" moves the item from Play to Next. Without this branch an
+    // item with it ticked answered neither, and did nothing at all.
+    else if (type == Playout::PlayoutType::Next && this->command.getTriggerOnNext())
+        executePlay();
     else if (type == Playout::PlayoutType::Clear)
         executeStop();
     else if (type == Playout::PlayoutType::ClearVideoLayer)

@@ -1,5 +1,22 @@
 #include "UpdateDialog.h"
 
+namespace
+{
+    // Installing and putting back a build are done by a Windows script (cmd.exe,
+    // PowerShell's Expand-Archive) that runs after the client closes. On macOS and
+    // Linux there is no such script, so the buttons used to be offered and then
+    // fail with "Could not start the updater" after the whole download. There,
+    // the dialog checks and downloads, and the operator installs the file by hand.
+    bool canInstallHere()
+    {
+#if defined(Q_OS_WIN)
+        return true;
+#else
+        return false;
+#endif
+    }
+}
+
 #include "ClientRelease.h"
 #include "DatabaseManager.h"
 #include "Version.h"
@@ -180,6 +197,12 @@ UpdateDialog::UpdateDialog(QWidget* parent)
     this->buttonInstall->setEnabled(false);
     this->buttonReveal->setEnabled(false);
 
+    if (!canInstallHere())
+    {
+        this->buttonInstall->setVisible(false);
+        this->buttonPrevious->setVisible(false);
+    }
+
     this->buttonInstall->setToolTip(
         "Close the client, copy the downloaded build over this installation, and start it again.\n\n"
         "Only available once a download has been verified against the checksum the\n"
@@ -289,6 +312,16 @@ void UpdateDialog::restoreDownloaded()
     this->downloadedTag = record.tag;
     this->downloadedSha = record.sha256;
     this->buttonInstall->setEnabled(true);
+
+    if (!canInstallHere())
+    {
+        say(QString("%1 was downloaded and verified%2, and has not been installed. Installing from "
+                    "this window works on Windows only, for now: press Show Download and install it by hand.")
+            .arg(ClientRelease::describe(version),
+                 record.when.isEmpty() ? QString() : QString(" on %1").arg(record.when)));
+        this->buttonReveal->setEnabled(true);
+        return;
+    }
 
     say(QString("%1 was downloaded and verified%2, and has not been installed. "
                 "Install and Restart puts it in place%3; it is checked again first.")
@@ -1112,6 +1145,13 @@ void UpdateDialog::requestAsset()
         // And it stops here, on purpose. Windows will not overwrite a running
         // executable, and on a machine that may be on air the moment to replace the
         // client belongs to whoever is standing in front of it.
+        if (!canInstallHere())
+        {
+            say(QString("Downloaded and verified.\n\nInstalling from this window works on Windows only, "
+                        "for now. Install it by hand from %1.").arg(stagingFolder()));
+            return;
+        }
+
         say(QString("Downloaded and verified.\n\nInstall and Restart will close the client, "
                     "put it in place and start it again. It stays ready if this window is closed. "
                     "Or unpack it yourself from %1 - the contents of the folder inside the zip, "

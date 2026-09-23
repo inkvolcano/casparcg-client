@@ -421,6 +421,11 @@ void EventManager::fireRundownItemFiredEvent(QTreeWidgetItem* item, int channel)
     emit rundownItemFired(item, channel);
 }
 
+void EventManager::fireRundownItemStoppedEvent(QTreeWidgetItem* item, int channel, bool wholeChannel)
+{
+    emit rundownItemStopped(item, channel, wholeChannel);
+}
+
 void EventManager::fireMuteAudioEvent(bool mute)
 {
     emit muteAudio(mute);

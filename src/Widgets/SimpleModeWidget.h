@@ -129,6 +129,7 @@ class WIDGETS_EXPORT SimpleModeWidget : public QWidget
         Q_SLOT void rundownChanged();
         Q_SLOT void rundownStructureChanged();
         Q_SLOT void rundownItemFired(QTreeWidgetItem* item, int channel);
+        Q_SLOT void rundownItemStopped(QTreeWidgetItem* item, int channel, bool wholeChannel);
         Q_SLOT void invokeDataChanged();
         Q_SLOT void labelChanged(const LabelChangedEvent&);
         Q_SLOT void rundownItemSelected(const RundownItemSelectedEvent&);

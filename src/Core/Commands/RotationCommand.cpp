@@ -75,6 +75,7 @@ void RotationCommand::readProperties(boost::property_tree::wptree& pt)
     setTransitionDuration(pt.get(L"transitionDuration", pt.get(L"transtitionDuration", Mixer::DEFAULT_DURATION)));
     setTween(QString::fromStdWString(pt.get(L"tween", Mixer::DEFAULT_TWEEN.toStdWString())));
     setDefer(pt.get(L"defer", Mixer::DEFAULT_DEFER));
+    setTriggerOnNext(pt.get(L"triggeronnext", Rotation::DEFAULT_TRIGGER_ON_NEXT));
 }
 
 void RotationCommand::writeProperties(QXmlStreamWriter& writer)
@@ -85,4 +86,5 @@ void RotationCommand::writeProperties(QXmlStreamWriter& writer)
     writer.writeTextElement("transitionDuration", QString::number(getTransitionDuration()));
     writer.writeTextElement("tween", this->getTween());
     writer.writeTextElement("defer", (getDefer() == true) ? "true" : "false");
+    writer.writeTextElement("triggeronnext", (getTriggerOnNext() == true) ? "true" : "false");
 }

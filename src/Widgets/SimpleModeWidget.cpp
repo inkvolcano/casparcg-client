@@ -223,6 +223,7 @@ SimpleModeWidget::SimpleModeWidget(RundownWidget* rundownWidget, QWidget* parent
     QObject::connect(&EventManager::getInstance(), SIGNAL(emptyRundown(const EmptyRundownEvent&)), this, SLOT(rundownChanged()));
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownStructureChanged()), this, SLOT(rundownStructureChanged()));
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemFired(QTreeWidgetItem*, int)), this, SLOT(rundownItemFired(QTreeWidgetItem*, int)));
+    QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemStopped(QTreeWidgetItem*, int, bool)), this, SLOT(rundownItemStopped(QTreeWidgetItem*, int, bool)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(rundownItemSelected(const RundownItemSelectedEvent&)), this, SLOT(rundownItemSelected(const RundownItemSelectedEvent&)));
     // A key showing the old name is worse than a key showing none, and the Simple
     // Inspector has a label field - so this is reachable without leaving Simple
@@ -787,6 +788,21 @@ void SimpleModeWidget::rundownItemFired(QTreeWidgetItem* item, int channel)
 
     this->lastFiredByChannel[channel] = item;
 
+    updateTallies();
+}
+
+// The item was stopped or cleared. Its key goes dark if it is the lit one; a
+// stop of some other item on the channel leaves the lit key alone, because that
+// one is still up. Clearing the whole channel darkens whatever key it had.
+void SimpleModeWidget::rundownItemStopped(QTreeWidgetItem* item, int channel, bool wholeChannel)
+{
+    if (!this->lastFiredByChannel.contains(channel))
+        return;
+
+    if (!wholeChannel && this->lastFiredByChannel.value(channel) != item)
+        return;
+
+    this->lastFiredByChannel.remove(channel);
     updateTallies();
 }
 

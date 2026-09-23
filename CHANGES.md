@@ -1838,6 +1838,26 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Four Fixes From The Gap Review
+
+- **The manual and the Help window list the right keys.** Both had the function
+  keys from F3 to F9 one place off: Load is F3, Pause/Resume F4, Next F5, Update
+  F6, Invoke F7 and Preview F8, and Play Now has no key until you give it one.
+  They also said Ctrl+D duplicates; it disables an item, and Ctrl+Shift+D
+  duplicates. The Help window listed Alt+1 to Alt+5 for tabs, Ctrl+I/Ctrl+E for
+  import and export, and Ctrl+F for fullscreen, none of which the client does.
+- **Rotation items with "Trigger on Next" fire on Next.** With the box ticked,
+  the item answered neither Play nor Next and did nothing. It now waits for Next
+  like Opacity, Fill and Perspective do, and the setting is saved with the
+  rundown; it was lost on every save.
+- **Simple Mode keys go dark when their item is stopped or cleared.** A stop lit
+  the key like a play did, so the tally showed the last key pressed rather than
+  what was up. Clearing a whole channel darkens its key too.
+- **Updating on macOS and Linux says what it can do.** Install and Restart used
+  to be offered after the download and then fail, because it runs a Windows
+  script. On those systems the window now checks and downloads, and says to
+  install the file by hand.
+
 ## Shotbox Panel
 
 - **A new panel for the normal layout**: add **Shotbox** in the layout editor.

@@ -3261,8 +3261,15 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
         dynamic_cast<AbstractRundownWidget*>(selectedWidget)->setActive(true);
 
         // Same moment the rundown marks its active item — the Simple Mode grid uses
-        // this to light the tally on the matching key.
-        EventManager::getInstance().fireRundownItemFiredEvent(currentItem, channel);
+        // this to light the tally on the matching key. A stop or a clear is not
+        // something going up: it used to light the key like a play did, so a key
+        // stayed lit after its item was taken off. It now darkens it instead.
+        if (type == Playout::PlayoutType::Stop || type == Playout::PlayoutType::Clear ||
+            type == Playout::PlayoutType::ClearVideoLayer || type == Playout::PlayoutType::ClearChannel)
+            EventManager::getInstance().fireRundownItemStoppedEvent(currentItem, channel,
+                                                                    type == Playout::PlayoutType::ClearChannel);
+        else
+            EventManager::getInstance().fireRundownItemFiredEvent(currentItem, channel);
 
         // For top-level movies with autoPlay, use Next (direct PLAY) instead of Play (LOADBG AUTO).
         // LOADBG AUTO on an empty CasparCG layer doesn't start playback.

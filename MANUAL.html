@@ -269,7 +269,8 @@ hr {
 <li><b>Multi-select</b> &mdash; hold <kbd>Ctrl</kbd> or <kbd>Shift</kbd> and click</li>
 <li><b>Move</b> &mdash; <kbd>Ctrl+Up/Down</kbd> to reorder, <kbd>Ctrl+Right</kbd> to move into a group, <kbd>Ctrl+Left</kbd> to move out</li>
 <li><b>Delete</b> &mdash; press <kbd>Delete</kbd></li>
-<li><b>Duplicate</b> &mdash; <kbd>Ctrl+D</kbd></li>
+<li><b>Duplicate</b> &mdash; <kbd>Ctrl+Shift+D</kbd></li>
+<li><b>Disable / enable</b> &mdash; <kbd>Ctrl+D</kbd>; a disabled item does not fire</li>
 <li><b>Copy/Paste</b> &mdash; <kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd></li>
 <li><b>Cut</b> &mdash; <kbd>Ctrl+X</kbd> (preserves clone links)</li>
 </ul>
@@ -279,13 +280,13 @@ hr {
 <tr><th>Action</th><th>Default Key</th><th>Description</th></tr>
 <tr><td>Stop</td><td><kbd>F1</kbd></td><td>Stop the selected item</td></tr>
 <tr><td>Play</td><td><kbd>F2</kbd></td><td>Play the selected item (uses LOADBG + PLAY for smooth transitions)</td></tr>
-<tr><td>Play Now</td><td><kbd>F3</kbd></td><td>Play immediately without preloading</td></tr>
-<tr><td>Load</td><td><kbd>F4</kbd></td><td>Load (freeze on first frame) without playing</td></tr>
-<tr><td>Pause/Resume</td><td><kbd>F5</kbd></td><td>Toggle pause on the selected item</td></tr>
-<tr><td>Next</td><td><kbd>F6</kbd></td><td>Trigger the next preloaded item</td></tr>
-<tr><td>Update</td><td><kbd>F7</kbd></td><td>Update template data on a playing template</td></tr>
-<tr><td>Invoke</td><td><kbd>F8</kbd></td><td>Call a template function (e.g., next page)</td></tr>
-<tr><td>Preview</td><td><kbd>F9</kbd></td><td>Preview the item on the preview channel</td></tr>
+<tr><td>Load</td><td><kbd>F3</kbd></td><td>Load (freeze on first frame) without playing</td></tr>
+<tr><td>Pause/Resume</td><td><kbd>F4</kbd></td><td>Toggle pause on the selected item</td></tr>
+<tr><td>Next</td><td><kbd>F5</kbd></td><td>Trigger the next preloaded item</td></tr>
+<tr><td>Update</td><td><kbd>F6</kbd></td><td>Update template data on a playing template</td></tr>
+<tr><td>Invoke</td><td><kbd>F7</kbd></td><td>Call a template function (e.g., next page)</td></tr>
+<tr><td>Preview</td><td><kbd>F8</kbd></td><td>Preview the item on the preview channel</td></tr>
+<tr><td>Play Now</td><td>none</td><td>Play immediately without preloading. Has no default key; set one in Settings &gt; Hotkeys.</td></tr>
 <tr><td>Clear</td><td><kbd>F10</kbd></td><td>Clear the item's video layer</td></tr>
 <tr><td>Clear Video Layer</td><td><kbd>F11</kbd></td><td>Clear video layer only</td></tr>
 <tr><td>Clear Channel</td><td><kbd>F12</kbd></td><td>Clear entire channel</td></tr>
@@ -948,13 +949,12 @@ hr {
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td><kbd>F1</kbd></td><td>Stop</td></tr>
 <tr><td><kbd>F2</kbd></td><td>Play</td></tr>
-<tr><td><kbd>F3</kbd></td><td>Play Now</td></tr>
-<tr><td><kbd>F4</kbd></td><td>Load</td></tr>
-<tr><td><kbd>F5</kbd></td><td>Pause / Resume</td></tr>
-<tr><td><kbd>F6</kbd></td><td>Next</td></tr>
-<tr><td><kbd>F7</kbd></td><td>Update</td></tr>
-<tr><td><kbd>F8</kbd></td><td>Invoke</td></tr>
-<tr><td><kbd>F9</kbd></td><td>Preview</td></tr>
+<tr><td><kbd>F3</kbd></td><td>Load</td></tr>
+<tr><td><kbd>F4</kbd></td><td>Pause / Resume</td></tr>
+<tr><td><kbd>F5</kbd></td><td>Next</td></tr>
+<tr><td><kbd>F6</kbd></td><td>Update</td></tr>
+<tr><td><kbd>F7</kbd></td><td>Invoke</td></tr>
+<tr><td><kbd>F8</kbd></td><td>Preview</td></tr>
 <tr><td><kbd>F10</kbd></td><td>Clear</td></tr>
 <tr><td><kbd>F11</kbd></td><td>Clear Video Layer</td></tr>
 <tr><td><kbd>F12</kbd></td><td>Clear Channel</td></tr>
@@ -969,7 +969,9 @@ hr {
 <tr><td><kbd>Ctrl+V</kbd></td><td>Paste</td></tr>
 <tr><td><kbd>Ctrl+Shift+V</kbd></td><td>Paste as Linked Clone</td></tr>
 <tr><td><kbd>Ctrl+X</kbd></td><td>Cut</td></tr>
-<tr><td><kbd>Ctrl+D</kbd></td><td>Duplicate</td></tr>
+<tr><td><kbd>Ctrl+Shift+D</kbd></td><td>Duplicate</td></tr>
+<tr><td><kbd>Ctrl+D</kbd></td><td>Disable / enable</td></tr>
+<tr><td><kbd>Shift+C</kbd> / <kbd>Shift+V</kbd></td><td>Copy / paste item properties</td></tr>
 <tr><td><kbd>Delete</kbd></td><td>Remove selected items</td></tr>
 <tr><td><kbd>Ctrl+G</kbd></td><td>Group selected items</td></tr>
 <tr><td><kbd>Ctrl+U</kbd></td><td>Ungroup</td></tr>
@@ -987,10 +989,12 @@ hr {
 <tr><td><kbd>Ctrl+P</kbd></td><td>Toggle preview mode</td></tr>
 <tr><td><kbd>Ctrl+Shift+N</kbd></td><td>Toggle autostep</td></tr>
 <tr><td><kbd>Ctrl+1</kbd>&ndash;<kbd>9</kbd></td><td>Trigger bank 1&ndash;9</td></tr>
-<tr><td><kbd>Escape</kbd> x2</td><td>Panic (clear all outputs)</td></tr>
+<tr><td><kbd>Ctrl+R</kbd></td><td>Refresh library</td></tr>
+<tr><td><kbd>Ctrl+L</kbd> / <kbd>Ctrl+W</kbd></td><td>Reload / close rundown</td></tr>
+<tr><td><kbd>Escape</kbd> twice within half a second</td><td>Panic (clear all outputs)</td></tr>
 </table>
 
-<p>All hotkeys are fully remappable in Settings &gt; Hotkeys.</p>
+<p>The playout keys, trigger banks, preview toggle and autostep toggle can be changed in Settings &gt; Hotkeys. The editing and navigation keys, and the double Escape, are fixed.</p>
 
 <hr>
 
@@ -1081,6 +1085,7 @@ hr {
 <li>Your database is copied next to the installation before the swap, so settings, devices and layouts survive.</li>
 <li><b>Put Back Previous Build</b> restores the build that was replaced last.</li>
 <li>A download that finished while the window was closed is found again when it reopens, and is not fetched twice.</li>
+<li>Installing and putting back a build from this window work on Windows only, for now. On macOS and Linux the window checks and downloads; press <b>Show Download</b> and install the file by hand.</li>
 </ul>
 
 <div class="warning">
@@ -1118,7 +1123,7 @@ hr {
 <li>Clicking a key selects that item, so the function keys act on it. The arrow keys move between keys.</li>
 <li>Keys can carry Play, Stop, Next and Preview controls; which ones is set in Settings &gt; Simple Mode.</li>
 <li>A template's labelled invokes appear as buttons on its key. A group can show its children's invokes, and can act as a dropdown that picks which child it fires.</li>
-<li>The coloured strip at the top of a key lights for the item last fired on its channel, and the badge shows its channel and layer.</li>
+<li>The coloured strip at the top of a key lights for the item last played on its channel, and goes dark when that item is stopped or cleared. The badge shows its channel and layer.</li>
 </ul>
 
 <hr>

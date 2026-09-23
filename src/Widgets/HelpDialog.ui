@@ -30,8 +30,10 @@
       <bool>true</bool>
      </property>
      <property name="plainText">
-      <string>F1
-Function: Stop 
+      <string>Default keys. The playout keys, trigger banks, preview toggle and autostep toggle can be changed in Settings &gt; Hotkeys; the editing keys are fixed.
+
+F1
+Function: Stop
 Description: Call stop on selected item in the rundown.
 
 F2
@@ -43,8 +45,8 @@ Function: Load
 Description: Call load on selected item in the rundown.
 
 F4
-Function: Pause
-Description: Call pause on selected item in the rundown.
+Function: Pause / Resume
+Description: Call pause or resume on selected item in the rundown.
 
 F5
 Function: Next
@@ -58,6 +60,10 @@ F7
 Function: Invoke
 Description: Call invoke on selected item in the rundown.
 
+F8
+Function: Preview
+Description: Play selected item on the server's preview channel.
+
 F10
 Function: Clear
 Description: Call clear on selected item in the rundown.
@@ -70,17 +76,25 @@ F12
 Function: Clear Channel
 Description: Call clear on selected items channel in the rundown.
 
-Alt+1 - Alt+5
-Function: Rundown
-Description: Switch between rundown tabs.
+Ctrl+1 - Ctrl+9
+Function: Trigger banks
+Description: Play the item assigned to trigger bank 1 to 9.
+
+Ctrl+] / Ctrl+[
+Function: Rundown tabs
+Description: Switch to the next / previous rundown tab.
 
 Ctrl+G / Ctrl+U
-Functioin: Group / Ungroup
+Function: Group / Ungroup
 Description: Group / Ungroup one or more items in the rundown.
 
-Ctrl+D
+Ctrl+Shift+D
 Function: Duplicate
 Description: Duplicate selected item in the rundown.
+
+Ctrl+D
+Function: Disable / Enable
+Description: A disabled item does not fire.
 
 Ctrl+C / Ctrl+V
 Function: Copy / Paste
@@ -100,15 +114,23 @@ Description: Move item in / out of a group in the rundown.
 
 Delete
 Function: Delete
-Description Delete item / group in the rundown.
+Description: Delete item / group in the rundown.
+
+Ctrl+Z / Ctrl+Y
+Function: Undo / Redo
+Description: Undo / redo the last change to the rundown.
 
 Ctrl+F
-Function: Fullscreen
-Description: Toggle between fullscreen and normal window.
+Function: Search
+Description: Search the rundown.
 
-Ctrl+I / Ctrl+E
-Function: Import / Export
-Description: Import / Export rundown from / to disk.
+Ctrl+O / Ctrl+S / Ctrl+Shift+S
+Function: Open / Save / Save As
+Description: Open or save a rundown file.
+
+Escape, twice within half a second
+Function: Panic
+Description: Clear every output on every server.
 
 Ctrl+H
 Function: Help
