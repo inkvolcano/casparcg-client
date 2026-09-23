@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Codec And Resolution In The Inspector
+
+- **A Media line in the Inspector** for a movie or still in a rundown: the codec,
+  resolution, frame rate and scan, whether it has alpha, the audio, and the
+  length. For example "Apple ProRes 1920x1080 25 fps · PCM 24-bit stereo 48 kHz
+  · 0:30", or "PNG 1920x1080 · alpha".
+- **It comes from the server's media scanner**, which already examines every
+  file with ffprobe. The client opens no file itself, and a server on another
+  machine works the same as a local one.
+- The scanner has to be reachable on port 8000 of the server's address; if it is
+  not, the line says so. A clip whose scan is not known shows its rate as "fps",
+  and one with a known scan as "25p" or "50i".
+- Answers are remembered for ten minutes, and forgotten when the Library is
+  refreshed, so a clip replaced under the same name is described again.
+
 ## Rundown Timing And Back-Timing
 
 - **A timing bar under every rundown.** It shows how long the rundown runs in

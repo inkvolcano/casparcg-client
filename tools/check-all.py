@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are thirty-eight test suites and a syntax checker. Twenty-three commands that each take a
+There are thirty-nine test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -41,6 +41,7 @@ SUITES = [
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
+    ('test-mediainfo', False, 'the Inspector media line: codec, resolution, rate, alpha and audio from the scanner'),
     ('test-rundowntiming', False, 'rundown timing: hard out, over and under across midnight, clip and duration lengths'),
     ('test-inspectorundo', False, 'which keys in an Inspector field may start an undo step'),
     ('test-asrun', False, 'which server commands the as-run log records, and the CSV it writes'),

@@ -578,6 +578,14 @@ hr {
 <h3>Unit Toggles</h3>
 <p>The delay and duration fields each have a <b>ms/fr</b> toggle button to switch between milliseconds and frames. The value auto-converts using the channel's FPS.</p>
 
+<h3>Media line</h3>
+<ul>
+<li><b>A Media line in the Inspector</b> for a movie or still in a rundown: the codec, resolution, frame rate and scan, whether it has alpha, the audio, and the length. For example "Apple ProRes 1920x1080 25 fps &middot; PCM 24-bit stereo 48 kHz &middot; 0:30", or "PNG 1920x1080 &middot; alpha".</li>
+<li><b>It comes from the server's media scanner</b>, which already examines every file with ffprobe. The client opens no file itself, and a server on another machine works the same as a local one.</li>
+<li>The scanner has to be reachable on port 8000 of the server's address; if it is not, the line says so. A clip whose scan is not known shows its rate as "fps", and one with a known scan as "25p" or "50i".</li>
+<li>Answers are remembered for ten minutes, and forgotten when the Library is refreshed, so a clip replaced under the same name is described again.</li>
+</ul>
+
 <hr>
 
 <!-- ══════════════════════════════════════════════════════════════════ -->

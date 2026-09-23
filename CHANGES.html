@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#media-info">Codec And Resolution In The Inspector</a><br>
 <a href="#rundown-timing">Rundown Timing And Back-Timing</a><br>
 <a href="#inspector-undo">Undo For Inspector Edits</a><br>
 <a href="#as-run-log">As-Run Log</a><br>
@@ -1867,6 +1868,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="media-info">Codec And Resolution In The Inspector</h2>
+
+<ul>
+<li><b>A Media line in the Inspector</b> for a movie or still in a rundown: the codec, resolution, frame rate and scan, whether it has alpha, the audio, and the length. For example "Apple ProRes 1920x1080 25 fps &middot; PCM 24-bit stereo 48 kHz &middot; 0:30", or "PNG 1920x1080 &middot; alpha".</li>
+<li><b>It comes from the server's media scanner</b>, which already examines every file with ffprobe. The client opens no file itself, and a server on another machine works the same as a local one.</li>
+<li>The scanner has to be reachable on port 8000 of the server's address; if it is not, the line says so. A clip whose scan is not known shows its rate as "fps", and one with a known scan as "25p" or "50i".</li>
+<li>Answers are remembered for ten minutes, and forgotten when the Library is refreshed, so a clip replaced under the same name is described again.</li>
+</ul>
 
 <h2 id="rundown-timing">Rundown Timing And Back-Timing</h2>
 
