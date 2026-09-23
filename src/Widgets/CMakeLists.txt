@@ -149,6 +149,7 @@ qt_add_library(widgets
     Rundown/RundownTemplateWidget.cpp Rundown/RundownTemplateWidget.h Rundown/RundownTemplateWidget.ui
     Rundown/RundownTreeBaseWidget.cpp Rundown/RundownTreeBaseWidget.h
     Rundown/RundownTreeWidget.cpp Rundown/RundownTreeWidget.h Rundown/RundownTreeWidget.ui
+    Rundown/RundownTimingBar.cpp Rundown/RundownTimingBar.h
     Rundown/RundownVolumeWidget.cpp Rundown/RundownVolumeWidget.h Rundown/RundownVolumeWidget.ui
     Rundown/RundownWidget.cpp Rundown/RundownWidget.h Rundown/RundownWidget.ui
     SettingsDialog.cpp SettingsDialog.h SettingsDialog.ui

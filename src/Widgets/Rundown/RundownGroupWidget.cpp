@@ -1,5 +1,6 @@
 #include "RundownGroupWidget.h"
 #include "RundownWidgetHelper.h"
+#include "RundownTiming.h"
 #include "AbstractRundownWidget.h"
 
 #include "Global.h"
@@ -451,6 +452,37 @@ void RundownGroupWidget::configureOscSubscriptions()
     this->clearChannelControlSubscription = new OscSubscription(clearChannelControlFilter, this);
     QObject::connect(this->clearChannelControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
                      this, SLOT(clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+}
+
+void RundownGroupWidget::setComputedLength(double seconds)
+{
+    const double planned = this->command.getDuration() / 1000.0;
+    QString text;
+    if (seconds > 0 && planned > 0)
+        text = QString::fromUtf8("\xe2\x8f\xb1 %1 of %2").arg(RundownTiming::formatLength(seconds), RundownTiming::formatLength(planned));
+    else if (seconds > 0)
+        text = QString::fromUtf8("\xe2\x8f\xb1 %1").arg(RundownTiming::formatLength(seconds));
+    else if (planned > 0)
+        text = QString::fromUtf8("\xe2\x8f\xb1 %1 planned").arg(RundownTiming::formatLength(planned));
+
+    if (this->labelLength == nullptr)
+    {
+        if (text.isEmpty())
+            return;
+
+        // On the second line, after the remote trigger id, which is where the row
+        // has room; built on first use, so a rundown without timing adds nothing.
+        this->labelLength = new QLabel(this->frameItem);
+        this->labelLength->setGeometry(this->labelRemoteTriggerId->x() + this->labelRemoteTriggerId->width() + 8,
+                                       this->labelRemoteTriggerId->y(), 120, 16);
+        this->labelLength->setStyleSheet("color: rgba(200, 200, 200, 180); font-size: 11px;");
+        this->labelLength->setToolTip("How long this group runs: the items in it, or its own Duration when one is typed.");
+        this->labelLength->show();
+    }
+
+    if (this->labelLength->text() != text)
+        this->labelLength->setText(text);
+    this->labelLength->setVisible(!text.isEmpty());
 }
 
 void RundownGroupWidget::durationChanged(int duration)

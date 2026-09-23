@@ -1838,6 +1838,25 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundown Timing And Back-Timing
+
+- **A timing bar under every rundown.** It shows how long the rundown runs in
+  total, and how much is left from the selected item to the end.
+- **Type a hard out**, such as 21:00, and the bar shows when the rundown will
+  end if it runs from the selected item now, and how far over or under the hard
+  out that is, in red or green. The hard out is saved with the rundown. Clear
+  the field to turn back-timing off. A hard out after midnight works for a show
+  that starts before it.
+- **Groups show their length** on the second line of their row. A group with its
+  own Duration typed in shows both, for example "4:05 of 5:00".
+- **What counts:** a movie or audio clip counts its length, or the Length set on
+  it, less where it starts. Any other item counts its Duration setting. A group
+  counts its own Duration if one is typed, which stands for the planned length
+  of the segment, otherwise the items in it. Disabled items count nothing, and
+  an item with no length or duration counts nothing either.
+- The bar only works while its rundown is on screen, so rundowns in background
+  tabs cost nothing.
+
 ## Undo For Inspector Edits
 
 - **Inspector changes can be undone.** Ctrl+Z undoes a change made in the

@@ -161,6 +161,7 @@ hr {
 <a href="#sheets">39. Google Sheets Panel</a>
 <a href="#shotbox">40. Shotbox Panel</a>
 <a href="#as-run">41. As-Run Log</a>
+<a href="#rundown-timing">42. Rundown Timing</a>
 </div>
 
 <hr>
@@ -1192,6 +1193,19 @@ hr {
 </ul>
 
 <p>The columns are Date, Time, Server, Channel, Layer, Action, What and Command; Command is the exact line sent to the server. The files are in <code>.CasparCG/Client/AsRun</code> in your home folder.</p>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="rundown-timing">42. Rundown Timing</h2>
+
+<ul>
+<li><b>A timing bar under every rundown.</b> It shows how long the rundown runs in total, and how much is left from the selected item to the end.</li>
+<li><b>Type a hard out</b>, such as 21:00, and the bar shows when the rundown will end if it runs from the selected item now, and how far over or under the hard out that is, in red or green. The hard out is saved with the rundown. Clear the field to turn back-timing off. A hard out after midnight works for a show that starts before it.</li>
+<li><b>Groups show their length</b> on the second line of their row. A group with its own Duration typed in shows both, for example "4:05 of 5:00".</li>
+<li><b>What counts:</b> a movie or audio clip counts its length, or the Length set on it, less where it starts. Any other item counts its Duration setting. A group counts its own Duration if one is typed, which stands for the planned length of the segment, otherwise the items in it. Disabled items count nothing, and an item with no length or duration counts nothing either.</li>
+<li>The bar only works while its rundown is on screen, so rundowns in background tabs cost nothing.</li>
+</ul>
 
 <hr>
 

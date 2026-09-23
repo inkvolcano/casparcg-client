@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#rundown-timing">Rundown Timing And Back-Timing</a><br>
 <a href="#inspector-undo">Undo For Inspector Edits</a><br>
 <a href="#as-run-log">As-Run Log</a><br>
 <a href="#fixes-279">Four Fixes From The Gap Review</a><br>
@@ -1866,6 +1867,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="rundown-timing">Rundown Timing And Back-Timing</h2>
+
+<ul>
+<li><b>A timing bar under every rundown.</b> It shows how long the rundown runs in total, and how much is left from the selected item to the end.</li>
+<li><b>Type a hard out</b>, such as 21:00, and the bar shows when the rundown will end if it runs from the selected item now, and how far over or under the hard out that is, in red or green. The hard out is saved with the rundown. Clear the field to turn back-timing off. A hard out after midnight works for a show that starts before it.</li>
+<li><b>Groups show their length</b> on the second line of their row. A group with its own Duration typed in shows both, for example "4:05 of 5:00".</li>
+<li><b>What counts:</b> a movie or audio clip counts its length, or the Length set on it, less where it starts. Any other item counts its Duration setting. A group counts its own Duration if one is typed, which stands for the planned length of the segment, otherwise the items in it. Disabled items count nothing, and an item with no length or duration counts nothing either.</li>
+<li>The bar only works while its rundown is on screen, so rundowns in background tabs cost nothing.</li>
+</ul>
 
 <h2 id="inspector-undo">Undo For Inspector Edits</h2>
 

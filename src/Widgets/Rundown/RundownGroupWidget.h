@@ -31,6 +31,11 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
     Q_OBJECT
 
     public:
+        // The group's worked-out length, from the rundown timing bar: the sum of
+        // what is in it. Shown on the row's second line, beside its own Duration
+        // when one is typed.
+        void setComputedLength(double seconds);
+
         explicit RundownGroupWidget(const LibraryModel& model, QWidget* parent = 0, const QString& color = Color::DEFAULT_TRANSPARENT_COLOR,
                                     bool active = false, bool compactView = false);
 
@@ -60,6 +65,7 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         void updateGroupInfo(QTreeWidgetItem* groupItem);
 
     private:
+        QLabel* labelLength = nullptr;
         bool active = false;
         bool inGroup = false;
         bool compactView = false;

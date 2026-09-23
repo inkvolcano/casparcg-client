@@ -30,6 +30,8 @@
 #include "RundownItemFactory.h"
 #include "RundownWidgetHelper.h"
 #include "RundownUndoCommands.h"
+#include "RundownTimingBar.h"
+#include "RundownTiming.h"
 #include "PresetDialog.h"
 
 #include "Commands/TransformData.h"
@@ -118,6 +120,9 @@ RundownTreeWidget::RundownTreeWidget(QWidget* parent)
 {
     setupUi(this);
     setupMenus();
+
+    this->timingBar = new RundownTimingBar(this->treeWidgetRundown, this);
+    this->verticalLayout->addWidget(this->timingBar);
 
     QObject::connect(this->treeWidgetRundown, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(customContextMenuRequested(const QPoint &)));
 
@@ -1452,6 +1457,7 @@ void RundownTreeWidget::openRundown(const QString& path)
         const bool loaded =
             this->treeWidgetRundown->pasteXml(data, false, true); // preserveCloneLinks = true for file load.
         wireAllGatewayWidgets();
+        this->timingBar->setHardOut(RundownTiming::hardOutIn(data));
 
         if (!loaded)
         {
@@ -1520,6 +1526,7 @@ void RundownTreeWidget::doOpenRundownFromUrl(QNetworkReply* reply)
 
     this->treeWidgetRundown->pasteXml(data, false, true); // preserveCloneLinks = true for URL load.
     wireAllGatewayWidgets();
+    this->timingBar->setHardOut(RundownTiming::hardOutIn(data));
 
     if (this->treeWidgetRundown->invisibleRootItem()->childCount() > 0)
         this->treeWidgetRundown->setCurrentItem(this->treeWidgetRundown->invisibleRootItem()->child(0));
@@ -1660,6 +1667,11 @@ QByteArray RundownTreeWidget::serialiseRundown() const
     writer.writeStartDocument();
     writer.writeStartElement("items");
     writer.writeTextElement("allowremotetriggering", (this->allowRemoteRundownTriggering == true) ? "true" : "false");
+
+    // Only when one is set, so a rundown without a hard out saves exactly as it
+    // did before, and opening an older file does not count as a change.
+    if (this->timingBar != nullptr && !this->timingBar->hardOut().isEmpty())
+        writer.writeTextElement("hardout", this->timingBar->hardOut());
 
     for (int i = 0; i < this->treeWidgetRundown->invisibleRootItem()->childCount(); i++)
         this->treeWidgetRundown->writeProperties(this->treeWidgetRundown->invisibleRootItem()->child(i), writer);

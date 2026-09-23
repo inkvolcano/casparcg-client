@@ -52,6 +52,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 
 class SimpleModeMarker;
+class RundownTimingBar;
 
 struct AutoPlayQueueInfo
 {
@@ -156,6 +157,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         // Outlives each sweep: it stays connected to the commands it marked, so a
         // flag ticked in the Inspector updates its own row.
         SimpleModeMarker* simpleModeMarker = nullptr;
+
+        // Total, time left from the selection, and back-timing to a hard out.
+        RundownTimingBar* timingBar = nullptr;
 
         struct GatewayExitLocation
         {
