@@ -158,6 +158,7 @@ qt_add_library(widgets
     ServerProcessControl.cpp ServerProcessControl.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
+    InspectorUndo.cpp InspectorUndo.h
     ActivityPanelWidget.cpp ActivityPanelWidget.h ActivityPanelWidget.ui
     TriggerBanksPanelWidget.cpp TriggerBanksPanelWidget.h TriggerBanksPanelWidget.ui
     WhatsNewDialog.cpp WhatsNewDialog.h

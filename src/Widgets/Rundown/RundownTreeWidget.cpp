@@ -29,6 +29,7 @@
 #include "RundownCommandGatewayWidget.h"
 #include "RundownItemFactory.h"
 #include "RundownWidgetHelper.h"
+#include "RundownUndoCommands.h"
 #include "PresetDialog.h"
 
 #include "Commands/TransformData.h"
@@ -570,6 +571,10 @@ void RundownTreeWidget::addRudnownItem(const AddRudnownItemEvent& event)
 
 void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
 {
+    // Adding an item from the Library or the Add menu is one undo step, like a
+    // paste; it was the one way of adding an item that could not be undone.
+    UndoScope undo(this->treeWidgetRundown, "Add Item");
+
     // Paired gateway insert helper (shared by AutoPlay Gateway, Focus Gateway, and Command Gateway).
     if (model.getType() == Rundown::AUTOPLAYGATEWAY || model.getType() == Rundown::FOCUSGATEWAY || model.getType() == Rundown::COMMANDGATEWAY)
     {

@@ -13,6 +13,8 @@
 #include "Models/LibraryModel.h"
 #include "Models/RepositoryChangeModel.h"
 
+#include <functional>
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
@@ -123,6 +125,18 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void beginUndoSnapshot(const QString& description);
         void endUndoSnapshot();
         bool isUndoRestoring() const { return m_undoRestoring; }
+
+        // One undo step from a capture taken earlier to the rundown as it is now,
+        // if they differ. Inspector edits use it (InspectorUndo): their capture is
+        // taken when work on a field starts, not around one operation.
+        void pushSnapshotStep(const QString& description, const QString& before);
+
+        // Set by InspectorUndo. The first runs before any rundown operation opens
+        // an undo step, so an Inspector edit in progress is recorded before it;
+        // the second before an undo or redo rebuilds a rundown, whose capture in
+        // progress is then stale.
+        static std::function<void()> s_beforeUndoStep;
+        static std::function<void(RundownTreeBaseWidget*)> s_beforeRestore;
 
         static int getItemDepth(QTreeWidgetItem* item);
 

@@ -10,6 +10,7 @@
 #include "HttpResponsePanelWidget.h"
 #include "ShotboxPanelWidget.h"
 #include "AsRunLogWriter.h"
+#include "InspectorUndo.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -314,6 +315,18 @@ void MainWindow::setupMenu()
     this->editMenu->addAction(redoAction);
     this->editMenu->addSeparator();
     this->editMenu->addAction("Settings...", this, SLOT(showSettingsDialog()));
+
+    // Inspector edits, one undo step per field, on the rundown the Inspector is
+    // showing. The Edit menu records an edit in progress before it opens, so the
+    // Undo it offers is that edit.
+    InspectorUndo* inspectorUndo = new InspectorUndo(
+        QList<QWidget*>() << this->widgetInspector << this->widgetSimpleInspector,
+        [this]() -> RundownTreeBaseWidget* {
+            RundownTreeWidget* active = this->widgetRundown->activeTreeWidget();
+            return active != nullptr ? active->treeWidget() : nullptr;
+        },
+        this);
+    QObject::connect(this->editMenu, &QMenu::aboutToShow, inspectorUndo, &InspectorUndo::commit);
 
     this->viewMenu = new QMenu(this);
     this->viewMenu->setObjectName("menuView");

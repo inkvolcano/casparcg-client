@@ -848,9 +848,17 @@ hr {
 
 <ul>
 <li><kbd>Ctrl+Z</kbd> &mdash; Undo</li>
-<li><kbd>Ctrl+Y</kbd> or <kbd>Ctrl+Shift+Z</kbd> &mdash; Redo</li>
+<li><kbd>Ctrl+Y</kbd> &mdash; Redo</li>
 <li>Captures the full tree state before each editing operation</li>
 <li>Multi-step operations (e.g., paste multiple items) are grouped into a single undo action</li>
+</ul>
+
+<h3>Inspector edits</h3>
+<ul>
+<li><b>Inspector changes can be undone.</b> Ctrl+Z undoes a change made in the Inspector or the Simple Inspector, one field at a time: typing in a field is one step until you move on, and a click on a checkbox, list or arrow is a step for that field. The Undo menu names the item, for example "Undo Edit Opener".</li>
+<li><b>Adding an item from the Library or the Add menu can be undone</b>, like a paste already could.</li>
+<li>Work on a field ends when you click another field, select another item, or start another rundown change such as a move or a delete. A list's popup or a data window opened from a field still counts as that field.</li>
+<li>Undo inside a text field you are typing in still undoes the text first, as it always has.</li>
 </ul>
 
 <hr>

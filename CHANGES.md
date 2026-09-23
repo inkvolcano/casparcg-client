@@ -1838,6 +1838,20 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Undo For Inspector Edits
+
+- **Inspector changes can be undone.** Ctrl+Z undoes a change made in the
+  Inspector or the Simple Inspector, one field at a time: typing in a field is
+  one step until you move on, and a click on a checkbox, list or arrow is a step
+  for that field. The Undo menu names the item, for example "Undo Edit Opener".
+- **Adding an item from the Library or the Add menu can be undone**, like a
+  paste already could.
+- Work on a field ends when you click another field, select another item, or
+  start another rundown change such as a move or a delete. A list's popup or a
+  data window opened from a field still counts as that field.
+- Undo inside a text field you are typing in still undoes the text first, as it
+  always has.
+
 ## As-Run Log
 
 - **A record of what went to air.** Every play, stop, next, clear, pause,

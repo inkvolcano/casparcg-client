@@ -44,6 +44,8 @@ void TreeSnapshotCommand::redo()
 }
 
 RundownTreeBaseWidget* RundownTreeBaseWidget::dragSourceWidget = nullptr;
+std::function<void()> RundownTreeBaseWidget::s_beforeUndoStep;
+std::function<void(RundownTreeBaseWidget*)> RundownTreeBaseWidget::s_beforeRestore;
 bool RundownTreeBaseWidget::s_isCutOperation = false;
 QVector<QPointer<AbstractCommand>> RundownTreeBaseWidget::s_copiedCommands = {};
 
@@ -126,6 +128,9 @@ namespace
 
 void RundownTreeBaseWidget::restoreFromSnapshot(const QString& xml)
 {
+    if (s_beforeRestore)
+        s_beforeRestore(this);
+
     m_undoRestoring = true;
 
     setUpdatesEnabled(false);
@@ -247,6 +252,10 @@ void RundownTreeBaseWidget::beginUndoSnapshot(const QString& description)
     if (m_undoRestoring)
         return;
 
+    // Before the depth goes up: the edit is pushed as a step of its own.
+    if (m_undoNestingDepth == 0 && s_beforeUndoStep)
+        s_beforeUndoStep();
+
     m_undoNestingDepth++;
 
     // Only capture the "before" state for the outermost scope.
@@ -277,6 +286,16 @@ void RundownTreeBaseWidget::endUndoSnapshot()
         m_pendingUndoBefore.clear();
         m_pendingUndoDescription.clear();
     }
+}
+
+void RundownTreeBaseWidget::pushSnapshotStep(const QString& description, const QString& before)
+{
+    if (m_undoRestoring || m_undoNestingDepth > 0)
+        return;
+
+    const QString after = serializeTree();
+    if (before != after)
+        m_undoStack->push(new TreeSnapshotCommand(this, description, before, after));
 }
 
 bool RundownTreeBaseWidget::getCompactView() const
