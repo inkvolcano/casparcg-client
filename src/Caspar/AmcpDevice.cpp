@@ -114,6 +114,8 @@ void AmcpDevice::writeMessage(const QString& message)
         this->socket->write(QString("%1\r\n").arg(message.trimmed()).toUtf8());
         this->socket->flush();
 
+        emit messageWritten(message);
+
         qDebug("Sent message to %s:%d: %s\\r\\n", qPrintable(this->address), this->port, qPrintable(message.trimmed()));
     }
 }

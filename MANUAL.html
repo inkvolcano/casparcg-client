@@ -160,6 +160,7 @@ hr {
 <a href="#simple-mode">38. Simple Mode</a>
 <a href="#sheets">39. Google Sheets Panel</a>
 <a href="#shotbox">40. Shotbox Panel</a>
+<a href="#as-run">41. As-Run Log</a>
 </div>
 
 <hr>
@@ -1168,6 +1169,21 @@ hr {
 <li>Drag a row up or down to reorder it; right-click a row to remove it; <b>Clear Shotbox...</b> in the panel menu empties it.</li>
 <li>Groups and gateways cannot go in, because they only work inside a rundown. The status bar says so, and says when the Shotbox is full.</li>
 </ul>
+
+<hr>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2 id="as-run">41. As-Run Log</h2>
+
+<ul>
+<li><b>A record of what went to air.</b> Every play, stop, next, clear, pause, template play, update and invoke sent to a server is written down the moment it is sent, with the date and time to the millisecond, the server, channel, layer, and the clip or template name.</li>
+<li><b>Nothing slips past it.</b> It is taken from the commands the servers receive, so it includes autoplay, items in groups, items with a delay (at the time they actually went), remote triggers, trigger banks, the Shotbox, Simple Mode and the Sheets panel. Shadow servers get their own lines.</li>
+<li><b>One CSV file a day</b>, in the AsRun folder beside the client's logs, kept for 30 days. It opens straight in a spreadsheet.</li>
+<li><b>File &gt; Export As-Run Log...</b> picks a day and saves a copy wherever you want it.</li>
+<li>A clip queued to follow the one playing is logged as "Queued" when it is sent; it goes to air when the clip before it ends, which the server decides.</li>
+</ul>
+
+<p>The columns are Date, Time, Server, Channel, Layer, Action, What and Command; Command is the exact line sent to the server. The files are in <code>.CasparCG/Client/AsRun</code> in your home folder.</p>
 
 <hr>
 

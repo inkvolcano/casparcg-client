@@ -27,6 +27,11 @@ class CASPAR_EXPORT AmcpDevice : public QObject
 
         Q_SLOT void connectDevice();
 
+        // A command was written to the server - only when it really was: not while
+        // disconnected, and not while commands are disabled. The as-run log listens
+        // here, because every route that puts something on air ends in one.
+        Q_SIGNAL void messageWritten(const QString& message);
+
     protected:
         // The AMCP code of the reply being parsed. Beside response and command,
         // which subclasses already read, because a subclass that can see what the

@@ -9,6 +9,8 @@
 #include "HelpDialog.h"
 #include "HttpResponsePanelWidget.h"
 #include "ShotboxPanelWidget.h"
+#include "AsRunLogWriter.h"
+#include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
 #include "SimpleInspectorWidget.h"
@@ -70,6 +72,9 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QFileDialog>
+#include <QtWidgets/QInputDialog>
+#include <QtCore/QDir>
 #include <QtWidgets/QPushButton>
 #include <QtGui/QShortcut>
 #include <QtWidgets/QToolButton>
@@ -118,6 +123,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetHttpLog = new HttpResponsePanelWidget(this);
     this->widgetSheets = new SheetsPanelWidget(this);
     this->widgetShotbox = new ShotboxPanelWidget(this);
+
+    // Starts listening before the servers are added, so the first command of the
+    // day is in the as-run log too.
+    new AsRunLogWriter(this);
     this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
     this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
@@ -289,6 +298,8 @@ void MainWindow::setupMenu()
     this->fileMenu->addSeparator();
     this->saveAction = this->fileMenu->addAction("Save", this, SLOT(saveRundown()), QKeySequence::fromString("Ctrl+S"));
     this->saveAsAction = this->fileMenu->addAction("Save As...", this, SLOT(saveAsRundown()), QKeySequence::fromString("Ctrl+Shift+S"));
+    this->fileMenu->addSeparator();
+    this->fileMenu->addAction("Export As-Run Log...", this, SLOT(exportAsRunLog()));
     this->fileMenu->addSeparator();
     this->fileMenu->addAction("Quit", this, SLOT(close()));
     this->saveAsPresetAction->setEnabled(false);
@@ -633,6 +644,55 @@ void MainWindow::openRundownFromUrl()
 void MainWindow::saveRundown()
 {
     EventManager::getInstance().fireSaveRundownEvent(SaveRundownEvent(false));
+}
+
+// A day of the as-run log, copied wherever the operator wants it. The log itself
+// is written as things go to air (AsRunLogWriter); this only picks a day out.
+void MainWindow::exportAsRunLog()
+{
+    const QDir dir(AsRunLogWriter::folder());
+    QStringList days;
+    for (const QString& name : dir.entryList(QStringList() << "AsRun_*.csv", QDir::Files, QDir::Name | QDir::Reversed))
+    {
+        const QDate date = AsRun::dateOf(name);
+        if (date.isValid())
+            days.append(date.toString("yyyy-MM-dd"));
+    }
+
+    if (days.isEmpty())
+    {
+        QMessageBox::information(this, "Export As-Run Log",
+            "Nothing has gone to air yet, so there is no as-run log to export.\n\n"
+            "Every play, stop, next and clear sent to a server is written to it as it happens, one file a day, "
+            "kept for 30 days.");
+        return;
+    }
+
+    bool ok = false;
+    const QString day = QInputDialog::getItem(this, "Export As-Run Log", "Day to export:", days, 0, false, &ok);
+    if (!ok || day.isEmpty())
+        return;
+
+    const QString source = dir.filePath(AsRun::fileName(QDate::fromString(day, "yyyy-MM-dd")));
+    const QString target = QFileDialog::getSaveFileName(this, "Export As-Run Log",
+        QDir(QDir::homePath()).filePath(QFileInfo(source).fileName()), "CSV files (*.csv)");
+    if (target.isEmpty())
+        return;
+
+    if (QFileInfo(target).absoluteFilePath() != QFileInfo(source).absoluteFilePath())
+    {
+        if (QFile::exists(target))
+            QFile::remove(target);
+
+        if (!QFile::copy(source, target))
+        {
+            QMessageBox::warning(this, "Export As-Run Log", QString("Could not write %1.").arg(QDir::toNativeSeparators(target)));
+            return;
+        }
+    }
+
+    EventManager::getInstance().fireStatusbarEvent(
+        StatusbarEvent(QString("As-run log for %1 saved to %2").arg(day, QDir::toNativeSeparators(target)), 4000));
 }
 
 void MainWindow::saveAsRundown()

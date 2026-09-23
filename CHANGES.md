@@ -1838,6 +1838,23 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## As-Run Log
+
+- **A record of what went to air.** Every play, stop, next, clear, pause,
+  template play, update and invoke sent to a server is written down the moment
+  it is sent, with the date and time to the millisecond, the server, channel,
+  layer, and the clip or template name.
+- **Nothing slips past it.** It is taken from the commands the servers receive,
+  so it includes autoplay, items in groups, items with a delay (at the time they
+  actually went), remote triggers, trigger banks, the Shotbox, Simple Mode and
+  the Sheets panel. Shadow servers get their own lines.
+- **One CSV file a day**, in the AsRun folder beside the client's logs, kept for
+  30 days. It opens straight in a spreadsheet.
+- **File > Export As-Run Log...** picks a day and saves a copy wherever you want
+  it.
+- A clip queued to follow the one playing is logged as "Queued" when it is sent;
+  it goes to air when the clip before it ends, which the server decides.
+
 ## Four Fixes From The Gap Review
 
 - **The manual and the Help window list the right keys.** Both had the function

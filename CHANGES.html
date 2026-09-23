@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#as-run-log">As-Run Log</a><br>
 <a href="#fixes-279">Four Fixes From The Gap Review</a><br>
 <a href="#shotbox-panel">Shotbox Panel</a><br>
 <a href="#log-retention">Log Files Are Kept For 30 Days</a><br>
@@ -1864,6 +1865,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="as-run-log">As-Run Log</h2>
+
+<ul>
+<li><b>A record of what went to air.</b> Every play, stop, next, clear, pause, template play, update and invoke sent to a server is written down the moment it is sent, with the date and time to the millisecond, the server, channel, layer, and the clip or template name.</li>
+<li><b>Nothing slips past it.</b> It is taken from the commands the servers receive, so it includes autoplay, items in groups, items with a delay (at the time they actually went), remote triggers, trigger banks, the Shotbox, Simple Mode and the Sheets panel. Shadow servers get their own lines.</li>
+<li><b>One CSV file a day</b>, in the AsRun folder beside the client's logs, kept for 30 days. It opens straight in a spreadsheet.</li>
+<li><b>File &gt; Export As-Run Log...</b> picks a day and saves a copy wherever you want it.</li>
+<li>A clip queued to follow the one playing is logged as "Queued" when it is sent; it goes to air when the clip before it ends, which the server decides.</li>
+</ul>
 
 <h2 id="fixes-279">Four Fixes From The Gap Review</h2>
 
