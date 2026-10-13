@@ -16,12 +16,16 @@
 #include "Events/Rundown/RemoveItemFromAutoPlayQueueEvent.h"
 #include "Events/Rundown/CurrentItemChangedEvent.h"
 #include "Models/LibraryModel.h"
+#include "ReferenceImage.h"
+#include "Events/StatusbarEvent.h"
 
 #include <iostream>
 
 #include <QtCore/QDebug>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QUuid>
+#include <QtCore/QMimeData>
+#include <QtCore/QUrl>
 
 #include <QtGui/QDrag>
 #include <QtGui/QPainter>
@@ -2016,6 +2020,21 @@ void RundownTreeBaseWidget::dragEnterEvent(QDragEnterEvent* event)
     event->acceptProposedAction();
 }
 
+// One picture file from outside the client - Explorer, a browser - dragged onto
+// the rundown: it is to become a row's reference image, not an item of its own.
+QString RundownTreeBaseWidget::droppedImagePath(const QMimeData* mime)
+{
+    if (mime == nullptr || !mime->hasUrls())
+        return QString();
+
+    const QList<QUrl> urls = mime->urls();
+    if (urls.count() != 1 || !urls.first().isLocalFile())
+        return QString();
+
+    const QString path = urls.first().toLocalFile();
+    return ReferenceImage::isImageFile(path) ? path : QString();
+}
+
 void RundownTreeBaseWidget::dragMoveEvent(QDragMoveEvent* event)
 {
     if (this->lock)
@@ -2023,6 +2042,24 @@ void RundownTreeBaseWidget::dragMoveEvent(QDragMoveEvent* event)
         this->m_showDropIndicator = false;
         viewport()->update();
         event->ignore();
+        return;
+    }
+
+    // A picture goes on a row, not between rows: no insertion line, and only over a row.
+    if (!droppedImagePath(event->mimeData()).isEmpty())
+    {
+        this->m_showDropIndicator = false;
+        viewport()->update();
+
+        if (QTreeWidget::itemAt(event->position().toPoint()) != nullptr)
+        {
+            event->setDropAction(Qt::CopyAction);
+            event->accept();
+        }
+        else
+        {
+            event->ignore();
+        }
         return;
     }
 
@@ -2079,6 +2116,40 @@ QTreeWidgetItem* RundownTreeBaseWidget::lastVisibleItem() const
 
 void RundownTreeBaseWidget::dropEvent(QDropEvent* event)
 {
+    const QString imagePath = droppedImagePath(event->mimeData());
+    if (!imagePath.isEmpty())
+    {
+        QTreeWidgetItem* item = QTreeWidget::itemAt(event->position().toPoint());
+        AbstractRundownWidget* widget = item != nullptr
+            ? dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0)) : nullptr;
+
+        if (this->lock || widget == nullptr || widget->getCommand() == nullptr)
+        {
+            event->ignore();
+            return;
+        }
+
+        const QString picture = ReferenceImage::fromFile(imagePath);
+        if (picture.isEmpty())
+        {
+            EventManager::getInstance().fireStatusbarEvent(
+                StatusbarEvent(QString("Could not read %1 as a picture").arg(QFileInfo(imagePath).fileName()), 4000, true));
+            event->ignore();
+            return;
+        }
+
+        {
+            UndoScope undo(this, "Set Reference Image");
+            widget->getCommand()->setReferenceImage(picture);
+        }
+
+        EventManager::getInstance().fireStatusbarEvent(
+            StatusbarEvent(QString("Reference image set from %1").arg(QFileInfo(imagePath).fileName()), 3000));
+        event->setDropAction(Qt::CopyAction);
+        event->accept();
+        return;
+    }
+
     // Qt tells dropMimeData a container and a row, and only the middle of a row
     // names the row itself; a row's top and bottom margin name its container,
     // which for a top-level row is the root - and the paste that followed put

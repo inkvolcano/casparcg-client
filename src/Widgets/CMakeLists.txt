@@ -150,6 +150,7 @@ qt_add_library(widgets
     Rundown/RundownTreeBaseWidget.cpp Rundown/RundownTreeBaseWidget.h
     Rundown/RundownTreeWidget.cpp Rundown/RundownTreeWidget.h Rundown/RundownTreeWidget.ui
     Rundown/RundownTimingBar.cpp Rundown/RundownTimingBar.h
+    Rundown/ReferenceImageMarker.cpp Rundown/ReferenceImageMarker.h
     Rundown/RundownVolumeWidget.cpp Rundown/RundownVolumeWidget.h Rundown/RundownVolumeWidget.ui
     Rundown/RundownWidget.cpp Rundown/RundownWidget.h Rundown/RundownWidget.ui
     SettingsDialog.cpp SettingsDialog.h SettingsDialog.ui

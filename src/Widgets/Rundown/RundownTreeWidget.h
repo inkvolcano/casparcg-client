@@ -53,6 +53,7 @@
 
 class SimpleModeMarker;
 class RundownTimingBar;
+class ReferenceImageMarker;
 
 struct AutoPlayQueueInfo
 {
@@ -160,6 +161,9 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         // Total, time left from the selection, and back-timing to a hard out.
         RundownTimingBar* timingBar = nullptr;
+
+        // The picture mark and hover image on rows with a reference image.
+        ReferenceImageMarker* referenceImageMarker = nullptr;
 
         struct GatewayExitLocation
         {

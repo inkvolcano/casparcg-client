@@ -13,8 +13,11 @@
 
 #include <QtCore/QEvent>
 #include <QtCore/QObject>
+#include <QtCore/QPointer>
 #include <QtCore/QSharedPointer>
 
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMetadataWidget
@@ -34,6 +37,18 @@ class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMeta
         int mediaRequest = 0;
         void showMedia(const QString& deviceName, const QString& mediaName, const QString& type);
         void hideMedia();
+
+        // The Reference row: the item's reference image (ReferenceImage.h), shown
+        // when its rundown row is hovered. Choose... reads a picture file, Clear
+        // removes it. Rundown items only.
+        QPointer<AbstractCommand> command;
+        QMetaObject::Connection referenceConnection;
+        QLabel* labelReferenceTitle = nullptr;
+        QWidget* referenceRow = nullptr;
+        QLabel* referencePreview = nullptr;
+        QPushButton* buttonReferenceClear = nullptr;
+        void showReference();
+        void chooseReference();
 
         void blockAllSignals(bool block);
 

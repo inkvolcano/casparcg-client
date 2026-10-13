@@ -31,6 +31,7 @@
 #include "RundownWidgetHelper.h"
 #include "RundownUndoCommands.h"
 #include "RundownTimingBar.h"
+#include "ReferenceImageMarker.h"
 #include "RundownTiming.h"
 #include "PresetDialog.h"
 
@@ -123,6 +124,10 @@ RundownTreeWidget::RundownTreeWidget(QWidget* parent)
 
     this->timingBar = new RundownTimingBar(this->treeWidgetRundown, this);
     this->verticalLayout->addWidget(this->timingBar);
+
+    this->referenceImageMarker = new ReferenceImageMarker(this->treeWidgetRundown, this);
+    QObject::connect(this->treeWidgetRundown, &RundownTreeBaseWidget::itemsChanged,
+                     this->referenceImageMarker, &ReferenceImageMarker::queueSweep);
 
     QObject::connect(this->treeWidgetRundown, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(customContextMenuRequested(const QPoint &)));
 
@@ -1489,6 +1494,7 @@ void RundownTreeWidget::openRundown(const QString& path)
         // not there can be marked before it is played rather than after.
         checkMissingMedia();
         markSimpleModeItems();
+        this->referenceImageMarker->queueSweep();
 
         qDebug("RundownTreeWidget::openRundown %lld msec (%d items)", time.elapsed(), this->treeWidgetRundown->invisibleRootItem()->childCount());
     }

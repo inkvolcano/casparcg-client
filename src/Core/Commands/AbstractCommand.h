@@ -39,6 +39,11 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         virtual int getSimpleModeLabelSize() const;
         virtual QString getSimpleModeIcon() const;
 
+        // A picture of what the item puts on air, shown when hovering its row: a
+        // data URI (ReferenceImage.h), or empty. Saved with the rundown.
+        QString getReferenceImage() const;
+        void setReferenceImage(const QString& dataUri);
+
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
         virtual void setDelay(int delay);
@@ -92,6 +97,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         int simpleModeHeight = 0;              // key height in slots; 0 = auto-fit to content
         int simpleModeLabelSize = 0;      // 0 = default size
         QString simpleModeIcon;           // glyph/emoji shown on the button, empty = none
+        QString referenceImage;           // data URI, empty = none
 
     signals:
         void channelChanged(int);
@@ -106,5 +112,6 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         void cloneGroupIdChanged(const QString&);
         void disabledChanged(bool);
         void showInSimpleModeChanged(bool);
+        void referenceImageChanged(const QString&);
         void propertyChanged();
 };

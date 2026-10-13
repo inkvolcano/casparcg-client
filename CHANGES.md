@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Reference Pictures On Rundown Items
+
+- **Give a rundown item a picture of what it puts on air**, and hover over its
+  row to see it. Useful for telling a run of lower thirds apart at a glance.
+- **Two ways to add one:** **Choose...** in the new **Reference** row of the
+  Inspector, or drop a picture file (PNG, JPEG, BMP, GIF) from Explorer onto the
+  row in the rundown. **Clear** removes it.
+- Rows with a picture show a small picture mark, so you can see which ones are
+  worth hovering.
+- The picture is saved inside the rundown file, so it travels with the rundown to
+  any machine. It is scaled down to fit 480 pixels, about 30 to 60 KB each, and
+  pictures with transparency keep it.
+- Adding or clearing a picture can be undone. Undo keeps each picture once
+  however many steps it is in, so a rundown full of pictures does not fill the
+  memory.
+
 ## Codec And Resolution In The Inspector
 
 - **A Media line in the Inspector** for a movie or still in a rundown: the codec,

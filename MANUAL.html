@@ -578,6 +578,15 @@ hr {
 <h3>Unit Toggles</h3>
 <p>The delay and duration fields each have a <b>ms/fr</b> toggle button to switch between milliseconds and frames. The value auto-converts using the channel's FPS.</p>
 
+<h3>Reference picture</h3>
+<ul>
+<li><b>Give a rundown item a picture of what it puts on air</b>, and hover over its row to see it. Useful for telling a run of lower thirds apart at a glance.</li>
+<li><b>Two ways to add one:</b> <b>Choose...</b> in the new <b>Reference</b> row of the Inspector, or drop a picture file (PNG, JPEG, BMP, GIF) from Explorer onto the row in the rundown. <b>Clear</b> removes it.</li>
+<li>Rows with a picture show a small picture mark, so you can see which ones are worth hovering.</li>
+<li>The picture is saved inside the rundown file, so it travels with the rundown to any machine. It is scaled down to fit 480 pixels, about 30 to 60 KB each, and pictures with transparency keep it.</li>
+<li>Adding or clearing a picture can be undone. Undo keeps each picture once however many steps it is in, so a rundown full of pictures does not fill the memory.</li>
+</ul>
+
 <h3>Media line</h3>
 <ul>
 <li><b>A Media line in the Inspector</b> for a movie or still in a rundown: the codec, resolution, frame rate and scan, whether it has alpha, the audio, and the length. For example "Apple ProRes 1920x1080 25 fps &middot; PCM 24-bit stereo 48 kHz &middot; 0:30", or "PNG 1920x1080 &middot; alpha".</li>

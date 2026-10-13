@@ -151,6 +151,9 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void dragMoveEvent(QDragMoveEvent* event);
         void dragLeaveEvent(QDragLeaveEvent* event);
         void dropEvent(QDropEvent* event);
+
+        // The picture file a drag carries, if it carries exactly one; else empty.
+        static QString droppedImagePath(const QMimeData* mime);
         void paintEvent(QPaintEvent* event);
         void showEvent(QShowEvent* event);
 

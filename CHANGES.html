@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#reference-image">Reference Pictures On Rundown Items</a><br>
 <a href="#media-info">Codec And Resolution In The Inspector</a><br>
 <a href="#rundown-timing">Rundown Timing And Back-Timing</a><br>
 <a href="#inspector-undo">Undo For Inspector Edits</a><br>
@@ -1868,6 +1869,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="reference-image">Reference Pictures On Rundown Items</h2>
+
+<ul>
+<li><b>Give a rundown item a picture of what it puts on air</b>, and hover over its row to see it. Useful for telling a run of lower thirds apart at a glance.</li>
+<li><b>Two ways to add one:</b> <b>Choose...</b> in the new <b>Reference</b> row of the Inspector, or drop a picture file (PNG, JPEG, BMP, GIF) from Explorer onto the row in the rundown. <b>Clear</b> removes it.</li>
+<li>Rows with a picture show a small picture mark, so you can see which ones are worth hovering.</li>
+<li>The picture is saved inside the rundown file, so it travels with the rundown to any machine. It is scaled down to fit 480 pixels, about 30 to 60 KB each, and pictures with transparency keep it.</li>
+<li>Adding or clearing a picture can be undone. Undo keeps each picture once however many steps it is in, so a rundown full of pictures does not fill the memory.</li>
+</ul>
 
 <h2 id="media-info">Codec And Resolution In The Inspector</h2>
 

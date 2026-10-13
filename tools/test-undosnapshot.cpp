@@ -54,6 +54,23 @@ int main(int argc, char* argv[])
     out << QString("  5,000 items: %1 KB held, %2 KB stored\n").arg(big.size() * 2 / 1024).arg(packed.size() / 1024);
     expectTrue(packed.size() * 10 < big.size() * 2, "and is stored in under a tenth of the memory");
 
+    // Reference images: taken out of each step and held once.
+    QString picture = "data:image/jpeg;base64,";
+    for (int i = 0; i < 4000; i++)
+        picture += QChar('A' + (i * 7919) % 26);
+    QString withImages = "<items>";
+    for (int i = 0; i < 20; i++)
+        withImages += QString("<item><label>LT %1</label><referenceimage>%2%3</referenceimage></item>").arg(i).arg(picture).arg(i);
+    withImages += "</items>";
+    roundTrip(withImages, "a rundown with twenty reference images comes back exactly");
+
+    const QByteArray first = UndoSnapshot::pack(withImages);
+    const QByteArray again = UndoSnapshot::pack(withImages);
+    expectTrue(qUncompress(first).size() < 20 * 200, "a step keeps keys, not the pictures");
+    expectTrue(first == again, "the same rundown packs the same way twice");
+    roundTrip("<items><item><referenceimage></referenceimage></item></items>", "an empty picture element");
+    roundTrip("<items><item><referenceimage>data:image/png;base64,AAAA", "a cut-off picture element is left as it is");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }
