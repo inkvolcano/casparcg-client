@@ -1847,6 +1847,9 @@ than included. The rule is tested against every secret the client stores.
   row in the rundown. **Clear** removes it.
 - Rows with a picture show a small picture mark, so you can see which ones are
   worth hovering.
+- **Every hover is the same size**: the picture is fitted into one 384 x 216
+  frame, so a full-frame grab fills it, other shapes fit inside it undistorted,
+  and small pictures are enlarged to match.
 - The picture is saved inside the rundown file, so it travels with the rundown to
   any machine. It is scaled down to fit 480 pixels, about 30 to 60 KB each, and
   pictures with transparency keep it.

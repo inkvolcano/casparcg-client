@@ -70,6 +70,14 @@ int main(int argc, char* argv[])
     expectTrue(tooltipHtml(stored).startsWith("<img src=\"data:image/jpeg;base64,"), "the hover shows the picture");
     expectTrue(tooltipHtml("javascript:alert(1)").isEmpty(), "and only a picture");
 
+    // One size for every hover.
+    expectTrue(tooltipHtml(stored).endsWith("width=\"384\" height=\"216\"/>"), "a full-frame grab fills the hover frame exactly");
+    expectTrue(tooltipHtml(encode(small)).contains("width=\"384\" height=\"192\""), "a small picture is enlarged to the frame's width");
+    QImage tall(300, 600, QImage::Format_RGB32);
+    tall.fill(Qt::darkGray);
+    expectTrue(tooltipHtml(encode(tall)).contains("width=\"108\" height=\"216\""), "a tall picture fills the frame's height, undistorted");
+    expectTrue(hoverSize(QSize()) == QSize(HOVER_WIDTH, HOVER_HEIGHT), "an unreadable size still gets the frame");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

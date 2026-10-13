@@ -20,10 +20,19 @@
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 #include <QtGui/QImage>
+#include <QtGui/QImageReader>
+#include <QtCore/QSize>
 
 namespace ReferenceImage
 {
     static const int MAX_SIDE = 480;
+
+    // Every hover shows its picture in the same frame: the user found pictures
+    // shown at their own size "a bit big or small". 16:9, so a full-frame grab
+    // fills it exactly; anything else is fitted inside it without distortion, and
+    // a small picture is enlarged to fit like the rest.
+    static const int HOVER_WIDTH = 384;
+    static const int HOVER_HEIGHT = 216;
 
     inline QStringList fileSuffixes()
     {
@@ -76,11 +85,34 @@ namespace ReferenceImage
         return image;
     }
 
-    // What the hover shows: the picture at its stored size.
+    // The size a picture of this size is shown at: fitted into the hover frame.
+    inline QSize hoverSize(const QSize& picture)
+    {
+        if (picture.width() <= 0 || picture.height() <= 0)
+            return QSize(HOVER_WIDTH, HOVER_HEIGHT);
+        return picture.scaled(HOVER_WIDTH, HOVER_HEIGHT, Qt::KeepAspectRatio);
+    }
+
+    // The stored picture's size, read from its header only.
+    inline QSize pictureSize(const QString& dataUri)
+    {
+        const int comma = dataUri.indexOf(',');
+        if (!dataUri.startsWith("data:image/") || comma < 0)
+            return QSize();
+
+        QByteArray bytes = QByteArray::fromBase64(dataUri.mid(comma + 1).toLatin1());
+        QBuffer buffer(&bytes);
+        buffer.open(QIODevice::ReadOnly);
+        return QImageReader(&buffer).size();
+    }
+
+    // What the hover shows: the picture, fitted into the hover frame.
     inline QString tooltipHtml(const QString& dataUri)
     {
         if (!dataUri.startsWith("data:image/"))
             return QString();
-        return QString("<img src=\"%1\"/>").arg(dataUri);
+
+        const QSize size = hoverSize(pictureSize(dataUri));
+        return QString("<img src=\"%1\" width=\"%2\" height=\"%3\"/>").arg(dataUri).arg(size.width()).arg(size.height());
     }
 }
