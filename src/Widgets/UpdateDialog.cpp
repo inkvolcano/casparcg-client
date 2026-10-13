@@ -1,5 +1,7 @@
 #include "UpdateDialog.h"
 
+#include <QtGui/QTextCursor>
+
 namespace
 {
     // Installing and putting back a build are done by a Windows script (cmd.exe,
@@ -520,9 +522,23 @@ void UpdateDialog::choose(int index)
     this->assetUrl = offer.assetUrl;
     this->sumsUrl = offer.sumsUrl;
 
-    if (!offer.notes.isEmpty())
+    // What is new first: everything published since the running build, up to
+    // the chosen one. A release without a What's new, or a rollback, shows the
+    // chosen release's own notes as they are. The notes are Markdown.
+    QList<ClientRelease::PublishedNotes> published;
+    for (const Offer& each : this->offers)
+        published.append({ each.version, each.notes });
+
+    QString shown = ClientRelease::whatsNewSince(published, offer.version, running);
+    if (!shown.isEmpty())
+        shown = QString("# What's new\n\n%1").arg(shown);
+    else
+        shown = offer.notes;
+
+    if (!shown.trimmed().isEmpty())
     {
-        this->textNotes->setPlainText(offer.notes);
+        this->textNotes->setMarkdown(shown);
+        this->textNotes->moveCursor(QTextCursor::Start);
         this->textNotes->setVisible(true);
     }
 

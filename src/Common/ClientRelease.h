@@ -22,6 +22,9 @@
 // Header-only, like PanelFit.h and CheckInTarget.h, so the rules can be compiled
 // and tested on their own.
 
+#include <algorithm>
+
+#include <QtCore/QList>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
@@ -446,5 +449,73 @@ namespace ClientRelease
             && record.size > 0;
 
         return record;
+    }
+
+    // The "What's new" part of a release's notes: the text under a "## What's new"
+    // heading, up to the next heading of that level. tools/publish-build.ps1 writes
+    // it from the changelog; a release published before that has none, and this is
+    // empty for it.
+    inline QString whatsNew(const QString& notes)
+    {
+        const QStringList lines = QString(notes).replace("\r\n", "\n").split('\n');
+        QStringList out;
+        bool inside = false;
+
+        for (const QString& line : lines)
+        {
+            if (line.startsWith("## "))
+            {
+                if (inside)
+                    break;
+                const QString heading = line.mid(3).trimmed().toLower().replace(QChar(0x2019), QChar('\''));
+                inside = heading.startsWith("what's new");
+                continue;
+            }
+
+            if (inside)
+                out.append(line);
+        }
+
+        return out.join('\n').trimmed();
+    }
+
+    struct PublishedNotes
+    {
+        Version version;
+        QString notes;
+    };
+
+    // What the update window shows for a chosen build: when it is newer than the
+    // one running, the What's new of every published build after the running one
+    // up to and including the chosen one, newest first, each under its own
+    // heading - an operator three builds behind sees all three. Empty when none of
+    // them has a What's new, so the caller can show the chosen build's notes as
+    // they are; and for the running build or an older one, since rolling back
+    // takes things away rather than adding them.
+    inline QString whatsNewSince(const QList<PublishedNotes>& releases, const Version& chosen, const Version& running)
+    {
+        if (!isNewer(chosen, running))
+            return QString();
+
+        QList<PublishedNotes> wanted;
+        for (const PublishedNotes& release : releases)
+        {
+            if (isNewer(release.version, running) && !isNewer(release.version, chosen))
+                wanted.append(release);
+        }
+
+        std::sort(wanted.begin(), wanted.end(), [](const PublishedNotes& a, const PublishedNotes& b) {
+            return isNewer(a.version, b.version);
+        });
+
+        QStringList parts;
+        for (const PublishedNotes& release : wanted)
+        {
+            const QString text = whatsNew(release.notes);
+            if (!text.isEmpty())
+                parts.append(QString("## %1\n\n%2").arg(describe(release.version), text));
+        }
+
+        return parts.join("\n\n");
     }
 }

@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## What's New In The Update Window
+
+- **The update window says what is new.** Choose a newer build and the text
+  under the list starts with **What's new**: every change since the build you are
+  running, newest build first, so an operator a few builds behind sees all of it
+  before installing.
+- It is written when a build is published, from the changelog entries added
+  since the previous published build. Builds published before this one have no
+  What's new, and show their install notes as before.
+- Rolling back to an older build shows that build's notes, not a What's new.
+- The notes are shown formatted, with headings and lists, instead of as raw text.
+
 ## Reference Pictures On Rundown Items
 
 - **Give a rundown item a picture of what it puts on air**, and hover over its

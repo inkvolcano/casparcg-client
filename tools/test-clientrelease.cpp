@@ -428,6 +428,37 @@ int main(int argc, char* argv[])
     everyPublishedBuildIsAChoice();
     aVerifiedDownloadIsRemembered();
 
+    // ---- What's new in the update window ----------------------------------------
+    const QString published285 =
+        "## What's new since build 284\n\n### Reference Pictures\n\n- Every hover is the same size.\n\n"
+        "## Installing\n\nBuild 285 of the client, 2.3.1.";
+    expectTrue(ClientRelease::whatsNew(published285) == "### Reference Pictures\n\n- Every hover is the same size.",
+               "What's new is the text under its heading, and stops at the next heading");
+    expectTrue(ClientRelease::whatsNew("Build 282 of the client, 2.3.1.\n\nVerified against SHA256SUMS.txt").isEmpty(),
+               "a release published before notes were written has none");
+    expectTrue(ClientRelease::whatsNew(QString::fromUtf8("## What\xE2\x80\x99s New\r\n\r\n- curly quote, Windows lines\r\n")).contains("curly quote"),
+               "a typographic apostrophe and Windows line endings are read too");
+
+    QList<ClientRelease::PublishedNotes> releases;
+    releases.append({ ClientRelease::parse("v2.3.1-285"), published285 });
+    releases.append({ ClientRelease::parse("v2.3.1-284"), "## What's new since build 282\n\n### Pictures on items\n\n## Installing\n\nx" });
+    releases.append({ ClientRelease::parse("v2.3.1-282"), "Build 282 of the client." });
+    releases.append({ ClientRelease::parse("v2.3.1-266"), "## What's new since build 260\n\n### Server menu\n" });
+
+    const QString fromOld = ClientRelease::whatsNewSince(releases, ClientRelease::parse("v2.3.1-285"), ClientRelease::parse("2.3.1 build 266"));
+    expectTrue(fromOld.contains("Reference Pictures") && fromOld.contains("Pictures on items"),
+               "an operator two builds behind sees both builds' What's new");
+    expectTrue(fromOld.indexOf("285") < fromOld.indexOf("284"), "newest first");
+    expectTrue(!fromOld.contains("Server menu"), "but not what the running build already has");
+
+    const QString oneStep = ClientRelease::whatsNewSince(releases, ClientRelease::parse("v2.3.1-284"), ClientRelease::parse("2.3.1 build 282"));
+    expectTrue(oneStep.contains("Pictures on items") && !oneStep.contains("Reference Pictures"),
+               "choosing an older newer build stops at that build");
+    expectTrue(ClientRelease::whatsNewSince(releases, ClientRelease::parse("v2.3.1-282"), ClientRelease::parse("2.3.1 build 285")).isEmpty(),
+               "rolling back shows no What's new");
+    expectTrue(ClientRelease::whatsNewSince(releases, ClientRelease::parse("v2.3.1-282"), ClientRelease::parse("2.3.1 build 266")).isEmpty(),
+               "nor does a build whose releases carry none");
+
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 
     return failures == 0 ? 0 : 1;

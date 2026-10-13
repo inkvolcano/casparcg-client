@@ -13,6 +13,11 @@
 #
 # Nothing here is automatic and nothing overwrites a published build unless you
 # ask. A venue may already be running what is under that tag.
+#
+# A new release's notes open with "## What's new since build N": what CHANGES.md
+# gained since the newest build already published (tools/release-notes.py). The
+# client's update window shows that part to an operator before they install.
+# Add a CHANGES.md entry for anything an operator would notice, and it is there.
 
 [CmdletBinding()]
 param(
@@ -255,6 +260,48 @@ if ($LocalCopy -ne "") {
     Write-Host "    $localFolder"
 }
 
+# ---- what is new since the last published build -------------------------------
+#
+# The release notes open with what the changelog gained since the newest build
+# already published here (tools/release-notes.py), so the update window can show
+# an operator what they are about to get. Nothing found - no earlier release, or
+# no history to compare with - and the notes are the install text alone.
+
+$previousBuild = 0
+$whatsNew = ""
+
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    $tags = & gh release list --repo $Repo --limit 200 --json tagName --jq '.[].tagName' 2>$null
+    foreach ($tag_ in @($tags)) {
+        if ("$tag_" -match '-(\d+)$') {
+            $number = [int]$Matches[1]
+            if ($number -lt [int]$build -and $number -gt $previousBuild) { $previousBuild = $number }
+        }
+    }
+
+    if ($previousBuild -gt 0) {
+        $notesScript = Join-Path $PSScriptRoot "release-notes.py"
+        $whatsNew = ((& python $notesScript --since-build $previousBuild 2>$null) -join "`n").Trim()
+    }
+} catch {
+    $whatsNew = ""
+} finally {
+    $ErrorActionPreference = $previousPreference
+}
+
+if ($previousBuild -gt 0) {
+    if ($whatsNew) {
+        Write-Host "  what's new since build $($previousBuild):"
+        foreach ($line in ($whatsNew -split "`n")) {
+            if ($line -like "### *") { Write-Host "    $($line.Substring(4))" }
+        }
+    } else {
+        Write-Host "  nothing new in CHANGES.md since build $previousBuild"
+    }
+}
+
 if ($WhatIfPublish) {
     Write-Host ""
     Write-Host "  -WhatIfPublish: built but not published. The files are in $staging"
@@ -278,7 +325,12 @@ if ($existing) {
     if ($LASTEXITCODE -ne 0) { Fail "gh release upload failed" }
 } else {
     Write-Host "  creating $tag..."
-    $notes = "Build $build of the client, $major.$minor.$bug." +
+    $whatsNewNotes = ""
+    if ($whatsNew) {
+        $whatsNewNotes = "## What's new since build $previousBuild`n`n$whatsNew`n`n## Installing`n`n"
+    }
+
+    $notes = $whatsNewNotes + "Build $build of the client, $major.$minor.$bug." +
              "`n`n**On build 210 or newer:** Help -> Check for Updates -> Download -> Install and Restart." +
              "`n`n**On anything older**, which has no Install and Restart: Download, then Show Download, " +
              "put ``install-update.cmd`` from this release into the folder that opens, close the client and " +
