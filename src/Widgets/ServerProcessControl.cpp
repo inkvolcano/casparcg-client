@@ -2,7 +2,11 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
+#include <QtCore/QElapsedTimer>
 #include <QtCore/QProcess>
+#include <QtCore/QTimer>
+
+#include <memory>
 
 #if defined(Q_OS_WIN)
 #include <windows.h>
@@ -199,5 +203,74 @@ namespace ServerProcessControl
             return false;
 
         return QProcess::startDetached(info.absoluteFilePath(), arguments, info.absolutePath());
+    }
+
+    void stopThenStart(QObject* context, const QStringList& stop, const QStringList& start,
+                       const std::function<void(const QString&)>& done)
+    {
+        QList<quint32> stopping;
+        QStringList refused;
+        for (const QString& executable : stop)
+        {
+            for (quint32 pid : runningFrom(executable))
+            {
+                if (terminate(pid))
+                    stopping.append(pid);
+                else if (!refused.contains(QFileInfo(executable).fileName()))
+                    refused.append(QFileInfo(executable).fileName());
+            }
+        }
+
+        if (!refused.isEmpty())
+        {
+            done(QString("%1 did not stop. It may run as administrator or as a Windows service, which a client "
+                         "running as a normal user cannot stop. Nothing was started.").arg(refused.join(" and ")));
+            return;
+        }
+
+        auto startAll = [start]() {
+            QStringList problems;
+            for (const QString& executable : start)
+            {
+                if (!QFileInfo(executable).isFile())
+                    continue;
+                if (supported() && !runningFrom(executable).isEmpty())
+                    continue;
+                if (!startDetached(executable))
+                    problems.append(QString("%1 did not start: %2").arg(QFileInfo(executable).fileName(), QDir::toNativeSeparators(executable)));
+            }
+            return problems.join("\n");
+        };
+
+        if (stopping.isEmpty())
+        {
+            done(startAll());
+            return;
+        }
+
+        // Polled rather than waited for, so the window stays responsive.
+        QTimer* poll = new QTimer(context);
+        poll->setInterval(200);
+        auto started = std::make_shared<QElapsedTimer>();
+        started->start();
+
+        QObject::connect(poll, &QTimer::timeout, context, [poll, started, stopping, startAll, done]() {
+            bool alive = false;
+            for (quint32 pid : stopping)
+                alive = alive || isRunning(pid);
+            if (alive && started->elapsed() < 10000)
+                return;
+
+            poll->stop();
+            poll->deleteLater();
+
+            if (alive)
+            {
+                done("It did not stop within ten seconds. Nothing was started.");
+                return;
+            }
+            done(startAll());
+        });
+        poll->start();
     }
 }

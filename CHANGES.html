@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#server-config">Edit The Server Config</a><br>
 <a href="#server-download">Download A CasparCG Server Build</a><br>
 <a href="#update-whats-new">What's New In The Update Window</a><br>
 <a href="#reference-image">Reference Pictures On Rundown Items</a><br>
@@ -1871,6 +1872,26 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="server-config">Edit The Server Config</h2>
+
+<ul>
+<li><b>Edit a server's casparcg.config in the client.</b> A server's &equiv; menu in Server Status has <b>Edit Server Config...</b>. Every setting the server reads is there, with a list to choose from wherever the server only takes certain values: video modes, keyers, colour spaces, log levels and so on.</li>
+<li>On the left: the settings pages (General, Folders and logging, Media scanner, OSC, HTML templates, FFmpeg, NDI, System audio, Flash), then the AMCP ports, OSC clients, the channels with their outputs and producers, custom video modes and Flash template hosts. <b>Add</b>, <b>Remove</b>, <b>Up</b> and <b>Down</b> work on them. Moving a channel renumbers the ones after it.</li>
+<li>Every output type: Screen, DeckLink (keyer, latency, pixel format, colour space, subregion, HDR metadata, VANC, ports in sync), NDI, System audio, FFmpeg, Art-Net with its fixtures, Bluefish.</li>
+<li><b>Settings of server version</b> chooses which settings are shown: 2.4, 2.5 or 2.6/master. It starts on the version the server reports. A setting a server does not read is shown only when the file already has it, and is marked.</li>
+<li><b>Problems</b> lists what the server would make of the file before you save:
+<ul>
+<li>what would stop it from starting (an unknown video mode, a producer without a layer, two AMCP ports on one number, Art-Net fixtures past DMX channel 512);</li>
+<li>which outputs it would skip (a second NDI output on one channel, NDI on a 16-bit channel, an Art-Net output without fixtures);</li>
+<li>what it would ignore.</li>
+</ul></li>
+<li>The video mode list holds the 41 modes the server really has. The example in the shipped casparcg.config names dci1080p and dci2160p modes that do not exist; the editor lists the real 4kDCIp ones and says so when a file uses the wrong ones.</li>
+<li><b>Nothing it does not know is lost:</b> unknown elements, comments (including the reference block at the end of the shipped config) and newer settings stay where they were. <b>File as it will be saved</b> shows the exact text.</li>
+<li><b>A setting on Default is left out of the file, never written empty.</b> The server reads an empty setting as empty rather than as its default, and for some settings that stops it.</li>
+<li><b>Every save writes a dated backup</b> beside the file first (<code>casparcg.config.2026-10-20.bak</code>; a second one the same day adds the time). <b>Save and Restart Server</b> saves, then restarts the server and its scanner, which read the config only when they start.</li>
+<li>A server folder with no casparcg.config gets a working one to start from: one channel on screen, AMCP on 5250.</li>
+</ul>
 
 <h2 id="server-download">Download A CasparCG Server Build</h2>
 

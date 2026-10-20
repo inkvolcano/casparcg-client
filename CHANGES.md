@@ -1838,6 +1838,46 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Edit The Server Config
+
+- **Edit a server's casparcg.config in the client.** A server's ≡ menu in Server
+  Status has **Edit Server Config...**. Every setting the server reads is there,
+  with a list to choose from wherever the server only takes certain values: video
+  modes, keyers, colour spaces, log levels and so on.
+- On the left: the settings pages (General, Folders and logging, Media scanner,
+  OSC, HTML templates, FFmpeg, NDI, System audio, Flash), then the AMCP ports, OSC
+  clients, the channels with their outputs and producers, custom video modes and
+  Flash template hosts. **Add**, **Remove**, **Up** and **Down** work on them.
+  Moving a channel renumbers the ones after it.
+- Every output type: Screen, DeckLink (keyer, latency, pixel format, colour space,
+  subregion, HDR metadata, VANC, ports in sync), NDI, System audio, FFmpeg,
+  Art-Net with its fixtures, Bluefish.
+- **Settings of server version** chooses which settings are shown: 2.4, 2.5 or
+  2.6/master. It starts on the version the server reports. A setting a server
+  does not read is shown only when the file already has it, and is marked.
+- **Problems** lists what the server would make of the file before you save:
+  - what would stop it from starting (an unknown video mode, a producer without
+    a layer, two AMCP ports on one number, Art-Net fixtures past DMX channel 512);
+  - which outputs it would skip (a second NDI output on one channel, NDI on a
+    16-bit channel, an Art-Net output without fixtures);
+  - what it would ignore.
+- The video mode list holds the 41 modes the server really has. The example in
+  the shipped casparcg.config names dci1080p and dci2160p modes that do not
+  exist; the editor lists the real 4kDCIp ones and says so when a file uses the
+  wrong ones.
+- **Nothing it does not know is lost:** unknown elements, comments (including the
+  reference block at the end of the shipped config) and newer settings stay
+  where they were. **File as it will be saved** shows the exact text.
+- **A setting on Default is left out of the file, never written empty.** The
+  server reads an empty setting as empty rather than as its default, and for
+  some settings that stops it.
+- **Every save writes a dated backup** beside the file first
+  (`casparcg.config.2026-10-20.bak`; a second one the same day adds the time).
+  **Save and Restart Server** saves, then restarts the server and its scanner,
+  which read the config only when they start.
+- A server folder with no casparcg.config gets a working one to start from: one
+  channel on screen, AMCP on 5250.
+
 ## Download A CasparCG Server Build
 
 - **Download a CasparCG Server build from the client.** A server's ≡ menu in

@@ -6,7 +6,6 @@
 
 #include <QtCore/QDateTime>
 #include <QtCore/QDir>
-#include <QtCore/QElapsedTimer>
 #include <QtCore/QFileInfo>
 #include <QtCore/QMap>
 #include <QtCore/QProcess>
@@ -36,7 +35,6 @@
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
 
-#include <memory>
 
 namespace
 {
@@ -851,56 +849,16 @@ void ServerDownloadDialog::switchServer(const QString& oldExecutable, const QStr
 {
     using namespace ServerProcessControl;
 
-    QList<quint32> stopping;
-    QList<quint32> refused;
-    for (quint32 pid : runningFrom(oldExecutable) + runningFrom(scannerPathFor(oldExecutable)))
-    {
-        if (terminate(pid))
-            stopping.append(pid);
-        else
-            refused.append(pid);
-    }
-
-    if (!refused.isEmpty())
-    {
-        say("The old server or scanner did not stop. It may run as administrator or as a Windows service, "
-            "which a client running as a normal user cannot stop. Nothing was started.", true);
-        return;
-    }
-
     setBusy(true);
     this->progress->setRange(0, 0);
     say("Stopping the old server...");
 
-    QTimer* poll = new QTimer(this);
-    poll->setInterval(200);
-    auto started = std::make_shared<QElapsedTimer>();
-    started->start();
+    const QStringList stop = QStringList() << oldExecutable << scannerPathFor(oldExecutable);
+    const QStringList start = QStringList() << scannerPathFor(newExecutable) << newExecutable;
 
-    QObject::connect(poll, &QTimer::timeout, this, [this, poll, started, stopping, newExecutable]() {
-        bool alive = false;
-        for (quint32 pid : stopping)
-            alive = alive || isRunning(pid);
-        if (alive && started->elapsed() < 10000)
-            return;
-
-        poll->stop();
-        poll->deleteLater();
+    stopThenStart(this, stop, start, [this, newExecutable](const QString& problem) {
         this->progress->setRange(0, 100);
         setBusy(false);
-
-        if (alive)
-        {
-            say("The old server did not stop within ten seconds. Nothing was started.", true);
-            return;
-        }
-
-        QStringList problems;
-        const QString scanner = scannerPathFor(newExecutable);
-        if (QFileInfo(scanner).isFile() && !startDetached(scanner))
-            problems << "scanner.exe did not start: " + QDir::toNativeSeparators(scanner);
-        if (!startDetached(newExecutable))
-            problems << "casparcg.exe did not start: " + QDir::toNativeSeparators(newExecutable);
 
         // A server that is not connected is retried by the client every few
         // seconds; this only saves the first wait.
@@ -908,10 +866,9 @@ void ServerDownloadDialog::switchServer(const QString& oldExecutable, const QStr
         if (device != nullptr && !device->isConnected())
             device->connectDevice();
 
-        say(problems.isEmpty() ? QString("Switched: '%1' now runs from %2.")
-                                     .arg(this->deviceName, QDir::toNativeSeparators(QFileInfo(newExecutable).absolutePath()))
-                               : problems.join("\n"),
-            !problems.isEmpty());
+        say(problem.isEmpty() ? QString("Switched: '%1' now runs from %2.")
+                                    .arg(this->deviceName, QDir::toNativeSeparators(QFileInfo(newExecutable).absolutePath()))
+                              : problem,
+            !problem.isEmpty());
     });
-    poll->start();
 }

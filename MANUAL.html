@@ -759,6 +759,18 @@ hr {
 <li>The client reconnects on its own once the server answers, and keeps the window responsive while a server stops.</li>
 </ul>
 
+<h3>Edit the server config</h3>
+<p><b>Edit Server Config...</b>, in the same menu, edits the <code>casparcg.config</code> beside that server's executable.</p>
+<ul>
+<li>The list on the left holds the settings pages, then the AMCP ports, OSC clients, channels (with their outputs and producers), custom video modes and Flash template hosts. Choose one to see its settings on the right; hover over a setting for where it sits in the file.</li>
+<li><b>Add</b> adds a channel, an output or producer to the chosen channel, a DeckLink port or an Art-Net fixture, and the other lists. <b>Remove</b>, <b>Up</b> and <b>Down</b> act on the chosen entry. Channels are numbered by their order.</li>
+<li>Lists offer only the values the server takes. <b>Default (...)</b> leaves the setting out of the file and says what the server then uses.</li>
+<li><b>Settings of server version</b> picks 2.4, 2.5 or 2.6/master. It starts on the version the server reports.</li>
+<li><b>Problems</b> shows what would stop the server from starting, which outputs it would skip, and what it would ignore. <b>File as it will be saved</b> shows the exact text.</li>
+<li><b>Save</b> writes a dated backup first (<code>casparcg.config.YYYY-MM-DD.bak</code>). <b>Save and Restart Server</b> also restarts the server and its scanner; they read the file only when they start.</li>
+<li>Unknown elements and comments are kept. Only the indentation of the file changes.</li>
+</ul>
+
 <h3>Download a server build</h3>
 <p><b>Download Server Build...</b>, at the bottom of the same menu, installs another CasparCG Server version beside the current one. It is there even when no server path is set.</p>
 <ul>

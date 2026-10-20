@@ -20,6 +20,12 @@
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
+#include <functional>
+
+QT_BEGIN_NAMESPACE
+class QObject;
+QT_END_NAMESPACE
+
 namespace ServerProcessControl
 {
     struct Running
@@ -74,4 +80,13 @@ namespace ServerProcessControl
     // the same file name whose path this client is not allowed to read.
     WIDGETS_EXPORT Availability availabilityFor(const QString& what, bool executableExists, bool canFind,
                                                 int running, int unreadable);
+
+    // Stops every process running from the `stop` executables, waits up to ten
+    // seconds for them to be gone, then starts the `start` executables in order.
+    // Returns at once; `done` is called on `context`'s thread with an empty
+    // string when all went well, or what did not. Nothing is started when a
+    // process would not stop: a second server on the same channels is worse
+    // than none.
+    WIDGETS_EXPORT void stopThenStart(QObject* context, const QStringList& stop, const QStringList& start,
+                                      const std::function<void(const QString&)>& done);
 }

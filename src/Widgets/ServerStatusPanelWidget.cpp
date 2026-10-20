@@ -18,6 +18,7 @@
 
 #include "DatabaseManager.h"
 
+#include "ServerConfigDialog.h"
 #include "ServerDownloadDialog.h"
 #include "ServerProcessControl.h"
 
@@ -594,6 +595,11 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
     // whatever this server's folder is, set or not.
     auto addDownload = [this, menu, deviceName]() {
         menu->addSeparator();
+        QAction* config = menu->addAction("Edit Server Config...");
+        config->setToolTip("Every setting in this server's casparcg.config.");
+        QObject::connect(config, &QAction::triggered, this, [this, deviceName]() {
+            QTimer::singleShot(0, this, [this, deviceName]() { ServerConfigDialog::openFor(deviceName, window()); });
+        });
         QAction* action = menu->addAction("Download Server Build...");
         action->setEnabled(supported());
         if (!supported())
