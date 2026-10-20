@@ -759,6 +759,17 @@ hr {
 <li>The client reconnects on its own once the server answers, and keeps the window responsive while a server stops.</li>
 </ul>
 
+<h3>Download a server build</h3>
+<p><b>Download Server Build...</b>, at the bottom of the same menu, installs another CasparCG Server version beside the current one. It is there even when no server path is set.</p>
+<ul>
+<li>The list shows the stable releases, the pre-releases if <i>Show pre-releases</i> is ticked, and the newest five nightly builds of each branch. Choosing one shows its notes.</li>
+<li><b>Install into</b> is the folder the new build's own folder is made in; by default the one holding the current server. Every build gets a new folder (<code>CasparCG Server 2.5.1</code>); an existing folder is never written into.</li>
+<li>A release is checked against the SHA-256 GitHub publishes for it; a nightly, which has none, for its full size and for being a zip. Then it is unpacked with Windows' own <code>tar.exe</code>.</li>
+<li><b>Keep this server's casparcg.config</b> writes a dated backup beside the current config (<code>casparcg.config.YYYY-MM-DD.bak</code>), then copies it into the new folder. The new build's own config is kept as <code>casparcg.config.shipped</code>. Relative media, template, data and font paths are pointed at the old folder, and listed.</li>
+<li><b>Point this server at the new folder</b> changes the server path in Settings. If the old server is running, the client asks whether to stop it and its scanner and start the new ones.</li>
+<li>To go back, set the server path to the old folder again in Settings &gt; Devices; nothing in it was changed.</li>
+</ul>
+
 <h3>What it will and will not touch</h3>
 <ul>
 <li>Only processes running from that server's configured folder, so a second installation elsewhere is never stopped.</li>

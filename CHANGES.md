@@ -1838,6 +1838,36 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Download A CasparCG Server Build
+
+- **Download a CasparCG Server build from the client.** A server's ≡ menu in
+  Server Status has **Download Server Build...**. It lists the stable releases,
+  the pre-releases (tick *Show pre-releases*) and the newest five nightly builds
+  of every branch (master, v2.5.x, v2.4.x). Choose one to read its release notes.
+- **Every build goes into a new folder of its own**, beside the current one:
+  `CasparCG Server 2.5.1`, `CasparCG Server master 2026-10-15 fe19ac0`. Nothing
+  is replaced, so the running server is untouched and going back is a matter of
+  pointing the server at the old folder again.
+- **Checked before it is unpacked.** A release is checked against the SHA-256
+  GitHub publishes for it. Nightlies have no published checksum, so they are
+  checked for their full size and for being a zip. A download that fails a check
+  is thrown away.
+- **Keep this server's casparcg.config** (ticked when there is one): a dated
+  backup, `casparcg.config.2026-10-20.bak`, is written beside the original
+  first, then the config is copied into the new folder. The new build's own
+  config is kept there as `casparcg.config.shipped`, to look up new options.
+- Relative media, template, data and font paths in the carried config are
+  pointed at the old folder, where their files are, and the window lists each
+  one it changed. Absolute paths and everything else stay exactly as written.
+- **Point the server at the new folder** (ticked by default) changes the server
+  folder in Settings. If the old server is still running, the client then asks
+  whether to stop it and its scanner and start the new ones. Nothing is stopped
+  without that answer.
+- The download runs while you keep working, and can be stopped by closing the
+  window. Windows only.
+- A server folder changed in Settings is now followed by the server menu without
+  restarting the client.
+
 ## What's New In The Update Window
 
 - **The update window says what is new.** Choose a newer build and the text

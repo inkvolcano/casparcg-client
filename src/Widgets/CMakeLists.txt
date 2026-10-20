@@ -158,6 +158,7 @@ qt_add_library(widgets
     StatusBarWidget.cpp StatusBarWidget.h
     ServerStatusPanelWidget.cpp ServerStatusPanelWidget.h ServerStatusPanelWidget.ui
     ServerProcessControl.cpp ServerProcessControl.h
+    ServerDownloadDialog.cpp ServerDownloadDialog.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
     InspectorUndo.cpp InspectorUndo.h

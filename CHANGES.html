@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#server-download">Download A CasparCG Server Build</a><br>
 <a href="#update-whats-new">What's New In The Update Window</a><br>
 <a href="#reference-image">Reference Pictures On Rundown Items</a><br>
 <a href="#media-info">Codec And Resolution In The Inspector</a><br>
@@ -1870,6 +1871,19 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="server-download">Download A CasparCG Server Build</h2>
+
+<ul>
+<li><b>Download a CasparCG Server build from the client.</b> A server's &equiv; menu in Server Status has <b>Download Server Build...</b>. It lists the stable releases, the pre-releases (tick <i>Show pre-releases</i>) and the newest five nightly builds of every branch (master, v2.5.x, v2.4.x). Choose one to read its release notes.</li>
+<li><b>Every build goes into a new folder of its own</b>, beside the current one: <code>CasparCG Server 2.5.1</code>, <code>CasparCG Server master 2026-10-15 fe19ac0</code>. Nothing is replaced, so the running server is untouched and going back is a matter of pointing the server at the old folder again.</li>
+<li><b>Checked before it is unpacked.</b> A release is checked against the SHA-256 GitHub publishes for it. Nightlies have no published checksum, so they are checked for their full size and for being a zip. A download that fails a check is thrown away.</li>
+<li><b>Keep this server's casparcg.config</b> (ticked when there is one): a dated backup, <code>casparcg.config.2026-10-20.bak</code>, is written beside the original first, then the config is copied into the new folder. The new build's own config is kept there as <code>casparcg.config.shipped</code>, to look up new options.</li>
+<li>Relative media, template, data and font paths in the carried config are pointed at the old folder, where their files are, and the window lists each one it changed. Absolute paths and everything else stay exactly as written.</li>
+<li><b>Point the server at the new folder</b> (ticked by default) changes the server folder in Settings. If the old server is still running, the client then asks whether to stop it and its scanner and start the new ones. Nothing is stopped without that answer.</li>
+<li>The download runs while you keep working, and can be stopped by closing the window. Windows only.</li>
+<li>A server folder changed in Settings is now followed by the server menu without restarting the client.</li>
+</ul>
 
 <h2 id="update-whats-new">What's New In The Update Window</h2>
 

@@ -87,6 +87,17 @@ void DeviceManager::refresh()
     // Connect new devices.
     foreach (DeviceModel model, models)
     {
+        // A server already connected keeps its connection, but takes the rest of
+        // what Settings now holds - its server, template and media folders - so a
+        // folder changed there is followed without restarting the client.
+        const auto known = this->deviceModels.constFind(model.getName());
+        if (this->devices.contains(model.getName()) && known != this->deviceModels.constEnd()
+            && known->getAddress() == model.getAddress() && known->getPort() == model.getPort())
+        {
+            this->deviceModels.insert(model.getName(), model);
+            continue;
+        }
+
         if (!this->devices.contains(model.getName()))
         {
             QSharedPointer<CasparDevice> device(new CasparDevice(model.getAddress(), model.getPort()));

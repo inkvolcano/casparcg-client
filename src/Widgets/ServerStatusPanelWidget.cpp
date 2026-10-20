@@ -18,6 +18,7 @@
 
 #include "DatabaseManager.h"
 
+#include "ServerDownloadDialog.h"
 #include "ServerProcessControl.h"
 
 #include <memory>
@@ -589,6 +590,19 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
         });
     };
 
+    // Downloading a build installs it into a folder of its own, so it is offered
+    // whatever this server's folder is, set or not.
+    auto addDownload = [this, menu, deviceName]() {
+        menu->addSeparator();
+        QAction* action = menu->addAction("Download Server Build...");
+        action->setEnabled(supported());
+        if (!supported())
+            action->setToolTip("Installing a server build is only done on Windows.");
+        QObject::connect(action, &QAction::triggered, this, [this, deviceName]() {
+            QTimer::singleShot(0, this, [this, deviceName]() { ServerDownloadDialog::openFor(deviceName, window()); });
+        });
+    };
+
     if (this->processBusy.contains(deviceName))
     {
         note("Working on it...");
@@ -600,6 +614,7 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
     {
         note("No server executable is set for this server.");
         note(QString::fromUtf8("Set it in Settings \xe2\x86\x92 Servers."));
+        addDownload();
         return;
     }
 
@@ -649,6 +664,8 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
     item("Start Scanner", ProcessAction::StartScanner, scannerState.canStart);
     item("Restart Scanner", ProcessAction::RestartScanner, scannerState.canStop);
     item("Stop Scanner", ProcessAction::StopScanner, scannerState.canStop);
+
+    addDownload();
 }
 
 void ServerStatusPanelWidget::setProcessBusy(const QString& deviceName, bool busy, const QString& what)
