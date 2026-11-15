@@ -59,15 +59,18 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
 
     private:
         QString applicationTitle;
-        StatusBarWidget* widgetStatusBar;
-        ClockWidget* widgetClock;
-        NdiPanelWidget* widgetNdi;
-        PerformancePanelWidget* widgetPerformance;
-        HttpResponsePanelWidget* widgetHttpLog;
-        ShotboxPanelWidget* widgetShotbox;
-        SheetsPanelWidget* widgetSheets;
-        SimpleModeWidget* widgetSimpleMode;
-        SimpleInspectorWidget* widgetSimpleInspector;
+        // Made in the constructor after setupUi and setupMenu. Null until then, so
+        // anything that reaches for one too early meets the same null on every
+        // machine instead of whatever the memory held.
+        StatusBarWidget* widgetStatusBar = nullptr;
+        ClockWidget* widgetClock = nullptr;
+        NdiPanelWidget* widgetNdi = nullptr;
+        PerformancePanelWidget* widgetPerformance = nullptr;
+        HttpResponsePanelWidget* widgetHttpLog = nullptr;
+        ShotboxPanelWidget* widgetShotbox = nullptr;
+        SheetsPanelWidget* widgetSheets = nullptr;
+        SimpleModeWidget* widgetSimpleMode = nullptr;
+        SimpleInspectorWidget* widgetSimpleInspector = nullptr;
 
         QMenu* fileMenu;
         QMenu* editMenu;

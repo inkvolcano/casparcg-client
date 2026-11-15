@@ -131,6 +131,24 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
     this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
+    // Inspector edits, one undo step per field, on the rundown the Inspector is
+    // showing. The Edit menu records an edit in progress before it opens, so the
+    // Undo it offers is that edit.
+    //
+    // Here, after both Inspectors exist - not in setupMenu, which runs before the
+    // Simple Mode Inspector is made. From there (builds 281-288) it was handed a
+    // pointer that was never set: harmless where that memory happened to be zero,
+    // a crash at startup where it held old text (0xC0000005 in Qt6Core, inside
+    // QPointer, on a production machine whatever its profile).
+    InspectorUndo* inspectorUndo = new InspectorUndo(
+        QList<QWidget*>() << this->widgetInspector << this->widgetSimpleInspector,
+        [this]() -> RundownTreeBaseWidget* {
+            RundownTreeWidget* active = this->widgetRundown->activeTreeWidget();
+            return active != nullptr ? active->treeWidget() : nullptr;
+        },
+        this);
+    QObject::connect(this->editMenu, &QMenu::aboutToShow, inspectorUndo, &InspectorUndo::commit);
+
     rebuildLayout();
 
     // StatusPanelWidget stays as a hidden controller; its tab widgets are
@@ -315,18 +333,6 @@ void MainWindow::setupMenu()
     this->editMenu->addAction(redoAction);
     this->editMenu->addSeparator();
     this->editMenu->addAction("Settings...", this, SLOT(showSettingsDialog()));
-
-    // Inspector edits, one undo step per field, on the rundown the Inspector is
-    // showing. The Edit menu records an edit in progress before it opens, so the
-    // Undo it offers is that edit.
-    InspectorUndo* inspectorUndo = new InspectorUndo(
-        QList<QWidget*>() << this->widgetInspector << this->widgetSimpleInspector,
-        [this]() -> RundownTreeBaseWidget* {
-            RundownTreeWidget* active = this->widgetRundown->activeTreeWidget();
-            return active != nullptr ? active->treeWidget() : nullptr;
-        },
-        this);
-    QObject::connect(this->editMenu, &QMenu::aboutToShow, inspectorUndo, &InspectorUndo::commit);
 
     this->viewMenu = new QMenu(this);
     this->viewMenu->setObjectName("menuView");

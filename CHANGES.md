@@ -1838,6 +1838,14 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Startup Crash Fixed
+
+- **Fixed: the client could close at startup**, right after its window appeared,
+  on some machines (Windows reports 0xC0000005 in Qt6Core.dll). Builds 281 to 288
+  handed the Inspector undo a panel that was not made yet. Whether that crashed
+  depended on what was left in the computer's memory, which is why one machine
+  started fine and another never did, with or without its settings.
+
 ## Edit The Server Config
 
 - **Edit a server's casparcg.config in the client.** A server's ≡ menu in Server
