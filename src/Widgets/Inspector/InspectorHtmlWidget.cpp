@@ -1,4 +1,5 @@
 #include "InspectorHtmlWidget.h"
+#include "InspectorSelection.h"
 
 #include "Global.h"
 
@@ -106,32 +107,32 @@ void InspectorHtmlWidget::checkEmptyUrl()
 
 void InspectorHtmlWidget::transitionChanged(QString transition)
 {
-    this->command->setTransition(transition);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setTransition(transition); });
 }
 
 void InspectorHtmlWidget::transitionDurationChanged(int transitionDuration)
 {
-    this->command->setTransitionDuration(transitionDuration);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setTransitionDuration(transitionDuration); });
 }
 
 void InspectorHtmlWidget::directionChanged(QString direction)
 {
-    this->command->setDirection(direction);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setDirection(direction); });
 }
 
 void InspectorHtmlWidget::tweenChanged(QString tween)
 {
-    this->command->setTween(tween);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setTween(tween); });
 }
 
 void InspectorHtmlWidget::useAutoChanged(int state)
 {
-    this->command->setUseAuto((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setUseAuto((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorHtmlWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](HtmlCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorHtmlWidget::urlChanged(QString url)

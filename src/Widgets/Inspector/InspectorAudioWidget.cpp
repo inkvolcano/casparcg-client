@@ -1,4 +1,5 @@
 #include "InspectorAudioWidget.h"
+#include "InspectorSelection.h"
 
 #include "Global.h"
 
@@ -96,35 +97,35 @@ void InspectorAudioWidget::loadTween()
 
 void InspectorAudioWidget::transitionChanged(QString transition)
 {
-    this->command->setTransition(transition);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setTransition(transition); });
 }
 
 void InspectorAudioWidget::transitionDurationChanged(int transitionDuration)
 {
-    this->command->setTransitionDuration(transitionDuration);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setTransitionDuration(transitionDuration); });
 }
 
 void InspectorAudioWidget::directionChanged(QString direction)
 {
-    this->command->setDirection(direction);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setDirection(direction); });
 }
 
 void InspectorAudioWidget::tweenChanged(QString tween)
 {
-    this->command->setTween(tween);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setTween(tween); });
 }
 
 void InspectorAudioWidget::loopChanged(int state)
 {
-    this->command->setLoop((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setLoop((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorAudioWidget::useAutoChanged(int state)
 {
-    this->command->setUseAuto((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setUseAuto((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorAudioWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](AudioCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }

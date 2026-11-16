@@ -1,4 +1,5 @@
 #include "InspectorTemplateWidget.h"
+#include "InspectorSelection.h"
 
 #include <algorithm>
 
@@ -584,43 +585,43 @@ void InspectorTemplateWidget::flashlayerChanged(int flashlayer)
 
 void InspectorTemplateWidget::useStoredDataChanged(int state)
 {
-    this->command->setUseStoredData((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setUseStoredData((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorTemplateWidget::sendAsJsonChanged(int state)
 {
-    this->command->setSendAsJson((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setSendAsJson((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorTemplateWidget::useUppercaseDataChanged(int state)
 {
-    this->command->setUseUppercaseData((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setUseUppercaseData((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorTemplateWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorTemplateWidget::autoPlayChanged(int state)
 {
     if (this->command == NULL)
         return;
-    this->command->setAutoPlay((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setAutoPlay((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorTemplateWidget::autoLoopChanged(int state)
 {
     if (this->command == NULL)
         return;
-    this->command->setAutoLoop(state == Qt::Checked);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setAutoLoop(state == Qt::Checked); });
 }
 
 void InspectorTemplateWidget::autoLoopDelayChanged(int delay)
 {
     if (this->command == NULL)
         return;
-    this->command->setAutoLoopDelay(delay);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setAutoLoopDelay(delay); });
 }
 
 void InspectorTemplateWidget::newlineBehaviorChanged(int index)
@@ -628,7 +629,7 @@ void InspectorTemplateWidget::newlineBehaviorChanged(int index)
     if (this->command == NULL)
         return;
 
-    this->command->setNewlineBehavior(index);
+    InspectorSelection::apply(this->command.data(), [&](TemplateCommand* c) { c->setNewlineBehavior(index); });
 }
 
 void InspectorTemplateWidget::currentItemChanged(QTreeWidgetItem* current, QTreeWidgetItem* previous)

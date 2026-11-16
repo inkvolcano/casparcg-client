@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Edit Many Items At Once
+
+- **Select several items and the Inspector changes all of them.** Channel,
+  layer, delay, duration and the GPI and remote-trigger ticks already did; now
+  the transition (type, duration, direction, tween) and the flags do too - loop,
+  freeze on load, trigger on next, auto, auto play, auto loop and its delay on
+  clips, stills, audio, HTML and colour items; use stored data, send as JSON,
+  uppercase data and newline handling on templates; blur, speed, premultiply and
+  progressive on image scrollers.
+- A clip or template setting goes to every selected item of the same kind: set
+  a mix transition with five clips and two templates selected, and the five
+  clips get it.
+- A blue line at the top of the Inspector says how many items are selected,
+  so a change is never made to more items than meant. One undo step takes the
+  whole change back.
+
 ## Find And Replace
 
 - **Edit > Find and Replace (Ctrl+Shift+F)** replaces text across the open

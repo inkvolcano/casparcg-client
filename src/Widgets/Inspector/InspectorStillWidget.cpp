@@ -1,4 +1,5 @@
 #include "InspectorStillWidget.h"
+#include "InspectorSelection.h"
 
 #include "Global.h"
 
@@ -149,49 +150,49 @@ void InspectorStillWidget::loadTween()
 
 void InspectorStillWidget::transitionChanged(QString transition)
 {
-    this->command->setTransition(transition);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setTransition(transition); });
 }
 
 void InspectorStillWidget::transitionDurationChanged(int transitionDuration)
 {
-    this->command->setTransitionDuration(transitionDuration);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setTransitionDuration(transitionDuration); });
 }
 
 void InspectorStillWidget::directionChanged(QString direction)
 {
-    this->command->setDirection(direction);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setDirection(direction); });
 }
 
 void InspectorStillWidget::tweenChanged(QString tween)
 {
-    this->command->setTween(tween);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setTween(tween); });
 }
 
 void InspectorStillWidget::useAutoChanged(int state)
 {
-    this->command->setUseAuto((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setUseAuto((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorStillWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorStillWidget::autoPlayChanged(int state)
 {
-    this->command->setAutoPlay((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setAutoPlay((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorStillWidget::autoLoopChanged(int state)
 {
     if (this->command == nullptr)
         return;
-    this->command->setAutoLoop(state == Qt::Checked);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setAutoLoop(state == Qt::Checked); });
 }
 
 void InspectorStillWidget::autoLoopDelayChanged(int delay)
 {
     if (this->command == nullptr)
         return;
-    this->command->setAutoLoopDelay(delay);
+    InspectorSelection::apply(this->command, [&](StillCommand* c) { c->setAutoLoopDelay(delay); });
 }

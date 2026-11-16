@@ -1,4 +1,5 @@
 #include "InspectorSolidColorWidget.h"
+#include "InspectorSelection.h"
 
 #include "Global.h"
 
@@ -134,22 +135,22 @@ void InspectorSolidColorWidget::colorDialogClicked()
 
 void InspectorSolidColorWidget::transitionChanged(QString transition)
 {
-    this->command->setTransition(transition);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setTransition(transition); });
 }
 
 void InspectorSolidColorWidget::transitionDurationChanged(int transitionDuration)
 {
-    this->command->setTransitionDuration(transitionDuration);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setTransitionDuration(transitionDuration); });
 }
 
 void InspectorSolidColorWidget::directionChanged(QString direction)
 {
-    this->command->setDirection(direction);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setDirection(direction); });
 }
 
 void InspectorSolidColorWidget::tweenChanged(QString tween)
 {
-    this->command->setTween(tween);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setTween(tween); });
 }
 
 void InspectorSolidColorWidget::colorChanged(QString color)
@@ -159,10 +160,10 @@ void InspectorSolidColorWidget::colorChanged(QString color)
 
 void InspectorSolidColorWidget::useAutoChanged(int state)
 {
-    this->command->setUseAuto((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setUseAuto((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorSolidColorWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](SolidColorCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }

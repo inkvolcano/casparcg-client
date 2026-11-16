@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#multi-edit">Edit Many Items At Once</a><br>
 <a href="#find-replace">Find And Replace</a><br>
 <a href="#key-notes">Notes And Pictures On Keys And Shotbox Rows</a><br>
 <a href="#presenter-channel">Presenter View On A Channel</a><br>
@@ -1894,6 +1895,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="multi-edit">Edit Many Items At Once</h2>
+
+<ul>
+<li><b>Select several items and the Inspector changes all of them.</b> Channel, layer, delay, duration and the GPI and remote-trigger ticks already did; now the transition (type, duration, direction, tween) and the flags do too - loop, freeze on load, trigger on next, auto, auto play, auto loop and its delay on clips, stills, audio, HTML and colour items; use stored data, send as JSON, uppercase data and newline handling on templates; blur, speed, premultiply and progressive on image scrollers.</li>
+<li>A clip or template setting goes to every selected item of the same kind: set a mix transition with five clips and two templates selected, and the five clips get it.</li>
+<li>A blue line at the top of the Inspector says how many items are selected, so a change is never made to more items than meant. One undo step takes the whole change back.</li>
+</ul>
 
 <h2 id="find-replace">Find And Replace</h2>
 

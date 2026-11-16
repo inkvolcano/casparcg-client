@@ -1,4 +1,5 @@
 #include "InspectorMovieWidget.h"
+#include "InspectorSelection.h"
 #include "Rundown/AbstractRundownWidget.h"
 #include "Rundown/RundownGroupWidget.h"
 
@@ -159,37 +160,37 @@ void InspectorMovieWidget::loadTween()
 
 void InspectorMovieWidget::transitionChanged(QString transition)
 {
-    this->command->setTransition(transition);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setTransition(transition); });
 }
 
 void InspectorMovieWidget::transitionDurationChanged(int transitionDuration)
 {
-    this->command->setTransitionDuration(transitionDuration);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setTransitionDuration(transitionDuration); });
 }
 
 void InspectorMovieWidget::directionChanged(QString direction)
 {
-    this->command->setDirection(direction);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setDirection(direction); });
 }
 
 void InspectorMovieWidget::tweenChanged(QString tween)
 {
-    this->command->setTween(tween);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setTween(tween); });
 }
 
 void InspectorMovieWidget::loopChanged(int state)
 {
-    this->command->setLoop((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setLoop((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorMovieWidget::freezeOnLoadChanged(int state)
 {
-    this->command->setFreezeOnLoad((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setFreezeOnLoad((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorMovieWidget::triggerOnNextChanged(int state)
 {
-    this->command->setTriggerOnNext((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setTriggerOnNext((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorMovieWidget::seekChanged(int seek)
@@ -204,19 +205,19 @@ void InspectorMovieWidget::lengthChanged(int length)
 
 void InspectorMovieWidget::autoPlayChanged(int state)
 {
-    this->command->setAutoPlay((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setAutoPlay((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorMovieWidget::autoLoopChanged(int state)
 {
     if (this->command == nullptr)
         return;
-    this->command->setAutoLoop(state == Qt::Checked);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setAutoLoop(state == Qt::Checked); });
 }
 
 void InspectorMovieWidget::autoLoopDelayChanged(int delay)
 {
     if (this->command == nullptr)
         return;
-    this->command->setAutoLoopDelay(delay);
+    InspectorSelection::apply(this->command, [&](MovieCommand* c) { c->setAutoLoopDelay(delay); });
 }

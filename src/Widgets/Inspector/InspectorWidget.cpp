@@ -1,4 +1,5 @@
 #include "InspectorWidget.h"
+#include "Inspector/InspectorSelection.h"
 #include "Inspector/InspectorBlendModeWidget.h"
 #include "Inspector/InspectorBrightnessWidget.h"
 #include "Inspector/InspectorContrastWidget.h"
@@ -54,6 +55,7 @@
 #include <QtCore/QDebug>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QTimer>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QVBoxLayout>
 #include "Commands/AbstractCommand.h"
 #include "Commands/BlendModeCommand.h"
@@ -103,6 +105,9 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     QElapsedTimer sectionClock;
     sectionClock.start();
 
+    // Made before the sections, so it hears each selection first.
+    InspectorSelection::getInstance();
+
     setupUi(this);
 
     // Wrap the QToolBox content in a QTabWidget for a consistent panel header.
@@ -118,6 +123,19 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     QVBoxLayout* tabLayout = new QVBoxLayout(tabPage);
     tabLayout->setContentsMargins(0, 0, 0, 0);
     tabLayout->setSpacing(0);
+    // With several items selected, a change is made to all of them (build 311).
+    QLabel* multiBanner = new QLabel(tabPage);
+    multiBanner->setObjectName("labelInspectorMultiSelect");
+    multiBanner->setWordWrap(true);
+    multiBanner->setStyleSheet("QLabel#labelInspectorMultiSelect { background-color: rgba(76, 154, 255, 60); "
+                               "border: 1px solid rgba(76, 154, 255, 150); border-radius: 3px; padding: 4px 6px; margin: 4px; }");
+    multiBanner->hide();
+    QObject::connect(&InspectorSelection::getInstance(), &InspectorSelection::selectionChanged, multiBanner, [multiBanner](int count) {
+        multiBanner->setVisible(count > 1);
+        multiBanner->setText(QString("%1 items selected. A change here is made to all of them - transitions, clip and "
+                                     "template settings to those of the same kind.").arg(count));
+    });
+    tabLayout->addWidget(multiBanner);
     tabLayout->addWidget(this->scrollArea, 1);
     this->tabWidgetInspector->addTab(tabPage, "Inspector");
 

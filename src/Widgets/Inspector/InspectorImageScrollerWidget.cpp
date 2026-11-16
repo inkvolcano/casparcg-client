@@ -1,4 +1,5 @@
 #include "InspectorImageScrollerWidget.h"
+#include "InspectorSelection.h"
 
 #include "Global.h"
 
@@ -43,22 +44,22 @@ void InspectorImageScrollerWidget::blockAllSignals(bool block)
 
 void InspectorImageScrollerWidget::blurChanged(int blur)
 {
-    this->command->setBlur(blur);
+    InspectorSelection::apply(this->command, [&](ImageScrollerCommand* c) { c->setBlur(blur); });
 }
 
 void InspectorImageScrollerWidget::speedChanged(int speed)
 {
-    this->command->setSpeed(speed);
+    InspectorSelection::apply(this->command, [&](ImageScrollerCommand* c) { c->setSpeed(speed); });
 }
 
 void InspectorImageScrollerWidget::premultiplyChanged(int state)
 {
-    this->command->setPremultiply((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](ImageScrollerCommand* c) { c->setPremultiply((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorImageScrollerWidget::progressiveChanged(int state)
 {
-    this->command->setProgressive((state == Qt::Checked) ? true : false);
+    InspectorSelection::apply(this->command, [&](ImageScrollerCommand* c) { c->setProgressive((state == Qt::Checked) ? true : false); });
 }
 
 void InspectorImageScrollerWidget::resetSpeed(QString speed)
