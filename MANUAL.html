@@ -1187,6 +1187,14 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li>It includes the client's newest crash dumps from the last two weeks, up to three (from <code>%LOCALAPPDATA%\CrashDumps</code>). With the release's <code>casparcg-client.pdb</code>, a dump shows the line the crash happened on - releases from build 294 carry it as <code>casparcg-client-&lt;tag&gt;-symbols.zip</code>, and <code>tools\read-crash-dump.ps1</code> fetches it and prints the stack. A dump over 300 MB is named, not copied.</li>
 </ul>
 
+<h3>Reading the log in the client</h3>
+<p><b>Help &gt; Show Log...</b> shows the client's own daily log, without looking for its folder.</p>
+<ul>
+<li>Choose the <b>Day</b> (today first), show <b>Everything</b>, <b>Warnings and errors</b> or <b>Errors only</b>, and search for any word.</li>
+<li>With <b>Follow</b> on, today's log is added to as the client writes it.</li>
+<li>The newest 5,000 matching entries are shown; the line at the bottom says how many there are in all. <b>Open Folder</b> opens the log folder.</li>
+</ul>
+
 <h3>After a crash: safe start</h3>
 <p>The client notices when its last start did not finish, or its last session did not close normally.</p>
 <ul>

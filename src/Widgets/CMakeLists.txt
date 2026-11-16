@@ -164,6 +164,7 @@ qt_add_library(widgets
     ReadinessDialog.cpp ReadinessDialog.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
+    LogViewerDialog.cpp LogViewerDialog.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
     InspectorUndo.cpp InspectorUndo.h

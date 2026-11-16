@@ -14,6 +14,7 @@
 #include "SafeStart.h"
 #include "ReadinessDialog.h"
 #include "RundownVersionsDialog.h"
+#include "LogViewerDialog.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -472,6 +473,9 @@ void MainWindow::setupMenu()
     // action instead of being discovered when it fails. The report gathers the
     // Windows event log, Windows Error Reporting's crash folders and a zip made
     // by PowerShell; none of that exists anywhere else yet.
+    // The client's own log, without finding its folder.
+    this->helpMenu->addAction("Show Log...", this, [this]() { LogViewerDialog::openFor(this); });
+
     QMenu* bugReportMenu = this->helpMenu->addMenu("Bug Report");
     QAction* collectAction = bugReportMenu->addAction("Collect a Bug Report...", this, SLOT(collectBugReport()));
     bugReportMenu->addSeparator();

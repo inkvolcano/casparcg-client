@@ -1838,6 +1838,14 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## The Log In The Client
+
+- **Help > Show Log...** shows the client's own daily log in a window: choose the
+  day, show everything, warnings and errors, or errors only, and search for any
+  word.
+- With **Follow** on, today's log grows in the window as the client writes it -
+  no more finding `%USERPROFILE%\.CasparCG\Client\Logs` to see what it said.
+
 ## Rundown Versions
 
 - **Rundown versions.** Each save that changes a rundown keeps the file as it
