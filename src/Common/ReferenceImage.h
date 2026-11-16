@@ -115,4 +115,20 @@ namespace ReferenceImage
         const QSize size = hoverSize(pictureSize(dataUri));
         return QString("<img src=\"%1\" width=\"%2\" height=\"%3\"/>").arg(dataUri).arg(size.width()).arg(size.height());
     }
+
+    // What hovering a row shows (build 299): its picture, then its operator note
+    // beneath it - either alone when the other is not there, nothing when neither
+    // is. The note is plain text: escaped, its line breaks kept.
+    inline QString hoverHtml(const QString& dataUri, const QString& note)
+    {
+        const QString picture = tooltipHtml(dataUri);
+        const QString text = note.trimmed();
+        if (text.isEmpty())
+            return picture;
+
+        QString escaped = text.toHtmlEscaped();
+        escaped.replace("\n", "<br/>");
+        const QString paragraph = QString("<p style=\"margin-top: 6px; max-width: 384px;\"><b>Note:</b> %1</p>").arg(escaped);
+        return picture.isEmpty() ? paragraph : picture + paragraph;
+    }
 }

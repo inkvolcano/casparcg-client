@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Notes On Rundown Items
+
+- **Notes on rundown items.** The Inspector has a **Notes** box for a note to
+  whoever runs the rundown - "wait for the applause", "only if the guest is
+  late".
+- Hovering the row shows the note, beneath its reference picture when it has
+  one. A small pencil mark on the row says it has a note.
+- Notes are saved in the rundown file (`<note>`, only when there is one), travel
+  with it, and an edit can be undone like any other Inspector field.
+
 ## Reference Pictures From Preview
 
 - **Reference pictures from preview.** The Inspector's Reference row has **From

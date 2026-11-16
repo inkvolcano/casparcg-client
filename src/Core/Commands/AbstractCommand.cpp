@@ -277,6 +277,7 @@ void AbstractCommand::readProperties(boost::property_tree::wptree& pt)
     setSimpleModeLabelSize(pt.get(L"simplemodelabelsize", 0));
     setSimpleModeIcon(QString::fromStdWString(pt.get(L"simplemodeicon", std::wstring())));
     setReferenceImage(QString::fromStdWString(pt.get(L"referenceimage", std::wstring())));
+    setNote(QString::fromStdWString(pt.get(L"note", std::wstring())));
 }
 
 void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
@@ -314,6 +315,23 @@ void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
     // Only when there is one, so a rundown without pictures saves exactly as before.
     if (!getReferenceImage().isEmpty())
         writer.writeTextElement("referenceimage", getReferenceImage());
+    if (!getNote().isEmpty())
+        writer.writeTextElement("note", getNote());
+}
+
+QString AbstractCommand::getNote() const
+{
+    return this->note;
+}
+
+void AbstractCommand::setNote(const QString& note)
+{
+    if (this->note == note)
+        return;
+
+    this->note = note;
+    emit noteChanged(this->note);
+    emit propertyChanged();
 }
 
 QString AbstractCommand::getReferenceImage() const

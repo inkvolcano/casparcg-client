@@ -15,6 +15,7 @@
 namespace
 {
     const char* const MARKER_NAME = "labelReferenceImage";
+    const char* const NOTE_MARKER_NAME = "labelItemNote";
     const char* const APPLIED = "referenceImageKey";
 
     // Beside the Simple Mode mark (BADGE_WIDTH + 20) and the missing-media mark
@@ -60,10 +61,12 @@ void ReferenceImageMarker::walk(QTreeWidgetItem* item)
     if (rundownItem != nullptr && rundownItem->getCommand() != nullptr)
     {
         AbstractCommand* command = rundownItem->getCommand();
-        apply(widget, command->getReferenceImage());
+        apply(widget, command->getReferenceImage(), command->getNote());
 
         // A member slot, so UniqueConnection does its job: a sweep never doubles it.
         QObject::connect(command, &AbstractCommand::referenceImageChanged, this,
+                         &ReferenceImageMarker::queueSweep, Qt::UniqueConnection);
+        QObject::connect(command, &AbstractCommand::noteChanged, this,
                          &ReferenceImageMarker::queueSweep, Qt::UniqueConnection);
     }
 
@@ -71,19 +74,44 @@ void ReferenceImageMarker::walk(QTreeWidgetItem* item)
         walk(item->child(i));
 }
 
-void ReferenceImageMarker::apply(QWidget* widget, const QString& dataUri)
+void ReferenceImageMarker::apply(QWidget* widget, const QString& dataUri, const QString& note)
 {
     if (widget == nullptr)
         return;
 
-    // The picture is tens of KB of text: the tooltips are set only when it changed.
-    const uint key = dataUri.isEmpty() ? 0 : qHash(dataUri);
+    // The picture is tens of KB of text: the tooltips are set only when it or
+    // the note changed.
+    const uint key = (dataUri.isEmpty() && note.isEmpty()) ? 0 : qHash(dataUri + QChar(0x1f) + note);
     if (widget->property(APPLIED).isValid() && widget->property(APPLIED).toUInt() == key)
         return;
     widget->setProperty(APPLIED, key);
 
     QWidget* host = widget->findChild<QFrame*>("frameItem");
     QLabel* marker = widget->findChild<QLabel*>(MARKER_NAME);
+
+    // The note's own mark, beside the picture's, so a row with a note says so.
+    QLabel* noteMarker = widget->findChild<QLabel*>(NOTE_MARKER_NAME);
+    if (note.trimmed().isEmpty())
+    {
+        if (noteMarker != nullptr)
+            noteMarker->hide();
+    }
+    else if (host != nullptr)
+    {
+        if (noteMarker == nullptr)
+        {
+            noteMarker = new QLabel(host);
+            noteMarker->setObjectName(NOTE_MARKER_NAME);
+            noteMarker->setText(QString::fromUtf8("\xe2\x9c\x8e"));   // a pencil
+            noteMarker->setFixedSize(16, 14);
+            noteMarker->setAlignment(Qt::AlignCenter);
+            noteMarker->setStyleSheet("background-color: rgba(0, 0, 0, 90); border-radius: 3px; font-size: 10px;");
+            noteMarker->move(MARKER_X + 18, MARKER_Y);
+        }
+        noteMarker->setToolTip(ReferenceImage::hoverHtml(QString(), note));
+        noteMarker->show();
+        noteMarker->raise();
+    }
 
     if (dataUri.isEmpty())
     {
@@ -92,8 +120,9 @@ void ReferenceImageMarker::apply(QWidget* widget, const QString& dataUri)
             marker->hide();
             marker->setToolTip(QString());
         }
+        // A note alone still shows on the row.
         if (host != nullptr)
-            host->setToolTip(QString());
+            host->setToolTip(ReferenceImage::hoverHtml(QString(), note));
         return;
     }
 
@@ -113,7 +142,7 @@ void ReferenceImageMarker::apply(QWidget* widget, const QString& dataUri)
 
     // On the mark, and on the row itself, so hovering anywhere on the row that has
     // no tooltip of its own shows the picture.
-    const QString html = ReferenceImage::tooltipHtml(dataUri);
+    const QString html = ReferenceImage::hoverHtml(dataUri, note);
     marker->setToolTip(html);
     host->setToolTip(html);
 

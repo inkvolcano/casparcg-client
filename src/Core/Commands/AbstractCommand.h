@@ -44,6 +44,11 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         QString getReferenceImage() const;
         void setReferenceImage(const QString& dataUri);
 
+        // A note for the operator ("wait for the applause"), shown when hovering
+        // the row and in the Inspector. Plain text, or empty. Saved with the rundown.
+        QString getNote() const;
+        void setNote(const QString& note);
+
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
         virtual void setDelay(int delay);
@@ -98,6 +103,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         int simpleModeLabelSize = 0;      // 0 = default size
         QString simpleModeIcon;           // glyph/emoji shown on the button, empty = none
         QString referenceImage;           // data URI, empty = none
+        QString note;                     // operator note, empty = none
 
     signals:
         void channelChanged(int);
@@ -113,5 +119,6 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         void disabledChanged(bool);
         void showInSimpleModeChanged(bool);
         void referenceImageChanged(const QString&);
+        void noteChanged(const QString&);
         void propertyChanged();
 };

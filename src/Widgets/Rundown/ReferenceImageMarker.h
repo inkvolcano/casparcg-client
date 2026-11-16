@@ -37,5 +37,5 @@ class WIDGETS_EXPORT ReferenceImageMarker : public QObject
 
         void sweep();
         void walk(QTreeWidgetItem* item);
-        void apply(QWidget* widget, const QString& dataUri);
+        void apply(QWidget* widget, const QString& dataUri, const QString& note);
 };

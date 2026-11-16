@@ -47,6 +47,13 @@ class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMeta
         QPushButton* buttonReferenceCapture = nullptr;
         void captureReference();
         QMetaObject::Connection referenceConnection;
+
+        // The Notes row: the item's operator note, edited here, shown when its
+        // rundown row is hovered. Rundown items only.
+        QLabel* labelNoteTitle = nullptr;
+        class QPlainTextEdit* textNote = nullptr;
+        QMetaObject::Connection noteConnection;
+        void showNote();
         QLabel* labelReferenceTitle = nullptr;
         QWidget* referenceRow = nullptr;
         QLabel* referencePreview = nullptr;

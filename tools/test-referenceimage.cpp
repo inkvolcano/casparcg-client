@@ -78,6 +78,15 @@ int main(int argc, char* argv[])
     expectTrue(tooltipHtml(encode(tall)).contains("width=\"108\" height=\"216\""), "a tall picture fills the frame's height, undistorted");
     expectTrue(hoverSize(QSize()) == QSize(HOVER_WIDTH, HOVER_HEIGHT), "an unreadable size still gets the frame");
 
+    // The row's hover: picture, then the operator note (build 299).
+    expectTrue(hoverHtml(stored, QString()) == tooltipHtml(stored), "a picture without a note hovers as before");
+    expectTrue(hoverHtml(QString(), "  ").isEmpty(), "neither shows nothing");
+    const QString both = hoverHtml(stored, "Wait for\nthe applause & <cue>");
+    expectTrue(both.startsWith("<img") && both.contains("<b>Note:</b> Wait for<br/>the applause &amp; &lt;cue&gt;"),
+               "the note comes under the picture, escaped, its line breaks kept");
+    expectTrue(hoverHtml(QString(), "Hold").startsWith("<p") && !hoverHtml(QString(), "Hold").contains("<img"),
+               "a note alone shows without a picture");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

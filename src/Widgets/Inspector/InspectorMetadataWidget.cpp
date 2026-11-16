@@ -1,4 +1,6 @@
 #include "InspectorMetadataWidget.h"
+#include <QtCore/QSignalBlocker>
+#include <QtWidgets/QPlainTextEdit>
 #include "ReferenceCapture.h"
 #include "Events/StatusbarEvent.h"
 
@@ -65,6 +67,21 @@ InspectorMetadataWidget::InspectorMetadataWidget(QWidget* parent)
     this->labelReferenceTitle->setVisible(false);
     this->referenceRow->setVisible(false);
 
+    this->labelNoteTitle = new QLabel("Notes", this);
+    this->labelNoteTitle->setToolTip("A note for whoever runs this rundown, shown when you hover the row.");
+    this->textNote = new QPlainTextEdit(this);
+    this->textNote->setPlaceholderText("A note for the operator, e.g. wait for the applause");
+    this->textNote->setFixedHeight(56);
+    this->textNote->setTabChangesFocus(true);
+    this->gridLayout->addWidget(this->labelNoteTitle, 3, 0, Qt::AlignTop);
+    this->gridLayout->addWidget(this->textNote, 3, 1);
+    this->labelNoteTitle->setVisible(false);
+    this->textNote->setVisible(false);
+    QObject::connect(this->textNote, &QPlainTextEdit::textChanged, this, [this]() {
+        if (!this->command.isNull())
+            this->command->setNote(this->textNote->toPlainText());
+    });
+
     QObject::connect(choose, &QPushButton::clicked, this, [this]() { chooseReference(); });
     QObject::connect(this->buttonReferenceCapture, &QPushButton::clicked, this, [this]() { captureReference(); });
     QObject::connect(this->buttonReferenceClear, &QPushButton::clicked, this, [this]() {
@@ -101,6 +118,29 @@ void InspectorMetadataWidget::rundownItemSelected(const RundownItemSelectedEvent
         this->referenceConnection = QObject::connect(this->command.data(), &AbstractCommand::referenceImageChanged,
                                                      this, [this]() { showReference(); });
     showReference();
+
+    QObject::disconnect(this->noteConnection);
+    if (!this->command.isNull())
+        this->noteConnection = QObject::connect(this->command.data(), &AbstractCommand::noteChanged,
+                                                this, [this]() { showNote(); });
+    showNote();
+}
+
+void InspectorMetadataWidget::showNote()
+{
+    const bool shown = !this->command.isNull();
+    this->labelNoteTitle->setVisible(shown);
+    this->textNote->setVisible(shown);
+    if (!shown)
+        return;
+
+    // Set only when it differs - an undo, another way of editing it - so typing
+    // here is never interrupted by its own echo.
+    if (this->textNote->toPlainText() != this->command->getNote())
+    {
+        const QSignalBlocker blocker(this->textNote);
+        this->textNote->setPlainText(this->command->getNote());
+    }
 }
 
 void InspectorMetadataWidget::showReference()

@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#item-notes">Notes On Rundown Items</a><br>
 <a href="#reference-from-preview">Reference Pictures From Preview</a><br>
 <a href="#readiness">Check Before Going Live</a><br>
 <a href="#server-release-notice">New Server Releases Pointed Out</a><br>
@@ -1882,6 +1883,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="item-notes">Notes On Rundown Items</h2>
+
+<ul>
+<li><b>Notes on rundown items.</b> The Inspector has a <b>Notes</b> box for a note to whoever runs the rundown - "wait for the applause", "only if the guest is late".</li>
+<li>Hovering the row shows the note, beneath its reference picture when it has one. A small pencil mark on the row says it has a note.</li>
+<li>Notes are saved in the rundown file, travel with it, and an edit can be undone like any other Inspector field.</li>
+</ul>
 
 <h2 id="reference-from-preview">Reference Pictures From Preview</h2>
 
