@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## New Server Releases Pointed Out
+
+- **New CasparCG Server releases are pointed out.** Once a day the client reads
+  CasparCG's release list. When a newer stable server is out than one of yours
+  reports, that server's ≡ button in Server Status turns orange and its menu
+  says "CasparCG Server 2.5.1 is out (this server runs 2.5.0)".
+- It only tells. Nothing is downloaded or installed - Download Server Build...
+  does that, when someone chooses it. A server on a nightly of the next version
+  is not marked as behind.
+- **Tell Me About New Server Releases**, in the same menu, turns the daily check
+  off, for machines with no internet or none allowed.
+
 ## Panic Keeps Locked Channels
 
 - **The panic clear leaves locked channels alone.** A channel locked in Server

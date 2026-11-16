@@ -74,6 +74,48 @@ namespace ServerReleases
         return text.trimmed();
     }
 
+    // The first "major.minor.patch" in a text, as three numbers; false if none.
+    inline bool versionNumbers(const QString& text, int* major, int* minor, int* patch)
+    {
+        const QRegularExpressionMatch m = QRegularExpression("(\\d+)\\.(\\d+)(?:\\.(\\d+))?").match(text);
+        if (!m.hasMatch())
+            return false;
+        *major = m.captured(1).toInt();
+        *minor = m.captured(2).toInt();
+        *patch = m.captured(3).isEmpty() ? 0 : m.captured(3).toInt();
+        return true;
+    }
+
+    // Whether a release ("2.5.1") is newer than what a server reports
+    // ("2.5.0 7a5e4e2 Stable"). A server on a nightly of the next version
+    // ("2.6.0 fe19ac0 Dev") is not behind a stable release, and a server that has
+    // not said what it is gets no notice.
+    inline bool isNewerVersion(const QString& release, const QString& running)
+    {
+        int a = 0, b = 0, c = 0, x = 0, y = 0, z = 0;
+        if (!versionNumbers(release, &a, &b, &c) || !versionNumbers(running, &x, &y, &z))
+            return false;
+        if (a != x)
+            return a > x;
+        if (b != y)
+            return b > y;
+        return c > z;
+    }
+
+    // The newest stable release of a parsed list, or none.
+    inline Build newestStable(const QList<Build>& builds)
+    {
+        Build newest;
+        for (const Build& build : builds)
+        {
+            if (build.kind != Kind::Stable)
+                continue;
+            if (newest.version.isEmpty() || isNewerVersion(build.version, newest.version))
+                newest = build;
+        }
+        return newest;
+    }
+
     // The Windows zip of every non-draft release, newest first.
     inline QList<Build> parseGitHubReleases(const QByteArray& json)
     {

@@ -20,6 +20,8 @@
 
 #include "ServerConfigDialog.h"
 #include "ServerDownloadDialog.h"
+#include "ServerReleaseWatcher.h"
+#include "ServerReleases.h"
 #include "ServerProcessControl.h"
 
 #include <memory>
@@ -36,6 +38,11 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QTreeWidget>
 
+namespace
+{
+    QString processButtonStyle(bool marked);
+}
+
 ServerStatusPanelWidget::ServerStatusPanelWidget(QWidget* parent)
     : QWidget(parent),
       serverCollapsed(false),
@@ -43,6 +50,9 @@ ServerStatusPanelWidget::ServerStatusPanelWidget(QWidget* parent)
       maxChannels(0)
 {
     setupUi(this);
+
+    this->releaseWatcher = new ServerReleaseWatcher(this);
+    QObject::connect(this->releaseWatcher, &ServerReleaseWatcher::changed, this, [this]() { updateReleaseMarks(); });
 
     // Grows to fit its content rather than holding a fixed share of the column.
     this->tabWidgetServer->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
@@ -520,11 +530,7 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
     entry.buttonProcess->setFixedSize(22, 20);
     entry.buttonProcess->setToolTip("Start, stop or restart this server and its scanner");
     entry.buttonProcess->setPopupMode(QToolButton::InstantPopup);
-    entry.buttonProcess->setStyleSheet(
-        "QToolButton { font-size: 12px; padding: 0px; border-radius: 3px; "
-        "background-color: rgba(60, 60, 60, 200); color: rgba(200, 200, 200, 200); border: 1px solid rgba(80, 80, 80, 200); }"
-        "QToolButton:hover { background-color: rgba(80, 80, 80, 200); }"
-        "QToolButton::menu-indicator { image: none; width: 0px; }");
+    entry.buttonProcess->setStyleSheet(processButtonStyle(false));
     QMenu* processMenu = new QMenu(entry.buttonProcess);
     entry.buttonProcess->setMenu(processMenu);
     QObject::connect(processMenu, &QMenu::aboutToShow, this, [this, processMenu, deviceName]() {
@@ -558,6 +564,47 @@ void ServerStatusPanelWidget::deviceAdded(CasparDevice& device)
         this->maxChannels = channels;
 
     rebuildChannelLockGrid();
+}
+
+namespace
+{
+    // The server menu button; marked when a newer stable server release is out.
+    QString processButtonStyle(bool marked)
+    {
+        return QString("QToolButton { font-size: 12px; padding: 0px; border-radius: 3px; "
+                       "background-color: rgba(60, 60, 60, 200); color: %1; border: 1px solid %2; }"
+                       "QToolButton:hover { background-color: rgba(80, 80, 80, 200); }"
+                       "QToolButton::menu-indicator { image: none; width: 0px; }")
+            .arg(marked ? QString("rgb(255, 190, 80)") : QString("rgba(200, 200, 200, 200)"),
+                 marked ? QString("rgb(230, 160, 50)") : QString("rgba(80, 80, 80, 200)"));
+    }
+}
+
+QString ServerStatusPanelWidget::newerReleaseFor(const QString& deviceName) const
+{
+    if (this->releaseWatcher == nullptr || this->releaseWatcher->latestStable().isEmpty())
+        return QString();
+
+    const QString running = DatabaseManager::getInstance().getDeviceByName(deviceName).getVersion();
+    return ServerReleases::isNewerVersion(this->releaseWatcher->latestStable(), running)
+        ? this->releaseWatcher->latestStable() : QString();
+}
+
+void ServerStatusPanelWidget::updateReleaseMarks()
+{
+    for (auto it = this->serverEntries.begin(); it != this->serverEntries.end(); ++it)
+    {
+        QToolButton* button = it.value().buttonProcess;
+        if (button == nullptr || this->processBusy.contains(it.key()))
+            continue;
+
+        const QString newer = newerReleaseFor(it.key());
+        button->setStyleSheet(processButtonStyle(!newer.isEmpty()));
+        button->setToolTip(newer.isEmpty()
+            ? QString("Start, stop or restart this server and its scanner")
+            : QString("Start, stop or restart this server and its scanner.\n\nCasparCG Server %1 is out; this server runs %2.")
+                  .arg(newer, DatabaseManager::getInstance().getDeviceByName(it.key()).getVersion()));
+    }
 }
 
 QString ServerStatusPanelWidget::serverExecutableOf(const QString& deviceName)
@@ -595,6 +642,13 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
     // whatever this server's folder is, set or not.
     auto addDownload = [this, menu, deviceName]() {
         menu->addSeparator();
+        const QString newer = newerReleaseFor(deviceName);
+        if (!newer.isEmpty())
+        {
+            QAction* out = menu->addAction(QString("CasparCG Server %1 is out (this server runs %2)")
+                                               .arg(newer, DatabaseManager::getInstance().getDeviceByName(deviceName).getVersion()));
+            out->setEnabled(false);
+        }
         QAction* config = menu->addAction("Edit Server Config...");
         config->setToolTip("Every setting in this server's casparcg.config.");
         QObject::connect(config, &QAction::triggered, this, [this, deviceName]() {
@@ -606,6 +660,15 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
             action->setToolTip("Installing a server build is only done on Windows.");
         QObject::connect(action, &QAction::triggered, this, [this, deviceName]() {
             QTimer::singleShot(0, this, [this, deviceName]() { ServerDownloadDialog::openFor(deviceName, window()); });
+        });
+
+        // Once a day, the GitHub release list; for every server, not this one.
+        QAction* watch = menu->addAction("Tell Me About New Server Releases");
+        watch->setCheckable(true);
+        watch->setChecked(ServerReleaseWatcher::enabled());
+        QObject::connect(watch, &QAction::toggled, this, [this](bool on) {
+            ServerReleaseWatcher::setEnabled(on);
+            updateReleaseMarks();
         });
     };
 
@@ -901,6 +964,9 @@ void ServerStatusPanelWidget::deviceRemoved()
 
 void ServerStatusPanelWidget::deviceConnectionStateChanged(CasparDevice& device)
 {
+    // A server reports its version a moment after it connects.
+    QTimer::singleShot(5000, this, [this]() { updateReleaseMarks(); });
+
     // Find the server entry by matching address/port.
     for (auto it = this->serverEntries.begin(); it != this->serverEntries.end(); ++it)
     {

@@ -160,6 +160,7 @@ qt_add_library(widgets
     ServerProcessControl.cpp ServerProcessControl.h
     ServerConfigDialog.cpp ServerConfigDialog.h
     ServerDownloadDialog.cpp ServerDownloadDialog.h
+    ServerReleaseWatcher.cpp ServerReleaseWatcher.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
     InspectorUndo.cpp InspectorUndo.h

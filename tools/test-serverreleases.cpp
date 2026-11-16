@@ -124,6 +124,15 @@ int main(int argc, char* argv[])
     const CarriedConfig kept = carryConfig(local, "C:/CasparCG/CasparCG Server/");
     expectTrue(kept.xml == local && kept.changed.isEmpty(), "absolute paths and everything else are left exactly as written");
 
+    // Is a newer stable release out than a server runs?
+    expectTrue(isNewerVersion("2.5.1", "2.5.0 7a5e4e2 Stable"), "2.5.1 is newer than a 2.5.0 server");
+    expectTrue(!isNewerVersion("2.5.1", "2.5.1 ec38d94 Stable"), "not than the same version");
+    expectTrue(!isNewerVersion("2.5.1", "2.6.0 fe19ac0 Dev"), "a server on the next version's nightly is not behind");
+    expectTrue(isNewerVersion("2.5.0", "2.4.3 fd9168c Stable") && isNewerVersion("2.10.0", "2.9.9"), "minor and two-digit versions compare as numbers");
+    expectTrue(!isNewerVersion("2.5.1", "") && !isNewerVersion("2.5.1", "unknown"), "a server that has not said what it is gets no notice");
+    expectTrue(newestStable(releases).version == "2.5.1", "the newest stable of the list, not a pre-release");
+    expectTrue(newestStable(QList<Build>()).version.isEmpty(), "none of an empty list");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

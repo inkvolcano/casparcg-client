@@ -107,6 +107,12 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
         void stopThen(const QList<quint32>& pids, const QString& deviceName, const std::function<void(bool)>& done);
         void setProcessBusy(const QString& deviceName, bool busy, const QString& what = QString());
 
+        // A newer stable CasparCG Server than a server runs: its menu button is
+        // marked and its menu says which. Only tells; never installs.
+        class ServerReleaseWatcher* releaseWatcher = nullptr;
+        void updateReleaseMarks();
+        QString newerReleaseFor(const QString& deviceName) const;
+
         static QString serverExecutableOf(const QString& deviceName);
 
         QVBoxLayout* serverLayout = nullptr;
