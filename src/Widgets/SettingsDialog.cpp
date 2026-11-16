@@ -1,5 +1,12 @@
 #include "SettingsDialog.h"
 #include "LiveRunSheet.h"
+#include "ServerReleaseWatcher.h"
+#include <QtCore/QPointer>
+#include <QtCore/QSet>
+#include <QtCore/QRegularExpression>
+#include <QtWidgets/QTabWidget>
+#include <QtWidgets/QRadioButton>
+#include <QtWidgets/QStackedWidget>
 #include <functional>
 #include <QtWidgets/QDoubleSpinBox>
 #include "ClientRelease.h"
@@ -1428,6 +1435,252 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         if (readLayoutKeys() != this->layoutAtOpen)
             EventManager::getInstance().fireRebuildLayout();
     });
+
+    buildNavigation();
+}
+
+void SettingsDialog::buildNavigation()
+{
+    // Build 315: sections down the left instead of ten tabs along the top, and a
+    // search over every row. The pages are the same widgets as before - the old
+    // tabs and General's pages - so everything in them works as it did. A
+    // section with several parts shows them as tabs of its own.
+    QMap<QString, QWidget*> tabs;
+    while (this->tabWidgetSettings->count() > 0)
+    {
+        tabs.insert(this->tabWidgetSettings->tabText(0), this->tabWidgetSettings->widget(0));
+        this->tabWidgetSettings->removeTab(0);
+    }
+    this->tabWidgetSettings->hide();
+    if (QWidget* oldGeneral = tabs.take("General"))
+        oldGeneral->deleteLater();
+
+    QMap<QString, QWidget*> general;
+    for (const QPair<QString, QWidget*>& page : this->generalPages)
+        general.insert(page.first, page.second);
+
+    struct Part
+    {
+        QString title;
+        QWidget* widget = nullptr;
+    };
+    auto part = [](const QString& title, QWidget* widget) {
+        Part p;
+        p.title = title;
+        p.widget = widget;
+        return p;
+    };
+    const QList<QPair<QString, QList<Part>>> sections = {
+        { "General", { part("General", general.value("General")) } },
+        { "Rundown", { part("Rundown", general.value("Rundown")) } },
+        { "Hotkeys", { part("Hotkeys", tabs.value("Hotkeys")) } },
+        { "Preview", { part("Preview", general.value("Preview")) } },
+        { "Audio", { part("Audio", general.value("Audio")) } },
+        { "Panels", { part("Panels", general.value("Panels")), part("Layout", tabs.value("Layout")) } },
+        { "Look", { part("Look", general.value("Look")) } },
+        { "Servers", { part("Servers", tabs.value("Servers")), part("Server Settings", general.value("Servers")) } },
+        { "Control", { part("OSC", tabs.value("OSC")), part("GPI", tabs.value("GPI")), part("Live Stream", tabs.value("Live Stream")) } },
+        { "Sharing", { part("Live Run Sheet", general.value("Sharing")), part("Templates", tabs.value("Templates")),
+                       part("Sheets", tabs.value("Sheets")) } },
+        { "Simple Mode", { part("Simple Mode", tabs.value("Simple Mode")) } },
+    };
+
+    this->sectionStack = new QStackedWidget(this);
+    this->sectionList = new QListWidget(this);
+    this->sectionList->setObjectName("listSettingsSections");
+    for (const QPair<QString, QList<Part>>& section : sections)
+    {
+        QList<Part> present;
+        for (const Part& p : section.second)
+        {
+            if (p.widget != nullptr)
+                present.append(p);
+        }
+        if (present.isEmpty())
+            continue;
+
+        QWidget* page = present.first().widget;
+        if (present.count() > 1)
+        {
+            QTabWidget* inner = new QTabWidget(this);
+            for (const Part& p : present)
+                inner->addTab(p.widget, p.title);
+            page = inner;
+        }
+        this->sectionStack->addWidget(page);
+        this->sectionList->addItem(section.first);
+    }
+
+    // Anything the map above does not know (a tab added later) still shows.
+    for (auto it = tabs.constBegin(); it != tabs.constEnd(); ++it)
+    {
+        bool placed = false;
+        for (int i = 0; i < this->sectionStack->count() && !placed; i++)
+            placed = this->sectionStack->widget(i) == it.value() || this->sectionStack->widget(i)->isAncestorOf(it.value());
+        if (!placed && it.value() != nullptr)
+        {
+            this->sectionStack->addWidget(it.value());
+            this->sectionList->addItem(it.key());
+        }
+    }
+
+    this->settingsSearch = new QLineEdit(this);
+    this->settingsSearch->setPlaceholderText("Search settings");
+    this->settingsSearch->setClearButtonEnabled(true);
+    this->searchResults = new QListWidget(this);
+    this->searchResults->setObjectName("listSettingsSearch");
+
+    this->navStack = new QStackedWidget(this);
+    this->navStack->addWidget(this->sectionList);
+    this->navStack->addWidget(this->searchResults);
+
+    QWidget* left = new QWidget(this);
+    left->setFixedWidth(190);
+    QVBoxLayout* leftLayout = new QVBoxLayout(left);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(6);
+    leftLayout->addWidget(this->settingsSearch);
+    leftLayout->addWidget(this->navStack, 1);
+
+    QWidget* body = new QWidget(this);
+    QHBoxLayout* bodyLayout = new QHBoxLayout(body);
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(10);
+    bodyLayout->addWidget(left);
+    bodyLayout->addWidget(this->sectionStack, 1);
+
+    // In the dialog's layout where the tab widget was.
+    QVBoxLayout* main = qobject_cast<QVBoxLayout*>(layout());
+    if (main != nullptr)
+    {
+        const int at = main->indexOf(this->tabWidgetSettings);
+        main->insertWidget(at >= 0 ? at : 1, body, 1);
+        main->removeWidget(this->tabWidgetSettings);
+    }
+
+    QObject::connect(this->sectionList, &QListWidget::currentRowChanged, this->sectionStack, &QStackedWidget::setCurrentIndex);
+    QObject::connect(this->settingsSearch, &QLineEdit::textChanged, this, [this](const QString& text) { runSearch(text); });
+    QObject::connect(this->searchResults, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        showFound(item->data(Qt::UserRole).value<QPointer<QWidget>>().data());
+    });
+    QObject::connect(this->searchResults, &QListWidget::itemActivated, this, [this](QListWidgetItem* item) {
+        showFound(item->data(Qt::UserRole).value<QPointer<QWidget>>().data());
+    });
+
+    this->sectionList->setCurrentRow(0);
+    if (!this->pendingSection.isEmpty())
+        showSection(this->pendingSection);
+
+    resize(qMax(width(), 1000), qMax(height(), 740));
+}
+
+void SettingsDialog::showSection(const QString& name)
+{
+    if (this->sectionList == nullptr)
+    {
+        this->pendingSection = name;    // asked for before the sections exist
+        return;
+    }
+    const QList<QListWidgetItem*> found = this->sectionList->findItems(name, Qt::MatchExactly);
+    if (!found.isEmpty())
+        this->sectionList->setCurrentItem(found.first());
+}
+
+// Every row whose text or tooltip has the words in it, as "Section › text".
+void SettingsDialog::runSearch(const QString& text)
+{
+    const QString wanted = text.trimmed();
+    if (wanted.isEmpty())
+    {
+        this->navStack->setCurrentWidget(this->sectionList);
+        return;
+    }
+
+    this->searchResults->clear();
+    static const QRegularExpression tags("<[^>]*>");
+    QSet<QString> seen;
+    for (int i = 0; i < this->sectionStack->count(); i++)
+    {
+        const QString section = this->sectionList->item(i) != nullptr ? this->sectionList->item(i)->text() : QString();
+        const QList<QWidget*> widgets = this->sectionStack->widget(i)->findChildren<QWidget*>();
+        for (QWidget* w : widgets)
+        {
+            QString shown;
+            if (QLabel* label = qobject_cast<QLabel*>(w))
+                shown = label->text();
+            else if (QAbstractButton* button = qobject_cast<QAbstractButton*>(w))
+                shown = qobject_cast<QCheckBox*>(w) != nullptr || qobject_cast<QRadioButton*>(w) != nullptr ? button->text() : QString();
+            else if (QGroupBox* group = qobject_cast<QGroupBox*>(w))
+                shown = group->title();
+            shown = shown.remove(tags).replace('\n', ' ').simplified();
+            if (shown.isEmpty() || w->isHidden())
+                continue;
+            if (!shown.contains(wanted, Qt::CaseInsensitive) && !w->toolTip().contains(wanted, Qt::CaseInsensitive))
+                continue;
+
+            if (shown.endsWith(':'))
+                shown.chop(1);
+            if (shown.length() > 70)
+                shown = shown.left(67) + "...";
+            const QString line = QString("%1 %2 %3").arg(section, QString(QChar(0x203A)), shown);
+            if (seen.contains(line))
+                continue;
+            seen.insert(line);
+
+            QListWidgetItem* item = new QListWidgetItem(line, this->searchResults);
+            item->setToolTip(line);
+            item->setData(Qt::UserRole, QVariant::fromValue(QPointer<QWidget>(w)));
+        }
+    }
+    if (this->searchResults->count() == 0)
+    {
+        QListWidgetItem* none = new QListWidgetItem("Nothing matches", this->searchResults);
+        none->setFlags(Qt::NoItemFlags);
+    }
+    this->navStack->setCurrentWidget(this->searchResults);
+}
+
+// Shows the section, the tab and the scrolled place a search result is in, and
+// marks it for a moment.
+void SettingsDialog::showFound(QWidget* target)
+{
+    if (target == nullptr)
+        return;
+
+    for (int i = 0; i < this->sectionStack->count(); i++)
+    {
+        QWidget* page = this->sectionStack->widget(i);
+        if (page == target || page->isAncestorOf(target))
+        {
+            this->sectionStack->setCurrentIndex(i);
+            QSignalBlocker block(this->sectionList);
+            this->sectionList->setCurrentRow(i);
+            break;
+        }
+    }
+    for (QWidget* w = target; w != nullptr; w = w->parentWidget())
+    {
+        QWidget* holder = w->parentWidget();
+        QTabWidget* tabs = holder != nullptr ? qobject_cast<QTabWidget*>(holder->parentWidget()) : nullptr;
+        if (tabs != nullptr && tabs->indexOf(w) >= 0)
+            tabs->setCurrentWidget(w);
+    }
+    for (QWidget* w = target->parentWidget(); w != nullptr; w = w->parentWidget())
+    {
+        if (QScrollArea* scroll = qobject_cast<QScrollArea*>(w))
+        {
+            scroll->ensureWidgetVisible(target, 40, 80);
+            break;
+        }
+    }
+
+    const QString before = target->styleSheet();
+    target->setStyleSheet(before + " background-color: rgba(76, 154, 255, 110);");
+    QPointer<QWidget> guard(target);
+    QTimer::singleShot(1600, this, [guard, before]() {
+        if (!guard.isNull())
+            guard->setStyleSheet(before);
+    });
 }
 
 void SettingsDialog::reloadPanelSizing()
@@ -1459,21 +1712,70 @@ void SettingsDialog::reloadPanelSizing()
 
 void SettingsDialog::setupGeneralTab()
 {
-    // Build the entire General tab with a single QGridLayout inside a scroll area.
-    QWidget* content = new QWidget();
-    QGridLayout* grid = new QGridLayout(content);
-    grid->setContentsMargins(10, 10, 10, 10);
-    grid->setVerticalSpacing(8);
-    grid->setHorizontalSpacing(8);
-    grid->setColumnMinimumWidth(0, 170);
-    grid->setColumnStretch(1, 1);
-    grid->setColumnStretch(2, 1);
-    grid->setColumnStretch(3, 1);
+    // Build 315: what was one General tab of about 200 rows is built into the
+    // Settings sections where people look for things - each its own grid, in its
+    // own scroll area. addSection says which section a group of rows goes to
+    // (pageFor); the rows themselves are built exactly as before.
+    struct GeneralPage
+    {
+        QWidget* content = nullptr;
+        QGridLayout* grid = nullptr;
+        int row = 0;
+        QString lastTitle;
+    };
+    QMap<QString, GeneralPage> pages;
+    QStringList pageOrder;
+    auto makePage = [&](const QString& name) {
+        GeneralPage page;
+        page.content = new QWidget();
+        page.grid = new QGridLayout(page.content);
+        page.grid->setContentsMargins(10, 10, 10, 10);
+        page.grid->setVerticalSpacing(8);
+        page.grid->setHorizontalSpacing(8);
+        page.grid->setColumnMinimumWidth(0, 170);
+        page.grid->setColumnStretch(1, 1);
+        page.grid->setColumnStretch(2, 1);
+        page.grid->setColumnStretch(3, 1);
+        pages.insert(name, page);
+        pageOrder.append(name);
+    };
+    auto pageFor = [](const QString& title) -> QString {
+        static const QHash<QString, QString> where = {
+            { "Startup", "General" }, { "Library", "General" }, { "Database", "General" }, { "This Machine", "General" },
+            { "Playback", "Rundown" }, { "Repository", "Rundown" }, { "Rundown", "Rundown" }, { "Records", "Rundown" },
+            { "Timing and Alarms", "Rundown" }, { "Shell Commands", "Rundown" },
+            { "Live Run Sheet", "Sharing" },
+            { "Preview", "Preview" },
+            { "Audio", "Audio" },
+            { "Panels", "Panels" }, { "NDI", "Panels" }, { "Clock", "Panels" },
+            { "Channel Colors", "Look" }, { "Interface Colors", "Look" }, { "Header Colors", "Look" },
+            { "Servers", "Servers" }
+        };
+        return where.value(title, "General");
+    };
 
+    makePage("General");
+    QString currentPage = "General";
+    QGridLayout* grid = pages["General"].grid;
     int row = 0;
 
-    // Helper: add a section header with blue underline.
+    // Helper: add a section header with blue underline - on the section's page.
     auto addSection = [&](const QString& title) {
+        const QString target = pageFor(title);
+        if (target != currentPage)
+        {
+            pages[currentPage].row = row;
+            if (!pages.contains(target))
+                makePage(target);
+            currentPage = target;
+            grid = pages[target].grid;
+            row = pages[target].row;
+        }
+        // Rows that continue a group already on this page get no second header.
+        if (pages[currentPage].lastTitle == title)
+            return;
+        pages[currentPage].lastTitle = title;
+
         if (row > 0)
         {
             grid->setRowMinimumHeight(row, 12);
@@ -1765,6 +2067,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->comboReferenceSource, row, 1, 1, 3);
     row++;
 
+    addSection("This Machine");
     // Keep the machine awake while the client runs. On by default.
     this->checkBoxKeepAwake = new QCheckBox("Keep this machine awake while the client runs");
     this->checkBoxKeepAwake->setFocusPolicy(Qt::NoFocus);
@@ -1775,6 +2078,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxKeepAwake, row, 1, 1, 3);
     row++;
 
+    addSection("Live Run Sheet");
     // The live run sheet: every open rundown as a read-only page on the network.
     this->checkBoxLiveRunSheet = new QCheckBox("Serve a live run sheet on the network");
     this->checkBoxLiveRunSheet->setFocusPolicy(Qt::NoFocus);
@@ -1801,6 +2105,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxLiveRunSheet, row, 1, 1, 3);
     row++;
 
+    addSection("Shell Commands");
     this->checkBoxAllowShellCommands = new QCheckBox("Allow Shell Command items to run");
     this->checkBoxAllowShellCommands->setFocusPolicy(Qt::NoFocus);
     this->checkBoxAllowShellCommands->setToolTip("Shell Command items run a program on this machine.\n"
@@ -1808,6 +2113,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxAllowShellCommands, row, 1, 1, 3);
     row++;
 
+    addSection("Live Run Sheet");
     // Live run sheet: when the presenter countdown changes colour, a token for
     // the link, and which network the web server listens on (build 314).
     addIntSetting("Countdown amber at:", "RunSheetAmberSeconds", 30, 1, 3600, " s left",
@@ -1845,7 +2151,7 @@ void SettingsDialog::setupGeneralTab()
     }
 
     // ── Records and alarms (build 314) ───────────────────────
-    addSection("Records and Alarms");
+    addSection("Records");
     addIntSetting("Rundown versions kept:", "RundownVersionsKept", 10, 1, 200, "",
                   "How many earlier saves of each rundown File > Rundown Versions keeps.", nullptr);
     addIntSetting("As-run log kept:", "AsRunDays", 30, 1, 3650, " days",
@@ -1855,6 +2161,7 @@ void SettingsDialog::setupGeneralTab()
                    "A full path. Takes effect with the next line written.", nullptr);
     addIntSetting("Client logs kept:", "LogDays", 30, 1, 3650, " days",
                   "The client's own daily logs older than this are deleted. Takes effect at the next start.", nullptr);
+    addSection("Timing and Alarms");
     addIntSetting("Frozen clip alarm after:", "FrozenAlarmSeconds", 3, 1, 60, " s",
                   "A playing clip whose time has not moved for this long is marked FROZEN.", nullptr);
     addIntSetting("Gateway re-check every:", "GatewayRecheckSeconds", 30, 1, 3600, " s",
@@ -1912,6 +2219,16 @@ void SettingsDialog::setupGeneralTab()
                    "A mirror must answer in the GitHub releases API format.", nullptr);
     addTextSetting("Nightly builds from:", "ServerNightliesUrl", ServerReleases::NIGHTLY_ROOT,
                    "Where Download Server Build lists nightly builds, one folder per branch. Empty is casparcg.com.", nullptr);
+    {
+        QCheckBox* releaseNotice = new QCheckBox("Tell me about new stable server releases");
+        releaseNotice->setFocusPolicy(Qt::NoFocus);
+        releaseNotice->setChecked(ServerReleaseWatcher::enabled());
+        releaseNotice->setToolTip("Once a day the server menu in Server Status is marked when a newer stable CasparCG Server\n"
+                                  "release is out. Nothing is downloaded.");
+        QObject::connect(releaseNotice, &QCheckBox::toggled, [](bool on) { ServerReleaseWatcher::setEnabled(on); });
+        grid->addWidget(releaseNotice, row, 1, 1, 3);
+        row++;
+    }
 
     // ── Preview ──────────────────────────────────────────────
     addSection("Preview");
@@ -1985,10 +2302,11 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxOgrafEnabled, row, 1, 1, 3);
     row++;
 
+    addSection("Audio");
     // The Audio Levels meters. Both default on: a meter that hides a clip is not
     // a preference, it is a fault. They are settings because somebody metering
     // eight channels in a narrow column may want the plain bars back.
-    this->checkBoxMeterPeakHold = new QCheckBox("Audio Levels: hold the peak");
+    this->checkBoxMeterPeakHold = new QCheckBox("Hold the peak on the audio meters");
     this->checkBoxMeterPeakHold->setFocusPolicy(Qt::NoFocus);
     this->checkBoxMeterPeakHold->setToolTip(
         "Marks the highest recent level and holds it for a moment.\n\n"
@@ -1997,7 +2315,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxMeterPeakHold, row, 1, 1, 3);
     row++;
 
-    this->checkBoxMeterClipIndicator = new QCheckBox("Audio Levels: latch clipping");
+    this->checkBoxMeterClipIndicator = new QCheckBox("Latch the clip light until clicked");
     this->checkBoxMeterClipIndicator->setFocusPolicy(Qt::NoFocus);
     this->checkBoxMeterClipIndicator->setToolTip(
         "Lights a lamp above the meter when a channel reaches full scale, and\n"
@@ -2070,6 +2388,7 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxActivityGrow, row, 1, 1, 3);
     row++;
 
+    addSection("NDI");
     addLabel("NDI Outputs:");
     this->spinBoxNdiOutputs = new QSpinBox();
     this->spinBoxNdiOutputs->setMinimum(1);
@@ -2255,18 +2574,20 @@ void SettingsDialog::setupGeneralTab()
         this->panelRowWidgets[i] = grid->itemAtPosition(row - 1, 0)->widget();
     }
 
-    // Trailing stretch so content doesn't spread vertically.
-    grid->setRowStretch(row, 1);
+    // Each page gets a trailing stretch and a scroll area; buildNavigation puts
+    // them in their sections.
+    pages[currentPage].row = row;
+    for (const QString& name : pageOrder)
+    {
+        GeneralPage& page = pages[name];
+        page.grid->setRowStretch(page.row, 1);
 
-    // Wrap in scroll area and assign to tabGeneral.
-    QScrollArea* scrollArea = new QScrollArea();
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setWidget(content);
-
-    QVBoxLayout* tabLayout = new QVBoxLayout(this->tabGeneral);
-    tabLayout->setContentsMargins(0, 0, 0, 0);
-    tabLayout->addWidget(scrollArea);
+        QScrollArea* scrollArea = new QScrollArea();
+        scrollArea->setWidgetResizable(true);
+        scrollArea->setFrameShape(QFrame::NoFrame);
+        scrollArea->setWidget(page.content);
+        this->generalPages.append(qMakePair(name, static_cast<QWidget*>(scrollArea)));
+    }
 
     // ── Load saved values from DB ────────────────────────────
 
@@ -2906,7 +3227,7 @@ void SettingsDialog::checkEmptyDeviceList()
 {
     if (this->treeWidgetDevice->invisibleRootItem()->childCount() == 0)
     {
-        this->tabWidgetSettings->setCurrentIndex(2);
+        showSection("Servers");
         this->treeWidgetDevice->setStyleSheet("border-color: firebrick;");
     }
     else

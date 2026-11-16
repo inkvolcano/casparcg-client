@@ -1838,6 +1838,26 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Settings By Task, With Search
+
+- **Sections down the left instead of ten tabs.** The General tab, which had grown to about 200 rows, is split into the sections where people look for things. Nothing was removed or renamed; a section with several parts shows them as tabs.
+- **Search settings**, above the sections: type a word and every matching row is listed - by its text or its tooltip - as "Section > row". Clicking one opens its section and tab, scrolls to it and marks it for a moment.
+- The new-release notice for CasparCG Server is now in Settings > Servers > Server Settings too.
+
+| Section | What is in it |
+| --- | --- |
+| General | Startup, theme and font, library, database, keep this machine awake |
+| Rundown | Playback, recovery copies, missing media, reference pictures, records (versions, as-run, logs), timing and alarms, shell commands, repository |
+| Hotkeys | As before |
+| Preview | The preview panel and OGraf |
+| Audio | Peak hold, clip latch and level, loudness |
+| Panels | Panels, NDI and clock; Layout as a second tab |
+| Look | Channel, interface and header colours |
+| Servers | The server list; Server Settings (scanner port, release sources, new-release notice) |
+| Control | OSC, GPI and Live Stream |
+| Sharing | Live run sheet, Templates and Sheets |
+| Simple Mode | As before |
+
 ## Settings For Values That Were Fixed
 
 Values the client used to fix in code are now in Settings > General (new sections Records and Alarms, Audio and Servers, and the run sheet rows under Rundown), Hotkeys and Templates. Each keeps its old value until changed.

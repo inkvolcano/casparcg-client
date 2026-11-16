@@ -20,6 +20,7 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QSpinBox>
+#include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QWidget>
 
 class LayoutEditorWidget;
@@ -76,6 +77,20 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* checkBoxLiveRunSheet = nullptr;
         QCheckBox* checkBoxKeepAwake = nullptr;
         QSpinBox* spinBoxRelayFilesPerPoll = nullptr;
+
+        // Build 315: the sections down the left, and the search over them.
+        QList<QPair<QString, QWidget*>> generalPages;
+        QListWidget* sectionList = nullptr;
+        QStackedWidget* sectionStack = nullptr;
+        QStackedWidget* navStack = nullptr;
+        QLineEdit* settingsSearch = nullptr;
+        QListWidget* searchResults = nullptr;
+        QString pendingSection;
+
+        void buildNavigation();
+        void showSection(const QString& name);
+        void runSearch(const QString& text);
+        void showFound(QWidget* target);
         QLineEdit* lineEditRelayGitHubApi = nullptr;
         QComboBox* comboUpdateSource = nullptr;
         QCheckBox* checkBoxShowPreviewBorder = nullptr;
