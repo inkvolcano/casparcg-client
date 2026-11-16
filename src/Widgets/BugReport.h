@@ -36,6 +36,11 @@ class WIDGETS_EXPORT BugReport
         static bool writeAbout(const QString& into, const QString& versionLine, QStringList* notes);
         static bool writeCrashRecords(const QString& into, QStringList* notes);
         static bool copyWerReport(const QString& into, QStringList* notes);
+
+        // The client's crash dumps from %LOCALAPPDATA%\CrashDumps, the newest few
+        // (BugReportRules::chooseDumps). With the release's .pdb they show the
+        // line a crash happened on.
+        static bool copyCrashDumps(const QString& into, QStringList* notes);
         static QString zipFolder(const QString& folder, QStringList* notes);
         static bool copyFolder(const QString& from, const QString& to);
 };

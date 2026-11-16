@@ -14,6 +14,10 @@
 #include "../Core/Events/Rundown/OpenRundownEvent.h"
 
 #include "../Widgets/MainWindow.h"
+#include "../Widgets/SafeStart.h"
+#include "../Widgets/ServerProcessControl.h"
+#include "../Common/StartupGuard.h"
+#include "../Core/Events/StatusbarEvent.h"
 #include "../Widgets/RelayClient.h"
 #include "../Widgets/SheetCacheServer.h"
 
@@ -36,6 +40,8 @@
 #include <QtGui/QFontDatabase>
 
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QSplashScreen>
 #include <QtWidgets/QStyleFactory>
 
@@ -379,6 +385,65 @@ int main(int argc, char* argv[])
             return 0;
     }
 
+    // Did the last start finish, and did the last session close? Two markers in
+    // the data folder say (Common/StartupGuard.h). A start that never got as far
+    // as its window offers a safe start; holding Shift asks for one outright.
+    const QString dataFolder = QString("%1/.CasparCG/Client").arg(QDir::homePath());
+    QDir().mkpath(dataFolder);
+    const QString startingPath = QDir(dataFolder).filePath(StartupGuard::startingName());
+    const QString runningPath = QDir(dataFolder).filePath(StartupGuard::runningName());
+
+    auto readMarker = [](const QString& path) {
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+            return StartupGuard::Marker();
+        return StartupGuard::parseMarker(QString::fromUtf8(file.readAll()));
+    };
+    auto writeMarker = [](const QString& path) {
+        QFile file(path);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            file.write(StartupGuard::markerText(quint32(QCoreApplication::applicationPid()), QDateTime::currentDateTime(),
+                                                QString(DEV_BUILD_ID)).toUtf8());
+    };
+    const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    auto alive = [exeName](quint32 pid) {
+        if (pid == quint32(QCoreApplication::applicationPid()))
+            return false;
+        for (const ServerProcessControl::Running& process : ServerProcessControl::runningNamed(exeName))
+        {
+            if (process.pid == pid)
+                return true;
+        }
+        return false;
+    };
+
+    const StartupGuard::Last last = StartupGuard::judge(readMarker(startingPath), readMarker(runningPath), alive);
+
+    bool safe = QGuiApplication::queryKeyboardModifiers().testFlag(Qt::ShiftModifier);
+    if (!safe && last == StartupGuard::Last::StartFailed)
+    {
+        QMessageBox box;
+        box.setIcon(QMessageBox::Warning);
+        box.setWindowTitle("CasparCG Client");
+        box.setText("The client did not finish starting last time.");
+        box.setInformativeText(QString("Start safely? A safe start leaves off:\n\n- %1\n\nNo setting is changed, and the next start is a "
+                                       "normal one. Holding Shift while the client starts asks for a safe start too.")
+                                   .arg(StartupGuard::safeStartSkips().join("\n- ")));
+        QPushButton* safeButton = box.addButton("Safe Start", QMessageBox::AcceptRole);
+        box.addButton("Start Normally", QMessageBox::RejectRole);
+        box.setDefaultButton(safeButton);
+        box.exec();
+        safe = box.clickedButton() == safeButton;
+    }
+    SafeStart::setActive(safe);
+    if (safe)
+        qWarning("Safe start: %s are off", qPrintable(StartupGuard::safeStartSkips().join(", ")));
+    if (last == StartupGuard::Last::DidNotClose)
+        qWarning("The last session did not close normally");
+
+    QFile::remove(runningPath);
+    writeMarker(startingPath);
+
     QElapsedTimer startClock;
     startClock.start();
 
@@ -417,10 +482,35 @@ int main(int argc, char* argv[])
     DeviceManager::getInstance().initialize();
     OscDeviceManager::getInstance().initialize();
     OscWebSocketManager::getInstance().initialize();
-    SheetCacheServer::getInstance().start();
-    RelayClient::getInstance().start();
+    if (!safe)
+    {
+        SheetCacheServer::getInstance().start();
+        RelayClient::getInstance().start();
+    }
+
+    // On screen for a few seconds: this start finished. From now on a marker
+    // left behind means the session did not close normally.
+    QTimer::singleShot(5000, &window, [startingPath, runningPath, writeMarker]() {
+        QFile::remove(startingPath);
+        writeMarker(runningPath);
+    });
+
+    QTimer::singleShot(1500, &window, [safe, last]() {
+        if (safe)
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(
+                QString("SAFE START: %1 are off. Start the client normally to have them back.")
+                    .arg(StartupGuard::safeStartSkips().join(", ")), 30000, true));
+        else if (last == StartupGuard::Last::DidNotClose)
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(
+                "The client did not close normally last time. Help > Collect a Bug Report includes what Windows recorded about it.",
+                20000, true));
+    });
 
     int returnValue = application.exec();
+
+    // Closed normally.
+    QFile::remove(startingPath);
+    QFile::remove(runningPath);
 
     EventManager::getInstance().uninitialize();
     DatabaseManager::getInstance().uninitialize();

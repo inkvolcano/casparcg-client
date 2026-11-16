@@ -62,6 +62,40 @@ int main(int argc, char** argv)
     expectTrue(BugReportRules::isClientEvent("Faulting application name: casparcg-client.exe"), "a client fault is ours");
     expectTrue(!BugReportRules::isClientEvent("Faulting application name: chrome.exe"), "another program's is not");
 
+    out << "\nCrash dumps\n";
+
+    expectTrue(BugReportRules::isClientDump("casparcg-client.exe.14952.dmp"), "the client's dump, as Windows names it");
+    expectTrue(!BugReportRules::isClientDump("casparcg.exe.1234.dmp") && !BugReportRules::isClientDump("casparcg-client.exe.14952.txt"),
+               "not the server's, not another file");
+
+    const QDateTime now(QDate(2026, 11, 16), QTime(12, 0));
+    QList<BugReportRules::DumpFile> dumps;
+    auto dump = [](const QString& name, qint64 megabytes, const QDateTime& when) {
+        BugReportRules::DumpFile file;
+        file.name = name;
+        file.size = megabytes * 1024 * 1024;
+        file.modified = when;
+        return file;
+    };
+    dumps << dump("casparcg-client.exe.1.dmp", 40, now.addDays(-1))
+          << dump("casparcg-client.exe.2.dmp", 40, now.addSecs(-3600))
+          << dump("casparcg-client.exe.3.dmp", 900, now.addSecs(-60))
+          << dump("casparcg-client.exe.4.dmp", 40, now.addDays(-2))
+          << dump("casparcg-client.exe.5.dmp", 40, now.addDays(-3))
+          << dump("casparcg-client.exe.6.dmp", 40, now.addDays(-30))
+          << dump("chrome.exe.7.dmp", 1, now);
+    QStringList skipped;
+    const QList<BugReportRules::DumpFile> chosen = BugReportRules::chooseDumps(dumps, now, &skipped);
+    QStringList chosenNames;
+    for (const BugReportRules::DumpFile& file : chosen)
+        chosenNames << file.name;
+    expectTrue(chosenNames == (QStringList() << "casparcg-client.exe.2.dmp" << "casparcg-client.exe.1.dmp" << "casparcg-client.exe.4.dmp"),
+               "the newest three that are small enough, newest first: " + chosenNames.join(", "));
+    expectTrue(skipped.count() == 2 && skipped.at(0).startsWith("casparcg-client.exe.3.dmp (900 MB"),
+               "a dump too big to send is named, not taken: " + skipped.join(" | "));
+    expectTrue(!chosenNames.contains("casparcg-client.exe.6.dmp") && !skipped.join(" ").contains(".6."),
+               "a dump older than two weeks is left out");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

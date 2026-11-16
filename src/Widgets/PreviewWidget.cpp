@@ -1,4 +1,5 @@
 #include "PreviewWidget.h"
+#include "SafeStart.h"
 #include "TemplateScan.h"
 #include "TemplatePreviewData.h"
 
@@ -141,6 +142,10 @@ PreviewWidget::PreviewWidget(QWidget* parent)
 
 bool PreviewWidget::legacyMode()
 {
+    // A safe start opens no template, clip or file in the preview.
+    if (SafeStart::active())
+        return true;
+
     return configIsTrue("PreviewLegacyMode", true);
 }
 

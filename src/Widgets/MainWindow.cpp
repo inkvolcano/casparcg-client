@@ -11,6 +11,7 @@
 #include "ShotboxPanelWidget.h"
 #include "AsRunLogWriter.h"
 #include "InspectorUndo.h"
+#include "SafeStart.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -109,6 +110,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
         .arg(MINOR_VERSION)
         .arg(REVISION_VERSION)
         .arg(DEV_BUILD_ID);
+    // A safe start says so wherever the title shows.
+    if (SafeStart::active())
+        this->applicationTitle += " - SAFE START";
     this->setWindowTitle(this->applicationTitle);
 
     this->widgetAction->setVisible(false);
@@ -221,7 +225,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     // Recovery copies only survive a launch that did not shut down cleanly, so
     // finding any here means the last session ended badly. Asked after the window
     // is up and before the What's New dialog, because losing work outranks news.
-    QTimer::singleShot(500, this, [this]() { offerAutoSaveRecovery(); });
+    // Not in a safe start: the auto-saves stay where they are, for the next normal one.
+    if (!SafeStart::active())
+        QTimer::singleShot(500, this, [this]() { offerAutoSaveRecovery(); });
 
     QTimer::singleShot(10000, this, [this]() { WhatsNewDialog::showOnStartupIfEnabled(this); });
 }

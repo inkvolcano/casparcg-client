@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Safe Start And Crash Dumps
+
+- **Safe start.** Hold **Shift** while the client starts to start it with the
+  parts most likely to fail on one machine left off: the auto-save recovery
+  offer (the auto-saves are kept), NDI, the sheet cache server, relay check-ins
+  and pulls, and the HTML template preview. The title bar says SAFE START.
+  Nothing is changed in the settings; the next start is a normal one.
+- **Offered after a failed start.** If the last start never got as far as its
+  window, the next one asks whether to start safely.
+- **A session that did not close normally is noticed:** the status bar says so
+  at the next start.
+- **The bug report includes crash dumps.** Help > Bug Report > Collect a Bug
+  Report now adds the client's newest crash dumps from the last two weeks (up to
+  three, none over 300 MB). With the release's .pdb, a dump shows the exact line
+  a crash happened on - that is how build 289's crash was found.
+
 ## Every Value Starts Known
 
 - **No more startup crashes of the 289 kind.** Build 289's crash came from part

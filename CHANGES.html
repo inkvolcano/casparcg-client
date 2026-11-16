@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#safe-start">Safe Start And Crash Dumps</a><br>
 <a href="#members-292">Every Value Starts Known</a><br>
 <a href="#panic-setting">Panic Clear Is A Setting</a><br>
 <a href="#hotkey-release">Playout Hotkeys On Key Release</a><br>
@@ -1876,6 +1877,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="safe-start">Safe Start And Crash Dumps</h2>
+
+<ul>
+<li><b>Safe start.</b> Hold <b>Shift</b> while the client starts to start it with the parts most likely to fail on one machine left off: the auto-save recovery offer (the auto-saves are kept), NDI, the sheet cache server, relay check-ins and pulls, and the HTML template preview. The title bar says SAFE START. Nothing is changed in the settings; the next start is a normal one.</li>
+<li><b>Offered after a failed start.</b> If the last start never got as far as its window, the next one asks whether to start safely.</li>
+<li><b>A session that did not close normally is noticed:</b> the status bar says so at the next start.</li>
+<li><b>The bug report includes crash dumps.</b> Help &gt; Bug Report &gt; Collect a Bug Report now adds the client's newest crash dumps from the last two weeks (up to three, none over 300 MB). With the release's .pdb, a dump shows the exact line a crash happened on - that is how build 289's crash was found.</li>
+</ul>
 
 <h2 id="members-292">Every Value Starts Known</h2>
 

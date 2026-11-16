@@ -1,4 +1,5 @@
 #include "NdiPanelWidget.h"
+#include "SafeStart.h"
 #include "NdiViewerWidget.h"
 
 #include "Global.h"
@@ -57,6 +58,20 @@ void NdiPanelWidget::startNdi()
         return;
 
     this->ndiStarted = true;
+
+    // A safe start leaves NDI off: its runtime is one of the things that can
+    // stop a machine from starting.
+    if (SafeStart::active())
+    {
+        errorLabel = new QLabel(this->gridContainer);
+        errorLabel->setText("<div style='color: #ccc; text-align: center; padding: 20px;'>"
+                            "<b>NDI is off for this safe start.</b><br><br>Start the client normally to have it back.</div>");
+        errorLabel->setTextFormat(Qt::RichText);
+        errorLabel->setAlignment(Qt::AlignCenter);
+        errorLabel->setWordWrap(true);
+        this->gridLayout->addWidget(errorLabel, 0, 0);
+        return;
+    }
 
     // Try to initialize NDI.
     ndiAvailable = NdiManager::getInstance().initialize();

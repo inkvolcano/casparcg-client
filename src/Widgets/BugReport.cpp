@@ -65,6 +65,7 @@ QString BugReport::collect(const QString& versionLine, QStringList* notes, QStri
     writeAbout(folder, versionLine, notes);
     writeCrashRecords(folder, notes);
     copyWerReport(folder, notes);
+    copyCrashDumps(folder, notes);
 
     const QString zip = zipFolder(folder, notes);
     return zip.isEmpty() ? folder : zip;
@@ -300,6 +301,63 @@ bool BugReport::copyWerReport(const QString& into, QStringList* notes)
 #else
     Q_UNUSED(into);
     Q_UNUSED(notes);
+    return false;
+#endif
+}
+
+bool BugReport::copyCrashDumps(const QString& into, QStringList* notes)
+{
+#ifdef Q_OS_WIN
+    const QString folder = QDir(qEnvironmentVariable("LOCALAPPDATA")).filePath("CrashDumps");
+    QDir dir(folder);
+    if (qEnvironmentVariable("LOCALAPPDATA").isEmpty() || !dir.exists())
+    {
+        note(notes, "Crash dumps: none");
+        return false;
+    }
+
+    QList<BugReportRules::DumpFile> files;
+    foreach (const QFileInfo& info, dir.entryInfoList(QStringList("*.dmp"), QDir::Files))
+    {
+        BugReportRules::DumpFile file;
+        file.name = info.fileName();
+        file.size = info.size();
+        file.modified = info.lastModified();
+        files.append(file);
+    }
+
+    QStringList skipped;
+    const QList<BugReportRules::DumpFile> chosen = BugReportRules::chooseDumps(files, QDateTime::currentDateTime(), &skipped);
+    foreach (const QString& line, skipped)
+        note(notes, "Crash dump left out: " + line);
+
+    if (chosen.isEmpty())
+    {
+        note(notes, "Crash dumps: none for the client in the last two weeks");
+        return false;
+    }
+
+    const QString target = QDir(into).filePath("dumps");
+    QDir().mkpath(target);
+
+    bool copied = false;
+    foreach (const BugReportRules::DumpFile& file, chosen)
+    {
+        if (QFile::copy(dir.filePath(file.name), QDir(target).filePath(file.name)))
+        {
+            copied = true;
+            note(notes, QString("Crash dump %1 (%2 MB, %3)").arg(file.name).arg(qMax<qint64>(1, file.size / (1024 * 1024)))
+                            .arg(file.modified.toString("yyyy-MM-dd HH:mm")));
+        }
+        else
+        {
+            note(notes, QString("Crash dump %1: found but could not be copied").arg(file.name));
+        }
+    }
+    return copied;
+#else
+    Q_UNUSED(into);
+    note(notes, "Crash dumps: not on this platform");
     return false;
 #endif
 }

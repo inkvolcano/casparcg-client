@@ -1168,6 +1168,17 @@ hr {
 <li>Nothing is uploaded. The folder stays on your machine until you send it.</li>
 <li>It works on Windows only, for now, which the menu says as well.</li>
 <li>The client keeps its daily log files for 30 days, so a report covers the last month at most.</li>
+<li>It includes the client's newest crash dumps from the last two weeks, up to three (from <code>%LOCALAPPDATA%\CrashDumps</code>). With the release's <code>casparcg-client.pdb</code>, a dump shows the line the crash happened on. A dump over 300 MB is named, not copied.</li>
+</ul>
+
+<h3>After a crash: safe start</h3>
+<p>The client notices when its last start did not finish, or its last session did not close normally.</p>
+<ul>
+<li><b>The last start did not finish</b> (it closed before or just after its window appeared): the next start asks whether to <b>Safe Start</b>.</li>
+<li><b>The last session did not close normally</b> (a crash, or ended from Task Manager): the status bar says so. The bug report then includes what Windows recorded.</li>
+<li><b>Hold Shift while the client starts</b> to ask for a safe start at any time.</li>
+<li>A safe start leaves off the auto-save recovery offer (the auto-saves are kept), NDI, the sheet cache server, relay check-ins and pulls, and the HTML template preview. The title bar says SAFE START. No setting is changed, and the next start is a normal one.</li>
+<li>Another copy of the client that is open at the same time is not mistaken for a crash.</li>
 </ul>
 
 <!-- ══════════════════════════════════════════════════════════════════ -->
