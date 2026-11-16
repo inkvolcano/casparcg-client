@@ -131,4 +131,29 @@ namespace ReferenceImage
         const QString paragraph = QString("<p style=\"margin-top: 6px; max-width: 384px;\"><b>Note:</b> %1</p>").arg(escaped);
         return picture.isEmpty() ? paragraph : picture + paragraph;
     }
+
+    // The small mark on a key or a row that has something to hover (build 309):
+    // a framed picture, a pencil, both, or nothing.
+    inline QString markGlyphs(const QString& dataUri, const QString& note)
+    {
+        QString glyphs;
+        if (dataUri.startsWith("data:image/"))
+            glyphs += QString::fromUtf8("\xf0\x9f\x96\xbc");
+        if (!note.trimmed().isEmpty())
+            glyphs += QString::fromUtf8("\xe2\x9c\x8e");
+        return glyphs;
+    }
+
+    // A hover that already had something to say ("Drag to reorder") keeps it,
+    // beneath the picture and the note.
+    inline QString hoverWithHint(const QString& dataUri, const QString& note, const QString& hint)
+    {
+        const QString hover = hoverHtml(dataUri, note);
+        if (hover.isEmpty())
+            return hint;
+        if (hint.isEmpty())
+            return hover;
+        return hover + QString("<p style=\"margin-top: 6px; color: #9aa0a6;\">%1</p>").arg(hint.toHtmlEscaped());
+    }
 }
+

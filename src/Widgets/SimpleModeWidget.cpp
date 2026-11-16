@@ -1,4 +1,5 @@
 #include "SimpleModeWidget.h"
+#include "HoverNote.h"
 
 #include "Global.h"
 
@@ -1665,6 +1666,10 @@ QWidget* SimpleModeWidget::buildButtonCell(RundownTreeWidget* tree, QTreeWidgetI
         });
         cellLayout->addWidget(invokeButton, 0);
     }
+
+    // The item's picture and note show when the key is hovered, with a mark in
+    // its top right corner, as on its rundown row.
+    HoverNote::attach(cell, command, QString(), QPoint(-4, TALLY_HEIGHT + 2));
 
     return cell;
 }

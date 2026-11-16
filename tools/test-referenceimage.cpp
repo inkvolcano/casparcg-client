@@ -87,6 +87,18 @@ int main(int argc, char* argv[])
     expectTrue(hoverHtml(QString(), "Hold").startsWith("<p") && !hoverHtml(QString(), "Hold").contains("<img"),
                "a note alone shows without a picture");
 
+    // Keys and shotbox rows (build 309): the mark, and a hover that keeps its hint.
+    expectTrue(markGlyphs(QString(), QString()).isEmpty(), "nothing to hover: no mark");
+    expectTrue(markGlyphs(stored, QString()) == QString::fromUtf8("\xf0\x9f\x96\xbc"), "a picture: the picture mark");
+    expectTrue(markGlyphs(QString(), "cue") == QString::fromUtf8("\xe2\x9c\x8e"), "a note: the pencil");
+    expectTrue(markGlyphs(stored, "cue").length() > 2, "both: both marks");
+    expectTrue(markGlyphs("not a picture", " ").isEmpty(), "a stored value that is not a picture, a blank note: no mark");
+    expectTrue(hoverWithHint(QString(), QString(), "Drag to reorder.") == "Drag to reorder.", "nothing to show: the hint as it was");
+    expectTrue(hoverWithHint(QString(), "cue", QString()) == hoverHtml(QString(), "cue"), "no hint: the hover alone");
+    const QString hinted = hoverWithHint(stored, "cue", "Drag <to> reorder.");
+    expectTrue(hinted.startsWith(hoverHtml(stored, "cue")) && hinted.contains("Drag &lt;to&gt; reorder."),
+               "both: picture and note first, the hint after it, escaped");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

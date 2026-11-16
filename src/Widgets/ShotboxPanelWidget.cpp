@@ -1,4 +1,6 @@
 #include "ShotboxPanelWidget.h"
+#include "HoverNote.h"
+#include "ReferenceImage.h"
 
 #include "PanelHelper.h"
 #include "ShotboxRules.h"
@@ -357,6 +359,8 @@ void ShotboxPanelWidget::rebuildRows()
         row.frame->setFixedHeight(ROW_HEIGHT);
         row.frame->setCursor(Qt::OpenHandCursor);
         row.frame->setToolTip("Drag to reorder. Right-click to remove.");
+        // Its picture and note on hover, as on the rundown row; the label carries the mark.
+        HoverNote::attach(row.frame, command, "Drag to reorder. Right-click to remove.", QPoint(), false);
         row.frame->installEventFilter(this);
 
         QHBoxLayout* layout = new QHBoxLayout(row.frame);
@@ -371,7 +375,8 @@ void ShotboxPanelWidget::rebuildRows()
         row.badge->setAttribute(Qt::WA_TransparentForMouseEvents);
         layout->addWidget(row.badge);
 
-        row.label = new QLabel(labelOf(row.item), row.frame);
+        const QString glyphs = ReferenceImage::markGlyphs(command->getReferenceImage(), command->getNote());
+        row.label = new QLabel(glyphs.isEmpty() ? labelOf(row.item) : glyphs + " " + labelOf(row.item), row.frame);
         row.label->setToolTip(QString("%1 on %2").arg(row.item->getLibraryModel()->getType(), row.item->getLibraryModel()->getDeviceName()));
         row.label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
         row.label->setAttribute(Qt::WA_TransparentForMouseEvents);

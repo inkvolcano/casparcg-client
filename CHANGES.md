@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Notes And Pictures On Keys And Shotbox Rows
+
+- **Simple Mode keys and Shotbox rows show an item's reference picture and
+  operator note when hovered**, as rundown rows already do. A key that has one
+  carries a small mark in its top right corner (a framed picture, a pencil, or
+  both); a Shotbox row carries it before its name.
+- Changing the note or picture in the Inspector updates the key's hover at once.
+  A Shotbox row is a copy taken when the item was dropped in, so it keeps the
+  note and picture it had then.
+
 ## Presenter View On A Channel
 
 - **The presenter view on a confidence monitor, played by the server.**
