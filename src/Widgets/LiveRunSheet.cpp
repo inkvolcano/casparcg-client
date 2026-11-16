@@ -139,6 +139,9 @@ QByteArray LiveRunSheet::snapshot()
                 double length = -1;
             };
             QList<Row> rows;
+            QList<LiveRunSheetRules::Pick> picks;
+            int selected = -1;
+            QTreeWidgetItem* current = tree->currentItem();
 
             QList<QPair<QTreeWidgetItem*, int>> stack;
             for (int i = tree->topLevelItemCount() - 1; i >= 0; i--)
@@ -183,10 +186,19 @@ QByteArray LiveRunSheet::snapshot()
                         json.insert("endsAt", double(now) + live.remaining * 1000.0);
                 }
 
+                LiveRunSheetRules::Pick pickRow;
+                pickRow.onAir = live.state != LiveRunSheetRules::State::Idle;
+                pickRow.disabled = command->getDisabled();
+                pickRow.remaining = live.remaining;
+                pickRow.firedAt = firedAt;
+                if (next.first == current)
+                    selected = rows.count();
+
                 Row row;
                 row.json = json;
                 row.length = length;
                 rows << row;
+                picks << pickRow;
             }
 
             QList<double> lengths;
@@ -212,6 +224,14 @@ QByteArray LiveRunSheet::snapshot()
             if (!hardOut.isEmpty())
                 entry.insert("hardOut", hardOut);
             entry.insert("total", RundownTiming::formatLength(RunSheetRules::total(lengths)));
+
+            // The presenter view's two items, chosen here so the rules are tested.
+            const int primary = LiveRunSheetRules::primaryOnAir(picks);
+            const int upNext = LiveRunSheetRules::nextItem(picks, selected);
+            if (primary >= 0)
+                entry.insert("primary", primary + 1);
+            if (upNext >= 0)
+                entry.insert("next", upNext + 1);
             entry.insert("items", items);
             rundowns.append(entry);
         }

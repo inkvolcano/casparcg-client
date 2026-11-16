@@ -53,6 +53,30 @@ int main(int argc, char* argv[])
     expectTrue(stateText(State::Playing) == "playing" && stateText(State::OnAir) == "onair" && stateText(State::Idle).isEmpty(),
                "the words the page reads");
 
+    // The presenter view: what is shown big, and what comes next.
+    auto pick = [](bool onAir, double remaining = -1, qint64 firedAt = -1, bool disabled = false) {
+        Pick p;
+        p.onAir = onAir;
+        p.remaining = remaining;
+        p.firedAt = firedAt;
+        p.disabled = disabled;
+        return p;
+    };
+
+    QList<Pick> rows;
+    rows << pick(false) << pick(true, -1, 500) << pick(true, 83.0) << pick(true, 6.0) << pick(false, -1, -1, true) << pick(false) << pick(false);
+    expectTrue(primaryOnAir(rows) == 3, "shown big: of what is on air, the one ending soonest");
+    expectTrue(primaryOnAir(QList<Pick>() << pick(true, -1, 100) << pick(true, -1, 900) << pick(false)) == 1,
+               "with no end known for any, the one fired last");
+    expectTrue(primaryOnAir(QList<Pick>() << pick(false) << pick(false)) == -1, "nothing on air: nothing big");
+
+    expectTrue(nextItem(rows, 6) == 6, "next is what the operator has selected");
+    expectTrue(nextItem(rows, 2) == 5, "the selection is already on air: the first usable item after the last one on air");
+    expectTrue(nextItem(rows, 4) == 5, "a disabled selection is passed over");
+    expectTrue(nextItem(rows, -1) == 5, "no selection: after the last on air, skipping the disabled one");
+    expectTrue(nextItem(QList<Pick>() << pick(false, -1, -1, true) << pick(false), -1) == 1, "nothing on air: the first usable item");
+    expectTrue(nextItem(QList<Pick>() << pick(false) << pick(true), -1) == -1, "the last item on air: nothing next");
+
     out << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
     return failures == 0 ? 0 : 1;
 }

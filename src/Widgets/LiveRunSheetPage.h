@@ -5,6 +5,10 @@
 // anywhere but this client: it polls /runsheet.json once a second and counts
 // down between polls on the phone's own clock, corrected to the client's.
 // Kept under MSVC's 16 KB limit for one string literal.
+//
+// ?view=presenter (build 306) shows only what is on air, big, and what comes
+// next with its note - for a confidence monitor or a tablet on the desk. Which
+// item is "on air" and which is "next" is chosen by the client (primary, next).
 
 namespace LiveRunSheetPage
 {
@@ -49,15 +53,33 @@ main{padding:6px 14px 40px}
 .badge.paused{background:var(--pause);color:#111}
 .cd{font:700 18px ui-monospace,Consolas,monospace}
 #empty{color:var(--dim);padding:30px 14px}
+#mode{color:var(--accent);font-size:13px;text-decoration:none;flex:none}
+#pv{display:none}
+body.presenter nav,body.presenter #summary,body.presenter main,body.presenter #air{display:none}
+body.presenter #pv{display:flex;flex-direction:column;gap:2vh;padding:2vh 5vw 4vh}
+.pvl{font-size:clamp(13px,2vw,26px);letter-spacing:.14em;font-weight:700;color:var(--dim)}
+.pvl.air{color:var(--air)}
+.pvt{font-size:clamp(26px,min(9vw,9vh),104px);font-weight:700;line-height:1.05;overflow-wrap:anywhere}
+.pvc{font:800 clamp(64px,min(26vw,27vh),280px)/1 ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+.pvc.warn{color:var(--pause)}
+.pvc.urgent{color:var(--air)}
+.pve{font-size:clamp(15px,min(2.6vw,4vh),38px);color:var(--dim)}
+.pvo{font-size:clamp(14px,2.2vw,30px);color:#c9cdd3}
+.pvn .pvt{font-size:clamp(22px,min(4.6vw,7vh),74px);color:#cfd3d8}
+.pvnote{font-style:italic;font-size:clamp(17px,min(3.2vw,5vh),48px);color:#f0c674;white-space:pre-wrap}
+#hard{font-size:clamp(14px,2.2vw,30px);color:var(--dim)}
+#hard.over{color:var(--air)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
-<header><div class="top"><span id="dot" title="Live"></span><h1 id="title">Run sheet</h1><span id="clock">--:--:--</span></div>
+<header><div class="top"><span id="dot" title="Live"></span><h1 id="title">Run sheet</h1><a id="mode" href="?view=presenter">Presenter view</a><span id="clock">--:--:--</span></div>
 <nav id="tabs"></nav><div id="summary"></div></header>
+<section id="pv"></section>
 <section id="air"></section>
 <main id="list"></main>
 <div id="empty" hidden>No rundown is open in the client.</div>
 <script>
 let data=null,offset=0,chosen=null,lastOk=0;
+const presenter=new URLSearchParams(location.search).get('view')==='presenter';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function fmt(sec){sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
@@ -73,6 +95,27 @@ async function poll(){
  setTimeout(poll,1000);}
 function current(){if(!data||!data.rundowns.length)return null;
  let r=data.rundowns.find(x=>x.name===chosen);if(!r)r=data.rundowns.find(x=>x.onScreen)||data.rundowns[0];return r;}
+function hardOutLeft(rd){if(!rd||!rd.hardOut)return null;const p=rd.hardOut.split(':').map(Number);
+ const now=new Date(Date.now()+offset),t=new Date(now);t.setHours(p[0],p[1]||0,p[2]||0,0);
+ let d=(t-now)/1000;if(d<-43200)d+=86400;if(d>43200)d-=86400;return d;}
+function renderPresenter(rd){
+ const pr=rd.items.find(i=>i.n===rd.primary),nx=rd.items.find(i=>i.n===rd.next);
+ const others=rd.items.filter(i=>i.state&&(!pr||i.n!==pr.n));
+ let h='<div id="hard"></div>';
+ if(pr){const l=left(pr);
+  h+='<div><div class="pvl air">'+(pr.state==='paused'?'PAUSED':'ON AIR')+'</div><div class="pvt">'+esc(pr.label)+'</div>'+
+   (l!=null?'<div class="pvc" id="pvc">'+fmt(l)+'</div><div class="pve" id="pve">'+(pr.state==='paused'?'paused':'ends '+clockOf(Date.now()+offset+l*1000))+'</div>':'<div class="pve">on air, no end set</div>')+
+   (others.length?'<div class="pvo">Also on air: '+others.map(o=>esc(o.label)).join(' \u00b7 ')+'</div>':'')+'</div>';}
+ else h+='<div><div class="pvl">ON AIR</div><div class="pvt" style="color:var(--dim)">Nothing on air</div></div>';
+ h+='<div class="pvn"><div class="pvl">NEXT</div>'+(nx?'<div class="pvt">'+esc(nx.label)+'</div>'+(nx.length?'<div class="pve">'+esc(nx.length)+'</div>':'')+
+  (nx.note?'<div class="pvnote">'+esc(nx.note)+'</div>':''):'<div class="pvt" style="color:var(--dim)">End of the rundown</div>')+'</div>';
+ $('pv').innerHTML=h;tickPresenter(rd);}
+function tickPresenter(rd){
+ const hd=$('hard');if(hd){const s=hardOutLeft(rd);hd.className=s!=null&&s<0?'over':'';
+  hd.textContent=s==null?'':(s>=0?'Show ends in '+fmt(s)+' (hard out '+rd.hardOut+')':'Over the hard out by '+fmt(-s));}
+ const pr=rd.items.find(i=>i.n===rd.primary),c=$('pvc');if(!pr||!c)return;const l=left(pr);if(l==null)return;
+ c.textContent=fmt(l);c.className='pvc'+(pr.state==='paused'?'':(l<=10?' urgent':(l<=30?' warn':'')));
+ const e=$('pve');if(e&&pr.state!=='paused')e.textContent='ends '+clockOf(Date.now()+offset+l*1000);}
 function render(){
  const rd=current();
  $('empty').hidden=!!rd;
@@ -80,6 +123,7 @@ function render(){
  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{chosen=b.dataset.n;render();});
  if(!rd){$('list').innerHTML='';$('air').innerHTML='';$('summary').textContent='';return;}
  $('title').textContent=rd.name;
+ if(presenter){renderPresenter(rd);return;}
  $('summary').textContent='Running time '+rd.total+(rd.hardOut?' · hard out '+rd.hardOut+' (start times back-timed)':' · start times from the top');
  const on=rd.items.filter(i=>i.state);
  $('air').innerHTML=on.map(i=>{const l=left(i);
@@ -98,10 +142,13 @@ function tick(){
  $('dot').className=(Date.now()-lastOk>3500)?'stale':'';
  $('dot').title=(Date.now()-lastOk>3500)?'No answer from the client':'Live';
  const rd=current();if(!rd)return;
+ if(presenter){tickPresenter(rd);return;}
  document.querySelectorAll('.aircard').forEach(c=>{const it=rd.items.find(x=>String(x.n)===c.dataset.k);if(!it)return;
   const l=left(it),el=c.querySelector('.left');if(el&&l!=null)el.textContent=fmt(l);});
  document.querySelectorAll('.row.on').forEach((r,k)=>{const it=rd.items.filter(x=>x.state)[k];const el=r.querySelector('.cd');
   if(it&&el){const l=left(it);if(l!=null)el.textContent=fmt(l);}});}
+document.body.classList.toggle('presenter',presenter);
+$('mode').textContent=presenter?'Full list':'Presenter view';$('mode').href=presenter?'?':'?view=presenter';
 poll();setInterval(tick,250);
 </script></body></html>
 )html";

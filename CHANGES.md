@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Presenter View
+
+- **A presenter view of the live run sheet.** Open `/runsheet?view=presenter`,
+  or tap Presenter view at the top of the page: what is on air in large type
+  with its countdown and end time, and what comes next with its note - for a
+  confidence monitor or a tablet on the desk.
+- Next is what the operator has selected in the client, or the item after the
+  one on air. With several items on air, the one ending soonest is shown big.
+- The countdown turns amber in its last 30 seconds and red in its last 10; with
+  a hard out, the time left to it is at the top.
+
 ## A Live Run Sheet For Phones
 
 - **A live run sheet for phones.** Settings > General > **Serve a live run sheet

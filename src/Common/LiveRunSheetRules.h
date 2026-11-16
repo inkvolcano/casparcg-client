@@ -12,6 +12,7 @@
 //
 // Tested by tools/test-liverunsheet.
 
+#include <QtCore/QList>
 #include <QtCore/QString>
 #include <QtCore/QtGlobal>
 
@@ -54,6 +55,63 @@ namespace LiveRunSheetRules
 
         live.state = State::OnAir;
         return live;
+    }
+
+    // ---- the presenter view (build 306) ----------------------------------
+
+    struct Pick
+    {
+        bool onAir = false;        // playing, paused or on air
+        bool disabled = false;
+        double remaining = -1;     // seconds left; -1 = no end known
+        qint64 firedAt = -1;       // when it was fired, -1 = not known
+    };
+
+    // The one item the presenter view shows big: of what is on air, the one
+    // ending soonest; failing that the one fired last; failing that the first.
+    // -1 when nothing is on air.
+    inline int primaryOnAir(const QList<Pick>& rows)
+    {
+        int ending = -1, latest = -1, first = -1;
+        for (int i = 0; i < rows.count(); i++)
+        {
+            const Pick& row = rows.at(i);
+            if (!row.onAir)
+                continue;
+            if (first < 0)
+                first = i;
+            if (row.remaining > 0 && (ending < 0 || row.remaining < rows.at(ending).remaining))
+                ending = i;
+            if (row.firedAt >= 0 && (latest < 0 || row.firedAt > rows.at(latest).firedAt))
+                latest = i;
+        }
+        return ending >= 0 ? ending : (latest >= 0 ? latest : first);
+    }
+
+    // What comes next: the item the operator has selected in the client, when it
+    // is not on air already and not disabled - that is what they will fire. Else
+    // the first usable item after the last one on air; else, with nothing on
+    // air, the first usable item. -1 when there is none.
+    inline int nextItem(const QList<Pick>& rows, int selected)
+    {
+        if (selected >= 0 && selected < rows.count() && !rows.at(selected).onAir && !rows.at(selected).disabled)
+            return selected;
+
+        int lastOnAir = -1;
+        for (int i = 0; i < rows.count(); i++)
+        {
+            if (rows.at(i).onAir)
+                lastOnAir = i;
+        }
+        if (selected >= 0 && selected < rows.count() && rows.at(selected).onAir)
+            lastOnAir = qMax(lastOnAir, selected);
+
+        for (int i = lastOnAir + 1; i < rows.count(); i++)
+        {
+            if (!rows.at(i).onAir && !rows.at(i).disabled)
+                return i;
+        }
+        return -1;
     }
 
     inline QString stateText(State state)

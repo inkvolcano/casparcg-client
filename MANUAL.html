@@ -1229,6 +1229,7 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li><b>On air</b> at the top: each item that is on air, with a large countdown to its end and the clock time it ends. Clips (movies, audio) count down from the server's own time for them; other items with a Duration count down from when they were fired; items without one show as on air until stopped.</li>
 <li>Below, every item with its type, server and channel-layer, length, start time (back-timed to the hard out when there is one), note, and what is on air marked.</li>
 <li>Read-only, and open to anyone on that network. It needs the client's web server, so it is not there during a safe start.</li>
+<li><b>Presenter view</b> (build 306): <code>/runsheet?view=presenter</code>, or the link at the top of the page, for a confidence monitor or a tablet on the desk. It shows only what is on air, in large type with its countdown and end time - when several items are on air, the one ending soonest - and what comes next with its note. Next is the item the operator has selected in the client, or the item after the one on air. The countdown turns amber in its last 30 seconds and red in its last 10; with a hard out, the time left to it is shown at the top.</li>
 </ul>
 
 <h3>Rundown versions</h3>
