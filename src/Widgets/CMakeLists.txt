@@ -163,6 +163,7 @@ qt_add_library(widgets
     ServerReleaseWatcher.cpp ServerReleaseWatcher.h
     ReadinessDialog.cpp ReadinessDialog.h
     ReferenceCapture.cpp ReferenceCapture.h
+    RundownVersionsDialog.cpp RundownVersionsDialog.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
     InspectorUndo.cpp InspectorUndo.h

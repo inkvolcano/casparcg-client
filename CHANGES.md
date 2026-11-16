@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Rundown Versions
+
+- **Rundown versions.** Each save that changes a rundown keeps the file as it
+  was, in a folder beside it - `Show.xml versions` for `Show.xml` - the newest
+  ten.
+- **File > Rundown Versions...** lists them: **Open in a New Tab** to look at one
+  or copy items out of it, or **Put Back...** to make it the rundown again (the
+  current save is kept as a version first, so that can be undone too).
+- Saving without a change keeps nothing, and only the client's own version files
+  are ever removed from that folder.
+
 ## Notes On Rundown Items
 
 - **Notes on rundown items.** The Inspector has a **Notes** box for a note to

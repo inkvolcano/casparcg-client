@@ -76,6 +76,7 @@
 #include "Events/Rundown/ReloadRundownMenuEvent.h"
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
+#include "../RundownVersionsDialog.h"
 #include "MissingMediaScanner.h"
 #include "SimpleModeMarker.h"
 
@@ -1637,13 +1638,17 @@ void RundownTreeWidget::saveRundown(bool saveAs)
             path.append(".xml");
         EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("Saving rundown..."));
 
+        // What was there is kept as a version first, when this save changes it
+        // (File > Rundown Versions...).
+        const QByteArray data = serialiseRundown();
+        RundownVersionsDialog::keepVersion(path, data);
+
         QFile file(path);
         if (file.exists())
             file.remove();
 
         if (file.open(QFile::WriteOnly))
         {
-            QByteArray data = serialiseRundown();
 
             this->hexHash = QString(QCryptographicHash::hash(data, QCryptographicHash::Md5).toHex());
             qDebug("Hash is %s", qPrintable(this->hexHash));

@@ -13,6 +13,7 @@
 #include "InspectorUndo.h"
 #include "SafeStart.h"
 #include "ReadinessDialog.h"
+#include "RundownVersionsDialog.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -336,6 +337,9 @@ void MainWindow::setupMenu()
     this->saveAction = this->fileMenu->addAction("Save", this, SLOT(saveRundown()), QKeySequence::fromString("Ctrl+S"));
     this->saveAsAction = this->fileMenu->addAction("Save As...", this, SLOT(saveAsRundown()), QKeySequence::fromString("Ctrl+Shift+S"));
     this->fileMenu->addSeparator();
+    this->fileMenu->addAction("Rundown Versions...", this, [this]() {
+        RundownVersionsDialog::openFor(this->widgetRundown->activeTreeWidget(), this);
+    });
     this->fileMenu->addAction("Export As-Run Log...", this, SLOT(exportAsRunLog()));
     this->fileMenu->addSeparator();
     this->fileMenu->addAction("Quit", this, SLOT(close()));

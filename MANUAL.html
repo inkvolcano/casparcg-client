@@ -1197,6 +1197,16 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li>Another copy of the client that is open at the same time is not mistaken for a crash.</li>
 </ul>
 
+<h3>Rundown versions</h3>
+<p>Each save that changes a rundown keeps the file as it was before, in a folder beside it named after it - for <code>Show.xml</code>, <code>Show.xml versions</code>. The newest ten are kept.</p>
+<ul>
+<li><b>File &gt; Rundown Versions...</b> lists them for the open rundown, newest first.</li>
+<li><b>Open in a New Tab</b> opens a version on its own, to look at it or copy items out of it. The rundown is not changed.</li>
+<li><b>Put Back...</b> makes a version the rundown again and reloads it. The rundown as it was saved is kept as a version first, so putting back can be undone the same way. Changes not saved yet are lost.</li>
+<li>Saving a rundown that has not changed keeps nothing. Only files named the way the client names versions are ever removed from that folder.</li>
+<li>Autosave covers a crash; versions cover an edit that should not have been saved.</li>
+</ul>
+
 <h3>Check Before Going Live</h3>
 <p><b>Rundown &gt; Check Before Going Live...</b> lists everything that would stop the open rundown from going to air as meant:</p>
 <ul>
