@@ -216,6 +216,9 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QStringList releaseKeyNames;
         HotkeyRelease::Arming releaseArming;
         QLabel* releaseHint = nullptr;
+
+        // Items that fire at a time of day, while armed (Rundown menu).
+        class TimeTriggers* timeTriggers = nullptr;
         // An outline over each row that will fire, while its key is held.
         QList<QPointer<QFrame>> releaseOutlines;
         bool handleReleaseHotkey(QObject* obj, QEvent* event);

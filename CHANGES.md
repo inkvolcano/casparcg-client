@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Items That Fire At A Time Of Day
+
+- **Items can fire at a time of day.** Type a time in **Fire at** in the
+  Inspector - `19:59:50`, or `19:59` for the top of the minute - and the item
+  plays at that time every day, as if Play were pressed on it.
+- **Only while Rundown > Arm Time Triggers is on**, which is off at every start:
+  nothing fires by the clock until someone arms it.
+- The row shows the time and the countdown, amber when armed and grey when not.
+  Disabled items never fire. Saved in the rundown as `<fireat>`.
+
 ## Frozen Output Pointed Out
 
 - **A frozen clip is pointed out.** When a playing clip's time, as the server

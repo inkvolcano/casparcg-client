@@ -1,4 +1,5 @@
 #include "InspectorMetadataWidget.h"
+#include "TimeTriggerRules.h"
 #include <QtCore/QSignalBlocker>
 #include <QtWidgets/QPlainTextEdit>
 #include "ReferenceCapture.h"
@@ -82,6 +83,17 @@ InspectorMetadataWidget::InspectorMetadataWidget(QWidget* parent)
             this->command->setNote(this->textNote->toPlainText());
     });
 
+    this->labelFireAtTitle = new QLabel("Fire at", this);
+    this->labelFireAtTitle->setToolTip("A time of day this item plays at, every day - only while Rundown > Arm Time Triggers is on.");
+    this->editFireAt = new QLineEdit(this);
+    this->editFireAt->setPlaceholderText("hh:mm:ss - plays at that time while time triggers are armed");
+    this->editFireAt->setToolTip(this->labelFireAtTitle->toolTip());
+    this->gridLayout->addWidget(this->labelFireAtTitle, 4, 0);
+    this->gridLayout->addWidget(this->editFireAt, 4, 1);
+    this->labelFireAtTitle->setVisible(false);
+    this->editFireAt->setVisible(false);
+    QObject::connect(this->editFireAt, &QLineEdit::editingFinished, this, [this]() { saveFireAt(); });
+
     QObject::connect(choose, &QPushButton::clicked, this, [this]() { chooseReference(); });
     QObject::connect(this->buttonReferenceCapture, &QPushButton::clicked, this, [this]() { captureReference(); });
     QObject::connect(this->buttonReferenceClear, &QPushButton::clicked, this, [this]() {
@@ -126,13 +138,43 @@ void InspectorMetadataWidget::rundownItemSelected(const RundownItemSelectedEvent
     showNote();
 }
 
+void InspectorMetadataWidget::saveFireAt()
+{
+    if (this->command.isNull())
+        return;
+
+    const QString typed = this->editFireAt->text().trimmed();
+    const QString time = TimeTriggerRules::normalised(typed);
+    if (!typed.isEmpty() && time.isEmpty())
+    {
+        // Not saved: a time the client cannot read would never fire.
+        this->editFireAt->setStyleSheet("border: 1px solid rgb(220, 60, 60);");
+        this->editFireAt->setToolTip("Not a time of day - write it as hh:mm:ss or hh:mm, e.g. 19:59:50.");
+        return;
+    }
+
+    this->editFireAt->setStyleSheet(QString());
+    this->editFireAt->setToolTip(this->labelFireAtTitle->toolTip());
+    this->command->setFireAt(time);
+    if (this->editFireAt->text() != time)
+        this->editFireAt->setText(time);
+}
+
 void InspectorMetadataWidget::showNote()
 {
     const bool shown = !this->command.isNull();
     this->labelNoteTitle->setVisible(shown);
     this->textNote->setVisible(shown);
+    this->labelFireAtTitle->setVisible(shown);
+    this->editFireAt->setVisible(shown);
     if (!shown)
         return;
+
+    {
+        const QSignalBlocker blocker(this->editFireAt);
+        this->editFireAt->setStyleSheet(QString());
+        this->editFireAt->setText(this->command->getFireAt());
+    }
 
     // Set only when it differs - an undo, another way of editing it - so typing
     // here is never interrupted by its own echo.

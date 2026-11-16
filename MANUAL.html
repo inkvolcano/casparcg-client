@@ -601,6 +601,14 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li>The note is saved inside the rundown file, and editing it can be undone like any other Inspector field.</li>
 </ul>
 
+<h3>Fire at a time of day</h3>
+<ul>
+<li>Type a time in <b>Fire at</b> in the Inspector (<code>19:59:50</code>, or <code>19:59</code> for the top of the minute) and the item plays at that time, every day, as if Play were pressed on it.</li>
+<li><b>Only while Rundown &gt; Arm Time Triggers is on.</b> It is off at every start, so a rundown opened at the wrong moment, or left open overnight, does nothing by the clock until someone arms it.</li>
+<li>The row shows the time and how long is left, amber when armed and grey when not. A disabled item shows its time but never fires.</li>
+<li>A time a held Shift (or the preview modifier) would redirect is not redirected: a timed item always goes where the item says.</li>
+</ul>
+
 <h3>Media line</h3>
 <ul>
 <li><b>A Media line in the Inspector</b> for a movie or still in a rundown: the codec, resolution, frame rate and scan, whether it has alpha, the audio, and the length. For example "Apple ProRes 1920x1080 25 fps &middot; PCM 24-bit stereo 48 kHz &middot; 0:30", or "PNG 1920x1080 &middot; alpha".</li>

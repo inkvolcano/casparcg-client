@@ -49,6 +49,11 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         QString getNote() const;
         void setNote(const QString& note);
 
+        // A time of day the item plays at, "HH:mm:ss", or empty (build 303):
+        // only while Rundown > Arm Time Triggers is on. Saved with the rundown.
+        QString getFireAt() const;
+        void setFireAt(const QString& time);
+
         virtual void setChannel(int channel);
         virtual void setVideolayer(int videolayer);
         virtual void setDelay(int delay);
@@ -104,6 +109,7 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         QString simpleModeIcon;           // glyph/emoji shown on the button, empty = none
         QString referenceImage;           // data URI, empty = none
         QString note;                     // operator note, empty = none
+        QString fireAt;                   // "HH:mm:ss", empty = none
 
     signals:
         void channelChanged(int);
@@ -120,5 +126,6 @@ class CORE_EXPORT AbstractCommand : public QObject, public AbstractProperties
         void showInSimpleModeChanged(bool);
         void referenceImageChanged(const QString&);
         void noteChanged(const QString&);
+        void fireAtChanged(const QString&);
         void propertyChanged();
 };

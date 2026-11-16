@@ -278,6 +278,7 @@ void AbstractCommand::readProperties(boost::property_tree::wptree& pt)
     setSimpleModeIcon(QString::fromStdWString(pt.get(L"simplemodeicon", std::wstring())));
     setReferenceImage(QString::fromStdWString(pt.get(L"referenceimage", std::wstring())));
     setNote(QString::fromStdWString(pt.get(L"note", std::wstring())));
+    setFireAt(QString::fromStdWString(pt.get(L"fireat", std::wstring())));
 }
 
 void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
@@ -317,6 +318,23 @@ void AbstractCommand::writeProperties(QXmlStreamWriter& writer)
         writer.writeTextElement("referenceimage", getReferenceImage());
     if (!getNote().isEmpty())
         writer.writeTextElement("note", getNote());
+    if (!getFireAt().isEmpty())
+        writer.writeTextElement("fireat", getFireAt());
+}
+
+QString AbstractCommand::getFireAt() const
+{
+    return this->fireAt;
+}
+
+void AbstractCommand::setFireAt(const QString& time)
+{
+    if (this->fireAt == time)
+        return;
+
+    this->fireAt = time;
+    emit fireAtChanged(this->fireAt);
+    emit propertyChanged();
 }
 
 QString AbstractCommand::getNote() const

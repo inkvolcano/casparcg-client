@@ -54,6 +54,11 @@ class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMeta
         class QPlainTextEdit* textNote = nullptr;
         QMetaObject::Connection noteConnection;
         void showNote();
+
+        // Fire at: a time of day the item plays at, while time triggers are armed.
+        QLabel* labelFireAtTitle = nullptr;
+        QLineEdit* editFireAt = nullptr;
+        void saveFireAt();
         QLabel* labelReferenceTitle = nullptr;
         QWidget* referenceRow = nullptr;
         QLabel* referencePreview = nullptr;

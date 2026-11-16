@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are forty-nine test suites and a syntax checker. Twenty-three commands that each take a
+There are fifty test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -41,6 +41,7 @@ SUITES = [
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
+    ('test-timetriggers', False, 'items that fire at a time of day'),
     ('test-frozen', False, 'when a playing clip counts as frozen'),
     ('test-loglines', False, 'Help > Show Log: entries, levels, search, following a growing log'),
     ('test-rundownversions', False, 'the last ten saves of a rundown, kept beside it'),

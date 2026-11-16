@@ -15,6 +15,7 @@
 #include "ReadinessDialog.h"
 #include "RundownVersionsDialog.h"
 #include "LogViewerDialog.h"
+#include "TimeTriggers.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -139,6 +140,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     new AsRunLogWriter(this);
     this->widgetSimpleMode = new SimpleModeWidget(this->widgetRundown, this);
     this->widgetSimpleInspector = new SimpleInspectorWidget(this);
+
+    this->timeTriggers = new TimeTriggers(this->widgetRundown, this);
 
     // Inspector edits, one undo step per field, on the rundown the Inspector is
     // showing. The Edit menu records an edit in progress before it opens, so the
@@ -399,6 +402,17 @@ void MainWindow::setupMenu()
     this->lockRundownAction = this->rundownMenu->addAction("Lock Rundown");
     this->lockRundownAction->setCheckable(true);
     this->rundownMenu->addSeparator();
+    // Items with a Fire at time play by the clock only while this is on. Off at
+    // every start: nothing fires by the clock until someone arms it.
+    QAction* armTimeTriggers = this->rundownMenu->addAction("Arm Time Triggers");
+    armTimeTriggers->setCheckable(true);
+    armTimeTriggers->setChecked(false);
+    armTimeTriggers->setToolTip("Items with a Fire at time (Inspector) play when it comes, every day. Off at every start.");
+    QObject::connect(armTimeTriggers, &QAction::toggled, this, [this](bool on) {
+        if (this->timeTriggers != nullptr)
+            this->timeTriggers->setArmed(on);
+    });
+
     // Everything that would stop the open rundown going to air as meant.
     this->rundownMenu->addAction("Check Before Going Live...", this, [this]() {
         RundownTreeWidget* active = this->widgetRundown->activeTreeWidget();
