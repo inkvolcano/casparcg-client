@@ -21,6 +21,7 @@
 #include "ServerConfigDialog.h"
 #include "ServerDownloadDialog.h"
 #include "ServerReleaseWatcher.h"
+#include "FrozenOutputs.h"
 #include "ServerReleases.h"
 #include "ServerProcessControl.h"
 
@@ -50,6 +51,23 @@ ServerStatusPanelWidget::ServerStatusPanelWidget(QWidget* parent)
       maxChannels(0)
 {
     setupUi(this);
+
+    this->frozenFlash.setInterval(500);
+    QObject::connect(&this->frozenFlash, &QTimer::timeout, this, [this]() {
+        this->frozenFlashOn = !this->frozenFlashOn;
+        for (const QPair<QString, int>& where : this->flashing)
+        {
+            if (!this->lockButtons.contains(where.first) || !this->lockButtons[where.first].contains(where.second))
+                continue;
+            QPushButton* button = this->lockButtons[where.first][where.second];
+            button->setText("!");
+            button->setToolTip(QString("A clip on channel %1 is frozen: its time has not moved for three seconds.").arg(where.second));
+            button->setStyleSheet(this->frozenFlashOn
+                ? "QPushButton { background-color: rgb(235, 40, 40); color: white; border-radius: 3px; font-size: 10px; font-weight: bold; border: 1px solid rgb(255, 90, 90); }"
+                : "QPushButton { background-color: rgba(90, 20, 20, 220); color: rgb(255, 120, 120); border-radius: 3px; font-size: 10px; font-weight: bold; border: 1px solid rgb(160, 40, 40); }");
+        }
+    });
+    QObject::connect(&FrozenOutputs::getInstance(), &FrozenOutputs::changed, this, [this]() { frozenChanged(); });
 
     this->releaseWatcher = new ServerReleaseWatcher(this);
     QObject::connect(this->releaseWatcher, &ServerReleaseWatcher::changed, this, [this]() { updateReleaseMarks(); });
@@ -1223,6 +1241,35 @@ void ServerStatusPanelWidget::channelLockChanged(const QString& deviceName, int 
                 updateTimerButtonStyle(this->timerButtons[deviceName][channel], timed);
         }
     }
+}
+
+void ServerStatusPanelWidget::restoreLockButton(const QString& deviceName, int channel)
+{
+    if (!this->lockButtons.contains(deviceName) || !this->lockButtons[deviceName].contains(channel))
+        return;
+    QPushButton* button = this->lockButtons[deviceName][channel];
+    button->setToolTip(QString());
+    updateLockButtonStyle(button, DeviceManager::getInstance().isChannelLocked(deviceName, channel),
+                          DeviceManager::getInstance().isTimedLock(deviceName, channel),
+                          DeviceManager::getInstance().getRemainingLockSeconds(deviceName, channel));
+}
+
+void ServerStatusPanelWidget::frozenChanged()
+{
+    const QList<QPair<QString, int>> now = FrozenOutputs::getInstance().frozenChannels();
+
+    // A channel that moved again gets its own look back.
+    for (const QPair<QString, int>& where : this->flashing)
+    {
+        if (!now.contains(where))
+            restoreLockButton(where.first, where.second);
+    }
+
+    this->flashing = now;
+    if (this->flashing.isEmpty())
+        this->frozenFlash.stop();
+    else if (!this->frozenFlash.isActive())
+        this->frozenFlash.start();
 }
 
 void ServerStatusPanelWidget::timedLockTick(const QString& deviceName, int channel, int remainingSecs)

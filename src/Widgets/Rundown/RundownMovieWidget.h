@@ -27,6 +27,8 @@
 
 #include <QtCore/QString>
 
+#include <QtCore/QTimer>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QWidget>
 
 class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget, public AbstractRundownWidget, public AbstractPlayoutCommand
@@ -85,6 +87,17 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
         bool fireAtEndOfClip = false;
 
         OscFileModel fileModel;
+
+        // Frozen output (build 302, Common/FrozenRules.h): the server's time for
+        // this clip stopped while it plays. Armed by time updates only, so a row
+        // that hears no OSC costs nothing and never flags.
+        QTimer frozenTimer;
+        qint64 lastTimeChange = 0;
+        double lastTime = -1;
+        bool frozen = false;
+        QLabel* frozenBadge = nullptr;
+        void checkFrozen();
+        void setFrozen(bool on);
         OscSubscription* timeSubscription = nullptr;
         OscSubscription* clipSubscription = nullptr;
         OscSubscription* fpsSubscription = nullptr;

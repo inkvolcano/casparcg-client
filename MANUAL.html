@@ -743,6 +743,7 @@ The channel is the server's preview channel, or the item's own channel when the 
 
 <h3>Channel Lock Grid</h3>
 <p>Per-channel lock buttons prevent accidental playout on specific channels. Click a channel button to lock/unlock. Global lock buttons affect all devices.</p>
+<p><b>Frozen output</b> (build 302): when a playing clip's time, as the server reports it over OSC, has not moved for three seconds, its channel's button here flashes red with a "!", the clip's row shows <b>FROZEN</b>, and the status bar says which clip. It clears by itself as soon as the time moves again, or the clip is stopped or paused. A paused clip, and one that has reached its end and holds its last frame, are not frozen. It needs OSC monitoring: without OSC from the server, nothing is ever flagged.</p>
 
 <h3>PVW Button</h3>
 <p>Green when active. Click to toggle persistent preview mode.</p>

@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Frozen Output Pointed Out
+
+- **A frozen clip is pointed out.** When a playing clip's time, as the server
+  reports it, has not moved for three seconds, its channel's button in the
+  Server Status lock grid flashes red, the row shows **FROZEN**, and the status
+  bar names the clip.
+- It clears by itself once the time moves again, or the clip is stopped or
+  paused.
+- A paused clip, and one that has reached its end and is holding its last frame,
+  are not frozen. It relies on the server's OSC: without OSC monitoring, nothing
+  is flagged.
+
 ## The Log In The Client
 
 - **Help > Show Log...** shows the client's own daily log in a window: choose the

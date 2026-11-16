@@ -110,6 +110,13 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
         // A newer stable CasparCG Server than a server runs: its menu button is
         // marked and its menu says which. Only tells; never installs.
         class ServerReleaseWatcher* releaseWatcher = nullptr;
+
+        // A channel with a frozen clip (FrozenOutputs) flashes in the lock grid.
+        QTimer frozenFlash;
+        bool frozenFlashOn = false;
+        QList<QPair<QString, int>> flashing;
+        void frozenChanged();
+        void restoreLockButton(const QString& deviceName, int channel);
         void updateReleaseMarks();
         QString newerReleaseFor(const QString& deviceName) const;
 

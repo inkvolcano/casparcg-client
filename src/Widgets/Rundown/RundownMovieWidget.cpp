@@ -2,6 +2,10 @@
 
 #include "Global.h"
 
+#include <QtCore/QDateTime>
+#include "FrozenRules.h"
+#include "../FrozenOutputs.h"
+
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "GpiManager.h"
@@ -67,6 +71,9 @@ RundownMovieWidget::RundownMovieWidget(const LibraryModel& model, QWidget* paren
     RundownWidgetHelper::updateBankBadge(bankBadge, this->command.getTriggerBank());
     RundownWidgetHelper::configureBankOscSubscriptions(this, this, this->command.getTriggerBank());
     RundownWidgetHelper::setupCloneSupport(this, this->frameItem, &this->command);
+
+    this->frozenTimer.setSingleShot(true);
+    QObject::connect(&this->frozenTimer, &QTimer::timeout, this, [this]() { checkFrozen(); });
     this->labelChannel->setVisible(false);
     this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(this->command.getVideolayer()));
     this->labelDelay->setText(RundownWidgetHelper::formatDelay(this->command.getDelay(), this->delayType, RundownWidgetHelper::getChannelFps(this->model.getDeviceName(), this->command.getChannel())));
@@ -1169,7 +1176,59 @@ void RundownMovieWidget::timeSubscriptionReceived(const QString& predicate, cons
     this->fileModel.setTime(arguments.at(0).toDouble());
     this->fileModel.setTotalTime(arguments.at(1).toDouble());
 
+    // A time that moved: not frozen, and looked at again three seconds on.
+    const double time = arguments.at(0).toDouble();
+    if (time != this->lastTime)
+    {
+        this->lastTime = time;
+        this->lastTimeChange = QDateTime::currentMSecsSinceEpoch();
+        if (this->frozen)
+            setFrozen(false);
+        this->frozenTimer.start(int(FrozenRules::FROZEN_AFTER_MS));
+    }
+
     updateOscWidget();
+}
+
+void RundownMovieWidget::checkFrozen()
+{
+    const bool now = FrozenRules::isFrozen(QDateTime::currentMSecsSinceEpoch(), this->lastTimeChange, this->lastTime,
+                                           this->fileModel.getTotalTime(), this->playing, this->paused);
+    if (now != this->frozen)
+        setFrozen(now);
+
+    // Looked at every second while frozen, so a stop or a pause clears it.
+    if (this->frozen)
+        this->frozenTimer.start(1000);
+}
+
+void RundownMovieWidget::setFrozen(bool on)
+{
+    this->frozen = on;
+
+    if (on && this->frozenBadge == nullptr)
+    {
+        this->frozenBadge = new QLabel("FROZEN", this->frameItem);
+        this->frozenBadge->setAlignment(Qt::AlignCenter);
+        this->frozenBadge->setStyleSheet("background-color: rgb(220, 40, 40); color: white; font-weight: bold; "
+                                         "font-size: 9px; border-radius: 3px; padding: 0px 4px;");
+        this->frozenBadge->setToolTip("The server's time for this clip has not moved for three seconds while it plays.");
+        this->frozenBadge->adjustSize();
+        this->frozenBadge->move(RundownWidgetHelper::BADGE_WIDTH + 74, 18);
+    }
+    if (this->frozenBadge != nullptr)
+    {
+        this->frozenBadge->setVisible(on);
+        if (on)
+            this->frozenBadge->raise();
+    }
+
+    FrozenOutputs::getInstance().report(this, this->model.getDeviceName(), this->command.getChannel(), on);
+    if (on)
+        EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(
+            QString("FROZEN: %1 on %2 channel %3 has not moved for three seconds")
+                .arg(this->model.getLabel().isEmpty() ? this->model.getName() : this->model.getLabel(), this->model.getDeviceName())
+                .arg(this->command.getChannel()), 8000, true));
 }
 
 void RundownMovieWidget::clipSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
