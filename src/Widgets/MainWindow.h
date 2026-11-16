@@ -4,6 +4,7 @@
 #include "ui_MainWindow.h"
 
 #include "Playout.h"
+#include "HotkeyRelease.h"
 
 #include "Events/ExportPresetMenuEvent.h"
 #include "Events/SaveAsPresetMenuEvent.h"
@@ -196,6 +197,18 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
 
         QElapsedTimer m_panicTimer;
         bool m_panicArmed = false;
+
+        // Playout hotkeys fired on key release (Settings > Hotkeys, off by default).
+        // When on, the playout actions carry no shortcuts; these bindings stand in
+        // for them, fed from eventFilter.
+        bool hotkeysOnRelease = false;
+        QList<HotkeyRelease::Binding> releaseBindings;
+        QList<QAction*> releaseActions;
+        QStringList releaseKeyNames;
+        HotkeyRelease::Arming releaseArming;
+        QLabel* releaseHint = nullptr;
+        bool handleReleaseHotkey(QObject* obj, QEvent* event);
+        void updateReleaseHint();
 
         QMap<QString, QWidget*> panelContainers;
         QWidget* mainWindowContainer;

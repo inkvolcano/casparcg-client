@@ -1838,6 +1838,24 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Playout Hotkeys On Key Release
+
+- **Playout hotkeys can fire when the key is let go.** A new option in Settings >
+  Hotkeys, **Fire playout hotkeys when the key is let go**, is off by default;
+  off, the hotkeys fire on the press exactly as before.
+- On, holding a playout key is a moment to change your mind:
+  - press **Esc** before letting go, and nothing is sent;
+  - hold the **preview modifier** (Shift unless set otherwise) when you let go,
+    and it goes to the preview channel instead. Whatever is held at the moment
+    you let go counts, whichever key went down first;
+  - press another playout hotkey while holding, and that one is sent instead.
+- While a key is held, a bar at the bottom of the window says what will be sent
+  and where: red for program, green for preview.
+- Cancelling with Esc never counts as the first tap of the double-Esc panic
+  clear.
+- It applies to the playout hotkeys (Stop to Clear Channel). Trigger banks and
+  the toggles still fire on the press. The menus still show each key.
+
 ## Startup Crash Fixed
 
 - **Fixed: the client could close at startup**, right after its window appeared,

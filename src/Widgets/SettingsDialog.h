@@ -70,6 +70,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QMap<QString, QKeySequenceEdit*> hotkeyEdits;
         QComboBox* previewModifierCombo;
         QCheckBox* previewFreezeTemplateCheck;
+        QCheckBox* hotkeyOnReleaseCheck = nullptr;
         QCheckBox* checkBoxShowPreviewBorder;
         QCheckBox* checkBoxShowSTEPButton;
         QCheckBox* checkBoxShowPVWButton;

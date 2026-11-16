@@ -3360,6 +3360,25 @@ void SettingsDialog::setupHotkeyTab()
     modifierLayout->addStretch();
     mainLayout->addLayout(modifierLayout);
 
+    // Playout hotkeys on key release. Off: they fire on the press, as always.
+    this->hotkeyOnReleaseCheck = new QCheckBox("Fire playout hotkeys when the key is let go");
+    this->hotkeyOnReleaseCheck->setStyleSheet("font-weight: bold;");
+    this->hotkeyOnReleaseCheck->setChecked(DatabaseManager::getInstance()
+        .getConfigurationByName("HotkeyOnRelease").getValue() == "true");
+    QObject::connect(this->hotkeyOnReleaseCheck, &QCheckBox::toggled, [this](bool on) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "HotkeyOnRelease", on ? "true" : "false"));
+        emit hotkeyChanged();
+    });
+    mainLayout->addWidget(this->hotkeyOnReleaseCheck);
+    QLabel* releaseHelp = new QLabel(
+        "While the key is held, press Esc to cancel it, or hold the preview modifier to send it to the preview "
+        "channel instead - whichever is held when you let go counts. Pressing another playout hotkey while holding "
+        "replaces the first. Applies to the playout hotkeys (Stop to Clear Channel), not to the trigger banks or toggles.");
+    releaseHelp->setWordWrap(true);
+    releaseHelp->setStyleSheet("color: rgb(150, 150, 150);");
+    mainLayout->addWidget(releaseHelp);
+
     loadHotkeys();
 }
 
@@ -3430,6 +3449,12 @@ void SettingsDialog::restoreDefaultHotkeysClicked()
         ConfigurationModel(0, "PreviewModifier", "Shift"));
     if (this->previewModifierCombo)
         this->previewModifierCombo->setCurrentText("Shift");
+
+    // Reset hotkeys on release to default: off.
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, "HotkeyOnRelease", "false"));
+    if (this->hotkeyOnReleaseCheck)
+        this->hotkeyOnReleaseCheck->setChecked(false);
 
     // Reset preview freeze template to default.
     DatabaseManager::getInstance().updateConfiguration(

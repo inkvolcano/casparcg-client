@@ -944,6 +944,14 @@ void MainWindow::loadHotkeys()
     // for the same action, the hotkey fires either way. shouldPreviewRedirect() detects
     // the held modifier via queryKeyboardModifiers() and routes to the preview channel.
     this->previewModifierKey = cfgVal("PreviewModifier");
+
+    // On release: the actions lose their shortcuts and these stand in for them.
+    this->hotkeysOnRelease = cfgVal("HotkeyOnRelease") == "true";
+    this->releaseBindings.clear();
+    this->releaseActions.clear();
+    this->releaseKeyNames.clear();
+    this->releaseArming.reset();
+    updateReleaseHint();
     QString modPrefix;
     if (this->previewModifierKey == "Shift") modPrefix = "Shift+";
     else if (this->previewModifierKey == "Ctrl") modPrefix = "Ctrl+";
@@ -970,6 +978,32 @@ void MainWindow::loadHotkeys()
             shortcuts << QKeySequence::fromString(altKey);
             if (!modPrefix.isEmpty())
                 shortcuts << QKeySequence::fromString(modPrefix + altKey);
+        }
+
+        if (this->hotkeysOnRelease)
+        {
+            const int id = this->releaseActions.count();
+            this->releaseActions.append(action);
+            this->releaseKeyNames.append(primaryKey.isEmpty() ? altKey : primaryKey);
+            for (const QKeySequence& sequence : shortcuts)
+            {
+                // A chord ("Ctrl+K, P") has no single key to let go of.
+                if (sequence.count() != 1)
+                    continue;
+                const QKeyCombination combination = sequence[0];
+                this->releaseBindings.append(HotkeyRelease::Binding{int(combination.key()), combination.keyboardModifiers(), id});
+            }
+
+            action->setShortcuts(QList<QKeySequence>());
+
+            // The menu still names the keys, in the place a shortcut is shown.
+            QStringList keys;
+            if (!primaryKey.isEmpty())
+                keys << primaryKey;
+            if (!altKey.isEmpty())
+                keys << altKey;
+            action->setText(keys.isEmpty() ? mapping.displayName : QString("%1\t%2").arg(mapping.displayName, keys.join(", ")));
+            continue;
         }
 
         action->setShortcuts(shortcuts);
@@ -1199,6 +1233,9 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
         }
     }
 
+    if (this->hotkeysOnRelease && handleReleaseHotkey(obj, event))
+        return true;
+
     if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
     {
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
@@ -1224,6 +1261,152 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
     }
 
     return QMainWindow::eventFilter(obj, event);
+}
+
+bool MainWindow::handleReleaseHotkey(QObject* obj, QEvent* event)
+{
+    using namespace HotkeyRelease;
+
+    const QEvent::Type type = event->type();
+
+    // A release that never arrives - the window lost the keyboard - fires nothing.
+    if (type == QEvent::WindowDeactivate && obj == this)
+    {
+        if (this->releaseArming.isArmed())
+        {
+            this->releaseArming.reset();
+            updateReleaseHint();
+        }
+        return false;
+    }
+
+    if (type != QEvent::KeyPress && type != QEvent::KeyRelease && type != QEvent::ShortcutOverride)
+        return false;
+
+    // Keys meant for this window only: not a dialog, not an open menu. A key event
+    // passes the filter once for each widget it is handed up through; it is
+    // dealt with at the widget, not at the window object in front of it.
+    QWidget* widget = qobject_cast<QWidget*>(obj);
+    if (widget == nullptr || widget->window() != this || QApplication::activeWindow() != this
+        || QApplication::activePopupWidget() != nullptr)
+        return false;
+
+    QKeyEvent* key = static_cast<QKeyEvent*>(event);
+
+    // Shortcuts are tried before a key reaches any widget. While a hotkey is held,
+    // its Esc is the cancel and nothing else: claiming the override keeps it from
+    // the Esc shortcut too, so a cancel is never the first tap of the panic clear.
+    if (type == QEvent::ShortcutOverride)
+    {
+        if (this->releaseArming.isArmed()
+            && (key->key() == Qt::Key_Escape || key->key() == this->releaseArming.armedKey()))
+        {
+            event->accept();
+            return true;
+        }
+        return false;
+    }
+
+    if (type == QEvent::KeyPress)
+    {
+        int binding = match(this->releaseBindings, key->key(), key->modifiers());
+
+        // A field that takes the key keeps it, as it would from a shortcut.
+        if (binding >= 0 && !key->isAutoRepeat() && !this->releaseArming.isArmed())
+        {
+            QWidget* focus = QApplication::focusWidget();
+            if (focus != nullptr)
+            {
+                QKeyEvent probe(QEvent::ShortcutOverride, key->key(), key->modifiers(), key->text(), key->isAutoRepeat(), key->count());
+                probe.ignore();
+                QCoreApplication::sendEvent(focus, &probe);
+                if (probe.isAccepted())
+                    binding = -1;
+            }
+        }
+
+        switch (this->releaseArming.press(key->key(), key->isAutoRepeat(), binding))
+        {
+            case Outcome::Armed:
+                updateReleaseHint();
+                return true;
+            case Outcome::Swallowed:
+                return true;
+            case Outcome::Cancelled:
+                updateReleaseHint();
+                EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("Hotkey cancelled: nothing was sent", 2000));
+                return true;
+            default:
+                // The preview modifier while holding: the hint follows it.
+                if (this->releaseArming.isArmed() && isModifierKey(key->key()))
+                    QTimer::singleShot(0, this, [this]() { updateReleaseHint(); });
+                return false;
+        }
+    }
+
+    int fired = -1;
+    switch (this->releaseArming.release(key->key(), key->isAutoRepeat(), &fired))
+    {
+        case Outcome::Fired:
+        {
+            updateReleaseHint();
+            // Run now, while the keys are as they are: the preview redirect reads
+            // the modifier held at this moment.
+            QAction* action = this->releaseActions.value(fired, nullptr);
+            if (action != nullptr)
+                action->trigger();
+            return true;
+        }
+        case Outcome::Swallowed:
+            return true;
+        default:
+            if (this->releaseArming.isArmed() && isModifierKey(key->key()))
+                QTimer::singleShot(0, this, [this]() { updateReleaseHint(); });
+            return false;
+    }
+}
+
+void MainWindow::updateReleaseHint()
+{
+    if (!this->releaseArming.isArmed())
+    {
+        if (this->releaseHint != nullptr)
+            this->releaseHint->hide();
+        return;
+    }
+
+    QWidget* host = Ui::MainWindow::centralWidget;
+    if (this->releaseHint == nullptr)
+    {
+        this->releaseHint = new QLabel(host);
+        this->releaseHint->setAttribute(Qt::WA_TransparentForMouseEvents);
+        this->releaseHint->setAlignment(Qt::AlignCenter);
+    }
+
+    const int id = this->releaseArming.armedAction();
+    QAction* action = this->releaseActions.value(id, nullptr);
+    const QString name = action != nullptr ? action->text().section('\t', 0, 0) : QString("Hotkey");
+    const QString keyName = this->releaseKeyNames.value(id);
+
+    const Qt::KeyboardModifiers held = QApplication::queryKeyboardModifiers();
+    const bool modifierHeld = (this->previewModifierKey == "Shift" && (held & Qt::ShiftModifier))
+                              || (this->previewModifierKey == "Ctrl" && (held & Qt::ControlModifier))
+                              || (this->previewModifierKey == "Alt" && (held & Qt::AltModifier));
+    const bool preview = EventManager::getInstance().getPreviewMode() || modifierHeld;
+
+    QString text = QString("%1 %2 - let go of %3 to send, Esc cancels")
+                       .arg(name, preview ? QString("to PREVIEW") : QString("to PROGRAM"), keyName);
+    if (!preview && (this->previewModifierKey == "Shift" || this->previewModifierKey == "Ctrl" || this->previewModifierKey == "Alt"))
+        text += QString(", hold %1 for preview").arg(this->previewModifierKey);
+
+    this->releaseHint->setText(text);
+    this->releaseHint->setStyleSheet(preview
+        ? "background-color: rgba(40, 140, 60, 230); color: white; font-weight: bold; padding: 6px 14px; border-radius: 4px;"
+        : "background-color: rgba(190, 50, 40, 230); color: white; font-weight: bold; padding: 6px 14px; border-radius: 4px;");
+    this->releaseHint->adjustSize();
+    this->releaseHint->move((host->width() - this->releaseHint->width()) / 2, host->height() - this->releaseHint->height() - 12);
+    this->releaseHint->show();
+    this->releaseHint->raise();
 }
 
 #if defined(Q_OS_WIN)

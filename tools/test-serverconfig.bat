@@ -18,4 +18,10 @@ cl /nologo /EHsc /std:c++17 /Zc:__cplusplus /permissive- /MD /W3 ^
 if errorlevel 1 exit /b 1
 
 set PATH=%QT%\bin;%PATH%
+REM A freshly linked exe can be refused for a moment ("not recognized", 9009),
+REM likely while the virus scanner reads it. Wait and try once more.
 "%OUT%\test-serverconfig.exe"
+if %errorlevel%==9009 (
+    ping -n 3 127.0.0.1 >nul
+    "%OUT%\test-serverconfig.exe"
+)
