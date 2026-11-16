@@ -10,5 +10,5 @@ class CORE_EXPORT RepositoryRundownEvent
         bool getRepositoryRundown() const;
 
     private:
-        bool repositoryRundown;
+        bool repositoryRundown = false;
 };

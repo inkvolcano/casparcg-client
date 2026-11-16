@@ -56,25 +56,25 @@ class WIDGETS_EXPORT RundownClearOutputWidget : public QWidget, Ui::RundownClear
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         ClearOutputCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler clearChannelScheduler;
         ItemScheduler clearVideoLayerScheduler;

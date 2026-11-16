@@ -28,7 +28,7 @@ class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMeta
         explicit InspectorMetadataWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
+        LibraryModel* model = nullptr;
 
         // The Media line: codec, resolution, rate and audio of a movie or still,
         // from the server's media scanner (MediaInfoClient). Rundown items only.

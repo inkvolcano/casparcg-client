@@ -27,15 +27,15 @@ class CORE_EXPORT PlaybackProgressEvent
         bool getLoop() const;
 
     private:
-        int channel;
-        int videolayer;
+        int channel = 0;
+        int videolayer = 0;
         QString label;
         QString itemType;
-        double time;
-        double totalTime;
-        double clip;
-        double totalClip;
-        double fps;
-        bool paused;
-        bool loop;
+        double time = 0;
+        double totalTime = 0;
+        double clip = 0;
+        double totalClip = 0;
+        double fps = 0;
+        bool paused = false;
+        bool loop = false;
 };

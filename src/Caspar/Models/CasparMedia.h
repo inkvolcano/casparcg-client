@@ -23,6 +23,6 @@ class CASPAR_EXPORT CasparMedia
         QString name;
         QString type;
         QString timecode;
-        qint64 size;
+        qint64 size = 0;
         QString timestamp;
 };

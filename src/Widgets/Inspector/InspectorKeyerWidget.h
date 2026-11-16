@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorKeyerWidget : public QWidget, Ui::InspectorKeyerWi
         explicit InspectorKeyerWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        KeyerCommand* command;
+        LibraryModel* model = nullptr;
+        KeyerCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

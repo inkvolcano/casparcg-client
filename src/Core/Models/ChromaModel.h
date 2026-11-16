@@ -13,6 +13,6 @@ class CORE_EXPORT ChromaModel
         const QString& getValue() const;
 
     private:
-        int id;
+        int id = 0;
         QString value;
 };

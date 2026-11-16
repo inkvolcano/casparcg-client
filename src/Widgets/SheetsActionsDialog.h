@@ -30,7 +30,7 @@ class WIDGETS_EXPORT SheetsActionsDialog : public QDialog
         QStringList templateNames;
         SheetsTabActions actions;
 
-        QTreeWidget* treeWidget;
+        QTreeWidget* treeWidget = nullptr;
 
         void rebuildTree();
         bool editDefinition(SheetsActionDef& def);

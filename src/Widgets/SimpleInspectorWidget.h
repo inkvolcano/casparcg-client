@@ -40,14 +40,14 @@ class WIDGETS_EXPORT SimpleInspectorWidget : public QWidget
         bool loading = false;
         bool collapsed = false;
 
-        QTabWidget* tabWidget;
-        QLineEdit* lineEditLabel;
-        QSpinBox* spinBoxChannel;
-        QSpinBox* spinBoxVideolayer;
-        QTreeWidget* treeWidgetData;
-        QPushButton* buttonUpdate;
-        QToolButton* buttonAddKey;
-        QToolButton* buttonRemoveKey;
+        QTabWidget* tabWidget = nullptr;
+        QLineEdit* lineEditLabel = nullptr;
+        QSpinBox* spinBoxChannel = nullptr;
+        QSpinBox* spinBoxVideolayer = nullptr;
+        QTreeWidget* treeWidgetData = nullptr;
+        QPushButton* buttonUpdate = nullptr;
+        QToolButton* buttonAddKey = nullptr;
+        QToolButton* buttonRemoveKey = nullptr;
 
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;

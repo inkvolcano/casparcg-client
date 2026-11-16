@@ -15,6 +15,6 @@ class CORE_EXPORT LibraryItemSelectedEvent
         LibraryModel* getLibraryModel() const;
 
     private:
-        AbstractCommand* command;
-        LibraryModel* model;
+        AbstractCommand* command = nullptr;
+        LibraryModel* model = nullptr;
 };

@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorLevelsWidget : public QWidget, Ui::InspectorLevels
         explicit InspectorLevelsWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        LevelsCommand* command;
+        LibraryModel* model = nullptr;
+        LevelsCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

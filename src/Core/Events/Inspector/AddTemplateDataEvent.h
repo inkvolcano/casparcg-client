@@ -15,5 +15,5 @@ class CORE_EXPORT AddTemplateDataEvent
 
     private:
         QString value;
-        bool storedData;
+        bool storedData = false;
 };

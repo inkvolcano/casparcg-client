@@ -258,7 +258,7 @@ class WIDGETS_EXPORT SheetDataResolver : public QObject
         static constexpr int MAXIMUM_EXTERNAL_SOURCES = 64;
         static constexpr int MAXIMUM_SHEETS_PER_REPORT = 64;
 
-        QNetworkAccessManager* networkManager;
+        QNetworkAccessManager* networkManager = nullptr;
 
         QMap<QString, TemplateSheetConnection> connectionCache;   // device|template -> connection
         // Counted per spreadsheet, because the budget belongs to the key rather than

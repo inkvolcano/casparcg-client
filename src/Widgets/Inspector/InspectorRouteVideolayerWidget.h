@@ -22,8 +22,8 @@ class WIDGETS_EXPORT InspectorRouteVideolayerWidget : public QWidget, Ui::Inspec
         explicit InspectorRouteVideolayerWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        RouteVideolayerCommand* command;
+        LibraryModel* model = nullptr;
+        RouteVideolayerCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

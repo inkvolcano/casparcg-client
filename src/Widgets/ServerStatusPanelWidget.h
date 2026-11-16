@@ -46,7 +46,7 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
 
     private:
         bool serverPlaced = true;
-        bool serverCollapsed;
+        bool serverCollapsed = false;
 
         // The hosted sheet cache, shown beside the playout servers because it is one
         // more thing that is either answering or not while a show is on.
@@ -71,24 +71,24 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
         QMenu* serverMenu = nullptr;
         QAction* serverExpandCollapseAction = nullptr;
 
-        bool showPVW;
-        bool showServers;
-        bool showChannelLocks;
-        bool showSTEP;
+        bool showPVW = false;
+        bool showServers = false;
+        bool showChannelLocks = false;
+        bool showSTEP = false;
         QString disconnectMode;  // "hidden", "direct", "ask"
 
         // Server entries (per-device connection status, media status, connect/disconnect)
         struct ServerEntry
         {
-            QWidget* row;
-            QLabel* labelName;
-            QLabel* labelConnectionDot;
-            QLabel* labelMediaDot;
-            QPushButton* buttonConnect;
+            QWidget* row = nullptr;
+            QLabel* labelName = nullptr;
+            QLabel* labelConnectionDot = nullptr;
+            QLabel* labelMediaDot = nullptr;
+            QPushButton* buttonConnect = nullptr;
             QToolButton* buttonProcess = nullptr;
             QString deviceName;
-            bool connected;
-            bool mediaReceived;
+            bool connected = false;
+            bool mediaReceived = false;
         };
 
         // The per-server menu (the button beside Connect): start, stop and restart
@@ -109,17 +109,17 @@ class WIDGETS_EXPORT ServerStatusPanelWidget : public QWidget, Ui::ServerStatusP
 
         static QString serverExecutableOf(const QString& deviceName);
 
-        QVBoxLayout* serverLayout;
+        QVBoxLayout* serverLayout = nullptr;
         QMap<QString, ServerEntry> serverEntries;
 
         // Channel lock grid
-        QWidget* channelLockGrid;
+        QWidget* channelLockGrid = nullptr;
         QMap<QString, QMap<int, QPushButton*>> lockButtons;  // deviceName -> (channel -> button)
         QMap<QString, QMap<int, QPushButton*>> timerButtons; // deviceName -> (channel -> button)
         QMap<int, QPushButton*> globalLockButtons;           // channel -> button
-        int maxChannels;
-        QPushButton* previewModeButton;
-        QPushButton* autostepModeButton;
+        int maxChannels = 0;
+        QPushButton* previewModeButton = nullptr;
+        QPushButton* autostepModeButton = nullptr;
         bool modifierHeld = false;
 
         void setupMenus();

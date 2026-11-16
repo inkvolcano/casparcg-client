@@ -19,7 +19,7 @@ class CORE_EXPORT ThumbnailModel
         const QString& getAddress() const;
 
     private:
-        int id;
+        int id = 0;
         QString data;
         QString timestamp;
         QString size;

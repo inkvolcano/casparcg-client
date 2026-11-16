@@ -34,7 +34,7 @@ private:
     void onTrigger(int gpi);
     void onConnected(bool state);
 private:
-    bool connected;
+    bool connected = false;
     std::map<int, gpio::gpo_trigger::ptr> gpo_triggers;
     gpio::gpio_device::ptr device;
 };

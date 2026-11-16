@@ -56,24 +56,24 @@ class WIDGETS_EXPORT RundownCommitWidget : public QWidget, Ui::RundownCommitWidg
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         CommitCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
 

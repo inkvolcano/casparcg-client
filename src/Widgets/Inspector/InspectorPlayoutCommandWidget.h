@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorPlayoutCommandWidget : public QWidget, Ui::Inspect
         explicit InspectorPlayoutCommandWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        PlayoutCommand* command;
+        LibraryModel* model = nullptr;
+        PlayoutCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

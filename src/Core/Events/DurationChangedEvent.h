@@ -12,5 +12,5 @@ class CORE_EXPORT DurationChangedEvent
         int getDuration() const;
 
     private:
-        int duration;
+        int duration = 0;
 };

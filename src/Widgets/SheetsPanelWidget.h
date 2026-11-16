@@ -47,7 +47,7 @@ class WIDGETS_EXPORT SheetsPanelWidget : public QWidget, Ui::SheetsPanelWidget
         explicit SheetsPanelWidget(QWidget* parent = nullptr);
 
     private:
-        QNetworkAccessManager* networkManager;
+        QNetworkAccessManager* networkManager = nullptr;
         QList<SheetsProject> projects;
         QMap<QString, SheetsTabActions> tabActions;   // key = tab name, from extensions.json
         QStringList headers;                          // current tab's header row

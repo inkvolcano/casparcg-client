@@ -14,7 +14,7 @@ class CORE_EXPORT GpiModel
         const QString& getAction() const;
 
     private:
-        int id;
+        int id = 0;
         QString trigger;
         QString action;
 };

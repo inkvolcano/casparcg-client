@@ -73,23 +73,23 @@ class WIDGETS_EXPORT RundownGroupWidget : public QWidget, Ui::RundownGroupWidget
         QString color; 
         LibraryModel model;
         GroupCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        QLabel* labelTypeList;
+        QLabel* labelTypeList = nullptr;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* loadControlSubscription;
-        OscSubscription* pauseControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* invokeControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* loadControlSubscription = nullptr;
+        OscSubscription* pauseControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* invokeControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         AutoLoopController autoLoopController;
 

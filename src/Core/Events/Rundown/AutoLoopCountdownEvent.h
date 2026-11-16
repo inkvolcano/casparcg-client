@@ -23,11 +23,11 @@ class CORE_EXPORT AutoLoopCountdownEvent
         bool getActive() const;
 
     private:
-        int channel;
-        int videolayer;
+        int channel = 0;
+        int videolayer = 0;
         QString label;
         QString itemType;
-        int remainingSeconds;
-        int totalSeconds;
-        bool active;
+        int remainingSeconds = 0;
+        int totalSeconds = 0;
+        bool active = false;
 };

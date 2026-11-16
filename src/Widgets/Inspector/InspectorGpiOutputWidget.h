@@ -15,7 +15,7 @@ class WIDGETS_EXPORT InspectorGpiOutputWidget : public QWidget, Ui::InspectorGpi
         explicit InspectorGpiOutputWidget(QWidget *parent = 0);
 
     private:
-        GpiOutputCommand* command;
+        GpiOutputCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

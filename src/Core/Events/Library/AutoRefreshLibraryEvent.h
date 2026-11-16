@@ -12,6 +12,6 @@ class CORE_EXPORT AutoRefreshLibraryEvent
         bool getAutoRefresh() const;
 
     private:
-        int interval;
-        bool autoRefresh;
+        int interval = 0;
+        bool autoRefresh = false;
 };

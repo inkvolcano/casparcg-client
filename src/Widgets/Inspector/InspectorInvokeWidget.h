@@ -31,11 +31,11 @@ class WIDGETS_EXPORT InspectorInvokeWidget : public QWidget
         // rebuilt, so invoke edits afterwards can't dereference a dead command.
         QPointer<TemplateCommand> command;
         LibraryModel* model = nullptr;
-        bool lock;
+        bool lock = false;
 
-        QWidget* invokeHeaderWidget;
-        QVBoxLayout* invokeRowsLayout;
-        QButtonGroup* invokeRadioGroup;
+        QWidget* invokeHeaderWidget = nullptr;
+        QVBoxLayout* invokeRowsLayout = nullptr;
+        QButtonGroup* invokeRadioGroup = nullptr;
         QStringList discoveredFunctions;          // dropdown choices from Discover Functions
         QList<QWidget*> invokeRowWidgets;         // parallel to the lists below
         QList<QWidget*> invokeDragHandles;        // grip that reorders its row

@@ -24,29 +24,29 @@ class WIDGETS_EXPORT InspectorGatewayWidget : public QWidget
         explicit InspectorGatewayWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        GatewayCommand* command;
+        LibraryModel* model = nullptr;
+        GatewayCommand* command = nullptr;
         QString itemType;
 
-        QLabel* labelLinkGateway;
-        QComboBox* comboBoxLinkGateway;
-        QLabel* labelExitLabel;
-        QLineEdit* lineEditExitLabel;
-        QLabel* labelSelectedExit;
-        QComboBox* comboBoxSelectedExit;
+        QLabel* labelLinkGateway = nullptr;
+        QComboBox* comboBoxLinkGateway = nullptr;
+        QLabel* labelExitLabel = nullptr;
+        QLineEdit* lineEditExitLabel = nullptr;
+        QLabel* labelSelectedExit = nullptr;
+        QComboBox* comboBoxSelectedExit = nullptr;
 
-        QCheckBox* checkBoxConditionEnabled;
-        QLabel* labelConditionHeader;
-        QLabel* labelConditionTime;
-        QComboBox* comboBoxConditionOperator;
-        QSpinBox* spinBoxConditionHour;
-        QSpinBox* spinBoxConditionMinute;
-        QSpinBox* spinBoxConditionSecond;
-        QLabel* labelConditionExit;
-        QComboBox* comboBoxConditionExit;
-        QLabel* labelConditionElse;
-        QComboBox* comboBoxConditionElse;
-        QFrame* conditionSeparator;
+        QCheckBox* checkBoxConditionEnabled = nullptr;
+        QLabel* labelConditionHeader = nullptr;
+        QLabel* labelConditionTime = nullptr;
+        QComboBox* comboBoxConditionOperator = nullptr;
+        QSpinBox* spinBoxConditionHour = nullptr;
+        QSpinBox* spinBoxConditionMinute = nullptr;
+        QSpinBox* spinBoxConditionSecond = nullptr;
+        QLabel* labelConditionExit = nullptr;
+        QComboBox* comboBoxConditionExit = nullptr;
+        QLabel* labelConditionElse = nullptr;
+        QComboBox* comboBoxConditionElse = nullptr;
+        QFrame* conditionSeparator = nullptr;
 
         void blockAllSignals(bool block);
         void updateConditionVisibility();

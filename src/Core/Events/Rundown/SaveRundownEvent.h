@@ -12,5 +12,5 @@ class CORE_EXPORT SaveRundownEvent
         bool getSaveAs() const;
 
     private:
-        bool saveAs;
+        bool saveAs = false;
 };

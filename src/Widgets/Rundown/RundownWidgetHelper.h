@@ -162,8 +162,8 @@ namespace RundownWidgetHelper
         }
 
     private:
-        QWidget* m_container;
-        int m_startX;
+        QWidget* m_container = nullptr;
+        int m_startX = 0;
     };
 
     // Helper class to keep frameStatus anchored to the right edge as an overlay.
@@ -200,8 +200,8 @@ namespace RundownWidgetHelper
             m_repositioning = false;
         }
 
-        QWidget* m_statusFrame;
-        bool m_repositioning;
+        QWidget* m_statusFrame = nullptr;
+        bool m_repositioning = false;
     };
 
     inline void setupBottomRow(QFrame* frameItem, QLabel* labelColor)

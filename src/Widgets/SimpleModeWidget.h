@@ -67,16 +67,16 @@ class WIDGETS_EXPORT SimpleModeWidget : public QWidget
             int spanCols = 1;   // explicit double-width keys occupy two columns
         };
 
-        RundownWidget* rundownWidget;
-        QScrollArea* scrollArea;
-        QWidget* gridContainer;
-        QGridLayout* gridLayout;
-        QWidget* moveBar;
-        QPushButton* moveButton;
-        QPushButton* removeButton;
-        QLabel* moveHint;
-        QSpinBox* spinBoxColumns;
-        QSpinBox* spinBoxRows;
+        RundownWidget* rundownWidget = nullptr;
+        QScrollArea* scrollArea = nullptr;
+        QWidget* gridContainer = nullptr;
+        QGridLayout* gridLayout = nullptr;
+        QWidget* moveBar = nullptr;
+        QPushButton* moveButton = nullptr;
+        QPushButton* removeButton = nullptr;
+        QLabel* moveHint = nullptr;
+        QSpinBox* spinBoxColumns = nullptr;
+        QSpinBox* spinBoxRows = nullptr;
         bool moveMode = false;
 
         QMap<int, SlotEntry> slotEntries;         // slot index -> occupant

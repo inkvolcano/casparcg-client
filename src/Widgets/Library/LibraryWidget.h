@@ -47,15 +47,15 @@ class WIDGETS_EXPORT LibraryWidget : public QWidget, Ui::LibraryWidget
         bool lock = false;
         bool useDropFrameNotation = false;
         bool collapsed = false;
-        QTabWidget* tabWidgetLibrary;
+        QTabWidget* tabWidgetLibrary = nullptr;
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;
         QAction* expandCollapseAction = nullptr;
 
-        QMenu* contextMenu;
-        QMenu* contextMenuImage;
-        QMenu* contextMenuPreset;
-        QMenu* contextMenuData;
+        QMenu* contextMenu = nullptr;
+        QMenu* contextMenuImage = nullptr;
+        QMenu* contextMenuPreset = nullptr;
+        QMenu* contextMenuData = nullptr;
         QSharedPointer<LibraryModel> model;
 
         void setupTools();

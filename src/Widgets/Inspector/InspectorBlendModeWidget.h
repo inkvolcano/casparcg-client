@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorBlendModeWidget : public QWidget, Ui::InspectorBle
         explicit InspectorBlendModeWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        BlendModeCommand* command;
+        LibraryModel* model = nullptr;
+        BlendModeCommand* command = nullptr;
 
         void loadBlendMode();
         void blockAllSignals(bool block);

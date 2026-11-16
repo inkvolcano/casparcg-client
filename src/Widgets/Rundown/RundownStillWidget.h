@@ -63,30 +63,30 @@ class WIDGETS_EXPORT RundownStillWidget : public QWidget, Ui::RundownStillWidget
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool loaded;
-        bool paused;
-        bool playing;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool loaded = false;
+        bool paused = false;
+        bool playing = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         StillCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
         bool sendAutoPlay = false;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* loadControlSubscription;
-        OscSubscription* pauseControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* loadControlSubscription = nullptr;
+        OscSubscription* pauseControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
         AutoLoopController autoLoopController;

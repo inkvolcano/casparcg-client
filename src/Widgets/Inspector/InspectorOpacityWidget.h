@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorOpacityWidget : public QWidget, Ui::InspectorOpaci
         explicit InspectorOpacityWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        OpacityCommand* command;
+        LibraryModel* model = nullptr;
+        OpacityCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

@@ -38,13 +38,13 @@ class WIDGETS_EXPORT ActivityPanelWidget : public QWidget, Ui::ActivityPanelWidg
 
     private:
         bool activityPlaced = true;
-        bool activityCollapsed;
+        bool activityCollapsed = false;
 
         QToolButton* activityMenuButton = nullptr;
         QMenu* activityMenu = nullptr;
         QAction* activityExpandCollapseAction = nullptr;
 
-        bool showChannelHeaders;
+        bool showChannelHeaders = false;
         bool showNoActivity = true;
         bool bigBoldMode = false;
 
@@ -76,7 +76,7 @@ class WIDGETS_EXPORT ActivityPanelWidget : public QWidget, Ui::ActivityPanelWidg
             QString label;
         };
 
-        QVBoxLayout* activityLayout;
+        QVBoxLayout* activityLayout = nullptr;
         QVBoxLayout* activityOuterLayout = nullptr;
         QLabel* noActivityLabel = nullptr;
         QMap<QString, ActivityEntry> activityEntries;

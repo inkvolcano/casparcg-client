@@ -10,5 +10,5 @@ class CORE_EXPORT AssignBankEvent
         int getBankId() const;
 
     private:
-        int bankId;
+        int bankId = 0;
 };

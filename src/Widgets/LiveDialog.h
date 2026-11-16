@@ -22,5 +22,5 @@ class WIDGETS_EXPORT LiveDialog : public QDialog, Ui::LiveDialog
         Q_SLOT void toggleFullscreen(const ToggleFullscreenEvent&);
 
     private:
-        bool applicationFullscreen;
+        bool applicationFullscreen = false;
 };

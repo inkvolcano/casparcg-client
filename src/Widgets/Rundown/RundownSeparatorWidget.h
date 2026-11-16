@@ -53,13 +53,13 @@ class WIDGETS_EXPORT RundownSeparatorWidget : public QWidget, Ui::RundownSeparat
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         SeparatorCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         bool selected = false;
 
         Q_SLOT void labelChanged(const LabelChangedEvent&);

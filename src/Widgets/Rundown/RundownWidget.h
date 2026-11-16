@@ -89,36 +89,36 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
         bool eventFilter(QObject* watched, QEvent* event) override;
 
     private:
-        QMenu* contextMenuRundownDropdown;
-        QMenu* contextMenuMark;
-        QMenu* openRecentMenu;
+        QMenu* contextMenuRundownDropdown = nullptr;
+        QMenu* contextMenuMark = nullptr;
+        QMenu* openRecentMenu = nullptr;
 
-        QAction* newRundownAction;
-        QAction* openRundownAction;
-        QAction* saveAction;
-        QAction* saveAsAction;
-        QAction* openRundownFromUrlAction;
-        QAction* compactViewAction;
-        QAction* allowRemoteTriggeringAction;
-        QAction* lockRundownAction;
+        QAction* newRundownAction = nullptr;
+        QAction* openRundownAction = nullptr;
+        QAction* saveAction = nullptr;
+        QAction* saveAsAction = nullptr;
+        QAction* openRundownFromUrlAction = nullptr;
+        QAction* compactViewAction = nullptr;
+        QAction* allowRemoteTriggeringAction = nullptr;
+        QAction* lockRundownAction = nullptr;
         bool userOverrideLock = false;
-        QAction* insertRepositoryChangesAction;
-        QAction* reloadRundownAction;
-        QAction* openRecentMenuAction;
+        QAction* insertRepositoryChangesAction = nullptr;
+        QAction* reloadRundownAction = nullptr;
+        QAction* openRecentMenuAction = nullptr;
 
         QUndoGroup* m_undoGroup = nullptr;
 
         QTimer* autoSaveTimer = nullptr;
 
         // Split view
-        QSplitter* splitterRundown;
-        QTabWidget* tabWidgetRundownSecondary;
-        bool splitViewActive;
-        QTabWidget* focusedTabWidget;
+        QSplitter* splitterRundown = nullptr;
+        QTabWidget* tabWidgetRundownSecondary = nullptr;
+        bool splitViewActive = false;
+        QTabWidget* focusedTabWidget = nullptr;
 
-        QAction* splitHorizontalAction;
-        QAction* splitVerticalAction;
-        QAction* closeSplitAction;
+        QAction* splitHorizontalAction = nullptr;
+        QAction* splitVerticalAction = nullptr;
+        QAction* closeSplitAction = nullptr;
 
         // Double-tap arrow key tracking for pane switching.
         QElapsedTimer lastArrowKeyTimer;
@@ -139,9 +139,9 @@ class WIDGETS_EXPORT RundownWidget : public QWidget, Ui::RundownWidget
 
         // Search bar.
         struct SearchResult {
-            QTabWidget* pane;
-            RundownTreeWidget* tab;
-            QTreeWidgetItem* item;
+            QTabWidget* pane = nullptr;
+            RundownTreeWidget* tab = nullptr;
+            QTreeWidgetItem* item = nullptr;
         };
 
         QWidget* searchBar = nullptr;

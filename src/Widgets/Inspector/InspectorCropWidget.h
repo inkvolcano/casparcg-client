@@ -22,10 +22,10 @@ class WIDGETS_EXPORT InspectorCropWidget : public QWidget, Ui::InspectorCropWidg
         explicit InspectorCropWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        CropCommand* command;
-        int resolutionWidth;
-        int resolutionHeight;
+        LibraryModel* model = nullptr;
+        CropCommand* command = nullptr;
+        int resolutionWidth = 0;
+        int resolutionHeight = 0;
 
         void loadTween();
         void blockAllSignals(bool block);

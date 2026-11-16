@@ -10,5 +10,5 @@ class CORE_EXPORT CompactViewEvent
         bool getEnabled() const;
 
     private:
-        bool enabled;
+        bool enabled = false;
 };

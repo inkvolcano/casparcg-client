@@ -22,10 +22,10 @@ class WIDGETS_EXPORT InspectorPerspectiveWidget : public QWidget, Ui::InspectorP
         explicit InspectorPerspectiveWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        PerspectiveCommand* command;
-        int resolutionWidth;
-        int resolutionHeight;
+        LibraryModel* model = nullptr;
+        PerspectiveCommand* command = nullptr;
+        int resolutionWidth = 0;
+        int resolutionHeight = 0;
 
         void loadTween();
         void blockAllSignals(bool block);

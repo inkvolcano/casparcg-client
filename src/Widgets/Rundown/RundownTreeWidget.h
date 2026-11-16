@@ -57,8 +57,8 @@ class ReferenceImageMarker;
 
 struct AutoPlayQueueInfo
 {
-    QList<AbstractRundownWidget*>* queue;
-    QTreeWidgetItem* groupItem;
+    QList<AbstractRundownWidget*>* queue = nullptr;
+    QTreeWidgetItem* groupItem = nullptr;
     bool pendingEndOfClip = false;
     bool isTopLevelChain = false;
 };
@@ -174,13 +174,13 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         GatewayExitLocation findGatewayExitInTree(const QString& gatewayId, const QString& exitLabel = QString()) const;
         GatewayExitLocation findGatewayPartnerInTree(const QString& gatewayId, bool partnerIsExit, const QString& exitLabel = QString()) const;
         QList<GatewayExitLocation> findAllGatewayExitsInTree(const QString& gatewayId) const;
-        bool active;
-        bool enterPressed;
+        bool active = false;
+        bool enterPressed = false;
         // Set only while a recovery copy is being loaded through openRundown(),
         // so the scratch file it reads from never reaches the Open Recent list.
         bool suppressOpenRecent = false;
-        bool allowRemoteRundownTriggering;
-        bool repositoryRundown;
+        bool allowRemoteRundownTriggering = false;
+        bool repositoryRundown = false;
 
         QString page;
         QString activeRundown;
@@ -192,55 +192,55 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         mutable QString autoSaveHash;
         mutable QString autoSavePath;
 
-        QMenu* contextMenuTools;
-        QMenu* contextMenuColor;
-        QMenu* contextMenuMark;
-        QMenu* contextMenuMixer;
-        QMenu* contextMenuOther;
-        QMenu* contextMenuLibrary;
-        QMenu* contextMenuRundown;
-        QMenu* contextMenuAutoLoop;
-        QAction* actionAutoLoopEnable;
-        QAction* actionAutoLoopDelay5;
-        QAction* actionAutoLoopDelay10;
-        QAction* actionAutoLoopDelay30;
-        QAction* actionAutoLoopDelay60;
-        QAction* actionAutoLoopDelayCustom;
-        QAction* addGatewayExitAction;
+        QMenu* contextMenuTools = nullptr;
+        QMenu* contextMenuColor = nullptr;
+        QMenu* contextMenuMark = nullptr;
+        QMenu* contextMenuMixer = nullptr;
+        QMenu* contextMenuOther = nullptr;
+        QMenu* contextMenuLibrary = nullptr;
+        QMenu* contextMenuRundown = nullptr;
+        QMenu* contextMenuAutoLoop = nullptr;
+        QAction* actionAutoLoopEnable = nullptr;
+        QAction* actionAutoLoopDelay5 = nullptr;
+        QAction* actionAutoLoopDelay10 = nullptr;
+        QAction* actionAutoLoopDelay30 = nullptr;
+        QAction* actionAutoLoopDelay60 = nullptr;
+        QAction* actionAutoLoopDelayCustom = nullptr;
+        QAction* addGatewayExitAction = nullptr;
 
         QMap<int, Playout::PlayoutType> gpiBindings;
 
-        AbstractRundownWidget* currentAutoPlayWidget;
+        AbstractRundownWidget* currentAutoPlayWidget = nullptr;
         QList<AutoPlayQueueInfo> autoPlayQueues;
 
-        QTreeWidgetItem* copyItem;
+        QTreeWidgetItem* copyItem = nullptr;
         QMap<int, QTreeWidgetItem*> currentPlayingItems;  // Per-channel tracking of last fired items
         // Preview layers this client lit, keyed "device|previewChannel|videolayer".
         // Taking an item to program clears only its own preview layer.
         QSet<QString> previewedLayers;
-        QTreeWidgetItem* currentPlayingAutoStepItem;
-        QTreeWidgetItem* currentAutostepHighlightItem;
+        QTreeWidgetItem* currentPlayingAutoStepItem = nullptr;
+        QTreeWidgetItem* currentAutostepHighlightItem = nullptr;
         QList<QTreeWidgetItem*> previousSelectedItems;
 
-        OscSubscription* upControlSubscription;
-        OscSubscription* downControlSubscription;
-        OscSubscription* playNowIfChannelControlSubscription;
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* loadControlSubscription;
-        OscSubscription* pauseControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* invokeControlSubscription;
-        OscSubscription* previewControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* upControlSubscription = nullptr;
+        OscSubscription* downControlSubscription = nullptr;
+        OscSubscription* playNowIfChannelControlSubscription = nullptr;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* loadControlSubscription = nullptr;
+        OscSubscription* pauseControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* invokeControlSubscription = nullptr;
+        OscSubscription* previewControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         QSharedPointer<RepositoryDevice> repositoryDevice;
 
-        QNetworkAccessManager* networkManager;
+        QNetworkAccessManager* networkManager = nullptr;
 
         bool pasteSelectedItems();
         bool duplicateSelectedItems();

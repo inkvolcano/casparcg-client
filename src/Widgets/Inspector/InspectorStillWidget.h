@@ -23,9 +23,9 @@ class WIDGETS_EXPORT InspectorStillWidget : public QWidget, Ui::InspectorStillWi
         explicit InspectorStillWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        StillCommand* command;
-        bool enableOscInputControl;
+        LibraryModel* model = nullptr;
+        StillCommand* command = nullptr;
+        bool enableOscInputControl = false;
 
         QCheckBox* checkBoxAutoLoop = nullptr;
         QSpinBox* spinBoxAutoLoopDelay = nullptr;

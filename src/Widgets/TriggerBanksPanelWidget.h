@@ -31,13 +31,13 @@ class WIDGETS_EXPORT TriggerBanksPanelWidget : public QWidget, Ui::TriggerBanksP
 
     private:
         bool banksPlaced = true;
-        bool banksCollapsed;
+        bool banksCollapsed = false;
 
         QToolButton* banksMenuButton = nullptr;
         QMenu* banksMenu = nullptr;
         QAction* banksExpandCollapseAction = nullptr;
 
-        bool showBankIcons;
+        bool showBankIcons = false;
 
         // Row size follows the same display setting the Activity panel uses, so
         // the two panels do not disagree about how large a row is. Each keeps its
@@ -48,18 +48,18 @@ class WIDGETS_EXPORT TriggerBanksPanelWidget : public QWidget, Ui::TriggerBanksP
         // Bank icons (B1-B9 indicators)
         static const int BANK_COUNT = 9;
         QLabel* bankIcons[BANK_COUNT];
-        QWidget* bankIconsContainer;
+        QWidget* bankIconsContainer = nullptr;
 
         // Bank entries (assigned banks)
         struct BankEntry
         {
-            QWidget* row;
-            QLabel* labelBank;
-            QLabel* labelItem;
-            QLabel* labelChannel;
+            QWidget* row = nullptr;
+            QLabel* labelBank = nullptr;
+            QLabel* labelItem = nullptr;
+            QLabel* labelChannel = nullptr;
         };
 
-        QVBoxLayout* banksEntriesLayout;
+        QVBoxLayout* banksEntriesLayout = nullptr;
         QMap<int, BankEntry> bankEntries;
 
         void setupMenus();

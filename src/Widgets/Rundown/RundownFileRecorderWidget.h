@@ -59,28 +59,28 @@ class WIDGETS_EXPORT RundownFileRecorderWidget : public QWidget, Ui::RundownFile
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         FileRecorderCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
         OscFileModel fileModel;
-        OscSubscription* frameSubscription;
-        OscSubscription* fpsSubscription;
-        OscSubscription* pathSubscription;
+        OscSubscription* frameSubscription = nullptr;
+        OscSubscription* fpsSubscription = nullptr;
+        OscSubscription* pathSubscription = nullptr;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
 

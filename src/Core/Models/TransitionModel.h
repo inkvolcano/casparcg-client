@@ -13,7 +13,7 @@ class CORE_EXPORT TransitionModel
         const QString& getValue() const;
 
     private:
-        int id;
+        int id = 0;
         QString value;
 };
 

@@ -68,31 +68,31 @@ class WIDGETS_EXPORT RundownTemplateWidget : public QWidget, Ui::RundownTemplate
         void dropEvent(QDropEvent* event);
 
     private:
-        bool active;
-        bool loaded;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool loaded = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         TemplateCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool sendAutoPlay = false;
         bool selected = false;
         QLabel* labelAutoPlayIcon = nullptr;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* loadControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* invokeControlSubscription;
-        OscSubscription* previewControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* loadControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* invokeControlSubscription = nullptr;
+        OscSubscription* previewControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
         ItemScheduler itemSchedulerPreview;

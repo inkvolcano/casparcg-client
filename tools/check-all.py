@@ -171,6 +171,24 @@ def main():
         if 'NEITHER' in line or 'md only' in line or 'html only' in line or 'gap(s)' in line or 'every feature' in line:
             print('  ' + line.strip())
 
+    # Every member starts with a value: build 289's startup crash was one that did not.
+    print()
+    print('Members')
+    members = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-members.py')],
+                             cwd=ROOT, capture_output=True, text=True)
+    members_ok = members.returncode == 0
+    lines = [line for line in members.stdout.splitlines() if line.strip()]
+    for line in (lines if not members_ok else lines[-1:]):
+        print('  ' + line.strip())
+
+    # No range-for over `QStringList() << ...`: build 288's editor skipped a check at random.
+    loops = subprocess.run([sys.executable, os.path.join(TOOLS, 'check-loops.py')],
+                           cwd=ROOT, capture_output=True, text=True)
+    loops_ok = loops.returncode == 0
+    lines = [line for line in loops.stdout.splitlines() if line.strip()]
+    for line in (lines if not loops_ok else lines[-1:]):
+        print('  ' + line.strip())
+
     print()
     print('Suites')
 
@@ -221,6 +239,10 @@ def main():
         print('Build wiring has a problem.')
     if not story_ok:
         print('A feature is missing from the changelog.')
+    if not members_ok:
+        print('A class member starts with no value (tools/check-members.py --fix).')
+    if not loops_ok:
+        print('A range-for loops over a temporary list (tools/check-loops.py).')
     if not panels_ok:
         print('A panel is registered but not placed, or a consumer stopped reading the registry.')
     if not tabs_ok:
@@ -228,7 +250,7 @@ def main():
     if broken:
         print('Failed: ' + ', '.join(broken))
 
-    return 0 if (syntax_ok and wiring_ok and story_ok and panels_ok and tabs_ok
+    return 0 if (syntax_ok and wiring_ok and story_ok and panels_ok and tabs_ok and members_ok and loops_ok
                  and not broken and totalFailed == 0) else 1
 
 

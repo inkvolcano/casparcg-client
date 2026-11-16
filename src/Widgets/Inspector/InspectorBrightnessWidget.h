@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorBrightnessWidget : public QWidget, Ui::InspectorBr
         explicit InspectorBrightnessWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        BrightnessCommand* command;
+        LibraryModel* model = nullptr;
+        BrightnessCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorAudioWidget : public QWidget, Ui::InspectorAudioWi
         explicit InspectorAudioWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        AudioCommand* command;
+        LibraryModel* model = nullptr;
+        AudioCommand* command = nullptr;
 
         void loadDirection();
         void loadTransition();

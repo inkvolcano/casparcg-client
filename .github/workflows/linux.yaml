@@ -15,6 +15,14 @@ jobs:
               with:
                 submodules: true
 
+            # Before the build, because it is cheap and it is the kind of mistake a
+            # build does not catch: a member with no starting value (build 289).
+            - name: Check every member starts with a value
+              run: python3 tools/check-members.py
+
+            - name: Check no loop reads a destroyed list
+              run: python3 tools/check-loops.py
+
             - name: Prepare dependencies
               run: |
                   sudo apt update

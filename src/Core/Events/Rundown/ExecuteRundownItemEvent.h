@@ -21,6 +21,6 @@ class CORE_EXPORT ExecuteRundownItemEvent
     private:
         Playout::PlayoutType type;
 
-        QTreeWidgetItem* item;
+        QTreeWidgetItem* item = nullptr;
         QString address;
 };

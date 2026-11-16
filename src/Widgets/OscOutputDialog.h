@@ -30,7 +30,7 @@ class WIDGETS_EXPORT OscOutputDialog : public QDialog, Ui::OscOutputDialog
         bool eventFilter(QObject* target, QEvent* event);
 
     private:
-        bool editMode;
+        bool editMode = false;
 
         bool lookupName(const QString& name);
         bool lookupAddress(const QString& address);

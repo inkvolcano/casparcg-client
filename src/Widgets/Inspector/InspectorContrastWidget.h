@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorContrastWidget : public QWidget, Ui::InspectorCont
         explicit InspectorContrastWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        ContrastCommand* command;
+        LibraryModel* model = nullptr;
+        ContrastCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

@@ -89,7 +89,7 @@ class CASPAR_EXPORT AmcpDevice : public QObject
 
         QString address;
 
-        int port;
+        int port = 0;
 
         QTimer* reconnectTimer = nullptr;
         void scheduleReconnect();

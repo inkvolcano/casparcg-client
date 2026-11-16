@@ -40,7 +40,7 @@ class WIDGETS_EXPORT DeviceDialog : public QDialog, Ui::DeviceDialog
         bool eventFilter(QObject* target, QEvent* event);
 
     private:
-        bool editMode;
+        bool editMode = false;
         QLineEdit* lineEditServerPath = nullptr;
 
         QSharedPointer<CasparDevice> device;

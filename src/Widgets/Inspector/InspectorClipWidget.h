@@ -22,10 +22,10 @@ class WIDGETS_EXPORT InspectorClipWidget : public QWidget, Ui::InspectorClipWidg
         explicit InspectorClipWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        ClipCommand* command;
-        int resolutionWidth;
-        int resolutionHeight;
+        LibraryModel* model = nullptr;
+        ClipCommand* command = nullptr;
+        int resolutionWidth = 0;
+        int resolutionHeight = 0;
 
         void loadTween();
         void blockAllSignals(bool block);

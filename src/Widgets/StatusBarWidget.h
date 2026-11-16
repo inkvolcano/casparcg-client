@@ -20,9 +20,9 @@ class WIDGETS_EXPORT StatusBarWidget : public QWidget
     private:
         static const int MAX_MESSAGES = 10;
 
-        bool expanded;
-        QToolButton* expandButton;
-        QLabel* currentLabel;
+        bool expanded = false;
+        QToolButton* expandButton = nullptr;
+        QLabel* currentLabel = nullptr;
 
         // Clears the line once the latest message's timeout has passed. One timer,
         // restarted per message: a single-shot per message used to leave the
@@ -30,14 +30,14 @@ class WIDGETS_EXPORT StatusBarWidget : public QWidget
         // one before it, well before its own three seconds were up.
         class QTimer* clearTimer = nullptr;
         void setLabelStyle(const QString& style);
-        QWidget* historyContainer;
-        QVBoxLayout* historyLayout;
+        QWidget* historyContainer = nullptr;
+        QVBoxLayout* historyLayout = nullptr;
 
         struct LogEntry
         {
             QString time;
             QString message;
-            bool isError;
+            bool isError = false;
         };
         QList<LogEntry> messageLog;
         QList<QLabel*> historyLabels;

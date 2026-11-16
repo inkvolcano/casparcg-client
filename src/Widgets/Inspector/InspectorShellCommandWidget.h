@@ -20,7 +20,7 @@ class WIDGETS_EXPORT InspectorShellCommandWidget : public QWidget, Ui::Inspector
         explicit InspectorShellCommandWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
+        LibraryModel* model = nullptr;
         // QPointer: auto-nulls when the command's rundown item is deleted or
         // rebuilt, so an edit afterwards can't dereference a dead command.
         QPointer<ShellCommand> command;

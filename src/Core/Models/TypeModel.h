@@ -24,7 +24,7 @@ class CORE_EXPORT TypeModel
         };
 
     private:
-        int id;
+        int id = 0;
         QString name;
 };
 

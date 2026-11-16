@@ -33,13 +33,13 @@ class CORE_EXPORT LibraryModel
         void setTimecode(const QString& timecode);
 
     private:
-        int id;
+        int id = 0;
         QString label;
         QString name;
         QString deviceName;
         QString type;
-        int thumbnailId;
+        int thumbnailId = 0;
         QString timecode;
-        qint64 size;
+        qint64 size = 0;
         QString timestamp;
 };

@@ -22,9 +22,9 @@ class WIDGETS_EXPORT InspectorGroupWidget : public QWidget, Ui::InspectorGroupWi
         explicit InspectorGroupWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        GroupCommand* command;
-        bool enableOscInputControl;
+        LibraryModel* model = nullptr;
+        GroupCommand* command = nullptr;
+        bool enableOscInputControl = false;
 
         QCheckBox* checkBoxAutoLoop = nullptr;
         QSpinBox* spinBoxAutoLoopDelay = nullptr;

@@ -17,6 +17,6 @@ class CORE_EXPORT CurrentItemChangedEvent
         QTreeWidgetItem* getPreviousItem() const;
 
     private:
-        QTreeWidgetItem* current;
-        QTreeWidgetItem* previous;
+        QTreeWidgetItem* current = nullptr;
+        QTreeWidgetItem* previous = nullptr;
 };

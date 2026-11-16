@@ -32,7 +32,7 @@ class WIDGETS_EXPORT OpenRundownFromUrlDialog : public QDialog, Ui::OpenRundownF
     private:
         QString repositoryUrl;
 
-        QNetworkAccessManager* networkManager;
+        QNetworkAccessManager* networkManager = nullptr;
 
         Q_SLOT void finished(QNetworkReply*);
         Q_SLOT void itemDoubleClicked(QTreeWidgetItem*, int);

@@ -23,9 +23,9 @@ class WIDGETS_EXPORT InspectorMovieWidget : public QWidget, Ui::InspectorMovieWi
         explicit InspectorMovieWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        MovieCommand* command;
-        bool enableOscInputControl;
+        LibraryModel* model = nullptr;
+        MovieCommand* command = nullptr;
+        bool enableOscInputControl = false;
 
         QCheckBox* checkBoxAutoLoop = nullptr;
         QSpinBox* spinBoxAutoLoopDelay = nullptr;

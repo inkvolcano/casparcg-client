@@ -34,7 +34,7 @@ class REPOSITORY_EXPORT RrupDevice : public QObject
             REMOVE
         };
 
-        QTcpSocket* socket;
+        QTcpSocket* socket = nullptr;
         RrupDeviceCommand command;
 
         QString response;
@@ -51,12 +51,12 @@ class REPOSITORY_EXPORT RrupDevice : public QObject
             ExpectingMultiline
         };
 
-        int port;
-        int state;
-        bool connected;
+        int port = 0;
+        int state = 0;
+        bool connected = false;
         QString line;
         QString address;
-        QTextDecoder* decoder;
+        QTextDecoder* decoder = nullptr;
         QString fragments;
 
         QTimer* reconnectTimer = nullptr;

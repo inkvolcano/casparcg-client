@@ -16,10 +16,10 @@ class CORE_EXPORT FormatModel
         const QString& getFramesPerSecond() const;
 
     private:
-        int id;
+        int id = 0;
         QString name;
-        int width;
-        int height;
+        int width = 0;
+        int height = 0;
         QString fps;
 };
 

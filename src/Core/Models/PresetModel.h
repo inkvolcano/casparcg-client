@@ -14,7 +14,7 @@ class CORE_EXPORT PresetModel
         const QString& getValue() const;
 
     private:
-        int id;
+        int id = 0;
         QString name;
         QString value;
 };

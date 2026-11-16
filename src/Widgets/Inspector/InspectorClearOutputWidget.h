@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorClearOutputWidget : public QWidget, Ui::InspectorC
         explicit InspectorClearOutputWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        ClearOutputCommand* command;
+        LibraryModel* model = nullptr;
+        ClearOutputCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

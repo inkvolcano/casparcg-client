@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorFileRecorderWidget : public QWidget, Ui::Inspector
         explicit InspectorFileRecorderWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        FileRecorderCommand* command;
+        LibraryModel* model = nullptr;
+        FileRecorderCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

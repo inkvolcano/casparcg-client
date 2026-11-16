@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorImageScrollerWidget : public QWidget, Ui::Inspecto
         explicit InspectorImageScrollerWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        ImageScrollerCommand* command;
+        LibraryModel* model = nullptr;
+        ImageScrollerCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

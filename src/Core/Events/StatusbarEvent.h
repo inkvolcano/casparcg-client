@@ -14,7 +14,7 @@ class CORE_EXPORT StatusbarEvent
         bool getIsError() const;
 
     private:
-        int timeout;
-        bool isError;
+        int timeout = 0;
+        bool isError = false;
         QString message;
 };

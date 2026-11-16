@@ -61,25 +61,25 @@ class WIDGETS_EXPORT RundownBlendModeWidget : public QWidget, Ui::RundownBlendMo
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool disconnected;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool disconnected = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         BlendModeCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
 

@@ -16,7 +16,7 @@ class CORE_EXPORT RundownModel
         const QString& getType() const;
 
     private:
-        int id;
+        int id = 0;
         QString page;
         QString name;
         QString deviceName;

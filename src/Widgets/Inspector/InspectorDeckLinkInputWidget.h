@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorDeckLinkInputWidget : public QWidget, Ui::Inspecto
         explicit InspectorDeckLinkInputWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        DeckLinkInputCommand* command;
+        LibraryModel* model = nullptr;
+        DeckLinkInputCommand* command = nullptr;
 
         void loadDirection();
         void loadFormat();

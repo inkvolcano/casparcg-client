@@ -20,5 +20,5 @@ class OSC_EXPORT OscThread : public QThread
         void run();
 
     private:
-        SocketReceiveMultiplexer* multiplexer;
+        SocketReceiveMultiplexer* multiplexer = nullptr;
 };

@@ -61,13 +61,13 @@ class WIDGETS_EXPORT RundownCommandGatewayWidget : public QWidget, Ui::RundownCo
         void requestFocusJumpToEntrance(const QString& gatewayId);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         GatewayCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         bool selected = false;
 
         QWidget* buttonContainer = nullptr;

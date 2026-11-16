@@ -45,7 +45,7 @@ public slots:
 private:
     void setupAudioSink(int sampleRate, int channels);
 
-    const NDIlib_v5* p_NDI;
+    const NDIlib_v5* p_NDI = nullptr;
     NdiSourceInfo source;
     std::atomic<bool> stopFlag{false};
     std::atomic<bool> muted{false};

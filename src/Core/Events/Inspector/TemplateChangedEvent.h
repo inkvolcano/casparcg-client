@@ -10,5 +10,5 @@ class CORE_EXPORT TemplateChangedEvent
         int getDeviceId() const;
 
     private:
-        int deviceId;
+        int deviceId = 0;
 };

@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorRotationWidget : public QWidget, Ui::InspectorRota
         explicit InspectorRotationWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        RotationCommand* command;
+        LibraryModel* model = nullptr;
+        RotationCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

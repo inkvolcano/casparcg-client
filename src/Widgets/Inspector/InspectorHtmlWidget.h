@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorHtmlWidget : public QWidget, Ui::InspectorHtmlWidg
         explicit InspectorHtmlWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        HtmlCommand* command;
+        LibraryModel* model = nullptr;
+        HtmlCommand* command = nullptr;
 
         void checkEmptyUrl();
         void loadDirection();

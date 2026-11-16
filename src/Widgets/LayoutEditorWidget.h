@@ -27,12 +27,12 @@ class WIDGETS_EXPORT LayoutEditorWidget : public QWidget
         static QString columnDisplayName(const QString& id);
 
         // Column order strip.
-        QListWidget* columnOrderList;
+        QListWidget* columnOrderList = nullptr;
 
         // Widget assignment lists.
-        QHBoxLayout* panelListsLayout;
+        QHBoxLayout* panelListsLayout = nullptr;
         QMap<QString, QListWidget*> panelLists;
-        QListWidget* availableList;
+        QListWidget* availableList = nullptr;
 
         QStringList gatherColumnOrder();
         QMap<QString, QStringList> gatherPanelWidgets();

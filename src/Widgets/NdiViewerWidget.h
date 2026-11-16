@@ -53,15 +53,15 @@ private:
 
     void setOverlayStyle(bool signalLost);
 
-    QLabel* videoLabel;
-    QLabel* overlayLabel;
+    QLabel* videoLabel = nullptr;
+    QLabel* overlayLabel = nullptr;
     QTimer* labelHideTimer = nullptr;
     bool labelAutoHide_ = false;
 
-    QMenu* contextMenu;
-    QMenu* sourceMenu;
-    QAction* disconnectAction;
-    QAction* muteAction;
+    QMenu* contextMenu = nullptr;
+    QMenu* sourceMenu = nullptr;
+    QAction* disconnectAction = nullptr;
+    QAction* muteAction = nullptr;
 
     NdiSourceInfo currentSource;
     bool muted_ = false;

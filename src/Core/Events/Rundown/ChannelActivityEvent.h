@@ -19,9 +19,9 @@ class CORE_EXPORT ChannelActivityEvent
         bool getActive() const;
 
     private:
-        int channel;
-        int videolayer;
+        int channel = 0;
+        int videolayer = 0;
         QString label;
         QString itemType;
-        bool active;
+        bool active = false;
 };

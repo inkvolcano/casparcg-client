@@ -14,7 +14,7 @@ class CORE_EXPORT GpoPortModel
         int getPulseLengthMillis() const;
 
     private:
-        int port;
-        bool risingEdge;
-        int pulseLengthMillis;
+        int port = 0;
+        bool risingEdge = false;
+        int pulseLengthMillis = 0;
 };

@@ -10,5 +10,5 @@ class CORE_EXPORT PresetChangedEvent
         int getPresetId() const;
 
     private:
-        int presetId;
+        int presetId = 0;
 };

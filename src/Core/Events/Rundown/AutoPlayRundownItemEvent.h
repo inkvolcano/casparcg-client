@@ -14,5 +14,5 @@ class CORE_EXPORT AutoPlayRundownItemEvent
         QWidget* getSource() const;
 
     private:
-        QWidget* widget;
+        QWidget* widget = nullptr;
 };

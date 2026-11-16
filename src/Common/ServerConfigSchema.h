@@ -846,7 +846,11 @@ namespace ServerConfigSchema
 
         const QStringList custom = customModes(root);
 
-        for (const QString& needed : QStringList() << "paths" << "channels" << "controllers")
+        // A named list: a range-for over `QStringList() << ...` reads a list that
+        // is already destroyed (operator<< returns a reference to the temporary),
+        // which made this check skip <controllers> at random in build 288.
+        const QStringList required = QStringList() << "paths" << "channels" << "controllers";
+        for (const QString& needed : required)
         {
             if (child(root, needed) == nullptr)
                 problems << Problem{true, "File", QString("There is no <%1>; the server does not start without one.").arg(needed)};
@@ -879,7 +883,8 @@ namespace ServerConfigSchema
                     problems << Problem{true, where, QString("\"%1\" is already a video mode.").arg(id)};
                 seenModes.insert(id.toLower());
             }
-            for (const QString& size : QStringList() << "width" << "height" << "time-scale" << "duration")
+            const QStringList nonZero = QStringList() << "width" << "height" << "time-scale" << "duration";
+            for (const QString& size : nonZero)
             {
                 bool present = false;
                 if (value(mode, size, &present) == "0" && present)

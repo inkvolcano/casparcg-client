@@ -10,5 +10,5 @@ class CORE_EXPORT RefreshLibraryEvent
         int getDelay() const;
 
     private:
-        int delay;
+        int delay = 0;
 };

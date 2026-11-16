@@ -21,9 +21,9 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    QWidget* targetPanel;
+    QWidget* targetPanel = nullptr;
     QString panelId;
-    int defaultHeight;
+    int defaultHeight = 0;
     bool dragging = false;
     int dragStartY = 0;
     int dragStartHeight = 0;

@@ -22,9 +22,9 @@ class CORE_EXPORT RundownItemSelectedEvent
         const QList<AbstractCommand*>& getAllCommands() const;
 
     private:
-        AbstractCommand* command;
-        LibraryModel* model;
-        QWidget* source;
-        QWidget* parent;
+        AbstractCommand* command = nullptr;
+        LibraryModel* model = nullptr;
+        QWidget* source = nullptr;
+        QWidget* parent = nullptr;
         QList<AbstractCommand*> allCommands;
 };

@@ -26,8 +26,8 @@ class WIDGETS_EXPORT InspectorHttpGetWidget : public QWidget, Ui::InspectorHttpG
         virtual bool eventFilter(QObject* target, QEvent* event);
 
     private:
-        int fieldCounter;
-        LibraryModel* model;
+        int fieldCounter = 0;
+        LibraryModel* model = nullptr;
         // QPointer: auto-nulls when the command's rundown item is deleted or
         // rebuilt, so tree edits afterwards can't dereference a dead command.
         QPointer<HttpGetCommand> command;

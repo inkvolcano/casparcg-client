@@ -11,6 +11,6 @@ class CORE_EXPORT BankAssignmentChangedEvent
         bool getAssigned() const;
 
     private:
-        int bankId;
-        bool assigned;
+        int bankId = 0;
+        bool assigned = false;
 };

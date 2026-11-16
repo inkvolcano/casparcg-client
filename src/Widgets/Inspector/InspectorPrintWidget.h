@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorPrintWidget : public QWidget, Ui::InspectorPrintWi
         explicit InspectorPrintWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        PrintCommand* command;
+        LibraryModel* model = nullptr;
+        PrintCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

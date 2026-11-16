@@ -27,7 +27,7 @@ class UndoScope
         }
 
     private:
-        RundownTreeBaseWidget* m_tree;
+        RundownTreeBaseWidget* m_tree = nullptr;
         Q_DISABLE_COPY(UndoScope)
 };
 
@@ -51,7 +51,7 @@ class TreeSnapshotCommand : public QUndoCommand
         int id() const override { return 1; }
 
     private:
-        RundownTreeBaseWidget* m_tree;
+        RundownTreeBaseWidget* m_tree = nullptr;
         // Compressed: two whole rundowns per step, fifty steps per tab, came to
         // about 100 MB for the largest real rundown and is about 1.4 MB like this.
         QByteArray m_before;

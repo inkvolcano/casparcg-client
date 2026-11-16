@@ -23,7 +23,7 @@ class WIDGETS_EXPORT ToolTreeBaseWidget : public QTreeWidget
         void mousePressEvent(QMouseEvent* event);
 
     private:
-        bool lock;
+        bool lock = false;
         QPoint dragStartPosition;
 
         Q_SLOT void repositoryRundown(const RepositoryRundownEvent&);

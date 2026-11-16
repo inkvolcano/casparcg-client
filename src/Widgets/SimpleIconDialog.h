@@ -19,5 +19,5 @@ class WIDGETS_EXPORT SimpleIconDialog : public QDialog
         QString getIcon() const;   // empty = no icon
 
     private:
-        QLineEdit* lineEditCustom;
+        QLineEdit* lineEditCustom = nullptr;
 };

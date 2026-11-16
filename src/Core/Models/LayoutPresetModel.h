@@ -18,7 +18,7 @@ class CORE_EXPORT LayoutPresetModel
         const QString& getData() const;
 
     private:
-        int id;
+        int id = 0;
         QString name;
         QString scope;
         QString data;

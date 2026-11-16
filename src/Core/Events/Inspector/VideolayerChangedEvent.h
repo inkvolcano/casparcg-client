@@ -12,5 +12,5 @@ class CORE_EXPORT VideolayerChangedEvent
         int getVideolayer() const;
 
     private:
-        int videolayer;
+        int videolayer = 0;
 };

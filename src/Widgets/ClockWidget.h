@@ -20,51 +20,51 @@ class WIDGETS_EXPORT ClockWidget : public QWidget, Ui::ClockWidget
         explicit ClockWidget(QWidget* parent = 0);
 
     private:
-        bool collapsed;
-        bool dualClock;
-        bool stacked;
-        bool showLabels;
+        bool collapsed = false;
+        bool dualClock = false;
+        bool stacked = false;
+        bool showLabels = false;
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;
         QAction* expandCollapseAction = nullptr;
-        QFrame* divider;
-        QWidget* card2Widget;
-        QWidget* card1Widget;
+        QFrame* divider = nullptr;
+        QWidget* card2Widget = nullptr;
+        QWidget* card1Widget = nullptr;
 
-        QLabel* zoneLabel1;
-        QLabel* zoneLabel2;
+        QLabel* zoneLabel1 = nullptr;
+        QLabel* zoneLabel2 = nullptr;
 
         QString color1;
         QString color2;
         QString shadowColor;
 
         // Clock 1 — separate LCDs per digit pair.
-        QFrame* clockFrame1;
-        QLCDNumber* lcd1H;
-        QLCDNumber* lcd1M;
-        QLCDNumber* lcd1S;
-        QLCDNumber* shadow1Hour;
-        QLCDNumber* shadow1Minute;
-        QLCDNumber* shadow1Second;
+        QFrame* clockFrame1 = nullptr;
+        QLCDNumber* lcd1H = nullptr;
+        QLCDNumber* lcd1M = nullptr;
+        QLCDNumber* lcd1S = nullptr;
+        QLCDNumber* shadow1Hour = nullptr;
+        QLCDNumber* shadow1Minute = nullptr;
+        QLCDNumber* shadow1Second = nullptr;
 
         // Clock 2 — separate LCDs per digit pair.
-        QFrame* clockFrame2;
-        QLCDNumber* lcd2H;
-        QLCDNumber* lcd2M;
-        QLCDNumber* lcd2S;
-        QLCDNumber* shadow2Hour;
-        QLCDNumber* shadow2Minute;
-        QLCDNumber* shadow2Second;
+        QFrame* clockFrame2 = nullptr;
+        QLCDNumber* lcd2H = nullptr;
+        QLCDNumber* lcd2M = nullptr;
+        QLCDNumber* lcd2S = nullptr;
+        QLCDNumber* shadow2Hour = nullptr;
+        QLCDNumber* shadow2Minute = nullptr;
+        QLCDNumber* shadow2Second = nullptr;
 
-        QTimer* clockTimer;
+        QTimer* clockTimer = nullptr;
         QTimeZone timezone1;
         QTimeZone timezone2;
 
         // Colon labels (for color updates).
-        QLabel* colon1a;
-        QLabel* colon1b;
-        QLabel* colon2a;
-        QLabel* colon2b;
+        QLabel* colon1a = nullptr;
+        QLabel* colon1b = nullptr;
+        QLabel* colon2a = nullptr;
+        QLabel* colon2b = nullptr;
 
         void setupMenus();
         void updateClocks();

@@ -50,14 +50,14 @@ class WIDGETS_EXPORT InspectorTemplateWidget : public QWidget, Ui::InspectorTemp
         virtual bool eventFilter(QObject* target, QEvent* event);
 
     private:
-        int fieldCounter;
-        LibraryModel* model;
+        int fieldCounter = 0;
+        LibraryModel* model = nullptr;
         // QPointer: the command dies whenever its rundown item is deleted or
         // rebuilt (move, undo, reload) — a raw pointer here caused crashes when
         // the key/value tree was touched afterwards.
         QPointer<TemplateCommand> command;
-        bool lock;
-        NumericValueDelegate* numericDelegate;
+        bool lock = false;
+        NumericValueDelegate* numericDelegate = nullptr;
         // Expected result: what the row the operator has typed actually contains.
         // An index is not an answer until you can see who is at that index.
         QWidget* settingsPanel = nullptr;

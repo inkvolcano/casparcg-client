@@ -10,5 +10,5 @@ class CORE_EXPORT DeleteRundownEvent
         int getIndex() const;
 
     private:
-        int index;
+        int index = 0;
 };

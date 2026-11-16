@@ -22,10 +22,10 @@ class WIDGETS_EXPORT InspectorFillWidget : public QWidget, Ui::InspectorFillWidg
         explicit InspectorFillWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        FillCommand* command;
-        int resolutionWidth;
-        int resolutionHeight;
+        LibraryModel* model = nullptr;
+        FillCommand* command = nullptr;
+        int resolutionWidth = 0;
+        int resolutionHeight = 0;
 
         void loadTween();
         void blockAllSignals(bool block);

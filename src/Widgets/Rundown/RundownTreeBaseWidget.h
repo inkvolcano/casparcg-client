@@ -160,9 +160,9 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
     private:
         QString parseError;
 
-        bool compactView;
+        bool compactView = false;
         QString theme;
-        bool lock;
+        bool lock = false;
 
         QUndoStack* m_undoStack = nullptr;
         QString m_pendingUndoBefore;

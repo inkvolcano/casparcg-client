@@ -77,38 +77,38 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         SimpleModeWidget* widgetSimpleMode = nullptr;
         SimpleInspectorWidget* widgetSimpleInspector = nullptr;
 
-        QMenu* fileMenu;
-        QMenu* editMenu;
-        QMenu* viewMenu;
-        QMenu* libraryMenu;
-        QMenu* rundownMenu;
-        QMenu* markMenu;
-        QMenu* playoutMenu;
-        QMenu* otherMenu;
+        QMenu* fileMenu = nullptr;
+        QMenu* editMenu = nullptr;
+        QMenu* viewMenu = nullptr;
+        QMenu* libraryMenu = nullptr;
+        QMenu* rundownMenu = nullptr;
+        QMenu* markMenu = nullptr;
+        QMenu* playoutMenu = nullptr;
+        QMenu* otherMenu = nullptr;
         QAction* sheetCacheBypassAction = nullptr;
-        QMenu* helpMenu;
-        QMenu* openRecentMenu;
-        QMenuBar* menuBar;
+        QMenu* helpMenu = nullptr;
+        QMenu* openRecentMenu = nullptr;
+        QMenuBar* menuBar = nullptr;
 
-        QAction* newRundownAction;
-        QAction* openRundownAction;
-        QAction* openRundownFromUrlAction;
-        QAction* openRecentMenuAction;
-        QAction* exportPresetAction;
-        QAction* saveAsPresetAction;
-        QAction* saveAction;
-        QAction* saveAsAction;
-        QAction* compactViewAction;
-        QAction* allowRemoteTriggeringAction;
-        QAction* lockRundownAction;
-        QAction* insertRepositoryChangesAction;
-        QAction* reloadRundownAction;
-        QAction* disableCommandAction;
+        QAction* newRundownAction = nullptr;
+        QAction* openRundownAction = nullptr;
+        QAction* openRundownFromUrlAction = nullptr;
+        QAction* openRecentMenuAction = nullptr;
+        QAction* exportPresetAction = nullptr;
+        QAction* saveAsPresetAction = nullptr;
+        QAction* saveAction = nullptr;
+        QAction* saveAsAction = nullptr;
+        QAction* compactViewAction = nullptr;
+        QAction* allowRemoteTriggeringAction = nullptr;
+        QAction* lockRundownAction = nullptr;
+        QAction* insertRepositoryChangesAction = nullptr;
+        QAction* reloadRundownAction = nullptr;
+        QAction* disableCommandAction = nullptr;
 
         QMap<Playout::PlayoutType, QAction*> playoutActions;
         QMap<int, QAction*> bankActions;
-        QAction* togglePreviewAction;
-        QAction* toggleAutostepAction;
+        QAction* togglePreviewAction = nullptr;
+        QAction* toggleAutostepAction = nullptr;
 
         void setupMenu();
         void loadHotkeys();
@@ -191,9 +191,9 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         Q_SLOT void channelLockChanged(const QString& deviceName, int channel, bool locked);
         void updatePreviewBorder();
         void updateLockBorder();
-        bool showPreviewBorder;
-        bool previewModeActive;
-        bool previewModifierHeld;
+        bool showPreviewBorder = false;
+        bool previewModeActive = false;
+        bool previewModifierHeld = false;
         QString previewModifierKey;
         QFrame* previewBorderOverlay = nullptr;
         QFrame* lockBorderOverlay = nullptr;
@@ -219,5 +219,5 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         void updateReleaseHint();
 
         QMap<QString, QWidget*> panelContainers;
-        QWidget* mainWindowContainer;
+        QWidget* mainWindowContainer = nullptr;
 };

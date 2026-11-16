@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorSolidColorWidget : public QWidget, Ui::InspectorSo
         explicit InspectorSolidColorWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        SolidColorCommand* command;
+        LibraryModel* model = nullptr;
+        SolidColorCommand* command = nullptr;
 
         void loadDirection();
         void loadTransition();

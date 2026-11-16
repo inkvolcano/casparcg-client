@@ -43,7 +43,7 @@ class WIDGETS_EXPORT RundownTimingBar : public QFrame
             double seconds = 0;
         };
 
-        RundownTreeBaseWidget* tree;
+        RundownTreeBaseWidget* tree = nullptr;
         QLabel* labelTotal = nullptr;
         QLabel* labelFromSelected = nullptr;
         QLineEdit* editHardOut = nullptr;

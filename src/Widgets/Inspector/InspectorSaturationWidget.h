@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorSaturationWidget : public QWidget, Ui::InspectorSa
         explicit InspectorSaturationWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        SaturationCommand* command;
+        LibraryModel* model = nullptr;
+        SaturationCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

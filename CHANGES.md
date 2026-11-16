@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Every Value Starts Known
+
+- **No more startup crashes of the 289 kind.** Build 289's crash came from part
+  of the window being used before it had a starting value, so it held whatever
+  was left in memory. That made it crash on one machine and not another. Every
+  such value in the client - 1,153 of them, in every panel and setting - now
+  starts from a known one (empty, off or zero).
+- A check now runs with every build and stops any new one from being added
+  without a starting value (`tools/check-members.py`, in check-all and the Linux
+  CI build). Nothing you see changes.
+- Fixed: the server config editor (288) could skip its check for a missing
+  `<controllers>` section on some runs - a loop read a list that was already
+  gone. A second check now stops that kind of loop from being written again
+  (`tools/check-loops.py`).
+
 ## Panic Clear Is A Setting
 
 - **The double-Esc panic clear is now a setting, and it is off.** Settings >

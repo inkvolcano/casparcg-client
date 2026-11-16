@@ -13,7 +13,7 @@ class CORE_EXPORT BlendModeModel
         const QString& getValue() const;
 
     private:
-        int id;
+        int id = 0;
         QString value;
 };
 

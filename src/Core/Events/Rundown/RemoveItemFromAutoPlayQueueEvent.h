@@ -16,5 +16,5 @@ class CORE_EXPORT RemoveItemFromAutoPlayQueueEvent
         QTreeWidgetItem* getItem() const;
 
     private:
-        QTreeWidgetItem* item;
+        QTreeWidgetItem* item = nullptr;
 };

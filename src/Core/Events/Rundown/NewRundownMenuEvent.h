@@ -10,5 +10,5 @@ class CORE_EXPORT NewRundownMenuEvent
         bool getEnabled() const;
 
     private:
-        bool enabled;
+        bool enabled = false;
 };

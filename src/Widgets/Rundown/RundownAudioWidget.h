@@ -59,30 +59,30 @@ class WIDGETS_EXPORT RundownAudioWidget : public QWidget, Ui::RundownAudioWidget
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool loaded;
-        bool paused;
-        bool playing;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool loaded = false;
+        bool paused = false;
+        bool playing = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         AudioCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        OscSubscription* stopControlSubscription;
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
-        OscSubscription* loadControlSubscription;
-        OscSubscription* pauseControlSubscription;
-        OscSubscription* nextControlSubscription;
-        OscSubscription* updateControlSubscription;
-        OscSubscription* clearControlSubscription;
-        OscSubscription* clearVideolayerControlSubscription;
-        OscSubscription* clearChannelControlSubscription;
+        OscSubscription* stopControlSubscription = nullptr;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
+        OscSubscription* loadControlSubscription = nullptr;
+        OscSubscription* pauseControlSubscription = nullptr;
+        OscSubscription* nextControlSubscription = nullptr;
+        OscSubscription* updateControlSubscription = nullptr;
+        OscSubscription* clearControlSubscription = nullptr;
+        OscSubscription* clearVideolayerControlSubscription = nullptr;
+        OscSubscription* clearChannelControlSubscription = nullptr;
 
         OscSubscription* timeSubscription = nullptr;
         OscSubscription* clipSubscription = nullptr;

@@ -12,5 +12,5 @@ class CORE_EXPORT ChannelChangedEvent
         int getChannel() const;
 
     private:
-        int channel;
+        int channel = 0;
 };

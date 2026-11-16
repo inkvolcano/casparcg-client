@@ -38,17 +38,17 @@ class WIDGETS_EXPORT LiveWidget : public QWidget, Ui::LiveWidget
         libvlc_instance_t* vlcInstance = nullptr;
         libvlc_media_player_t* vlcMediaPlayer = nullptr;
 
-        QMenu* streamMenu;
-        QMenu* audioMenu;
-        QMenu* audioTrackMenu;
-        QMenu* contextMenuLiveDropdown;
+        QMenu* streamMenu = nullptr;
+        QMenu* audioMenu = nullptr;
+        QMenu* audioTrackMenu = nullptr;
+        QMenu* contextMenuLiveDropdown = nullptr;
 
-        QAction* muteAction;
-        QAction* windowModeAction;
-        QAction* streamMenuAction;
-        QAction* audioTrackAction;
-        QAction* audioTrackMenuAction;
-        QAction* expandCollapseAction;
+        QAction* muteAction = nullptr;
+        QAction* windowModeAction = nullptr;
+        QAction* streamMenuAction = nullptr;
+        QAction* audioTrackAction = nullptr;
+        QAction* audioTrackMenuAction = nullptr;
+        QAction* expandCollapseAction = nullptr;
 
         void setupMenus();
         void setupRenderTarget(bool windowMode);

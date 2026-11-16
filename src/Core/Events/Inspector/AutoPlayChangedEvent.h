@@ -12,5 +12,5 @@ class CORE_EXPORT AutoPlayChangedEvent
         bool getAutoPlay() const;
 
     private:
-        bool autoPlay;
+        bool autoPlay = false;
 };

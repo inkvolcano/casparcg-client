@@ -21,8 +21,8 @@ class CORE_EXPORT ExecutePlayoutCommandEvent
 
     private:
         QEvent::Type type;
-        int key;
+        int key = 0;
         Qt::KeyboardModifiers modifiers;
         Playout::PlayoutType playoutType;
-        bool hasPlayoutType;
+        bool hasPlayoutType = false;
 };

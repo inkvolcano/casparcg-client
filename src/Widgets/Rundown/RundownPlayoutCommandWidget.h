@@ -53,19 +53,19 @@ class WIDGETS_EXPORT RundownPlayoutCommandWidget : public QWidget, Ui::RundownPl
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         PlayoutCommand command;
-        ActiveAnimation* animation;
+        ActiveAnimation* animation = nullptr;
         QString delayType;
-        bool markUsedItems;
+        bool markUsedItems = false;
         bool selected = false;
 
-        OscSubscription* playControlSubscription;
-        OscSubscription* playNowControlSubscription;
+        OscSubscription* playControlSubscription = nullptr;
+        OscSubscription* playNowControlSubscription = nullptr;
 
         ItemScheduler itemScheduler;
 

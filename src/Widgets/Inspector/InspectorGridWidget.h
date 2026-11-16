@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorGridWidget : public QWidget, Ui::InspectorGridWidg
         explicit InspectorGridWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        GridCommand* command;
+        LibraryModel* model = nullptr;
+        GridCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

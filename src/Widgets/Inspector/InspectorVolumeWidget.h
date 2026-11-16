@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorVolumeWidget : public QWidget, Ui::InspectorVolume
         explicit InspectorVolumeWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        VolumeCommand* command;
+        LibraryModel* model = nullptr;
+        VolumeCommand* command = nullptr;
 
         void loadTween();
         void blockAllSignals(bool block);

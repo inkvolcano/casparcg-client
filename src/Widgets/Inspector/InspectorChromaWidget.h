@@ -20,8 +20,8 @@ class WIDGETS_EXPORT InspectorChromaWidget : public QWidget, Ui::InspectorChroma
         explicit InspectorChromaWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        ChromaCommand* command;
+        LibraryModel* model = nullptr;
+        ChromaCommand* command = nullptr;
 
         void loadChroma();
         void blockAllSignals(bool block);

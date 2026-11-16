@@ -10,5 +10,5 @@ class CORE_EXPORT LockRundownEvent
         bool getLocked() const;
 
     private:
-        bool locked;
+        bool locked = false;
 };

@@ -33,12 +33,12 @@ class WIDGETS_EXPORT InspectorOutputWidget : public QWidget, Ui::InspectorOutput
         explicit InspectorOutputWidget(QWidget* parent = 0);
 
     private:
-        AbstractCommand* command;
-        LibraryModel* model;
+        AbstractCommand* command = nullptr;
+        LibraryModel* model = nullptr;
         QList<AbstractCommand*> allCommands;
         QString delayType;
         QString libraryFilter;
-        bool forceMilliseconds;
+        bool forceMilliseconds = false;
 
 
         void checkEmptyDevice();

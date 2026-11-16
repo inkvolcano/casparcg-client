@@ -21,5 +21,5 @@ class OSC_EXPORT OscSender : public QObject
         void send(const QString& address, int port, const QString& path, const QVariant& message, bool useBundle);
 
     private:
-        bool useBundle;
+        bool useBundle = false;
 };

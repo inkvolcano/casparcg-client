@@ -13,6 +13,6 @@ class CORE_EXPORT ConnectionStateChangedEvent
         const QString& getDeviceName() const;
 
     private:
-        bool connected;
+        bool connected = false;
         QString deviceName;
 };

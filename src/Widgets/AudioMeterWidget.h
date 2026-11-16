@@ -39,8 +39,8 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
         void hideEvent(QHideEvent* event) override;
 
     private:
-        int channel;
-        double currentLevel;
+        int channel = 0;
+        double currentLevel = 0;
 
         // What the meter shows between readings: the bar's fall, the peak marker
         // and whether a clip has been seen and not yet acknowledged.
@@ -48,12 +48,12 @@ class WIDGETS_EXPORT AudioMeterWidget : public QWidget, Ui::AudioMeterWidget
         QTimer* decayTimer = nullptr;
         bool peakHoldEnabled = true;
         bool clipIndicatorEnabled = true;
-        LibraryModel* model;
-        AbstractCommand* command;
+        LibraryModel* model = nullptr;
+        AbstractCommand* command = nullptr;
 
         bool directMode = false;
 
-        OscSubscription* audioSubscription;
+        OscSubscription* audioSubscription = nullptr;
 
         double convertToLevel(int value);
         void configureOscSubscriptions();

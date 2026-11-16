@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorCustomCommandWidget : public QWidget, Ui::Inspecto
         explicit InspectorCustomCommandWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        CustomCommand* command;
+        LibraryModel* model = nullptr;
+        CustomCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

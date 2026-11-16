@@ -25,7 +25,7 @@ class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
 
     private:
         bool collapsed = false;
-        QTabWidget* tabWidgetInspector;
+        QTabWidget* tabWidgetInspector = nullptr;
         QToolButton* menuButton = nullptr;
         QMenu* dropdownMenu = nullptr;
         QAction* expandCollapseAction = nullptr;

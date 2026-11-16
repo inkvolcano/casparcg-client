@@ -53,14 +53,14 @@ class WIDGETS_EXPORT RundownStopAutoLoopsWidget : public QWidget, Ui::RundownSto
         virtual void setRundownDisabled(bool disabled);
 
     private:
-        bool active;
-        bool inGroup;
-        bool compactView;
+        bool active = false;
+        bool inGroup = false;
+        bool compactView = false;
         QString color;
         LibraryModel model;
         StopAutoLoopsCommand command;
-        ActiveAnimation* animation;
-        bool markUsedItems;
+        ActiveAnimation* animation = nullptr;
+        bool markUsedItems = false;
         bool selected = false;
 
         Q_SLOT void labelChanged(const LabelChangedEvent&);

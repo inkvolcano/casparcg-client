@@ -30,8 +30,8 @@ class CORE_EXPORT DeviceModel
         const QString& getServerPath() const;
 
     private:
-        int id;
-        int port;
+        int id = 0;
+        int port = 0;
         QString name;
         QString address;
         QString username;
@@ -39,10 +39,10 @@ class CORE_EXPORT DeviceModel
         QString description;
         QString version;
         QString shadow;
-        int channels;
+        int channels = 0;
         QString channelFormats;
-        int previewChannel;
-        int lockedChannel;
+        int previewChannel = 0;
+        int lockedChannel = 0;
         QString templatePath;
         QString mediaPath;
         QString serverPath;

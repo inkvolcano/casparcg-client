@@ -16,8 +16,8 @@ class CORE_EXPORT OscOutputModel
         const QString& getDescription() const;
 
     private:
-        int id;
-        int port;
+        int id = 0;
+        int port = 0;
         QString name;
         QString address;
         QString description;

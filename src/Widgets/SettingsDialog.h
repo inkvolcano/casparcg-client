@@ -46,72 +46,72 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         void flushPendingWrites();
 
         // General tab widgets (moved from .ui to programmatic).
-        QCheckBox* checkBoxFullscreen;
-        QComboBox* comboBoxTheme;
-        QSpinBox* spinBoxFontSize;
-        QCheckBox* checkBoxUseDropFrameNotation;
-        QCheckBox* checkBoxAutoRefresh;
-        QLabel* labelInterval;
-        QSpinBox* spinBoxRefreshInterval;
-        QLabel* labelSeconds;
-        QCheckBox* checkBoxShowThumbnailTooltip;
-        QCheckBox* checkBoxReverseOscTime;
-        QCheckBox* checkBoxDisableInAndOutPoints;
-        QSpinBox* spinBoxOscRefreshRate;
-        QSpinBox* spinBoxUndoHistoryLimit;
-        QCheckBox* checkBoxMarkUsedItems;
-        QLineEdit* lineEditRundownRepository;
-        QLineEdit* lineEditRepositoryPort;
-        QCheckBox* checkBoxUseFreezeOnLoad;
-        QComboBox* comboBoxDurationFormat;
-        QCheckBox* checkBoxStoreThumbnailsInDatabase;
-        QPushButton* pushButtonDeleteThumbnails;
+        QCheckBox* checkBoxFullscreen = nullptr;
+        QComboBox* comboBoxTheme = nullptr;
+        QSpinBox* spinBoxFontSize = nullptr;
+        QCheckBox* checkBoxUseDropFrameNotation = nullptr;
+        QCheckBox* checkBoxAutoRefresh = nullptr;
+        QLabel* labelInterval = nullptr;
+        QSpinBox* spinBoxRefreshInterval = nullptr;
+        QLabel* labelSeconds = nullptr;
+        QCheckBox* checkBoxShowThumbnailTooltip = nullptr;
+        QCheckBox* checkBoxReverseOscTime = nullptr;
+        QCheckBox* checkBoxDisableInAndOutPoints = nullptr;
+        QSpinBox* spinBoxOscRefreshRate = nullptr;
+        QSpinBox* spinBoxUndoHistoryLimit = nullptr;
+        QCheckBox* checkBoxMarkUsedItems = nullptr;
+        QLineEdit* lineEditRundownRepository = nullptr;
+        QLineEdit* lineEditRepositoryPort = nullptr;
+        QCheckBox* checkBoxUseFreezeOnLoad = nullptr;
+        QComboBox* comboBoxDurationFormat = nullptr;
+        QCheckBox* checkBoxStoreThumbnailsInDatabase = nullptr;
+        QPushButton* pushButtonDeleteThumbnails = nullptr;
 
         QMap<QString, QKeySequenceEdit*> hotkeyEdits;
-        QComboBox* previewModifierCombo;
-        QCheckBox* previewFreezeTemplateCheck;
+        QComboBox* previewModifierCombo = nullptr;
+        QCheckBox* previewFreezeTemplateCheck = nullptr;
         QCheckBox* hotkeyOnReleaseCheck = nullptr;
         QCheckBox* panicDoubleEscCheck = nullptr;
-        QCheckBox* checkBoxShowPreviewBorder;
-        QCheckBox* checkBoxShowSTEPButton;
-        QCheckBox* checkBoxShowPVWButton;
-        QCheckBox* checkBoxShowServers;
-        QCheckBox* checkBoxShowChannelLocks;
-        QCheckBox* checkBoxShowChannelHeaders;
-        QCheckBox* checkBoxShowBankIcons;
-        QCheckBox* checkBoxHttpLogLastOnly;
-        QCheckBox* checkBoxAutoSaveEnabled;
-        QCheckBox* checkBoxAllowShellCommands;
-        QCheckBox* checkBoxWarnMissingMedia;
-        QCheckBox* checkBoxPreviewAutoPlayVideo;
-        QCheckBox* checkBoxPreviewAudioMeters;
-        QCheckBox* checkBoxPreviewTemplates;
-        QCheckBox* checkBoxPreviewLegacyMode;
-        QCheckBox* checkBoxPreviewShowStills;
-        QCheckBox* checkBoxPreviewShowMovies;
+        QCheckBox* checkBoxShowPreviewBorder = nullptr;
+        QCheckBox* checkBoxShowSTEPButton = nullptr;
+        QCheckBox* checkBoxShowPVWButton = nullptr;
+        QCheckBox* checkBoxShowServers = nullptr;
+        QCheckBox* checkBoxShowChannelLocks = nullptr;
+        QCheckBox* checkBoxShowChannelHeaders = nullptr;
+        QCheckBox* checkBoxShowBankIcons = nullptr;
+        QCheckBox* checkBoxHttpLogLastOnly = nullptr;
+        QCheckBox* checkBoxAutoSaveEnabled = nullptr;
+        QCheckBox* checkBoxAllowShellCommands = nullptr;
+        QCheckBox* checkBoxWarnMissingMedia = nullptr;
+        QCheckBox* checkBoxPreviewAutoPlayVideo = nullptr;
+        QCheckBox* checkBoxPreviewAudioMeters = nullptr;
+        QCheckBox* checkBoxPreviewTemplates = nullptr;
+        QCheckBox* checkBoxPreviewLegacyMode = nullptr;
+        QCheckBox* checkBoxPreviewShowStills = nullptr;
+        QCheckBox* checkBoxPreviewShowMovies = nullptr;
         QCheckBox* checkBoxMeterPeakHold = nullptr;
         QCheckBox* checkBoxMeterClipIndicator = nullptr;
-        QCheckBox* checkBoxOgrafEnabled;
+        QCheckBox* checkBoxOgrafEnabled = nullptr;
 
         // Created in code rather than in the .ui: the Live Stream tab positions
         // its children absolutely, and these go below the existing fields.
         QLineEdit* lineEditStreamParameters = nullptr;
         QComboBox* comboBoxStreamPreset = nullptr;
-        QLabel* labelAutoSaveMinutes;
-        QSpinBox* spinBoxAutoSaveMinutes;
-        QCheckBox* checkBoxShowLastAction;
-        QCheckBox* checkBoxActiveIndicatorPerChannel;
-        QComboBox* comboBoxDisconnectMode;
-        QCheckBox* checkBoxActivityGrow;
-        QSpinBox* spinBoxNdiOutputs;
+        QLabel* labelAutoSaveMinutes = nullptr;
+        QSpinBox* spinBoxAutoSaveMinutes = nullptr;
+        QCheckBox* checkBoxShowLastAction = nullptr;
+        QCheckBox* checkBoxActiveIndicatorPerChannel = nullptr;
+        QComboBox* comboBoxDisconnectMode = nullptr;
+        QCheckBox* checkBoxActivityGrow = nullptr;
+        QSpinBox* spinBoxNdiOutputs = nullptr;
         QCheckBox* checkBoxNdiRestoreOutputs = nullptr;
-        QComboBox* comboBoxNdiBandwidth;
-        QComboBox* comboBoxNdiFpsLimit;
-        QComboBox* comboBoxNdiScaling;
-        QCheckBox* checkBoxDualClock;
-        QComboBox* comboBoxTimezone1;
-        QComboBox* comboBoxTimezone2;
-        LayoutEditorWidget* layoutEditor;
+        QComboBox* comboBoxNdiBandwidth = nullptr;
+        QComboBox* comboBoxNdiFpsLimit = nullptr;
+        QComboBox* comboBoxNdiScaling = nullptr;
+        QCheckBox* checkBoxDualClock = nullptr;
+        QComboBox* comboBoxTimezone1 = nullptr;
+        QComboBox* comboBoxTimezone2 = nullptr;
+        LayoutEditorWidget* layoutEditor = nullptr;
         LayoutPresetBar* layoutPresetBar = nullptr;
         LayoutPresetBar* simpleLayoutPresetBar = nullptr;
 
@@ -191,39 +191,39 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         struct PanelSizingEntry {
             QString panelId;
             QString label;
-            QComboBox* combo;
+            QComboBox* combo = nullptr;
         };
         QList<PanelSizingEntry> panelSizingEntries;
-        QCheckBox* checkBoxShowEmptyPanels;
+        QCheckBox* checkBoxShowEmptyPanels = nullptr;
         QCheckBox* checkBoxShowLegacyPanels = nullptr;
 
         // Channel color sliders + preview.
-        QSlider* sliderAngle;
-        QSlider* sliderOffset;
-        QSlider* sliderSaturation;
-        QSlider* sliderLightness;
-        QLabel* labelAngleValue;
-        QLabel* labelOffsetValue;
-        QLabel* labelSaturationValue;
-        QLabel* labelLightnessValue;
+        QSlider* sliderAngle = nullptr;
+        QSlider* sliderOffset = nullptr;
+        QSlider* sliderSaturation = nullptr;
+        QSlider* sliderLightness = nullptr;
+        QLabel* labelAngleValue = nullptr;
+        QLabel* labelOffsetValue = nullptr;
+        QLabel* labelSaturationValue = nullptr;
+        QLabel* labelLightnessValue = nullptr;
         QLabel* channelPreview[5];
 
         // Interface color swatches.
-        QLabel* swatchPVW;
-        QLabel* swatchSTEP;
-        QLabel* swatchPreviewBorder;
-        QLabel* swatchAutostepHighlight;
-        QLabel* swatchActiveIndicator;
-        QLabel* swatchLibrarySectionLine;
+        QLabel* swatchPVW = nullptr;
+        QLabel* swatchSTEP = nullptr;
+        QLabel* swatchPreviewBorder = nullptr;
+        QLabel* swatchAutostepHighlight = nullptr;
+        QLabel* swatchActiveIndicator = nullptr;
+        QLabel* swatchLibrarySectionLine = nullptr;
 
         // Header color swatches (Line / Block / Text per row).
-        QLabel* swatchMasterLine;
-        QLabel* swatchMasterBlock;
-        QLabel* swatchMasterText;
-        QLabel* swatchRundownLine;
-        QLabel* swatchRundownBlock;
-        QLabel* swatchRundownText;
-        QCheckBox* checkBoxCustomizeHeaders;
+        QLabel* swatchMasterLine = nullptr;
+        QLabel* swatchMasterBlock = nullptr;
+        QLabel* swatchMasterText = nullptr;
+        QLabel* swatchRundownLine = nullptr;
+        QLabel* swatchRundownBlock = nullptr;
+        QLabel* swatchRundownText = nullptr;
+        QCheckBox* checkBoxCustomizeHeaders = nullptr;
         static const int HEADER_PANEL_COUNT = 11;
         QLabel* swatchLine[HEADER_PANEL_COUNT];
         QLabel* swatchBlock[HEADER_PANEL_COUNT];
@@ -231,11 +231,11 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QWidget* panelRowWidgets[HEADER_PANEL_COUNT]; // for show/hide per-widget rows
 
         // Clock color swatches + options.
-        QLabel* swatchClock1;
-        QLabel* swatchClock2;
-        QLabel* swatchClockShadow;
-        QCheckBox* checkBoxClockShowLabels;
-        QCheckBox* checkBoxClockStacked;
+        QLabel* swatchClock1 = nullptr;
+        QLabel* swatchClock2 = nullptr;
+        QLabel* swatchClockShadow = nullptr;
+        QCheckBox* checkBoxClockShowLabels = nullptr;
+        QCheckBox* checkBoxClockStacked = nullptr;
 
         void setupGeneralTab();
         void updateChannelPreview();

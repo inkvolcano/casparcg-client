@@ -16,7 +16,7 @@ class CORE_EXPORT GpiPortModel
         Playout::PlayoutType getAction() const;
 
     private:
-        int port;
-        bool risingEdge;
+        int port = 0;
+        bool risingEdge = false;
         Playout::PlayoutType action;
 };

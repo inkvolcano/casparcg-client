@@ -22,8 +22,8 @@ class WIDGETS_EXPORT InspectorRouteChannelWidget : public QWidget, Ui::Inspector
         explicit InspectorRouteChannelWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        RouteChannelCommand* command;
+        LibraryModel* model = nullptr;
+        RouteChannelCommand* command = nullptr;
 
         void blockAllSignals(bool block);
 

@@ -16,5 +16,5 @@ class WIDGETS_EXPORT WhatsNewDialog : public QDialog
         static void showOnStartupIfEnabled(QWidget* parent);
 
     private:
-        QCheckBox* checkBoxHideOnStartup;
+        QCheckBox* checkBoxHideOnStartup = nullptr;
 };

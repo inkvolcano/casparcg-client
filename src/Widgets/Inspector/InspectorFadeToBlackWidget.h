@@ -21,8 +21,8 @@ class WIDGETS_EXPORT InspectorFadeToBlackWidget : public QWidget, Ui::InspectorF
         explicit InspectorFadeToBlackWidget(QWidget* parent = 0);
 
     private:
-        LibraryModel* model;
-        FadeToBlackCommand* command;
+        LibraryModel* model = nullptr;
+        FadeToBlackCommand* command = nullptr;
 
         void loadDirection();
         void loadTransition();

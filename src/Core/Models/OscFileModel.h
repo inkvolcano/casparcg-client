@@ -28,11 +28,11 @@ class CORE_EXPORT OscFileModel
         void setName(const QString& name);
 
     private:
-        double currentTime;
-        double totalTime;
-        double currentClip;
-        double totalClip;
-        double fps;
+        double currentTime = 0;
+        double totalTime = 0;
+        double currentClip = 0;
+        double totalClip = 0;
+        double fps = 0;
         QString name;
 };
 
