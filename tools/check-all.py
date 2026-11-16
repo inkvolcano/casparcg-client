@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are forty-five test suites and a syntax checker. Twenty-three commands that each take a
+There are forty-six test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -41,6 +41,7 @@ SUITES = [
     ('test-settingscache', False, 'settings answered from memory are the settings in the database'),
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
+    ('test-referencecapture', False, 'From Preview: NDI, server still or nothing, and why'),
     ('test-readiness', False, 'Check Before Going Live: servers, locked channels, summary'),
     ('test-startupguard', False, 'did the last start finish, did the last session close normally'),
     ('test-hotkeyrelease', False, 'playout hotkeys on key release: arm, Esc cancels, fire on let go'),

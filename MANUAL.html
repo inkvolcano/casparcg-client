@@ -582,6 +582,12 @@ hr {
 <ul>
 <li><b>Give a rundown item a picture of what it puts on air</b>, and hover over its row to see it. Useful for telling a run of lower thirds apart at a glance.</li>
 <li><b>Two ways to add one:</b> <b>Choose...</b> in the new <b>Reference</b> row of the Inspector, or drop a picture file (PNG, JPEG, BMP, GIF) from Explorer onto the row in the rundown. <b>Clear</b> removes it.</li>
+<li><b>From Preview</b> (build 298) takes the picture from the server's preview channel - cue the item on preview, then press it. Where the frame comes from is set in Settings &gt; General &gt; <b>Reference picture from preview</b>:
+<ul>
+<li><b>Automatic</b> (the default): the channel's NDI output, when the server's casparcg.config declares one and its source is on the network; otherwise a still the server writes into its media folder, when that folder is set for the server in Settings &gt; Servers; otherwise nothing, and a message says what is missing.</li>
+<li><b>NDI only</b> or <b>Server still only</b>: just that way, or a message saying why not.</li>
+</ul>
+The channel is the server's preview channel, or the item's own channel when the server has none. The still is removed from the media folder once it has been read.</li>
 <li>Rows with a picture show a small picture mark, so you can see which ones are worth hovering.</li>
 <li><b>Every hover is the same size</b>: the picture is fitted into one 384 &times; 216 frame, so a full-frame grab fills it, other shapes fit inside it undistorted, and small pictures are enlarged to match.</li>
 <li>The picture is saved inside the rundown file, so it travels with the rundown to any machine. It is scaled down to fit 480 pixels, about 30 to 60 KB each, and pictures with transparency keep it.</li>

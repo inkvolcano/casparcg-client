@@ -1,4 +1,5 @@
 #include "SettingsDialog.h"
+#include "ReferenceCapture.h"
 #include "PreviewWidget.h"
 #include "StreamCommand.h"
 #include "UpdateDialog.h"
@@ -1637,6 +1638,27 @@ void SettingsDialog::setupGeneralTab()
                                                 "and template folders.\n"
                                                 "Nothing is marked when neither source could have known.");
     grid->addWidget(this->checkBoxWarnMissingMedia, row, 1, 1, 3);
+    row++;
+
+    // Where the Inspector's "From Preview" takes a reference picture from.
+    QLabel* labelReferenceSource = new QLabel("Reference picture from preview");
+    labelReferenceSource->setToolTip("The Inspector's From Preview button takes an item's reference picture from the server's preview channel.");
+    grid->addWidget(labelReferenceSource, row, 0);
+    this->comboReferenceSource = new QComboBox();
+    this->comboReferenceSource->addItem("Automatic: NDI if the channel has an output, else a server still", "auto");
+    this->comboReferenceSource->addItem("NDI only", "ndi");
+    this->comboReferenceSource->addItem("Server still only (needs the server's media folder)", "server");
+    this->comboReferenceSource->setToolTip("Automatic uses the channel's NDI output when the server's casparcg.config declares one, "
+                                           "else asks the server for a still and reads it from its media folder (Settings > Servers), "
+                                           "else says why it cannot.");
+    {
+        const int at = this->comboReferenceSource->findData(ReferenceCaptureRules::settingText(ReferenceCapture::setting()));
+        this->comboReferenceSource->setCurrentIndex(at < 0 ? 0 : at);
+    }
+    QObject::connect(this->comboReferenceSource, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this]() {
+        ReferenceCapture::setSetting(ReferenceCaptureRules::settingFrom(this->comboReferenceSource->currentData().toString()));
+    });
+    grid->addWidget(this->comboReferenceSource, row, 1, 1, 3);
     row++;
 
     this->checkBoxAllowShellCommands = new QCheckBox("Allow Shell Command items to run");

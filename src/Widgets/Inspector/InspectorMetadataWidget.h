@@ -42,6 +42,10 @@ class WIDGETS_EXPORT InspectorMetadataWidget : public QWidget, Ui::InspectorMeta
         // when its rundown row is hovered. Choose... reads a picture file, Clear
         // removes it. Rundown items only.
         QPointer<AbstractCommand> command;
+
+        // "From Preview": a reference picture from the server's preview channel.
+        QPushButton* buttonReferenceCapture = nullptr;
+        void captureReference();
         QMetaObject::Connection referenceConnection;
         QLabel* labelReferenceTitle = nullptr;
         QWidget* referenceRow = nullptr;

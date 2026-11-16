@@ -72,6 +72,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* previewFreezeTemplateCheck = nullptr;
         QCheckBox* hotkeyOnReleaseCheck = nullptr;
         QCheckBox* panicDoubleEscCheck = nullptr;
+        QComboBox* comboReferenceSource = nullptr;
         QCheckBox* checkBoxShowPreviewBorder = nullptr;
         QCheckBox* checkBoxShowSTEPButton = nullptr;
         QCheckBox* checkBoxShowPVWButton = nullptr;

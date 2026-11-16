@@ -1,4 +1,6 @@
 #include "InspectorMetadataWidget.h"
+#include "ReferenceCapture.h"
+#include "Events/StatusbarEvent.h"
 
 #include "Global.h"
 
@@ -51,7 +53,11 @@ InspectorMetadataWidget::InspectorMetadataWidget(QWidget* parent)
     QPushButton* choose = new QPushButton("Choose...", this->referenceRow);
     choose->setToolTip("Pick a picture file. You can also drop a picture file onto the row in the rundown.");
     this->buttonReferenceClear = new QPushButton("Clear", this->referenceRow);
+    this->buttonReferenceCapture = new QPushButton("From Preview", this->referenceRow);
+    this->buttonReferenceCapture->setToolTip("Take the picture from the server's preview channel - by NDI, or a still the server writes "
+                                             "(Settings > General > Reference picture from preview).");
     referenceLayout->addWidget(choose, 0, Qt::AlignTop);
+    referenceLayout->addWidget(this->buttonReferenceCapture, 0, Qt::AlignTop);
     referenceLayout->addWidget(this->buttonReferenceClear, 0, Qt::AlignTop);
     referenceLayout->addStretch();
     this->gridLayout->addWidget(this->labelReferenceTitle, 2, 0);
@@ -60,6 +66,7 @@ InspectorMetadataWidget::InspectorMetadataWidget(QWidget* parent)
     this->referenceRow->setVisible(false);
 
     QObject::connect(choose, &QPushButton::clicked, this, [this]() { chooseReference(); });
+    QObject::connect(this->buttonReferenceCapture, &QPushButton::clicked, this, [this]() { captureReference(); });
     QObject::connect(this->buttonReferenceClear, &QPushButton::clicked, this, [this]() {
         if (!this->command.isNull())
             this->command->setReferenceImage(QString());
@@ -120,6 +127,39 @@ void InspectorMetadataWidget::showReference()
                                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation)));
     this->referencePreview->setToolTip(ReferenceImage::tooltipHtml(picture));
     this->buttonReferenceClear->setEnabled(true);
+}
+
+void InspectorMetadataWidget::captureReference()
+{
+    if (this->command.isNull() || this->model == nullptr)
+        return;
+
+    // The answer is for this item only: one selected meanwhile gets nothing.
+    QPointer<AbstractCommand> target = this->command;
+    QPointer<QPushButton> button = this->buttonReferenceCapture;
+    button->setEnabled(false);
+    button->setText("Taking...");
+
+    ReferenceCapture::capture(this, this->model->getDeviceName(), this->command->getChannel(),
+                              [this, target, button](const QString& picture, const QString& problem, const QString& how) {
+        if (!button.isNull())
+        {
+            button->setEnabled(true);
+            button->setText("From Preview");
+        }
+
+        if (picture.isEmpty())
+        {
+            QMessageBox::warning(this, "Reference Picture", problem);
+            return;
+        }
+
+        if (!target.isNull())
+        {
+            target->setReferenceImage(picture);
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent(QString("Reference picture taken from %1").arg(how), 4000));
+        }
+    });
 }
 
 void InspectorMetadataWidget::chooseReference()

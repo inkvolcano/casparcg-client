@@ -1838,6 +1838,22 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Reference Pictures From Preview
+
+- **Reference pictures from preview.** The Inspector's Reference row has **From
+  Preview**: cue the item on preview, press it, and the item gets a picture of
+  what is on the preview channel.
+- Where the frame comes from is a setting, Settings > General > **Reference
+  picture from preview**:
+  - **Automatic**: the channel's NDI output when the server's casparcg.config
+    declares one; otherwise a still the server writes into its media folder,
+    when that folder is set for the server; otherwise nothing, with a message
+    saying what is missing;
+  - **NDI only**, or **Server still only**.
+- NDI works for a server anywhere on the network and does not need the NDI
+  panel to be showing it. The server still needs no NDI at all; the file it
+  writes is removed again once read.
+
 ## Check Before Going Live
 
 - **Check Before Going Live.** Rundown > Check Before Going Live... lists
