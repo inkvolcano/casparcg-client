@@ -74,6 +74,7 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QCheckBox* panicDoubleEscCheck = nullptr;
         QComboBox* comboReferenceSource = nullptr;
         QCheckBox* checkBoxLiveRunSheet = nullptr;
+        QCheckBox* checkBoxKeepAwake = nullptr;
         QCheckBox* checkBoxShowPreviewBorder = nullptr;
         QCheckBox* checkBoxShowSTEPButton = nullptr;
         QCheckBox* checkBoxShowPVWButton = nullptr;

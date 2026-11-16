@@ -15,6 +15,7 @@
 
 #include "../Widgets/MainWindow.h"
 #include "../Widgets/SafeStart.h"
+#include "../Widgets/KeepAwake.h"
 #include "../Widgets/ServerProcessControl.h"
 #include "../Common/StartupGuard.h"
 #include "../Core/Events/StatusbarEvent.h"
@@ -474,6 +475,9 @@ int main(int argc, char* argv[])
     loadConfiguration(window, &args);
 
     window.show();
+
+    // A playout machine stays awake while the client runs (Settings > General).
+    KeepAwake::apply();
 
     qDebug("Starting the client took %lld ms, of which the window took %lld ms",
            startClock.elapsed(), windowBuilt);

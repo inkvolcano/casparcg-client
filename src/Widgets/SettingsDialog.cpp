@@ -1,5 +1,6 @@
 #include "SettingsDialog.h"
 #include "LiveRunSheet.h"
+#include "KeepAwake.h"
 #include "SheetCacheServer.h"
 #include <QtNetwork/QNetworkInterface>
 #include "ReferenceCapture.h"
@@ -1662,6 +1663,16 @@ void SettingsDialog::setupGeneralTab()
         ReferenceCapture::setSetting(ReferenceCaptureRules::settingFrom(this->comboReferenceSource->currentData().toString()));
     });
     grid->addWidget(this->comboReferenceSource, row, 1, 1, 3);
+    row++;
+
+    // Keep the machine awake while the client runs. On by default.
+    this->checkBoxKeepAwake = new QCheckBox("Keep this machine awake while the client runs");
+    this->checkBoxKeepAwake->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxKeepAwake->setChecked(KeepAwake::isEnabled());
+    this->checkBoxKeepAwake->setToolTip("Windows does not sleep, start the screen saver or switch the display off while the client runs.\n"
+                                        "Nothing in Windows' power settings is changed; it ends when the client closes.");
+    QObject::connect(this->checkBoxKeepAwake, &QCheckBox::toggled, this, [](bool on) { KeepAwake::setEnabled(on); });
+    grid->addWidget(this->checkBoxKeepAwake, row, 1, 1, 3);
     row++;
 
     // The live run sheet: every open rundown as a read-only page on the network.

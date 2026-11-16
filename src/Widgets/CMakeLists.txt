@@ -169,6 +169,7 @@ qt_add_library(widgets
     TimeTriggers.cpp TimeTriggers.h
     RunSheet.cpp RunSheet.h
     LiveRunSheet.cpp LiveRunSheet.h
+    KeepAwake.cpp KeepAwake.h
     LiveRunSheetPage.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h

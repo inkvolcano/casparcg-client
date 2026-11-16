@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Keep The Machine Awake, A Quieter Log
+
+- **The machine stays awake while the client runs.** Windows does not sleep,
+  start the screen saver or switch the display off - a playout machine that
+  dozes off mid-show is a black screen nobody chose. On by default; Settings >
+  General > **Keep this machine awake while the client runs** turns it off.
+  Nothing in Windows' own power settings is changed, and it ends when the
+  client closes.
+- **The startup log is quieter.** Forty-three of the client's pictures carried
+  a colour profile Qt's PNG reader complained about every time one was loaded
+  ("iCCP: known incorrect sRGB profile"); the profiles are gone and the
+  pictures look the same. The rundown's tab bar no longer logs two
+  "No such slot" lines at every start - the connections it named were left
+  over from an older layout and are already made in code.
+
 ## Presenter View
 
 - **A presenter view of the live run sheet.** Open `/runsheet?view=presenter`,
