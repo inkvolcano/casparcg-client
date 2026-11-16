@@ -959,7 +959,7 @@ hr {
 
 <ol>
 <li>First press arms the panic and shows a statusbar hint</li>
-<li>Second press within 500ms sends CLEAR to every channel on every device</li>
+<li>Second press within 500ms sends CLEAR to every channel on every device, except the locked ones (build 295): a channel locked in Server Status - on one server, on all of them, or for a time - is left alone, and the status bar names it</li>
 <li>Red statusbar notification: "PANIC: Cleared all outputs"</li>
 <li>Auto-disarms after 500ms if no second press</li>
 </ol>
@@ -1019,7 +1019,7 @@ hr {
 <li><kbd>Esc</kbd> cancels it: nothing is sent, and it does not count toward the double-Esc panic clear.</li>
 <li>Holding the preview modifier (Shift by default) when you let go sends it to the preview channel. Only the moment of letting go counts.</li>
 <li>Another playout key replaces the first.</li>
-<li>A bar at the bottom of the window shows what will be sent: red for program, green for preview.</li>
+<li>A bar at the bottom of the window shows what will be sent, naming the item: red for program, green for preview. Each row that will fire gets an outline in the same colour, and both follow the selection if it changes while the key is held.</li>
 </ul>
 <p>Trigger banks and the toggle keys still act on the press.</p>
 

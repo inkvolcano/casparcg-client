@@ -22,6 +22,8 @@
 #include "PerformancePanelWidget.h"
 #include "Rundown/RundownWidget.h"
 #include "Rundown/RundownTreeWidget.h"
+#include "Rundown/RundownTreeBaseWidget.h"
+#include "Rundown/AbstractRundownWidget.h"
 #include "SettingsDialog.h"
 #include "StatusBarWidget.h"
 #include "BugReport.h"
@@ -203,6 +205,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     QObject::connect(this->panicShortcut, &QShortcut::activated, this, &MainWindow::panicClearAll);
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModeChanged(bool)), this, SLOT(previewModeActivated(bool)));
+
+    // Another row selected while a playout key is held (on release): the hint
+    // and the outlines move with it.
+    QObject::connect(&EventManager::getInstance(), &EventManager::rundownItemSelected, this, [this]() {
+        if (this->releaseArming.isArmed())
+            QTimer::singleShot(0, this, [this]() { updateReleaseHint(); });
+    });
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModifierHeld(bool)), this, SLOT(previewModifierActivated(bool)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(emptyRundown(const EmptyRundownEvent&)), this, SLOT(emptyRundown(const EmptyRundownEvent&)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(activeRundownChanged(const ActiveRundownChangedEvent&)), this, SLOT(activeRundownChanged(const ActiveRundownChangedEvent&)));
@@ -816,6 +825,9 @@ void MainWindow::panicClearAll()
     if (this->m_panicTimer.elapsed() > 500)
         return;
 
+    // A locked channel is left alone - per server, on every server, or timed:
+    // locking it is how an operator says nothing may touch it, a panic included.
+    QStringList kept;
     QList<DeviceModel> devices = DeviceManager::getInstance().getDeviceModels();
     for (const DeviceModel& model : devices)
     {
@@ -824,11 +836,20 @@ void MainWindow::panicClearAll()
             continue;
 
         for (int ch = 1; ch <= model.getChannels(); ch++)
+        {
+            if (DeviceManager::getInstance().isChannelLocked(model.getName(), ch))
+            {
+                kept << QString("%1 channel %2").arg(model.getName()).arg(ch);
+                continue;
+            }
             device->clearChannel(ch);
+        }
     }
 
     EventManager::getInstance().fireStatusbarEvent(
-        StatusbarEvent("PANIC: Cleared all outputs", 5000, true));
+        StatusbarEvent(kept.isEmpty() ? QString("PANIC: Cleared all outputs")
+                                      : QString("PANIC: Cleared all outputs except the locked %1").arg(kept.join(", ")),
+                       5000, true));
 }
 
 void MainWindow::markItemAsUsed()
@@ -1353,8 +1374,9 @@ bool MainWindow::handleReleaseHotkey(QObject* obj, QEvent* event)
                 EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("Hotkey cancelled: nothing was sent", 2000));
                 return true;
             default:
-                // The preview modifier while holding: the hint follows it.
-                if (this->releaseArming.isArmed() && isModifierKey(key->key()))
+                // The preview modifier, or an arrow key moving the selection,
+                // while holding: the hint and the outlines follow it.
+                if (this->releaseArming.isArmed())
                     QTimer::singleShot(0, this, [this]() { updateReleaseHint(); });
                 return false;
         }
@@ -1384,11 +1406,38 @@ bool MainWindow::handleReleaseHotkey(QObject* obj, QEvent* event)
 
 void MainWindow::updateReleaseHint()
 {
+    for (const QPointer<QFrame>& outline : this->releaseOutlines)
+    {
+        if (outline != nullptr)
+            outline->deleteLater();
+    }
+    this->releaseOutlines.clear();
+
     if (!this->releaseArming.isArmed())
     {
         if (this->releaseHint != nullptr)
             this->releaseHint->hide();
         return;
+    }
+
+    // What will fire: the selection in the rundown being shown.
+    QStringList items;
+    RundownTreeWidget* active = this->widgetRundown != nullptr ? this->widgetRundown->activeTreeWidget() : nullptr;
+    RundownTreeBaseWidget* tree = active != nullptr ? active->treeWidget() : nullptr;
+    QList<QWidget*> rows;
+    if (tree != nullptr)
+    {
+        for (QTreeWidgetItem* item : tree->selectedItems())
+        {
+            QWidget* row = tree->itemWidget(item, 0);
+            AbstractRundownWidget* rundownItem = dynamic_cast<AbstractRundownWidget*>(row);
+            if (row == nullptr || rundownItem == nullptr)
+                continue;
+            rows << row;
+            LibraryModel* model = rundownItem->getLibraryModel();
+            if (model != nullptr)
+                items << (model->getLabel().isEmpty() ? model->getName() : model->getLabel());
+        }
     }
 
     QWidget* host = Ui::MainWindow::centralWidget;
@@ -1410,8 +1459,14 @@ void MainWindow::updateReleaseHint()
                               || (this->previewModifierKey == "Alt" && (held & Qt::AltModifier));
     const bool preview = EventManager::getInstance().getPreviewMode() || modifierHeld;
 
+    QString what = name;
+    if (items.count() == 1)
+        what = QString("%1 '%2'").arg(name, items.first());
+    else if (items.count() > 1)
+        what = QString("%1 '%2' and %3 more").arg(name, items.first()).arg(items.count() - 1);
+
     QString text = QString("%1 %2 - let go of %3 to send, Esc cancels")
-                       .arg(name, preview ? QString("to PREVIEW") : QString("to PROGRAM"), keyName);
+                       .arg(what, preview ? QString("to PREVIEW") : QString("to PROGRAM"), keyName);
     if (!preview && (this->previewModifierKey == "Shift" || this->previewModifierKey == "Ctrl" || this->previewModifierKey == "Alt"))
         text += QString(", hold %1 for preview").arg(this->previewModifierKey);
 
@@ -1423,6 +1478,19 @@ void MainWindow::updateReleaseHint()
     this->releaseHint->move((host->width() - this->releaseHint->width()) / 2, host->height() - this->releaseHint->height() - 12);
     this->releaseHint->show();
     this->releaseHint->raise();
+
+    // An outline over each row that will fire, in the same colour.
+    const QString colour = preview ? QString("rgb(60, 190, 90)") : QString("rgb(230, 70, 55)");
+    for (QWidget* row : rows)
+    {
+        QFrame* outline = new QFrame(row);
+        outline->setAttribute(Qt::WA_TransparentForMouseEvents);
+        outline->setStyleSheet(QString("QFrame { border: 3px solid %1; background: transparent; }").arg(colour));
+        outline->setGeometry(row->rect());
+        outline->show();
+        outline->raise();
+        this->releaseOutlines.append(outline);
+    }
 }
 
 #if defined(Q_OS_WIN)

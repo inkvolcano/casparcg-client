@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Panic Keeps Locked Channels
+
+- **The panic clear leaves locked channels alone.** A channel locked in Server
+  Status - on one server, on all of them, or for a time - is not cleared by Esc
+  twice, and the status bar names the channels it kept. Locking a channel is how
+  you say nothing may touch it.
+- **Held playout keys show what will fire** (with Settings > Hotkeys > Fire
+  playout hotkeys when the key is let go). The bar at the bottom now names the
+  item - "Play 'Lower third John' to PROGRAM" - and each row that will fire gets
+  an outline, red for program and green for preview. Both move if the selection
+  changes while the key is down.
+
 ## Debug Symbols With Every Release
 
 - **Every release carries its debug symbols** as

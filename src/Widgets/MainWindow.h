@@ -25,6 +25,7 @@
 #include <QtCore/QEvent>
 #include <QtCore/QMap>
 #include <QtCore/QObject>
+#include <QtCore/QPointer>
 
 #include <QtGui/QAction>
 #include <QtWidgets/QMainWindow>
@@ -215,6 +216,8 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
         QStringList releaseKeyNames;
         HotkeyRelease::Arming releaseArming;
         QLabel* releaseHint = nullptr;
+        // An outline over each row that will fire, while its key is held.
+        QList<QPointer<QFrame>> releaseOutlines;
         bool handleReleaseHotkey(QObject* obj, QEvent* event);
         void updateReleaseHint();
 
