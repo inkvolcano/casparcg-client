@@ -32,7 +32,7 @@ of your checkout, so a tag can never claim a build that does not match the binar
 It refuses if `windeployqt` has not run, because a zip without Qt beside the exe
 is a binary that starts on no venue machine.
 
-It produces four assets, and refuses to publish if any of them cannot be built:
+It produces five assets, and refuses to publish if any of them cannot be built:
 
 - `casparcg-client-v2.3.1-206-windows.zip` — one folder inside, named for the
   build, so unzipping never scatters four hundred DLLs into somebody's Downloads.
@@ -44,9 +44,16 @@ It produces four assets, and refuses to publish if any of them cannot be built:
 - `server-php.zip` — the relay and the sheet cache, for a web host rather than a
   venue machine. Versioned with the build because the relay protocol moves with
   the client, so this is how you tell which relay goes with which.
+- `casparcg-client-v2.3.1-294-symbols.zip` (build 294 on) - the build's .pdb
+  files. A crash dump from a venue only names functions and lines when it is
+  read with these exact files, and a venue copy has none.
+  `tools\read-crash-dump.ps1 -Dump <file.dmp> -Build <n>` fetches them and prints
+  the crashing stack. The name carries no "windows" on purpose: clients up to
+  build 293 take the first asset with "windows" and ".zip" in its name as the
+  package.
 
 After publishing it **reads the release back** and names anything missing. `gh`
-reporting success is not the same as four assets being there, and a release with
+reporting success is not the same as five assets being there, and a release with
 the updater missing looks complete right up until somebody on an old build needs
 it.
 

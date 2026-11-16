@@ -1838,6 +1838,17 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Debug Symbols With Every Release
+
+- **Every release carries its debug symbols** as
+  `casparcg-client-<tag>-symbols.zip`. A crash dump from a venue only says where
+  a crash happened when it is read with the exact files of that build - the
+  production machine that crashed on 289 had none. The update window never
+  downloads them.
+- **Reading a crash dump is one command:**
+  `tools\read-crash-dump.ps1 -Dump <file.dmp> -Build <n>` fetches that build's
+  symbols and prints where it crashed, by function and line.
+
 ## Safe Start And Crash Dumps
 
 - **Safe start.** Hold **Shift** while the client starts to start it with the

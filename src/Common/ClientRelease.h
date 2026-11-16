@@ -237,6 +237,11 @@ namespace ClientRelease
             if (lower.contains("sha256") || lower.endsWith(".txt") || lower.endsWith(".asc"))
                 continue;
 
+            // Nor the debug symbols (build 294 on): a .zip, but not a client. Its
+            // name also carries no "windows", for the clients that predate this.
+            if (lower.contains("symbols") || lower.endsWith(".pdb"))
+                continue;
+
             if (platform == "windows" && lower.contains("windows") && lower.endsWith(".zip"))
                 return name;
 

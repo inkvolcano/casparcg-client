@@ -235,8 +235,26 @@ if (Test-Path $bootstrapSource) {
     Fail "tools\install-update.cmd is missing, so old clients would have no way to install this."
 }
 
+# The .pdb files of this build, as an asset of their own. A crash dump from a
+# venue only says where in the code a crash happened when it is read with these
+# exact files, and a venue copy has none - build 289's production machine did
+# not. tools\read-crash-dump.ps1 fetches them by build number.
+#
+# Named without "windows" on purpose: every client up to build 293 picks its
+# package as the first asset with "windows" and ".zip" in its name, and must
+# never be handed this one. ClientRelease::assetFor skips "symbols" from 294 on.
+$symbolsName = "casparcg-client-$tag-symbols.zip"
+$symbolsPath = Join-Path $staging $symbolsName
+$pdbs = @(Get-ChildItem $release -Filter *.pdb -File | Where-Object { $_.Name -notmatch 'test' })
+if ($pdbs.Count -eq 0) {
+    Fail "No .pdb in $release, so a crash dump from this build could not be read. Build with symbols (Release PDBs, build 232)."
+}
+Compress-Archive -Path @($pdbs | ForEach-Object { $_.FullName }) -DestinationPath $symbolsPath -CompressionLevel Optimal -Force
+$symbolsMb = [math]::Round((Get-Item $symbolsPath).Length / 1MB, 1)
+
 Write-Host "  $assetName  $sizeMb MB"
 Write-Host "  sha256 $hash"
+Write-Host ("  $symbolsName  $symbolsMb MB  (" + (($pdbs | ForEach-Object { $_.Name }) -join ", ") + ")")
 
 # ---- publish ----------------------------------------------------------------
 
@@ -254,6 +272,7 @@ if ($LocalCopy -ne "") {
     Copy-Item $sumsPath $localFolder -Force
     Copy-Item $bootstrapPath $localFolder -Force
     if (Test-Path $phpPath) { Copy-Item $phpPath $localFolder -Force }
+    Copy-Item $symbolsPath $localFolder -Force
 
     Write-Host ""
     Write-Host "  a copy of all of it is in:"
@@ -321,7 +340,7 @@ if ($existing -and -not $Force) {
 Write-Host ""
 if ($existing) {
     Write-Host "  replacing the assets on $tag..."
-    & gh release upload $tag $zipPath $sumsPath $bootstrapPath $phpPath --repo $Repo --clobber
+    & gh release upload $tag $zipPath $sumsPath $bootstrapPath $phpPath $symbolsPath --repo $Repo --clobber
     if ($LASTEXITCODE -ne 0) { Fail "gh release upload failed" }
 } else {
     Write-Host "  creating $tag..."
@@ -338,8 +357,10 @@ if ($existing) {
              "`n`nVerified against SHA256SUMS.txt either way." +
              "`n`n``server-php.zip`` is the relay and the sheet cache, for a web host rather " +
              "than a venue machine. Only needed if you want the estate view; templates and " +
-             "updates work without it. Deploy every file in it, the dotfiles included."
-    & gh release create $tag $zipPath $sumsPath $bootstrapPath $phpPath --repo $Repo --title "Build $build" --notes $notes
+             "updates work without it. Deploy every file in it, the dotfiles included." +
+             "`n`n``$symbolsName`` is this build's debug symbols, for reading a crash dump " +
+             "(tools\read-crash-dump.ps1). Not needed on a venue machine."
+    & gh release create $tag $zipPath $sumsPath $bootstrapPath $phpPath $symbolsPath --repo $Repo --title "Build $build" --notes $notes
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 
@@ -363,7 +384,8 @@ $expected = @(
     @{ Name = $assetName;          What = "the client build" },
     @{ Name = "SHA256SUMS.txt";    What = "the checksums, without which a client refuses to install" },
     @{ Name = "install-update.cmd"; What = "the standalone updater for clients older than build 210" },
-    @{ Name = "server-php.zip";    What = "the relay and sheet cache" }
+    @{ Name = "server-php.zip";    What = "the relay and sheet cache" },
+    @{ Name = $symbolsName;        What = "the debug symbols, without which a crash dump cannot be read" }
 )
 
 $missing = @()

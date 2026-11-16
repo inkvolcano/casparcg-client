@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#symbols-294">Debug Symbols With Every Release</a><br>
 <a href="#safe-start">Safe Start And Crash Dumps</a><br>
 <a href="#members-292">Every Value Starts Known</a><br>
 <a href="#panic-setting">Panic Clear Is A Setting</a><br>
@@ -1877,6 +1878,13 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="symbols-294">Debug Symbols With Every Release</h2>
+
+<ul>
+<li><b>Every release carries its debug symbols</b> as <code>casparcg-client-&lt;tag&gt;-symbols.zip</code>. A crash dump from a venue only says where a crash happened when it is read with the exact files of that build - the production machine that crashed on 289 had none. The update window never downloads them.</li>
+<li><b>Reading a crash dump is one command:</b> <code>tools\read-crash-dump.ps1 -Dump &lt;file.dmp&gt; -Build &lt;n&gt;</code> fetches that build's symbols and prints where it crashed, by function and line.</li>
+</ul>
 
 <h2 id="safe-start">Safe Start And Crash Dumps</h2>
 

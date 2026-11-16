@@ -1168,7 +1168,7 @@ hr {
 <li>Nothing is uploaded. The folder stays on your machine until you send it.</li>
 <li>It works on Windows only, for now, which the menu says as well.</li>
 <li>The client keeps its daily log files for 30 days, so a report covers the last month at most.</li>
-<li>It includes the client's newest crash dumps from the last two weeks, up to three (from <code>%LOCALAPPDATA%\CrashDumps</code>). With the release's <code>casparcg-client.pdb</code>, a dump shows the line the crash happened on. A dump over 300 MB is named, not copied.</li>
+<li>It includes the client's newest crash dumps from the last two weeks, up to three (from <code>%LOCALAPPDATA%\CrashDumps</code>). With the release's <code>casparcg-client.pdb</code>, a dump shows the line the crash happened on - releases from build 294 carry it as <code>casparcg-client-&lt;tag&gt;-symbols.zip</code>, and <code>tools\read-crash-dump.ps1</code> fetches it and prints the stack. A dump over 300 MB is named, not copied.</li>
 </ul>
 
 <h3>After a crash: safe start</h3>

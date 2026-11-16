@@ -166,6 +166,16 @@ static void eachPlatformGetsItsOwnPackage()
     same(ClientRelease::assetFor("macos-x86_64", assets),
          "casparcg-client-v2.3.1-macos-x86_64.dmg", "and an intel Mac the intel one");
 
+    // The debug symbols (294 on) are a zip too, listed before the package here as
+    // the API may list them. They are never the client - and their name carries no
+    // "windows", so the clients from before this rule do not take them either.
+    const QStringList withSymbols = QStringList() << "casparcg-client-v2.3.1-294-symbols.zip"
+                                                  << "casparcg-client-v2.3.1-294-windows.zip" << "SHA256SUMS.txt";
+    same(ClientRelease::assetFor("windows", withSymbols), "casparcg-client-v2.3.1-294-windows.zip",
+         "the symbols are never taken for the client");
+    expectTrue(!QString("casparcg-client-v2.3.1-294-symbols.zip").contains("windows"),
+               "and their name has no \"windows\", which builds up to 293 match on");
+
     // Handing a Mac the wrong architecture is a package that will not open; doing
     // it silently is worse than finding nothing.
     expectTrue(ClientRelease::assetFor("macos-arm64", QStringList()
