@@ -230,7 +230,9 @@ void MissingMediaScanner::scanItem(QTreeWidget* tree, QTreeWidgetItem* item, Res
     if (verdict == MediaCheck::Verdict::Missing)
     {
         result.missing++;
-        mark(widget, MediaCheck::explain(type, name, evidence));
+        const QString why = MediaCheck::explain(type, name, evidence);
+        result.missingRows.append(qMakePair(widget, why));
+        mark(widget, why);
         return;
     }
 

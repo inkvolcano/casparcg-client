@@ -1838,6 +1838,23 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Check Before Going Live
+
+- **Check Before Going Live.** Rundown > Check Before Going Live... lists
+  everything that would stop the open rundown from going to air as meant:
+  - **media and templates that are not there** - the same check as the warning
+    marks on the rows;
+  - **servers** the rundown uses that are not connected, or not set up in this
+    client, with how many items use each;
+  - **items aimed at a locked channel** - a lock stops playout there, so such an
+    item will not play until the channel is unlocked;
+  - **sheet sources that do not answer**, for every sheet-driven template in the
+    rundown: each sheet tab is read once (a copy the client already holds
+    counts), and one that does not answer within 20 seconds is listed.
+- Each line has **Show** to select the item in the rundown, and **Check Again**
+  runs it again once you have fixed things. It runs when you open it - nothing
+  is watched in the background.
+
 ## New Server Releases Pointed Out
 
 - **New CasparCG Server releases are pointed out.** Once a day the client reads

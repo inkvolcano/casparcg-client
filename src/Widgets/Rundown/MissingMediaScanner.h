@@ -5,6 +5,8 @@
 #include "MediaCheck.h"
 
 #include <QtCore/QHash>
+#include <QtCore/QList>
+#include <QtCore/QPair>
 #include <QtCore/QObject>
 #include <QtCore/QSet>
 #include <QtCore/QString>
@@ -39,6 +41,10 @@ class WIDGETS_EXPORT MissingMediaScanner : public QObject
             int checked = 0;
             int missing = 0;
             int unknown = 0;
+
+            // Each row found missing, with what its warning says - for Check
+            // Before Going Live, which lists them.
+            QList<QPair<QWidget*, QString>> missingRows;
         };
 
         // Walks the tree, marking rows and clearing markers that no longer apply.

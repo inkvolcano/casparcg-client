@@ -12,6 +12,7 @@
 #include "AsRunLogWriter.h"
 #include "InspectorUndo.h"
 #include "SafeStart.h"
+#include "ReadinessDialog.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -392,6 +393,13 @@ void MainWindow::setupMenu()
     this->allowRemoteTriggeringAction->setCheckable(true);
     this->lockRundownAction = this->rundownMenu->addAction("Lock Rundown");
     this->lockRundownAction->setCheckable(true);
+    this->rundownMenu->addSeparator();
+    // Everything that would stop the open rundown going to air as meant.
+    this->rundownMenu->addAction("Check Before Going Live...", this, [this]() {
+        RundownTreeWidget* active = this->widgetRundown->activeTreeWidget();
+        if (active != nullptr)
+            ReadinessDialog::openFor(active->treeWidget(), this);
+    });
     this->rundownMenu->addSeparator();
     this->insertRepositoryChangesAction = this->rundownMenu->addAction("Insert Repository Changes", this, SLOT(insertRepositoryChanges()), QKeySequence::fromString("Ins"));
     this->insertRepositoryChangesAction->setEnabled(false);

@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#readiness">Check Before Going Live</a><br>
 <a href="#server-release-notice">New Server Releases Pointed Out</a><br>
 <a href="#panic-locks">Panic Keeps Locked Channels</a><br>
 <a href="#symbols-294">Debug Symbols With Every Release</a><br>
@@ -1880,6 +1881,19 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="readiness">Check Before Going Live</h2>
+
+<ul>
+<li><b>Check Before Going Live.</b> Rundown &gt; Check Before Going Live... lists everything that would stop the open rundown from going to air as meant:
+<ul>
+<li><b>Media and templates that are not there</b> - the same check as the warning marks on the rows.</li>
+<li><b>Servers</b> the rundown uses that are not connected, or not set up in this client, with how many items use each.</li>
+<li><b>Items aimed at a locked channel.</b> A lock stops playout there, so such an item will not play until the channel is unlocked.</li>
+<li><b>Sheet sources that do not answer</b>, for every sheet-driven template in the rundown: each sheet tab is read once (a copy the client already holds counts), and one that does not answer within 20 seconds is listed.</li>
+</ul></li>
+<li>Each line has <b>Show</b> to select the item in the rundown, and <b>Check Again</b> runs it again once you have fixed things. It runs when you open it - nothing is watched in the background.</li>
+</ul>
 
 <h2 id="server-release-notice">New Server Releases Pointed Out</h2>
 
