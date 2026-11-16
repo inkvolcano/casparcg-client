@@ -96,6 +96,8 @@ inline QMenu* createSizeModeMenu(const QString& panelId, QWidget* parent)
         EventManager::getInstance().fireRebuildLayout();
     });
 
+    menu->addSeparator();
+    menu->addAction("Also in Settings > Panels > Layout")->setEnabled(false);
     return menu;
 }
 

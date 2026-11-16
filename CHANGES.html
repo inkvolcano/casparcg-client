@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#settings-rules">Settings: One Save Rule, Restarts, Defaults</a><br>
 <a href="#settings-sections">Settings By Task, With Search</a><br>
 <a href="#settings-values">Settings For Values That Were Fixed</a><br>
 <a href="#settings-fixes">Settings Fixes</a><br>
@@ -1899,6 +1900,17 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="settings-rules">Settings: One Save Rule, Restarts, Defaults</h2>
+
+<ul>
+<li><b>OK and Cancel for everything.</b> Cancel - or Esc, or closing the window - puts every setting back as it was when Settings opened, in every section; OK keeps them. Before, some sections saved as you typed and others only on OK. The server, GPI and OSC output lists still save as you change them, and the window says so.</li>
+<li><b>A restart when one is needed.</b> Settings read only at startup are marked * (theme, OSC, the Server Status options, client log days). When OK changes one, the client offers to restart; unsaved rundowns are asked about first.</li>
+<li><b>Changed settings in blue.</b> A setting that differs from a new installation's is shown in blue, with the default in its tooltip.</li>
+<li><b>Reset Section to Defaults.</b> Puts the settings of the section on screen back to a new installation's, then opens Settings on it again. Hotkeys keeps its own Restore Defaults.</li>
+<li><b>One home per setting.</b> Delay and duration units are in Settings &gt; Rundown as well as behind the Inspector's fr/ms buttons. The new-server-release notice is in Settings &gt; Servers only; a panel's Size Mode menu says it is also in Settings &gt; Panels &gt; Layout.</li>
+<li><b>Custom colours at startup, fixed properly.</b> Build 313's fix set the colours in the program's own copy of them, not in the one the panels read, so channel and button colours still appeared only after Settings had been opened. They are now loaded where the panels read them, before the panels are made.</li>
+</ul>
 
 <h2 id="settings-sections">Settings By Task, With Search</h2>
 

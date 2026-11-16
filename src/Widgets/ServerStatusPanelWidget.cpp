@@ -680,14 +680,8 @@ void ServerStatusPanelWidget::fillProcessMenu(QMenu* menu, const QString& device
             QTimer::singleShot(0, this, [this, deviceName]() { ServerDownloadDialog::openFor(deviceName, window()); });
         });
 
-        // Once a day, the GitHub release list; for every server, not this one.
-        QAction* watch = menu->addAction("Tell Me About New Server Releases");
-        watch->setCheckable(true);
-        watch->setChecked(ServerReleaseWatcher::enabled());
-        QObject::connect(watch, &QAction::toggled, this, [this](bool on) {
-            ServerReleaseWatcher::setEnabled(on);
-            updateReleaseMarks();
-        });
+        // The new-release notice is a setting for every server, so it lives in
+        // Settings > Servers > Server Settings (build 316), not in one server's menu.
     };
 
     if (this->processBusy.contains(deviceName))

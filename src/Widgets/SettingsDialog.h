@@ -7,6 +7,7 @@
 #include "Playout.h"
 
 #include <QtCore/QMap>
+#include <QtCore/QPointer>
 #include <QtCore/QTimer>
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QComboBox>
@@ -32,6 +33,14 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
 
     public:
         explicit SettingsDialog(QWidget* parent = 0);
+
+        // Build 316: settings read only at startup that OK changed; a section
+        // put back to its defaults (written by applyPendingReset after the OK
+        // handlers) and Settings opened again on it.
+        QStringList restartNeeded() const;
+        QString reopenSection() const { return this->sectionToReopen; }
+        void applyPendingReset();
+        void openSection(const QString& name) { showSection(name); }
 
         Q_SIGNAL void gpiBindingChanged(int, Playout::PlayoutType);
         Q_SIGNAL void hotkeyChanged();
@@ -88,6 +97,25 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QString pendingSection;
 
         void buildNavigation();
+
+        // Build 316: one save rule, restart notes, defaults.
+        QMap<QString, QString> configAtOpen;
+        struct SettingTag
+        {
+            QPointer<QWidget> widget;
+            QString key;
+            QString def;
+        };
+        QList<SettingTag> settingTags;
+        QPushButton* buttonCancel = nullptr;
+        QPushButton* buttonResetSection = nullptr;
+        QList<QPair<QString, QString>> pendingReset;
+        QString sectionToReopen;
+        void tagSetting(QWidget* widget, const QString& key, const QString& def);
+        void markChangedSettings();
+        void restoreSettingsAtOpen();
+        void resetCurrentSection();
+        void flushPendingWritesDiscard();
         void showSection(const QString& name);
         void runSearch(const QString& text);
         void showFound(QWidget* target);

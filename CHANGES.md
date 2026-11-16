@@ -1838,6 +1838,15 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Settings: One Save Rule, Restarts, Defaults
+
+- **OK and Cancel for everything.** Cancel - or Esc, or closing the window - puts every setting back as it was when Settings opened, in every section; OK keeps them. Before, some sections saved as you typed and others only on OK. The server, GPI and OSC output lists still save as you change them, and the window says so.
+- **A restart when one is needed.** Settings read only at startup are marked * (theme, OSC, the Server Status options, client log days). When OK changes one, the client offers to restart; unsaved rundowns are asked about first.
+- **Changed settings in blue.** A setting that differs from a new installation's is shown in blue, with the default in its tooltip.
+- **Reset Section to Defaults.** Puts the settings of the section on screen back to a new installation's, then opens Settings on it again. Hotkeys keeps its own Restore Defaults.
+- **One home per setting.** Delay and duration units are in Settings > Rundown as well as behind the Inspector's fr/ms buttons. The new-server-release notice is in Settings > Servers only; a panel's Size Mode menu says it is also in Settings > Panels > Layout.
+- **Custom colours at startup, fixed properly.** Build 313's fix set the colours in the program's own copy of them, not in the one the panels read, so channel and button colours still appeared only after Settings had been opened. They are now loaded where the panels read them, before the panels are made.
+
 ## Settings By Task, With Search
 
 - **Sections down the left instead of ten tabs.** The General tab, which had grown to about 200 rows, is split into the sections where people look for things. Nothing was removed or renamed; a section with several parts shows them as tabs.

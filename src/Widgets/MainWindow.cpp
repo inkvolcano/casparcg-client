@@ -20,6 +20,8 @@
 #include "TimeTriggers.h"
 #include "RunSheet.h"
 #include "LiveRunSheet.h"
+#include "ClientRestart.h"
+#include "AppearanceSettings.h"
 #include "MeterBallistics.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
@@ -110,6 +112,10 @@ static int panicWindowMs()
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
+    // The stored colours, into the copy the panels read (build 316) - before
+    // setupUi makes the panels.
+    AppearanceSettings::load();
+
     setupUi(this);
     setupMenu();
     loadHotkeys();
@@ -1187,16 +1193,50 @@ void MainWindow::showSettingsDialog()
     // Freed when this returns. Every opening used to leave a whole Settings dialog
     // behind, parented to the main window and still connected to the relay and
     // publisher singletons, so each one went on updating its hidden widgets.
-    QScopedPointer<SettingsDialog, QScopedPointerDeleteLater> dialog(new SettingsDialog(this));
-    QObject::connect(dialog.data(), SIGNAL(gpiBindingChanged(int, Playout::PlayoutType)), this->widgetRundown, SLOT(gpiBindingChanged(int, Playout::PlayoutType)));
-    QObject::connect(dialog.data(), SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
+    QString section;
+    QStringList restart;
+    while (true)
+    {
+        QScopedPointer<SettingsDialog, QScopedPointerDeleteLater> dialog(new SettingsDialog(this));
+        QObject::connect(dialog.data(), SIGNAL(gpiBindingChanged(int, Playout::PlayoutType)), this->widgetRundown, SLOT(gpiBindingChanged(int, Playout::PlayoutType)));
+        QObject::connect(dialog.data(), SIGNAL(hotkeyChanged()), this, SLOT(hotkeyChanged()));
+        if (!section.isEmpty())
+            dialog->openSection(section);
 
-    dialog->exec();
+        const int result = dialog->exec();
+        if (result == QDialog::Accepted)
+        {
+            for (const QString& key : dialog->restartNeeded())
+            {
+                if (!restart.contains(key))
+                    restart.append(key);
+            }
+        }
+
+        // Reset Section to Defaults: written now, then Settings again on it.
+        section = dialog->reopenSection();
+        if (section.isEmpty())
+            break;
+        dialog->applyPendingReset();
+    }
 
     // The auto-save settings live in that dialog, and an interval the operator
     // just changed should take effect now rather than after the old one elapses.
     if (this->widgetRundown != nullptr)
         this->widgetRundown->applyAutoSaveSettings();
+
+    // Settings that are read only when the client starts (build 316).
+    if (!restart.isEmpty())
+    {
+        if (QMessageBox::question(this, "Restart the Client?",
+                QString("These changes take effect when the client starts again:\n\n%1\n\nRestart it now? "
+                        "Rundowns with unsaved changes are asked about first.").arg(restart.join(", ")),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No) == QMessageBox::Yes)
+        {
+            if (!ClientRestart::restart(this))
+                EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("The client was not restarted.", 4000));
+        }
+    }
 }
 
 void MainWindow::toggleFullscreen()

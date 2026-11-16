@@ -168,6 +168,8 @@ qt_add_library(widgets
     LoudnessMonitor.cpp LoudnessMonitor.h
     LoudnessReadout.cpp LoudnessReadout.h
     ServerConfigFile.cpp ServerConfigFile.h
+    AppearanceSettings.cpp AppearanceSettings.h
+    ClientRestart.cpp ClientRestart.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
     LogViewerDialog.cpp LogViewerDialog.h

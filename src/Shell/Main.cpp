@@ -232,7 +232,10 @@ void loadStyleSheets(QApplication& application)
         platformStylesheet.close();
     }
 
-    // Populate all ColorCache values from the bulk-loaded cache.
+    // Populate all ColorCache values from the bulk-loaded cache. These are this
+    // program's copies, used to build the header stylesheet below; the panels
+    // read the Widgets library's own copies, which AppearanceSettings::load
+    // sets when the main window is made (build 316).
     ColorCache::setPvwButton(cfgVal("PVWButtonColor"));
     ColorCache::setStepButton(cfgVal("STEPButtonColor"));
     ColorCache::setPreviewBorder(cfgVal("PreviewBorderColor"));
@@ -264,17 +267,6 @@ void loadStyleSheets(QApplication& application)
         if (!textVal.isEmpty())  ColorCache::setTextOverride(key, textVal);
     }
 
-    // Channel colours: before build 313 they were applied only once a slider
-    // in Settings was moved, so a venue's colours were lost at every start.
-    auto channelColor = [&cfgVal](const char* key, double fallback) {
-        bool ok = false;
-        const double v = cfgVal(key).toDouble(&ok);
-        return ok ? v : fallback;
-    };
-    ChannelColor::setAngle(channelColor("ChannelColorAngle", ChannelColor::DEFAULT_ANGLE));
-    ChannelColor::setOffset(channelColor("ChannelColorOffset", ChannelColor::DEFAULT_OFFSET));
-    ChannelColor::setSaturation(channelColor("ChannelColorSaturation", ChannelColor::DEFAULT_SATURATION));
-    ChannelColor::setLightness(channelColor("ChannelColorLightness", ChannelColor::DEFAULT_LIGHTNESS));
 
     ColorCache::setClockColor1(cfgVal("ClockColor1"));
     ColorCache::setClockColor2(cfgVal("ClockColor2"));

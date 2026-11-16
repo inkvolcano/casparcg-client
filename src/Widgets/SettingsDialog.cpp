@@ -1,5 +1,9 @@
 #include "SettingsDialog.h"
 #include "LiveRunSheet.h"
+#include <QtWidgets/QAbstractButton>
+#include <QtWidgets/QStyle>
+#include <QtCore/QFile>
+#include "AppearanceSettings.h"
 #include "ServerReleaseWatcher.h"
 #include <QtCore/QPointer>
 #include <QtCore/QSet>
@@ -148,8 +152,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 {
     setupUi(this);
 
-    // Before anything in here can write: the layout as it is now.
+    // Before anything in here can write: the layout as it is now, and (build
+    // 316) every setting, so Cancel can put all of them back.
     this->layoutAtOpen = readLayoutKeys();
+    this->configAtOpen = DatabaseManager::getInstance().getAllConfigurations();
 
     setupGeneralTab();
 
@@ -164,7 +170,18 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     // Create top bar with OK button on the right.
     QHBoxLayout* topBar = new QHBoxLayout();
+    // Build 316: one rule for every section - OK keeps what was changed, Cancel
+    // (or Esc, or closing the window) puts every setting back as it was.
+    this->buttonResetSection = new QPushButton("Reset Section to Defaults...", this);
+    this->buttonResetSection->setFocusPolicy(Qt::NoFocus);
+    this->buttonResetSection->setToolTip("Puts the settings in the section on screen back to how a new installation has them.");
+    QObject::connect(this->buttonResetSection, &QPushButton::clicked, this, [this]() { resetCurrentSection(); });
+    topBar->addWidget(this->buttonResetSection);
     topBar->addStretch();
+    this->buttonCancel = new QPushButton("Cancel", this);
+    this->buttonCancel->setFocusPolicy(Qt::NoFocus);
+    QObject::connect(this->buttonCancel, &QPushButton::clicked, this, &QDialog::reject);
+    topBar->addWidget(this->buttonCancel);
     this->pushButtonOk->setParent(this);
     topBar->addWidget(this->pushButtonOk);
     mainLayout->addLayout(topBar);
@@ -1567,11 +1584,339 @@ void SettingsDialog::buildNavigation()
         showFound(item->data(Qt::UserRole).value<QPointer<QWidget>>().data());
     });
 
+    // Build 316: which control shows which setting, for the changed marks and
+    // Reset Section. The shared helpers tag theirs as they build.
+    tagSetting(this->checkBoxFullscreen, "StartFullscreen", "false");
+    tagSetting(this->comboBoxTheme, "Theme", "Flat");
+    tagSetting(this->spinBoxFontSize, "FontSize", "12");
+    tagSetting(this->checkBoxUseDropFrameNotation, "UseDropFrameNotation", "false");
+    tagSetting(this->checkBoxAutoRefresh, "AutoRefreshLibrary", "false");
+    tagSetting(this->spinBoxRefreshInterval, "RefreshLibraryInterval", "60");
+    tagSetting(this->checkBoxShowThumbnailTooltip, "ShowThumbnailTooltip", "true");
+    tagSetting(this->checkBoxReverseOscTime, "ReverseOscTime", "true");
+    tagSetting(this->checkBoxDisableInAndOutPoints, "DisableInAndOutPoints", "true");
+    tagSetting(this->spinBoxOscRefreshRate, "OscRefreshRate", "200");
+    tagSetting(this->spinBoxUndoHistoryLimit, "UndoHistoryLimit", "50");
+    tagSetting(this->checkBoxMarkUsedItems, "MarkUsedItems", "false");
+    tagSetting(this->lineEditRundownRepository, "RundownRepository", "");
+    tagSetting(this->lineEditRepositoryPort, "RepositoryPort", "8250");
+    tagSetting(this->checkBoxUseFreezeOnLoad, "UseFreezeOnLoad", "false");
+    tagSetting(this->comboBoxDurationFormat, "DurationFormat", "HumanReadable");
+    tagSetting(this->checkBoxStoreThumbnailsInDatabase, "StoreThumbnailsInDatabase", "true");
+    tagSetting(this->checkBoxAutoSaveEnabled, "AutoSaveEnabled", "true");
+    tagSetting(this->spinBoxAutoSaveMinutes, "AutoSaveMinutes", "3");
+    tagSetting(this->checkBoxWarnMissingMedia, "WarnMissingMedia", "true");
+    tagSetting(this->comboReferenceSource, "ReferencePictureSource", "auto");
+    tagSetting(this->checkBoxKeepAwake, "KeepAwake", "true");
+    tagSetting(this->checkBoxLiveRunSheet, "LiveRunSheet", "false");
+    tagSetting(this->checkBoxAllowShellCommands, "AllowShellCommands", "false");
+    tagSetting(this->comboBoxDisconnectMode, "DisconnectMode", "ask");
+    tagSetting(this->checkBoxOgrafEnabled, "OgrafEnabled", "false");
+    tagSetting(this->checkBoxPreviewAutoPlayVideo, "PreviewAutoPlayVideo", "false");
+    tagSetting(this->checkBoxPreviewShowStills, "PreviewShowStills", "false");
+    tagSetting(this->checkBoxPreviewShowMovies, "PreviewShowMovies", "false");
+    tagSetting(this->checkBoxPreviewAudioMeters, "PreviewAudioMeters", "false");
+    tagSetting(this->checkBoxPreviewTemplates, "PreviewTemplates", "false");
+    tagSetting(this->checkBoxPreviewLegacyMode, "PreviewLegacyMode", "true");
+    tagSetting(this->previewFreezeTemplateCheck, "PreviewFreezeTemplate", "false");
+    tagSetting(this->checkBoxMeterPeakHold, "MeterPeakHold", "true");
+    tagSetting(this->checkBoxMeterClipIndicator, "MeterClipIndicator", "true");
+    tagSetting(this->checkBoxActivityGrow, "ActivityGrowMode", "grow");
+    tagSetting(this->spinBoxNdiOutputs, "NdiOutputCount", "1");
+    tagSetting(this->comboBoxNdiBandwidth, "NdiBandwidth", "high");
+    tagSetting(this->comboBoxNdiFpsLimit, "NdiFpsLimit", "0");
+    tagSetting(this->comboBoxNdiScaling, "NdiScalingQuality", "smooth");
+    tagSetting(this->checkBoxDualClock, "ClockDualMode", "true");
+    tagSetting(this->comboBoxTimezone1, "ClockTimezone1", "Local");
+    tagSetting(this->comboBoxTimezone2, "ClockTimezone2", "UTC");
+    tagSetting(this->checkBoxClockShowLabels, "ClockShowLabels", "true");
+    tagSetting(this->checkBoxClockStacked, "ClockStacked", "false");
+    tagSetting(this->checkBoxCustomizeHeaders, "CustomizeWidgetHeaders", "false");
+    tagSetting(this->checkBoxEnableOscInputMonitor, "EnableOscInputMonitor", "true");
+    tagSetting(this->checkBoxEnableOscInputControl, "EnableOscInputControl", "true");
+    tagSetting(this->checkBoxEnableOscInputWebSocket, "EnableOscInputWebSocket", "true");
+    tagSetting(this->lineEditOscInputMonitorPort, "OscMonitorPort", "6250");
+    tagSetting(this->lineEditOscInputControlPort, "OscControlPort", "3250");
+    tagSetting(this->lineEditOscInputWebSocketPort, "OscWebSocketPort", "4250");
+    tagSetting(this->checkBoxDisableAudioInStream, "DisableAudioInStream", "true");
+    tagSetting(this->comboBoxLogLevel, "LogLevel", "-1");
+    tagSetting(this->lineEditStreamPort, "StreamPort", "9250");
+    tagSetting(this->spinBoxNetworkCache, "NetworkCache", "1000");
+    tagSetting(this->spinBoxQuality, "StreamQuality", "25");
+    tagSetting(this->lineEditStreamParameters, "StreamParameters", "");
+    tagSetting(this->lineEditSerialPort, "GpiSerialPort", "COM1");
+    tagSetting(this->comboBoxGpiBaudRate, "GpiBaudRate", "115200");
+    markChangedSettings();
+    QObject::connect(this->sectionList, &QListWidget::currentRowChanged, this, [this](int) { markChangedSettings(); });
+    QObject::connect(this, &QDialog::rejected, this, [this]() { restoreSettingsAtOpen(); });
+    this->labelSettingsInformation->setText("* takes effect when the client starts again; OK offers to restart it. "
+                                            "Blue: changed from the default. Server, GPI and OSC output lists save as you change them.");
+    this->labelSettingsInformation->setWordWrap(true);
+    this->labelSettingsInformation->setMinimumHeight(0);
+    this->labelSettingsInformation->setMaximumHeight(16777215);
+
     this->sectionList->setCurrentRow(0);
     if (!this->pendingSection.isEmpty())
         showSection(this->pendingSection);
 
+    setStyleSheet(styleSheet() + " *[settingChanged=\"true\"] { color: rgb(110, 170, 255); }");
     resize(qMax(width(), 1000), qMax(height(), 740));
+}
+
+namespace
+{
+    // The settings that are read once, when the client starts.
+    const QStringList& restartKeys()
+    {
+        static const QStringList keys = {
+            "Theme", "EnableOscInputMonitor", "EnableOscInputControl", "EnableOscInputWebSocket",
+            "OscMonitorPort", "OscControlPort", "OscWebSocketPort",
+            "ShowSTEPButton", "ShowPVWButton", "ShowServers", "ShowChannelLocks", "LogDays"
+        };
+        return keys;
+    }
+
+    // What a brand new database has: Schema.sql, read once.
+    const QMap<QString, QString>& freshDefaults()
+    {
+        static QMap<QString, QString> values;
+        static bool read = false;
+        if (!read)
+        {
+            read = true;
+            QFile file(":/Scripts/Sql/Schema.sql");
+            if (file.open(QIODevice::ReadOnly))
+            {
+                static const QRegularExpression insert("INSERT INTO Configuration \\(Name, Value\\) VALUES\\('([^']+)', '([^']*)'\\)");
+                QRegularExpressionMatchIterator it = insert.globalMatch(QString::fromUtf8(file.readAll()));
+                while (it.hasNext())
+                {
+                    const QRegularExpressionMatch m = it.next();
+                    values.insert(m.captured(1), m.captured(2));
+                }
+            }
+        }
+        return values;
+    }
+
+    // Two stored values that mean the same: colours by colour, numbers by value.
+    bool sameSetting(const QString& a, const QString& b)
+    {
+        if (a.startsWith('#') && b.startsWith('#'))
+            return QColor(a) == QColor(b);
+        bool okA = false, okB = false;
+        const double x = a.toDouble(&okA);
+        const double y = b.toDouble(&okB);
+        if (okA && okB)
+            return qAbs(x - y) < 1e-6;
+        return QString::compare(a.trimmed(), b.trimmed(), Qt::CaseInsensitive) == 0;
+    }
+}
+
+void SettingsDialog::tagSetting(QWidget* widget, const QString& key, const QString& def)
+{
+    if (widget == nullptr)
+        return;
+    for (const SettingTag& tag : this->settingTags)
+    {
+        if (tag.widget == widget)
+            return;
+    }
+
+    SettingTag tag;
+    tag.widget = widget;
+    tag.key = key;
+    tag.def = freshDefaults().value(key, def);
+    this->settingTags.append(tag);
+
+    // A setting read only at startup says so on its row.
+    if (restartKeys().contains(key))
+    {
+        widget->setToolTip(widget->toolTip() + (widget->toolTip().isEmpty() ? "" : "\n") +
+                           "Takes effect when the client starts again.");
+        QWidget* label = widget;
+        if (QGridLayout* grid = widget->parentWidget() != nullptr ? qobject_cast<QGridLayout*>(widget->parentWidget()->layout()) : nullptr)
+        {
+            int at = grid->indexOf(widget), r = 0, c = 0, rs = 0, cs = 0;
+            if (at >= 0)
+            {
+                grid->getItemPosition(at, &r, &c, &rs, &cs);
+                QLayoutItem* first = c > 0 ? grid->itemAtPosition(r, 0) : nullptr;
+                if (first != nullptr && qobject_cast<QLabel*>(first->widget()) != nullptr)
+                    label = first->widget();
+            }
+        }
+        if (QLabel* text = qobject_cast<QLabel*>(label))
+        {
+            if (!text->text().endsWith(" *"))
+                text->setText(text->text() + " *");
+        }
+        else if (QAbstractButton* button = qobject_cast<QAbstractButton*>(label))
+        {
+            if (!button->text().endsWith(" *"))
+                button->setText(button->text() + " *");
+        }
+    }
+}
+
+// Rows whose setting is not what a new installation has are shown in blue,
+// with the default in their tooltip.
+void SettingsDialog::markChangedSettings()
+{
+    for (const SettingTag& tag : this->settingTags)
+    {
+        if (tag.widget.isNull())
+            continue;
+        QString stored = DatabaseManager::getInstance().getConfigurationByName(tag.key).getValue();
+        if (stored.isEmpty())
+            stored = tag.def;
+        const bool changed = !sameSetting(stored, tag.def);
+
+        QList<QWidget*> marked = { tag.widget.data() };
+        if (QGridLayout* grid = tag.widget->parentWidget() != nullptr ? qobject_cast<QGridLayout*>(tag.widget->parentWidget()->layout()) : nullptr)
+        {
+            int at = grid->indexOf(tag.widget.data()), r = 0, c = 0, rs = 0, cs = 0;
+            if (at >= 0)
+            {
+                grid->getItemPosition(at, &r, &c, &rs, &cs);
+                QLayoutItem* first = c > 0 ? grid->itemAtPosition(r, 0) : nullptr;
+                if (first != nullptr && first->widget() != nullptr)
+                    marked.append(first->widget());
+            }
+        }
+        for (QWidget* w : marked)
+        {
+            if (w->property("settingChanged").toBool() == changed)
+                continue;
+            w->setProperty("settingChanged", changed);
+            w->style()->unpolish(w);
+            w->style()->polish(w);
+        }
+
+        const QString note = QString("Changed from the default (%1).").arg(tag.def.isEmpty() ? QString("empty") : tag.def);
+        QString tip = tag.widget->toolTip();
+        tip.remove(QRegularExpression("\\n?Changed from the default \\([^)]*\\)\\.$"));
+        tag.widget->setToolTip(changed ? (tip.isEmpty() ? note : tip + "\n" + note) : tip);
+    }
+
+    if (this->buttonResetSection != nullptr && this->sectionStack != nullptr)
+    {
+        int here = 0;
+        QWidget* page = this->sectionStack->currentWidget();
+        for (const SettingTag& tag : this->settingTags)
+        {
+            if (!tag.widget.isNull() && page != nullptr && page->isAncestorOf(tag.widget.data()))
+                here++;
+        }
+        this->buttonResetSection->setEnabled(here > 0);
+    }
+}
+
+// Cancel: every setting back to what it was when the window opened, and what
+// they drive put back with them.
+void SettingsDialog::restoreSettingsAtOpen()
+{
+    flushPendingWritesDiscard();
+    const QMap<QString, QString> now = DatabaseManager::getInstance().getAllConfigurations();
+    bool web = false;
+    QStringList keys = now.keys();
+    const QStringList keysAtOpen = this->configAtOpen.keys();
+    for (const QString& key : keysAtOpen)
+    {
+        if (!keys.contains(key))
+            keys.append(key);
+    }
+    for (const QString& key : keys)
+    {
+        // Not the window's to put back: what panels, the web server and the
+        // database itself change while Settings is open.
+        if (key == "DatabaseVersion" || key == "SheetsCacheBypass" || key == "ShotboxItems" || key == "NdiOutputConfig" ||
+            key.startsWith("MinHeight_") || key.endsWith("PanelHeight") || key.startsWith("SheetsPanel") ||
+            key.startsWith("SheetsHiddenCols_"))
+            continue;
+
+        const QString before = this->configAtOpen.value(key);
+        if (now.value(key) == before)
+            continue;
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, before));
+        if (key == "WebServerAddress" || key == "LiveRunSheet" || key == "SheetsHostCache" || key == "SheetsHostCachePort")
+            web = true;
+    }
+
+    AppearanceSettings::load();
+    qApp->setStyleSheet(this->stylesheet);
+    KeepAwake::apply();
+    bool ok = false;
+    const double clip = this->configAtOpen.value("MeterClipLevel").toDouble(&ok);
+    MeterBallistics::setClipDb(ok ? clip : -0.1);
+    RundownWidgetHelper::invalidateConfigCache();
+    EventManager::getInstance().fireUnitSettingsChangedEvent();
+    if (web)
+    {
+        SheetCacheServer::getInstance().stop();
+        SheetCacheServer::getInstance().start();
+    }
+    emit hotkeyChanged();
+}
+
+QStringList SettingsDialog::restartNeeded() const
+{
+    QStringList changed;
+    for (const QString& key : restartKeys())
+    {
+        if (DatabaseManager::getInstance().getConfigurationByName(key).getValue() != this->configAtOpen.value(key))
+            changed.append(key);
+    }
+    return changed;
+}
+
+void SettingsDialog::resetCurrentSection()
+{
+    if (this->sectionStack == nullptr || this->sectionList->currentItem() == nullptr)
+        return;
+    QWidget* page = this->sectionStack->currentWidget();
+    const QString section = this->sectionList->currentItem()->text();
+
+    QList<QPair<QString, QString>> reset;
+    for (const SettingTag& tag : this->settingTags)
+    {
+        if (!tag.widget.isNull() && page != nullptr && page->isAncestorOf(tag.widget.data()))
+            reset.append(qMakePair(tag.key, tag.def));
+    }
+    if (reset.isEmpty())
+        return;
+
+    if (QMessageBox::question(this, "Reset Section to Defaults",
+            QString("Put the %1 settings in %2 back to how a new installation has them?\n\n"
+                    "Other changes made in this window are kept. Settings opens again on %2 to show the result.")
+                .arg(reset.count()).arg(section),
+            QMessageBox::Yes | QMessageBox::Cancel) != QMessageBox::Yes)
+        return;
+
+    // Written after the OK handlers have run, so a field saved on OK cannot
+    // write its old value over the default (MainWindow calls applyPendingReset).
+    this->pendingReset = reset;
+    this->sectionToReopen = section;
+    accept();
+}
+
+void SettingsDialog::applyPendingReset()
+{
+    for (const QPair<QString, QString>& entry : this->pendingReset)
+        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, entry.first, entry.second));
+    this->pendingReset.clear();
+
+    AppearanceSettings::load();
+    bool ok = false;
+    const double clip = DatabaseManager::getInstance().getConfigurationByName("MeterClipLevel").getValue().toDouble(&ok);
+    MeterBallistics::setClipDb(ok ? clip : -0.1);
+    KeepAwake::apply();
+    RundownWidgetHelper::invalidateConfigCache();
+    EventManager::getInstance().fireUnitSettingsChangedEvent();
+    const int fontSize = DatabaseManager::getInstance().getConfigurationByName("FontSize").getValue().toInt();
+    qApp->setStyleSheet(this->stylesheet + WidgetHeaderCSS::generate() +
+                        QString(" QWidget { font-size: %1px; }").arg(fontSize > 0 ? fontSize : 12));
+    emit hotkeyChanged();
 }
 
 void SettingsDialog::showSection(const QString& name)
@@ -1833,6 +2178,7 @@ void SettingsDialog::setupGeneralTab()
         box->setToolTip(tip);
         box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         grid->addWidget(box, row, 1);
+        tagSetting(box, key, QString::number(def));
         QObject::connect(box, QOverload<int>::of(&QSpinBox::valueChanged), [key, applied](int value) {
             DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, QString::number(value)));
             if (applied)
@@ -1858,6 +2204,7 @@ void SettingsDialog::setupGeneralTab()
         box->setToolTip(tip);
         box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         grid->addWidget(box, row, 1);
+        tagSetting(box, key, QString::number(def, 'f', 1));
         QObject::connect(box, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [key, applied](double value) {
             DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, QString::number(value, 'f', 1)));
             if (applied)
@@ -1874,6 +2221,7 @@ void SettingsDialog::setupGeneralTab()
         edit->setPlaceholderText(placeholder);
         edit->setToolTip(tip);
         grid->addWidget(edit, row, 1, 1, 3);
+        tagSetting(edit, key, QString());
         QObject::connect(edit, &QLineEdit::editingFinished, [edit, key, applied]() {
             const QString value = edit->text().trimmed();
             if (value == DatabaseManager::getInstance().getConfigurationByName(key).getValue())
@@ -1964,6 +2312,30 @@ void SettingsDialog::setupGeneralTab()
     this->comboBoxDurationFormat->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     grid->addWidget(this->comboBoxDurationFormat, row, 1);
     row++;
+
+    // The units for delay and duration (build 316): the Inspector's fr/ms buttons
+    // switch them too.
+    for (const QPair<QString, QString>& unit : { qMakePair(QString("Delay in:"), QString("DelayType")),
+                                                 qMakePair(QString("Duration in:"), QString("DurationUnit")) })
+    {
+        addLabel(unit.first);
+        QComboBox* combo = new QComboBox();
+        combo->addItem("Frames", Output::DEFAULT_DELAY_IN_FRAMES);
+        combo->addItem("Milliseconds", Output::DEFAULT_DELAY_IN_MILLISECONDS);
+        const QString stored = DatabaseManager::getInstance().getConfigurationByName(unit.second).getValue();
+        combo->setCurrentIndex(stored == Output::DEFAULT_DELAY_IN_FRAMES ? 0 : 1);
+        combo->setToolTip("The unit delays and durations are typed and shown in. The Inspector's fr/ms button switches it too.");
+        combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        grid->addWidget(combo, row, 1);
+        tagSetting(combo, unit.second, Output::DEFAULT_DELAY_IN_MILLISECONDS);
+        const QString key = unit.second;
+        QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), [combo, key](int index) {
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, combo->itemData(index).toString()));
+            RundownWidgetHelper::invalidateConfigCache();
+            EventManager::getInstance().fireUnitSettingsChangedEvent();
+        });
+        row++;
+    }
 
     addLabel("OSC update rate:");
     this->spinBoxOscRefreshRate = new QSpinBox();
@@ -2642,7 +3014,8 @@ void SettingsDialog::setupGeneralTab()
     this->checkBoxStoreThumbnailsInDatabase->setChecked(storeThumbnailsInDatabase);
 
     // Wire up programmatic General-tab checkboxes.
-    auto wireCheckBox = [](QCheckBox* cb, const QString& key) {
+    auto wireCheckBox = [this](QCheckBox* cb, const QString& key) {
+        tagSetting(cb, key, "true");
         QString val = DatabaseManager::getInstance().getConfigurationByName(key).getValue();
         cb->setChecked(val.isEmpty() || val == "true");
         QObject::connect(cb, &QCheckBox::stateChanged, [key](int state) {
@@ -2887,7 +3260,8 @@ void SettingsDialog::setupGeneralTab()
     QObject::connect(this->checkBoxDualClock, &QCheckBox::toggled, updateTz2);
 
     // ── Channel color sliders ────────────────────────────────
-    auto loadSlider = [](QSlider* slider, QLabel* valLabel, const QString& dbKey, int defaultVal, double divisor) {
+    auto loadSlider = [this](QSlider* slider, QLabel* valLabel, const QString& dbKey, int defaultVal, double divisor) {
+        tagSetting(slider, dbKey, QString::number(defaultVal / divisor));
         QString dbVal = DatabaseManager::getInstance().getConfigurationByName(dbKey).getValue();
         int v = dbVal.isEmpty() ? defaultVal : static_cast<int>(dbVal.toDouble() * divisor + 0.5);
         slider->setValue(v);
@@ -2928,7 +3302,8 @@ void SettingsDialog::setupGeneralTab()
     wireSlider(this->sliderLightness, this->labelLightnessValue, "ChannelColorLightness", 100.0, [](double v) { ChannelColor::setLightness(v); });
 
     // ── Interface color pickers ──────────────────────────────
-    auto loadSwatch = [](QLabel* swatch, const QString& dbKey, const QColor& defaultColor) {
+    auto loadSwatch = [this](QLabel* swatch, const QString& dbKey, const QColor& defaultColor) {
+        tagSetting(swatch, dbKey, defaultColor.name(QColor::HexArgb));
         QString dbVal = DatabaseManager::getInstance().getConfigurationByName(dbKey).getValue();
         QColor color = dbVal.isEmpty() ? defaultColor : QColor(dbVal);
         if (!color.isValid()) color = defaultColor;
@@ -3475,6 +3850,15 @@ void SettingsDialog::fillRelayPackList(const QList<RelayClient::PackListing>& pa
             "The source does not assign this machine, so the ticked packs are what it takes. "
             "Nothing ticked follows every pack.");
     }
+}
+
+void SettingsDialog::flushPendingWritesDiscard()
+{
+    if (this->fontSizeDebounceTimer != nullptr)
+        this->fontSizeDebounceTimer->stop();
+    if (this->sliderDbWriteTimer != nullptr)
+        this->sliderDbWriteTimer->stop();
+    this->pendingSliderDbWrites.clear();
 }
 
 void SettingsDialog::flushPendingWrites()
