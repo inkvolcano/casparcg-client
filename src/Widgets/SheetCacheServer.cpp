@@ -191,8 +191,16 @@ void SheetCacheServer::start()
         QObject::connect(this->server, SIGNAL(newConnection()), this, SLOT(acceptConnection()));
     }
 
+    // Settings > Web server listens on (build 314): every network unless one
+    // address is chosen. Everything on this port follows it - the run sheet, the
+    // sheet cache templates read, and template pushes.
+    QHostAddress address = QHostAddress::Any;
+    const QString bind = DatabaseManager::getInstance().getConfigurationByName("WebServerAddress").getValue().trimmed();
+    if (!bind.isEmpty() && !QHostAddress(bind).isNull())
+        address = QHostAddress(bind);
+
     int port = configuredPort();
-    if (this->server->listen(QHostAddress::Any, static_cast<quint16>(port)))
+    if (this->server->listen(address, static_cast<quint16>(port)))
         qDebug("Hosting the sheet cache on port %d, files in %s", port, qPrintable(cacheDirectory()));
     else
         qWarning("Unable to host the sheet cache on port %d: %s", port, qPrintable(this->server->errorString()));
@@ -322,6 +330,18 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
         if (method != "GET")
         {
             respond(socket, 405, "{\"error\":\"Read-only\"}");
+            return;
+        }
+        // With a token set (Settings, build 314) the link must carry it.
+        const QString token = DatabaseManager::getInstance().getConfigurationByName("LiveRunSheetToken").getValue().trimmed();
+        if (!token.isEmpty() && query.queryItemValue("token", QUrl::FullyDecoded) != token)
+        {
+            if (path == "/runsheet.json")
+                respond(socket, 403, "{\"error\":\"This run sheet needs its link with the token\"}");
+            else
+                respond(socket, 403, "<!doctype html><meta name=viewport content=\"width=device-width\"><body style=\"font:16px sans-serif;"
+                        "background:#101214;color:#e8eaed;padding:24px\">This run sheet needs its link with the token. "
+                        "Ask the operator for it.</body>", QDateTime(), "text/html; charset=utf-8");
             return;
         }
         if (path == "/runsheet.json")

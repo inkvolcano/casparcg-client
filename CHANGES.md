@@ -1838,6 +1838,24 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Settings For Values That Were Fixed
+
+Values the client used to fix in code are now in Settings > General (new sections Records and Alarms, Audio and Servers, and the run sheet rows under Rundown), Hotkeys and Templates. Each keeps its old value until changed.
+
+- **Loudness standard and target.** EBU R128 -23, ATSC A/85 -24, streaming -16 or -14, or your own, with the amber and red bands. The readout beside the meters is judged against it.
+- **Clip light level.** -0.1 dBFS unless set; -1 or -2 for a true-peak delivery limit.
+- **Frozen clip alarm.** How long a playing clip's time must stand still before it is marked FROZEN (3 s unless set).
+- **Presenter countdown colours.** When the presenter view's countdown turns amber and red (30 s and 10 s unless set).
+- **Run sheet token.** When set, the live run sheet opens only with ?token=... in its link; the presenter view on a channel carries it. Off unless set.
+- **Web server listens on.** Every network (as before), this machine only, or one address. It covers the run sheet, the sheet cache and template pushes.
+- **Scanner port.** Read from each server's own casparcg.config when the client can find it; otherwise this setting (8000 unless set).
+- **As-run log.** How many days are kept (30 unless set) and the folder it is written to, such as a NAS or a traffic system's drop folder.
+- **Rundown versions and client logs.** How many earlier saves are kept (10) and how many days of the client's own logs (30). Logs are no longer pruned before the setting has been read.
+- **Double-Esc window.** How quickly the second Esc must follow the first (500 ms unless set), under Hotkeys.
+- **Gateway re-check.** How often gateway items look at their conditions again (30 s unless set).
+- **Server releases and nightly builds from.** A mirror for offline or mirrored estates; empty is GitHub and casparcg.com.
+- **Shown in Settings > Templates.** Files per check and the GitHub API address, which could only be set in the database before, and the update source as a choice among the sources this build accepts.
+
 ## Settings Fixes
 
 - **Custom channel colours are kept across restarts.** They were applied only

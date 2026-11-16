@@ -1,5 +1,7 @@
 #include "AsRunLogWriter.h"
 
+#include "DatabaseManager.h"
+
 #include "AsRunLog.h"
 #include "DeviceManager.h"
 #include "CasparDevice.h"
@@ -24,9 +26,20 @@ AsRunLogWriter::AsRunLogWriter(QObject* parent)
     }
 }
 
+// Settings > As-run folder (build 314): a NAS or a traffic system's drop folder.
 QString AsRunLogWriter::folder()
 {
+    const QString configured = DatabaseManager::getInstance().getConfigurationByName("AsRunFolder").getValue().trimmed();
+    if (!configured.isEmpty() && QDir::isAbsolutePath(configured))
+        return configured;
     return QString("%1/.CasparCG/Client/AsRun").arg(QDir::homePath());
+}
+
+// Settings > As-run days kept (build 314), 30 unless set.
+static int asRunKeepDays()
+{
+    const int days = DatabaseManager::getInstance().getConfigurationByName("AsRunDays").getValue().toInt();
+    return days > 0 ? days : AsRun::KEEP_DAYS;
 }
 
 void AsRunLogWriter::deviceAdded(CasparDevice& device)
@@ -86,7 +99,7 @@ void AsRunLogWriter::write(const QString& line)
             this->file.write((AsRun::header() + "\r\n").toUtf8());
         }
 
-        for (const QString& name : AsRun::expired(dir.entryList(QStringList() << "AsRun_*.csv", QDir::Files), today))
+        for (const QString& name : AsRun::expired(dir.entryList(QStringList() << "AsRun_*.csv", QDir::Files), today, asRunKeepDays()))
             QFile::remove(dir.filePath(name));
     }
 

@@ -20,6 +20,7 @@
 #include "TimeTriggers.h"
 #include "RunSheet.h"
 #include "LiveRunSheet.h"
+#include "MeterBallistics.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -100,6 +101,13 @@
 #include <windowsx.h>
 #endif
 
+// The time allowed between the two Esc presses of the panic clear (build 314).
+static int panicWindowMs()
+{
+    const int ms = DatabaseManager::getInstance().getConfigurationByName("PanicDoubleEscMs").getValue().toInt();
+    return ms >= 200 && ms <= 3000 ? ms : 500;
+}
+
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
     setupUi(this);
@@ -147,6 +155,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     this->timeTriggers = new TimeTriggers(this->widgetRundown, this);
     LiveRunSheet::getInstance().setArea(this->widgetRundown);
+
+    // The audio meters' clip level (Settings, build 314).
+    {
+        bool ok = false;
+        const double clip = DatabaseManager::getInstance().getConfigurationByName("MeterClipLevel").getValue().toDouble(&ok);
+        if (ok)
+            MeterBallistics::setClipDb(clip);
+    }
 
     // Inspector edits, one undo step per field, on the rundown the Inspector is
     // showing. The Edit menu records an edit in progress before it opens, so the
@@ -873,14 +889,14 @@ void MainWindow::panicClearAll()
         EventManager::getInstance().fireStatusbarEvent(
             StatusbarEvent("Press Esc again to CLEAR ALL outputs", 2000));
 
-        // Auto-disarm after 500ms.
-        QTimer::singleShot(500, this, [this]() { this->m_panicArmed = false; });
+        // Auto-disarm after the window (Settings > Hotkeys, 500 ms unless set).
+        QTimer::singleShot(panicWindowMs(), this, [this]() { this->m_panicArmed = false; });
         return;
     }
 
     this->m_panicArmed = false;
 
-    if (this->m_panicTimer.elapsed() > 500)
+    if (this->m_panicTimer.elapsed() > panicWindowMs())
         return;
 
     // A locked channel is left alone - per server, on every server, or timed:

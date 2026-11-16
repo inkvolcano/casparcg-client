@@ -1,5 +1,7 @@
 #include "ReferenceCapture.h"
 
+#include "ServerConfigFile.h"
+
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "ReferenceImage.h"
@@ -83,19 +85,7 @@ QString ReferenceCapture::declaredNdiName(const QString& deviceName, int channel
     if (declared != nullptr)
         *declared = false;
 
-    const QSharedPointer<DeviceModel> model = DeviceManager::getInstance().getDeviceModelByName(deviceName);
-    if (model == nullptr)
-        return QString();
-
-    const QString executable = ServerProcessControl::serverExecutableFor(model->getServerPath());
-    if (executable.isEmpty())
-        return QString();
-
-    QFile file(QDir(QFileInfo(executable).absolutePath()).filePath("casparcg.config"));
-    if (!file.open(QIODevice::ReadOnly))
-        return QString();
-
-    const ServerConfigXml::Document document = ServerConfigXml::parse(QString::fromUtf8(file.readAll()));
+    const ServerConfigXml::Document document = ServerConfigFile::load(deviceName);
     if (!document.ok)
         return QString();
 

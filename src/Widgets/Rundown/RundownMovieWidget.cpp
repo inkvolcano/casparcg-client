@@ -26,6 +26,13 @@
 
 #include "RundownWidgetHelper.h"
 
+// Settings > Frozen clip alarm, in seconds (build 314).
+static qint64 frozenAfterMs()
+{
+    const int seconds = DatabaseManager::getInstance().getConfigurationByName("FrozenAlarmSeconds").getValue().toInt();
+    return seconds > 0 ? qint64(seconds) * 1000 : FrozenRules::FROZEN_AFTER_MS;
+}
+
 RundownMovieWidget::RundownMovieWidget(const LibraryModel& model, QWidget* parent, const QString& color, bool active,
                                        bool loaded, bool paused, bool playing, bool inGroup, bool compactView)
     : QWidget(parent),
@@ -1184,7 +1191,7 @@ void RundownMovieWidget::timeSubscriptionReceived(const QString& predicate, cons
         this->lastTimeChange = QDateTime::currentMSecsSinceEpoch();
         if (this->frozen)
             setFrozen(false);
-        this->frozenTimer.start(int(FrozenRules::FROZEN_AFTER_MS));
+        this->frozenTimer.start(int(frozenAfterMs()));
     }
 
     updateOscWidget();
@@ -1203,7 +1210,7 @@ bool RundownMovieWidget::clipTime(double* elapsed, double* total, bool* paused)
 void RundownMovieWidget::checkFrozen()
 {
     const bool now = FrozenRules::isFrozen(QDateTime::currentMSecsSinceEpoch(), this->lastTimeChange, this->lastTime,
-                                           this->fileModel.getTotalTime(), this->playing, this->paused);
+                                           this->fileModel.getTotalTime(), this->playing, this->paused, frozenAfterMs());
     if (now != this->frozen)
         setFrozen(now);
 

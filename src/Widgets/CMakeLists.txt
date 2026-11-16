@@ -167,6 +167,7 @@ qt_add_library(widgets
     Inspector/InspectorSelection.cpp Inspector/InspectorSelection.h
     LoudnessMonitor.cpp LoudnessMonitor.h
     LoudnessReadout.cpp LoudnessReadout.h
+    ServerConfigFile.cpp ServerConfigFile.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
     LogViewerDialog.cpp LogViewerDialog.h

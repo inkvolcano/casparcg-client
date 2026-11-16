@@ -39,6 +39,22 @@ void ServerReleaseWatcher::setEnabled(bool on)
     DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "ServerReleaseCheck", on ? "true" : "false"));
 }
 
+QString ServerReleaseWatcher::releasesUrl()
+{
+    const QString configured = DatabaseManager::getInstance().getConfigurationByName("ServerReleasesUrl").getValue().trimmed();
+    return configured.isEmpty() ? QString(ServerReleases::GITHUB_API) : configured;
+}
+
+QString ServerReleaseWatcher::nightliesUrl()
+{
+    QString configured = DatabaseManager::getInstance().getConfigurationByName("ServerNightliesUrl").getValue().trimmed();
+    if (configured.isEmpty())
+        return QString(ServerReleases::NIGHTLY_ROOT);
+    if (!configured.endsWith('/'))
+        configured += '/';
+    return configured;
+}
+
 void ServerReleaseWatcher::check()
 {
     if (!enabled())
@@ -51,7 +67,7 @@ void ServerReleaseWatcher::check()
         return;
     }
 
-    QNetworkRequest request((QUrl(QString(ServerReleases::GITHUB_API))));
+    QNetworkRequest request((QUrl(releasesUrl())));
     request.setRawHeader("User-Agent", "CasparCG-Client");
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setTransferTimeout(30000);

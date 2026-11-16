@@ -79,7 +79,7 @@ body.presenter.lost #pv{opacity:.3}
 body.presenter.lost #title::after{content:" - no answer from the client";color:var(--air)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
-<header><div class="top"><span id="dot" title="Live"></span><h1 id="title">Run sheet</h1><a id="mode" href="?view=presenter">Presenter view</a><span id="clock">--:--:--</span></div>
+<header><div class="top"><span id="dot" title="Live"></span><h1 id="title">Run sheet</h1><a id="mode" href="#">Presenter view</a><span id="clock">--:--:--</span></div>
 <nav id="tabs"></nav><div id="summary"></div></header>
 <section id="pv"></section>
 <section id="air"></section>
@@ -88,6 +88,7 @@ body.presenter.lost #title::after{content:" - no answer from the client";color:v
 <script>
 let data=null,offset=0,chosen=null,lastOk=0;
 const qs=new URLSearchParams(location.search),presenter=qs.get('view')==='presenter',output=qs.get('output')==='1';
+const tok=qs.get('token')||'',tq=tok?'token='+encodeURIComponent(tok):'';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function fmt(sec){sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
@@ -97,7 +98,7 @@ function left(it){const nowMs=Date.now()+offset;
  if(it.endsAt!=null)return Math.max(0,(it.endsAt-nowMs)/1000);
  return it.remaining!=null?it.remaining:null;}
 async function poll(){
- try{const t0=Date.now();const r=await fetch('/runsheet.json',{cache:'no-store'});const j=await r.json();
+ try{const t0=Date.now();const r=await fetch('/runsheet.json'+(tq?'?'+tq:''),{cache:'no-store'});const j=await r.json();
   const t1=Date.now();offset=j.now-(t0+t1)/2;data=j;lastOk=t1;render();}
  catch(e){}
  setTimeout(poll,1000);}
@@ -122,7 +123,7 @@ function tickPresenter(rd){
  const hd=$('hard');if(hd){const s=hardOutLeft(rd);hd.className=s!=null&&s<0?'over':'';
   hd.textContent=s==null?'':(s>=0?'Show ends in '+fmt(s)+' (hard out '+rd.hardOut+')':'Over the hard out by '+fmt(-s));}
  const pr=rd.items.find(i=>i.n===rd.primary),c=$('pvc');if(!pr||!c)return;const l=left(pr);if(l==null)return;
- c.textContent=fmt(l);c.className='pvc'+(pr.state==='paused'?'':(l<=10?' urgent':(l<=30?' warn':'')));
+ c.textContent=fmt(l);c.className='pvc'+(pr.state==='paused'?'':(l<=((data&&data.red)||10)?' urgent':(l<=((data&&data.amber)||30)?' warn':'')));
  const e=$('pve');if(e&&pr.state!=='paused')e.textContent='ends '+clockOf(Date.now()+offset+l*1000);}
 function loudText(){const l=(data&&data.loudness)||[];if(!l.length)return'';
  return' · '+l.map(x=>x.name+' '+(x.est?'~':'')+(x.s||'\u2013')+' LUFS'+(x.i?' (I '+(x.est?'~':'')+x.i+')':'')).join(', ');}
@@ -159,7 +160,7 @@ function tick(){
  document.querySelectorAll('.row.on').forEach((r,k)=>{const it=rd.items.filter(x=>x.state)[k];const el=r.querySelector('.cd');
   if(it&&el){const l=left(it);if(l!=null)el.textContent=fmt(l);}});}
 document.body.classList.toggle('presenter',presenter);document.body.classList.toggle('output',output);
-$('mode').textContent=presenter?'Full list':'Presenter view';$('mode').href=presenter?'?':'?view=presenter';
+$('mode').textContent=presenter?'Full list':'Presenter view';$('mode').href=presenter?'?'+tq:'?view=presenter'+(tq?'&'+tq:'');
 poll();setInterval(tick,250);
 </script></body></html>
 )html";

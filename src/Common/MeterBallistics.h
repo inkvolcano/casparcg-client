@@ -40,7 +40,12 @@ namespace MeterBallistics
     // scale as 0 dBFS will land a hair under it through any float conversion, and
     // a clip indicator that misses real clips is worse than one that is a tenth
     // of a decibel eager.
-    inline double clipDb() { return -0.1; }
+    //
+    // A venue delivering to -1 or -2 dBTP sets its own (Settings, build 314):
+    // setClipDb is called at startup and when the setting changes.
+    inline double& clipLevel() { static double level = -0.1; return level; }
+    inline double clipDb() { return clipLevel(); }
+    inline void setClipDb(double db) { clipLevel() = qBound(-20.0, db, 0.0); }
 
     // How long the peak marker sits before it starts to fall. Long enough to look
     // up at, short enough not to describe a level that has gone.

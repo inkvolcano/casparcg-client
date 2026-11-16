@@ -26,6 +26,7 @@
     #include "Mac/AppNap.h"
 #endif
 
+#include <atomic>
 #include <QtCore/QDebug>
 #include <QtCore/QElapsedTimer>
 #include <QtCore5Compat/QRegExp>
@@ -65,6 +66,10 @@ enum CommandLineParseResult
     CommandLineVersionRequested,
     CommandLineHelpRequested
 };
+
+// Settings > Client logs kept (build 314), read once the database is open;
+// 0 until then, and nothing is pruned while it is 0.
+static std::atomic<int> logKeepDays{0};
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& message)
 {
@@ -132,8 +137,13 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
         // handler, holding its lock, and a line from here would wait on itself.
         const QDir logDir(path);
         const QStringList names = logDir.entryList(QStringList() << "Client_*.log", QDir::Files);
-        for (const QString& name : LogRetention::expired(names, QDate::currentDate()))
-            QFile::remove(logDir.filePath(name));
+        // Only once the setting is known (build 314): a start that pruned with
+        // the default before reading a longer one would delete logs meant to stay.
+        if (logKeepDays.load() > 0)
+        {
+            for (const QString& name : LogRetention::expired(names, QDate::currentDate(), logKeepDays.load()))
+                QFile::remove(logDir.filePath(name));
+        }
     }
 
     if (logFile->isOpen())
@@ -466,6 +476,17 @@ int main(int argc, char* argv[])
 
     loadDatabase(&args);
     DatabaseManager::getInstance().initialize();
+
+    // The client's own logs kept this many days (Settings, 30 unless set), and
+    // today's pruning done now that the number is known.
+    {
+        const int days = DatabaseManager::getInstance().getConfigurationByName("LogDays").getValue().toInt();
+        logKeepDays = days > 0 ? days : LogRetention::KEEP_DAYS;
+        const QDir logDir(QString("%1/.CasparCG/Client/Logs").arg(QDir::homePath()));
+        for (const QString& name : LogRetention::expired(logDir.entryList(QStringList() << "Client_*.log", QDir::Files),
+                                                         QDate::currentDate(), logKeepDays.load()))
+            QFile::remove(logDir.filePath(name));
+    }
 
     loadStyleSheets(application);
     loadFonts(application);

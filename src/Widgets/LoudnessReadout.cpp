@@ -1,10 +1,22 @@
 #include "LoudnessReadout.h"
 
+#include "DatabaseManager.h"
+
 #include "LoudnessMeter.h"
 #include "LoudnessMonitor.h"
 
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QVBoxLayout>
+
+namespace
+{
+    double setting(const char* key, double fallback)
+    {
+        bool ok = false;
+        const double v = DatabaseManager::getInstance().getConfigurationByName(key).getValue().toDouble(&ok);
+        return ok ? v : fallback;
+    }
+}
 
 LoudnessReadout::LoudnessReadout(const QString& server, int channel, QWidget* parent)
     : QWidget(parent), monitor(LoudnessMonitor::forChannel(server, channel))
@@ -70,14 +82,18 @@ void LoudnessReadout::refresh()
                                         : QString("I %1%2").arg(approx, Loudness::text(this->monitor->integrated())));
     this->labelSource->setText(measured ? "LUFS S \xc2\xb7 R128, NDI" : "LUFS S \xc2\xb7 estimate, OSC");
 
-    // Far from the -23 target (EBU R128): amber beyond 2 LU, red beyond 5.
+    // Far from the target: Settings > Loudness (build 314), EBU R128 -23 with
+    // amber beyond 2 LU and red beyond 5 unless set.
+    const double target = setting("LoudnessTarget", -23.0);
+    const double amber = setting("LoudnessAmberLU", 2.0);
+    const double red = setting("LoudnessRedLU", 5.0);
     QString colour = "rgba(230, 230, 230, 230)";
     if (Loudness::isReading(shortTerm))
     {
-        const double off = qAbs(shortTerm + 23.0);
-        if (off > 5.0)
+        const double off = qAbs(shortTerm - target);
+        if (off > red)
             colour = "rgb(229, 72, 77)";
-        else if (off > 2.0)
+        else if (off > amber)
             colour = "rgb(214, 160, 53)";
     }
     // Restyled only when the colour changes: this runs four times a second.
@@ -87,6 +103,7 @@ void LoudnessReadout::refresh()
         this->labelShort->setStyleSheet(QString("font-size: 22px; font-weight: bold; font-family: Consolas, monospace; color: %1;").arg(colour));
     }
 
-    setToolTip(QString("%1\nS short-term (3 s), I integrated since the start, M momentary (400 ms). Target -23 LUFS (EBU R128).\n"
-                       "Double-click to start the integrated reading again.").arg(this->monitor->sourceText()));
+    setToolTip(QString("%1\nS short-term (3 s), I integrated since the start, M momentary (400 ms). Target %2 LUFS "
+                       "(Settings > Loudness).\nDouble-click to start the integrated reading again.")
+               .arg(this->monitor->sourceText()).arg(target, 0, 'f', 1));
 }

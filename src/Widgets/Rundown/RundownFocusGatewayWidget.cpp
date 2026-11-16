@@ -1,5 +1,7 @@
 #include "RundownFocusGatewayWidget.h"
 
+#include "DatabaseManager.h"
+
 #include "Global.h"
 
 #include "RundownWidgetHelper.h"
@@ -58,7 +60,9 @@ RundownFocusGatewayWidget::RundownFocusGatewayWidget(const LibraryModel& model, 
     QObject::connect(&this->command, &GatewayCommand::selectedExitLabelChanged, this, &RundownFocusGatewayWidget::updateVisuals);
 
     this->conditionTimer = new QTimer(this);
-    this->conditionTimer->setInterval(30000);
+    // Settings > Gateway re-check (build 314), 30 s unless set.
+    const int recheck = DatabaseManager::getInstance().getConfigurationByName("GatewayRecheckSeconds").getValue().toInt();
+    this->conditionTimer->setInterval((recheck >= 1 && recheck <= 3600 ? recheck : 30) * 1000);
     QObject::connect(this->conditionTimer, &QTimer::timeout, this, &RundownFocusGatewayWidget::rebuildExitButtons);
 
     updateVisuals();

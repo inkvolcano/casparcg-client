@@ -75,6 +75,9 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
         QComboBox* comboReferenceSource = nullptr;
         QCheckBox* checkBoxLiveRunSheet = nullptr;
         QCheckBox* checkBoxKeepAwake = nullptr;
+        QSpinBox* spinBoxRelayFilesPerPoll = nullptr;
+        QLineEdit* lineEditRelayGitHubApi = nullptr;
+        QComboBox* comboUpdateSource = nullptr;
         QCheckBox* checkBoxShowPreviewBorder = nullptr;
         QCheckBox* checkBoxShowSTEPButton = nullptr;
         QCheckBox* checkBoxShowPVWButton = nullptr;
@@ -161,7 +164,6 @@ class WIDGETS_EXPORT SettingsDialog : public QDialog, Ui::SettingsDialog
     static QMap<QString, QString> readLayoutKeys();
     QSpinBox* spinBoxRelayHeartbeat = nullptr;
     QLabel* labelCheckInStatus = nullptr;
-    QLineEdit* lineEditUpdateSource = nullptr;
     QLineEdit* lineEditUpdateToken = nullptr;
 
     // The master push: a checkbox that allows it, a second token that can write,

@@ -52,6 +52,9 @@ int main(int argc, char* argv[])
     expect(pageUrl("::ffff:10.0.0.4", 8080), "http://10.0.0.4:8080/runsheet?view=presenter&output=1", "another port");
     expect(pageUrl("fe80::1", 3000), "http://[fe80::1]:3000/runsheet?view=presenter&output=1", "IPv6 in a URL");
     expect(pageUrl("", 3000), "", "no address: no page");
+    expect(pageUrl("10.0.0.4", 3000, "abc 1&2"), "http://10.0.0.4:3000/runsheet?view=presenter&output=1&token=abc%201%262",
+           "a run sheet token rides along, encoded");
+    expect(pageUrl("10.0.0.4", 3000, "  "), "http://10.0.0.4:3000/runsheet?view=presenter&output=1", "a blank token is no token");
     expect(pageUrl("192.168.1.20", 0), "", "no port: no page");
     expect(pageUrl("192.168.1.20", 70000), "", "a port that cannot be: no page");
 

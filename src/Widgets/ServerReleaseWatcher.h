@@ -31,6 +31,11 @@ class WIDGETS_EXPORT ServerReleaseWatcher : public QObject
         static bool enabled();
         static void setEnabled(bool on);
 
+        // Where server releases and nightly builds are listed (build 314): the
+        // official places unless Settings names a mirror with the same layout.
+        static QString releasesUrl();
+        static QString nightliesUrl();
+
         Q_SIGNAL void changed();
 
     private:

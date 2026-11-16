@@ -32,6 +32,8 @@ int main(int argc, char* argv[])
     expectTrue(!isFrozen(moved + 2999, moved, 12.0, 60.0, true, false), "not yet: under three seconds since it moved");
     expectTrue(isFrozen(moved + 3000, moved, 12.0, 60.0, true, false), "playing, not moved for three seconds: frozen");
     expectTrue(!isFrozen(moved + 9000, moved, 12.0, 60.0, true, true), "a paused clip is not frozen");
+    expectTrue(!isFrozen(moved + 4000, moved, 12.0, 60.0, true, false, 5000), "set to 5 s: not frozen after 4");
+    expectTrue(isFrozen(moved + 1000, moved, 12.0, 60.0, true, false, 1000), "set to 1 s: frozen after 1");
     expectTrue(!isFrozen(moved + 9000, moved, 12.0, 60.0, false, false), "nor one that is not playing");
     expectTrue(!isFrozen(moved + 9000, moved, 59.8, 60.0, true, false), "nor one at its end, holding its last frame");
     expectTrue(isFrozen(moved + 9000, moved, 59.0, 60.0, true, false), "but a second before the end, it is");

@@ -10,6 +10,7 @@
 // every string the client builds.
 
 #include <QtCore/QString>
+#include <QtCore/QUrl>
 
 namespace PresenterOutputRules
 {
@@ -33,12 +34,16 @@ namespace PresenterOutputRules
 
     // The page the server plays: the presenter view, in its output form (no
     // links, nothing to tap).
-    inline QString pageUrl(const QString& clientAddress, int port)
+    // With a run sheet token set (build 314) the link carries it.
+    inline QString pageUrl(const QString& clientAddress, int port, const QString& token = QString())
     {
         const QString host = hostForUrl(clientAddress);
         if (host.isEmpty() || port <= 0 || port > 65535)
             return QString();
-        return QString("http://%1:%2/runsheet?view=presenter&output=1").arg(host).arg(port);
+        QString url = QString("http://%1:%2/runsheet?view=presenter&output=1").arg(host).arg(port);
+        if (!token.trimmed().isEmpty())
+            url += "&token=" + QString::fromLatin1(QUrl::toPercentEncoding(token.trimmed()));
+        return url;
     }
 
     inline bool validPlace(int channel, int layer, int channelCount)

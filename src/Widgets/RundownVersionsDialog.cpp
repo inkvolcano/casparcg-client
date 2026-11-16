@@ -1,5 +1,7 @@
 #include "RundownVersionsDialog.h"
 
+#include "DatabaseManager.h"
+
 #include "EventManager.h"
 #include "Global.h"
 #include "RundownVersions.h"
@@ -23,6 +25,13 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
+
+// Settings > Rundown versions kept (build 314), 10 unless set.
+static int versionsKept()
+{
+    const int keep = DatabaseManager::getInstance().getConfigurationByName("RundownVersionsKept").getValue().toInt();
+    return keep > 0 ? keep : RundownVersions::KEEP;
+}
 
 void RundownVersionsDialog::keepVersion(const QString& rundownPath, const QByteArray& replacement)
 {
@@ -48,7 +57,7 @@ void RundownVersionsDialog::keepVersion(const QString& rundownPath, const QByteA
     out.close();
 
     // Only this rundown's own version files are ever counted or removed.
-    for (const QString& name : RundownVersions::beyondKept(rundownPath, QDir(folder).entryList(QDir::Files)))
+    for (const QString& name : RundownVersions::beyondKept(rundownPath, QDir(folder).entryList(QDir::Files), versionsKept()))
         QFile::remove(QDir(folder).filePath(name));
 }
 
@@ -143,7 +152,7 @@ void RundownVersionsDialog::fill()
 
     this->labelInfo->setText(versions.isEmpty()
         ? QString("No versions yet. Each save that changes %1 keeps the one before it here, the newest %2.")
-              .arg(QFileInfo(this->rundownPath).fileName()).arg(RundownVersions::KEEP)
+              .arg(QFileInfo(this->rundownPath).fileName()).arg(versionsKept())
         : QString("The %1 most recent saves of %2 before the current one, newest first. They are kept in %3.")
               .arg(versions.count()).arg(QFileInfo(this->rundownPath).fileName())
               .arg(QDir::toNativeSeparators(folder)));

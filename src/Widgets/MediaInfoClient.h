@@ -24,6 +24,8 @@ class WIDGETS_EXPORT MediaInfoClient : public QObject
     Q_OBJECT
 
     public:
+        // The default; a server's own config, or Settings, can say otherwise
+        // (ServerConfigFile::scannerPort, build 314).
         static const int SCANNER_PORT = 8000;
 
         static MediaInfoClient& getInstance();

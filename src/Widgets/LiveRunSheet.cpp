@@ -262,5 +262,11 @@ QByteArray LiveRunSheet::snapshot()
     }
     root.insert("loudness", loudness);
 
+    // When the presenter countdown turns amber and red (Settings, build 314).
+    const int amber = DatabaseManager::getInstance().getConfigurationByName("RunSheetAmberSeconds").getValue().toInt();
+    const int red = DatabaseManager::getInstance().getConfigurationByName("RunSheetRedSeconds").getValue().toInt();
+    root.insert("amber", amber > 0 ? amber : 30);
+    root.insert("red", red > 0 ? red : 10);
+
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }

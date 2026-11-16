@@ -1,5 +1,10 @@
 #include "SettingsDialog.h"
 #include "LiveRunSheet.h"
+#include <functional>
+#include <QtWidgets/QDoubleSpinBox>
+#include "ClientRelease.h"
+#include "ServerReleases.h"
+#include "MeterBallistics.h"
 #include "KeepAwake.h"
 #include "SheetCacheServer.h"
 #include <QtNetwork/QNetworkInterface>
@@ -865,6 +870,23 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     this->spinBoxRelayPoll->setValue(RelayClient::pollMinutes());
     relayGrid->addWidget(this->spinBoxRelayPoll, 4, 1);
 
+    // Shown since build 314; they were database-only.
+    QHBoxLayout* relayExtra = new QHBoxLayout();
+    relayExtra->addWidget(new QLabel("Files per check:", relayGroup));
+    this->spinBoxRelayFilesPerPoll = new QSpinBox(relayGroup);
+    this->spinBoxRelayFilesPerPoll->setRange(1, 5000);
+    this->spinBoxRelayFilesPerPoll->setValue(RelayClient::filesPerPoll());
+    this->spinBoxRelayFilesPerPoll->setToolTip("At most this many files are fetched per check; the rest follow on the next.");
+    relayExtra->addWidget(this->spinBoxRelayFilesPerPoll);
+    relayExtra->addSpacing(12);
+    relayExtra->addWidget(new QLabel("GitHub API:", relayGroup));
+    this->lineEditRelayGitHubApi = new QLineEdit(DatabaseManager::getInstance().getConfigurationByName("RelayGitHubApi").getValue(), relayGroup);
+    this->lineEditRelayGitHubApi->setPlaceholderText("https://api.github.com");
+    this->lineEditRelayGitHubApi->setToolTip("Empty for github.com. A GitHub Enterprise Server: https://<host>/api/v3.\n"
+                                             "Also used to look for client updates.");
+    relayExtra->addWidget(this->lineEditRelayGitHubApi, 1);
+    relayGrid->addLayout(relayExtra, 4, 2, 1, 2);
+
     // The packs, as a list to tick rather than names to type. Typing them meant
     // knowing the exact folder names at a source nobody at the venue can browse;
     // Get packs asks the source and the operator picks from what is actually there.
@@ -1248,19 +1270,19 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     updateGrid->setColumnStretch(1, 1);
 
     updateGrid->addWidget(new QLabel("Update source:", updateGroup), 0, 0);
-    this->lineEditUpdateSource = new QLineEdit(UpdateDialog::source(), updateGroup);
-    this->lineEditUpdateSource->setReadOnly(true);
-    this->lineEditUpdateSource->setFocusPolicy(Qt::NoFocus);
-    this->lineEditUpdateSource->setStyleSheet("color: rgba(190, 190, 190, 200);");
-    this->lineEditUpdateSource->setToolTip(
-        "Where builds of the client itself come from. Fixed in this build, and shown\n"
-        "here rather than offered.\n\n"
+    // A choice among the sources this build accepts (ClientRelease::allowedSources),
+    // shown as an ordinary setting since build 314 - never free text.
+    this->comboUpdateSource = new QComboBox(updateGroup);
+    this->comboUpdateSource->addItems(ClientRelease::allowedSources());
+    this->comboUpdateSource->setCurrentText(UpdateDialog::source());
+    this->comboUpdateSource->setToolTip(
+        "Where builds of the client itself come from: one of the sources this build accepts.\n\n"
         "A template is a file the server reads. A build is a program that runs on\n"
         "this machine, so where one may come from is not a setting - a text field\n"
         "here would let anyone who can open this dialog point the client at any\n"
         "repository, and the checksum would not catch it: it proves the download\n"
         "arrived intact, not who built it.");
-    updateGrid->addWidget(this->lineEditUpdateSource, 0, 1, 1, 2);
+    updateGrid->addWidget(this->comboUpdateSource, 0, 1, 1, 2);
 
     updateGrid->addWidget(new QLabel("Update token:", updateGroup), 1, 0);
     this->lineEditUpdateToken = new QLineEdit(UpdateDialog::token(), updateGroup);
@@ -1309,6 +1331,13 @@ SettingsDialog::SettingsDialog(QWidget* parent)
             ConfigurationModel(0, "RelayToken", this->lineEditRelayToken->text().trimmed()));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayPollMinutes", QString::number(this->spinBoxRelayPoll->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayFilesPerPoll", QString::number(this->spinBoxRelayFilesPerPoll->value())));
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "RelayGitHubApi", this->lineEditRelayGitHubApi->text().trimmed()));
+        if (this->comboUpdateSource != nullptr)
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, "UpdateSource", this->comboUpdateSource->currentText()));
         DatabaseManager::getInstance().updateConfiguration(
             ConfigurationModel(0, "RelayPacks", relayPacksText()));
         DatabaseManager::getInstance().updateConfiguration(
@@ -1483,6 +1512,76 @@ void SettingsDialog::setupGeneralTab()
         grid->addWidget(btn, row, 2);
         row++;
         return btn;
+    };
+
+
+    // Rows for settings that replaced values fixed in code (build 314). Saved as
+    // they change, like the rest of this tab; `applied` runs after a save.
+    auto addIntSetting = [&](const QString& text, const QString& key, int def, int min, int max,
+                             const QString& suffix, const QString& tip,
+                             const std::function<void(int)>& applied) -> QSpinBox* {
+        addLabel(text)->setToolTip(tip);
+        QSpinBox* box = new QSpinBox();
+        box->setRange(min, max);
+        if (!suffix.isEmpty())
+            box->setSuffix(suffix);
+        bool ok = false;
+        const int stored = DatabaseManager::getInstance().getConfigurationByName(key).getValue().toInt(&ok);
+        box->setValue(ok && stored >= min && stored <= max ? stored : def);
+        box->setToolTip(tip);
+        box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        grid->addWidget(box, row, 1);
+        QObject::connect(box, QOverload<int>::of(&QSpinBox::valueChanged), [key, applied](int value) {
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, QString::number(value)));
+            if (applied)
+                applied(value);
+        });
+        row++;
+        return box;
+    };
+
+    auto addDoubleSetting = [&](const QString& text, const QString& key, double def, double min, double max,
+                                const QString& suffix, const QString& tip,
+                                const std::function<void(double)>& applied) -> QDoubleSpinBox* {
+        addLabel(text)->setToolTip(tip);
+        QDoubleSpinBox* box = new QDoubleSpinBox();
+        box->setRange(min, max);
+        box->setDecimals(1);
+        box->setSingleStep(0.5);
+        if (!suffix.isEmpty())
+            box->setSuffix(suffix);
+        bool ok = false;
+        const double stored = DatabaseManager::getInstance().getConfigurationByName(key).getValue().toDouble(&ok);
+        box->setValue(ok && stored >= min && stored <= max ? stored : def);
+        box->setToolTip(tip);
+        box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        grid->addWidget(box, row, 1);
+        QObject::connect(box, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [key, applied](double value) {
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, QString::number(value, 'f', 1)));
+            if (applied)
+                applied(value);
+        });
+        row++;
+        return box;
+    };
+
+    auto addTextSetting = [&](const QString& text, const QString& key, const QString& placeholder, const QString& tip,
+                              const std::function<void(const QString&)>& applied) -> QLineEdit* {
+        addLabel(text)->setToolTip(tip);
+        QLineEdit* edit = new QLineEdit(DatabaseManager::getInstance().getConfigurationByName(key).getValue());
+        edit->setPlaceholderText(placeholder);
+        edit->setToolTip(tip);
+        grid->addWidget(edit, row, 1, 1, 3);
+        QObject::connect(edit, &QLineEdit::editingFinished, [edit, key, applied]() {
+            const QString value = edit->text().trimmed();
+            if (value == DatabaseManager::getInstance().getConfigurationByName(key).getValue())
+                return;
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, key, value));
+            if (applied)
+                applied(value);
+        });
+        row++;
+        return edit;
     };
 
     // ── Startup ──────────────────────────────────────────────
@@ -1708,6 +1807,111 @@ void SettingsDialog::setupGeneralTab()
                                                  "Leave this off unless you trust every rundown you open here.");
     grid->addWidget(this->checkBoxAllowShellCommands, row, 1, 1, 3);
     row++;
+
+    // Live run sheet: when the presenter countdown changes colour, a token for
+    // the link, and which network the web server listens on (build 314).
+    addIntSetting("Countdown amber at:", "RunSheetAmberSeconds", 30, 1, 3600, " s left",
+                  "The presenter view's countdown turns amber this many seconds before the end.", nullptr);
+    addIntSetting("Countdown red at:", "RunSheetRedSeconds", 10, 1, 3600, " s left",
+                  "The presenter view's countdown turns red this many seconds before the end.", nullptr);
+    addTextSetting("Run sheet token:", "LiveRunSheetToken", "empty = anyone on the network can open it",
+                   "When set, the run sheet opens only with ?token=<this> in its link, and the presenter view\n"
+                   "put on a channel carries it. Letters and digits are simplest to type on a phone.", nullptr);
+    addLabel("Web server listens on:");
+    {
+        QComboBox* listen = new QComboBox();
+        listen->addItem("Every network", "");
+        listen->addItem("This machine only (127.0.0.1)", "127.0.0.1");
+        for (const QHostAddress& address : QNetworkInterface::allAddresses())
+        {
+            if (address.protocol() == QAbstractSocket::IPv4Protocol && !address.isLoopback())
+                listen->addItem(address.toString(), address.toString());
+        }
+        const QString current = DatabaseManager::getInstance().getConfigurationByName("WebServerAddress").getValue().trimmed();
+        if (listen->findData(current) < 0)
+            listen->addItem(current + " (not on this machine now)", current);
+        listen->setCurrentIndex(listen->findData(current));
+        listen->setToolTip("The client's web server: the live run sheet, the sheet cache templates read, and template pushes.\n"
+                           "\"This machine only\" keeps servers and phones on other machines out - including a server\n"
+                           "that plays the presenter view or reads sheets through this client.");
+        grid->addWidget(listen, row, 1, 1, 2);
+        QObject::connect(listen, QOverload<int>::of(&QComboBox::activated), [listen](int index) {
+            DatabaseManager::getInstance().updateConfiguration(
+                ConfigurationModel(0, "WebServerAddress", listen->itemData(index).toString()));
+            SheetCacheServer::getInstance().stop();
+            SheetCacheServer::getInstance().start();
+        });
+        row++;
+    }
+
+    // ── Records and alarms (build 314) ───────────────────────
+    addSection("Records and Alarms");
+    addIntSetting("Rundown versions kept:", "RundownVersionsKept", 10, 1, 200, "",
+                  "How many earlier saves of each rundown File > Rundown Versions keeps.", nullptr);
+    addIntSetting("As-run log kept:", "AsRunDays", 30, 1, 3650, " days",
+                  "As-run CSV files older than this are deleted when a new day's file starts.", nullptr);
+    addTextSetting("As-run folder:", "AsRunFolder", "empty = .CasparCG/Client/AsRun in your user folder",
+                   "Where the daily as-run CSV files are written - a NAS or a traffic system's drop folder.\n"
+                   "A full path. Takes effect with the next line written.", nullptr);
+    addIntSetting("Client logs kept:", "LogDays", 30, 1, 3650, " days",
+                  "The client's own daily logs older than this are deleted. Takes effect at the next start.", nullptr);
+    addIntSetting("Frozen clip alarm after:", "FrozenAlarmSeconds", 3, 1, 60, " s",
+                  "A playing clip whose time has not moved for this long is marked FROZEN.", nullptr);
+    addIntSetting("Gateway re-check every:", "GatewayRecheckSeconds", 30, 1, 3600, " s",
+                  "How often gateway items look at their conditions again. Gateways already open keep the\n"
+                  "old interval until the rundown is opened again.", nullptr);
+
+    // ── Audio (build 314) ────────────────────────────────────
+    addSection("Audio");
+    addDoubleSetting("Clip light at:", "MeterClipLevel", -0.1, -20.0, 0.0, " dBFS",
+                     "The audio meters latch their clip light at this level. -1 or -2 for a true-peak delivery limit.",
+                     [](double value) { MeterBallistics::setClipDb(value); });
+    addLabel("Loudness standard:");
+    QComboBox* loudnessPreset = new QComboBox();
+    loudnessPreset->addItem("EBU R128 (-23 LUFS)", -23.0);
+    loudnessPreset->addItem("ATSC A/85 (-24 LKFS)", -24.0);
+    loudnessPreset->addItem("Streaming (-16 LUFS)", -16.0);
+    loudnessPreset->addItem("Streaming, loud (-14 LUFS)", -14.0);
+    loudnessPreset->addItem("Custom", QVariant());
+    loudnessPreset->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    grid->addWidget(loudnessPreset, row, 1);
+    row++;
+    QDoubleSpinBox* loudnessTarget = addDoubleSetting("Loudness target:", "LoudnessTarget", -23.0, -40.0, -5.0, " LUFS",
+        "The level the loudness readout beside the audio meters is judged against.", nullptr);
+    addDoubleSetting("Amber beyond:", "LoudnessAmberLU", 2.0, 0.5, 20.0, " LU",
+                     "The readout turns amber when short-term loudness is this far from the target.", nullptr);
+    addDoubleSetting("Red beyond:", "LoudnessRedLU", 5.0, 0.5, 30.0, " LU",
+                     "The readout turns red when short-term loudness is this far from the target.", nullptr);
+    {
+        auto showPreset = [loudnessPreset, loudnessTarget]() {
+            QSignalBlocker block(loudnessPreset);
+            int index = loudnessPreset->count() - 1;
+            for (int i = 0; i < loudnessPreset->count() - 1; i++)
+            {
+                if (qAbs(loudnessPreset->itemData(i).toDouble() - loudnessTarget->value()) < 0.05)
+                    index = i;
+            }
+            loudnessPreset->setCurrentIndex(index);
+        };
+        showPreset();
+        QObject::connect(loudnessTarget, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [showPreset](double) { showPreset(); });
+        QObject::connect(loudnessPreset, QOverload<int>::of(&QComboBox::activated), [loudnessPreset, loudnessTarget](int index) {
+            const QVariant target = loudnessPreset->itemData(index);
+            if (target.isValid())
+                loudnessTarget->setValue(target.toDouble());
+        });
+    }
+
+    // ── Servers (build 314) ──────────────────────────────────
+    addSection("Servers");
+    addIntSetting("Scanner port:", "ScannerPort", 8000, 1, 65535, "",
+                  "The media scanner's port for the Inspector's Media line, when a server's own casparcg.config\n"
+                  "cannot be read (amcp/media-server/port there wins).", nullptr);
+    addTextSetting("Server releases from:", "ServerReleasesUrl", ServerReleases::GITHUB_API,
+                   "Where Download Server Build and the new-release notice list server releases. Empty is GitHub.\n"
+                   "A mirror must answer in the GitHub releases API format.", nullptr);
+    addTextSetting("Nightly builds from:", "ServerNightliesUrl", ServerReleases::NIGHTLY_ROOT,
+                   "Where Download Server Build lists nightly builds, one folder per branch. Empty is casparcg.com.", nullptr);
 
     // ── Preview ──────────────────────────────────────────────
     addSection("Preview");
@@ -3468,8 +3672,25 @@ void SettingsDialog::setupHotkeyTab()
         emit hotkeyChanged();
     });
     mainLayout->addWidget(this->panicDoubleEscCheck);
+    {
+        QHBoxLayout* windowRow = new QHBoxLayout();
+        windowRow->addWidget(new QLabel("Second Esc within:"));
+        QSpinBox* panicWindow = new QSpinBox();
+        panicWindow->setRange(200, 3000);
+        panicWindow->setSingleStep(100);
+        panicWindow->setSuffix(" ms");
+        const int stored = DatabaseManager::getInstance().getConfigurationByName("PanicDoubleEscMs").getValue().toInt();
+        panicWindow->setValue(stored >= 200 && stored <= 3000 ? stored : 500);
+        panicWindow->setToolTip("How quickly the second Esc must follow the first (build 314).");
+        QObject::connect(panicWindow, QOverload<int>::of(&QSpinBox::valueChanged), [](int value) {
+            DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "PanicDoubleEscMs", QString::number(value)));
+        });
+        windowRow->addWidget(panicWindow);
+        windowRow->addStretch(1);
+        mainLayout->addLayout(windowRow);
+    }
     QLabel* panicHelp = new QLabel(
-        "Pressing Esc twice within half a second clears every channel on every connected server. "
+        "Pressing Esc twice within the time set above clears every channel on every connected server. "
         "It works in every window of the client, so while it is on Esc does not close the Server Config "
         "and Download Server Build windows. Off, Esc is an ordinary key.");
     panicHelp->setWordWrap(true);

@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#settings-values">Settings For Values That Were Fixed</a><br>
 <a href="#settings-fixes">Settings Fixes</a><br>
 <a href="#loudness">Loudness</a><br>
 <a href="#multi-edit">Edit Many Items At Once</a><br>
@@ -1897,6 +1898,26 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="settings-values">Settings For Values That Were Fixed</h2>
+
+<p>Values the client used to fix in code are now in Settings &gt; General (new sections Records and Alarms, Audio and Servers, and the run sheet rows under Rundown), Hotkeys and Templates. Each keeps its old value until changed.</p>
+
+<ul>
+<li><b>Loudness standard and target.</b> EBU R128 -23, ATSC A/85 -24, streaming -16 or -14, or your own, with the amber and red bands. The readout beside the meters is judged against it.</li>
+<li><b>Clip light level.</b> -0.1 dBFS unless set; -1 or -2 for a true-peak delivery limit.</li>
+<li><b>Frozen clip alarm.</b> How long a playing clip's time must stand still before it is marked FROZEN (3 s unless set).</li>
+<li><b>Presenter countdown colours.</b> When the presenter view's countdown turns amber and red (30 s and 10 s unless set).</li>
+<li><b>Run sheet token.</b> When set, the live run sheet opens only with ?token=... in its link; the presenter view on a channel carries it. Off unless set.</li>
+<li><b>Web server listens on.</b> Every network (as before), this machine only, or one address. It covers the run sheet, the sheet cache and template pushes.</li>
+<li><b>Scanner port.</b> Read from each server's own casparcg.config when the client can find it; otherwise this setting (8000 unless set).</li>
+<li><b>As-run log.</b> How many days are kept (30 unless set) and the folder it is written to, such as a NAS or a traffic system's drop folder.</li>
+<li><b>Rundown versions and client logs.</b> How many earlier saves are kept (10) and how many days of the client's own logs (30). Logs are no longer pruned before the setting has been read.</li>
+<li><b>Double-Esc window.</b> How quickly the second Esc must follow the first (500 ms unless set), under Hotkeys.</li>
+<li><b>Gateway re-check.</b> How often gateway items look at their conditions again (30 s unless set).</li>
+<li><b>Server releases and nightly builds from.</b> A mirror for offline or mirrored estates; empty is GitHub and casparcg.com.</li>
+<li><b>Shown in Settings > Templates.</b> Files per check and the GitHub API address, which could only be set in the database before, and the update source as a choice among the sources this build accepts.</li>
+</ul>
 
 <h2 id="settings-fixes">Settings Fixes</h2>
 

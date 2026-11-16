@@ -17,12 +17,14 @@ namespace FrozenRules
     const qint64 FROZEN_AFTER_MS = 3000;
     const double END_MARGIN_SECONDS = 0.5;
 
-    inline bool isFrozen(qint64 now, qint64 lastChange, double time, double total, bool playing, bool paused)
+    // afterMs is Settings > Frozen clip alarm (build 314); FROZEN_AFTER_MS when unset.
+    inline bool isFrozen(qint64 now, qint64 lastChange, double time, double total, bool playing, bool paused,
+                         qint64 afterMs = FROZEN_AFTER_MS)
     {
         if (!playing || paused || lastChange <= 0)
             return false;
         if (total > 0 && total - time <= END_MARGIN_SECONDS)
             return false;
-        return now - lastChange >= FROZEN_AFTER_MS;
+        return now - lastChange >= afterMs;
     }
 }

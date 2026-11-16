@@ -1095,6 +1095,23 @@ The channel is the server's preview channel, or the item's own channel when the 
 <!-- ══════════════════════════════════════════════════════════════════ -->
 <h2 id="settings">33. Settings</h2>
 <p>Edit &gt; Settings, or Ctrl+, (build 313).</p>
+<h3>Settings added in build 314</h3>
+<table>
+<tr><th>Setting</th><th>What it does</th></tr>
+<tr><td>Loudness standard and target</td><td>EBU R128 -23, ATSC A/85 -24, streaming -16 or -14, or your own, with the amber and red bands. The readout beside the meters is judged against it.</td></tr>
+<tr><td>Clip light level</td><td>-0.1 dBFS unless set; -1 or -2 for a true-peak delivery limit.</td></tr>
+<tr><td>Frozen clip alarm</td><td>How long a playing clip's time must stand still before it is marked FROZEN (3 s unless set).</td></tr>
+<tr><td>Presenter countdown colours</td><td>When the presenter view's countdown turns amber and red (30 s and 10 s unless set).</td></tr>
+<tr><td>Run sheet token</td><td>When set, the live run sheet opens only with ?token=... in its link; the presenter view on a channel carries it. Off unless set.</td></tr>
+<tr><td>Web server listens on</td><td>Every network (as before), this machine only, or one address. It covers the run sheet, the sheet cache and template pushes.</td></tr>
+<tr><td>Scanner port</td><td>Read from each server's own casparcg.config when the client can find it; otherwise this setting (8000 unless set).</td></tr>
+<tr><td>As-run log</td><td>How many days are kept (30 unless set) and the folder it is written to, such as a NAS or a traffic system's drop folder.</td></tr>
+<tr><td>Rundown versions and client logs</td><td>How many earlier saves are kept (10) and how many days of the client's own logs (30). Logs are no longer pruned before the setting has been read.</td></tr>
+<tr><td>Double-Esc window</td><td>How quickly the second Esc must follow the first (500 ms unless set), under Hotkeys.</td></tr>
+<tr><td>Gateway re-check</td><td>How often gateway items look at their conditions again (30 s unless set).</td></tr>
+<tr><td>Server releases and nightly builds from</td><td>A mirror for offline or mirrored estates; empty is GitHub and casparcg.com.</td></tr>
+<tr><td>Shown in Settings > Templates</td><td>Files per check and the GitHub API address, which could only be set in the database before, and the update source as a choice among the sources this build accepts.</td></tr>
+</table>
 
 <h3>General</h3>
 <table>

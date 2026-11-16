@@ -1,5 +1,7 @@
 #include "MediaInfoClient.h"
 
+#include "ServerConfigFile.h"
+
 #include "MediaInfoSummary.h"
 #include "DeviceManager.h"
 #include "EventManager.h"
@@ -67,7 +69,8 @@ void MediaInfoClient::request(const QString& deviceName, const QString& mediaNam
     QUrl url;
     url.setScheme("http");
     url.setHost(host);
-    url.setPort(SCANNER_PORT);
+    const int port = ServerConfigFile::scannerPort(deviceName);
+    url.setPort(port);
     url.setPath("/media/info/" + mediaName.toUpper());
 
     QNetworkRequest request(url);
@@ -76,7 +79,7 @@ void MediaInfoClient::request(const QString& deviceName, const QString& mediaNam
     QNetworkReply* reply = this->network->get(request);
     QPointer<QObject> guard(context);
 
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, guard, done, key, host, still]() {
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply, guard, done, key, host, port, still]() {
         reply->deleteLater();
 
         Entry entry;
@@ -85,7 +88,7 @@ void MediaInfoClient::request(const QString& deviceName, const QString& mediaNam
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() != QNetworkReply::NoError && status == 0)
         {
-            entry.text = QString("The scanner on %1:%2 did not answer").arg(host).arg(SCANNER_PORT);
+            entry.text = QString("The scanner on %1:%2 did not answer").arg(host).arg(port);
         }
         else
         {

@@ -53,6 +53,12 @@ namespace
     }
 }
 
+// The run sheet's token, when one is set: the server's link must carry it.
+static QString runSheetToken()
+{
+    return DatabaseManager::getInstance().getConfigurationByName("LiveRunSheetToken").getValue().trimmed();
+}
+
 void PresenterOutputDialog::open(QWidget* parent)
 {
     PresenterOutputDialog* dialog = new PresenterOutputDialog(parent);
@@ -168,7 +174,7 @@ void PresenterOutputDialog::refresh()
         status = QString("%1 is not connected.").arg(this->comboServer->currentText());
     else if (serving)
     {
-        const QString url = PresenterOutputRules::pageUrl(device->localAddress(), SheetCacheServer::configuredPort());
+        const QString url = PresenterOutputRules::pageUrl(device->localAddress(), SheetCacheServer::configuredPort(), runSheetToken());
         status = QString("The server will play %1").arg(url.isEmpty() ? QString("- no address to give it") : url);
     }
     if (!place.server.isEmpty())
@@ -189,7 +195,7 @@ void PresenterOutputDialog::putOn()
     if (!PresenterOutputRules::validPlace(channel, layer, model != nullptr ? model->getChannels() : 0))
         return;
 
-    const QString url = PresenterOutputRules::pageUrl(device->localAddress(), SheetCacheServer::configuredPort());
+    const QString url = PresenterOutputRules::pageUrl(device->localAddress(), SheetCacheServer::configuredPort(), runSheetToken());
     if (url.isEmpty())
     {
         this->statusLabel->setText("There is no address of this machine the server could reach.");

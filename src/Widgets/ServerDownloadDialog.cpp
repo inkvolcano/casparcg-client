@@ -1,5 +1,7 @@
 #include "ServerDownloadDialog.h"
 
+#include "ServerReleaseWatcher.h"
+
 #include "DatabaseManager.h"
 #include "DeviceManager.h"
 #include "ServerProcessControl.h"
@@ -290,7 +292,7 @@ void ServerDownloadDialog::check()
 
     // Releases, from GitHub. Anonymous: a token kept for another purpose is not
     // sent to a repository it was not given for.
-    QNetworkReply* releases = this->network->get(listingRequest(GITHUB_API, true));
+    QNetworkReply* releases = this->network->get(listingRequest(ServerReleaseWatcher::releasesUrl(), true));
     QObject::connect(releases, &QNetworkReply::finished, this, [this, releases]() {
         releases->deleteLater();
         const int status = releases->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -304,7 +306,7 @@ void ServerDownloadDialog::check()
     });
 
     // Nightlies: the branch folders, then each branch's listing.
-    QNetworkReply* root = this->network->get(listingRequest(NIGHTLY_ROOT, false));
+    QNetworkReply* root = this->network->get(listingRequest(ServerReleaseWatcher::nightliesUrl(), false));
     QObject::connect(root, &QNetworkReply::finished, this, [this, root]() {
         root->deleteLater();
         if (root->error() != QNetworkReply::NoError)
@@ -319,7 +321,7 @@ void ServerDownloadDialog::check()
         for (const QString& branch : branches)
         {
             // Newest first, so the newest builds are at the top of the listing.
-            const QString branchUrl = QString(NIGHTLY_ROOT) + QString::fromLatin1(QUrl::toPercentEncoding(branch)) + "/";
+            const QString branchUrl = ServerReleaseWatcher::nightliesUrl() + QString::fromLatin1(QUrl::toPercentEncoding(branch)) + "/";
             QNetworkReply* listing = this->network->get(listingRequest(branchUrl + "?C=M;O=D", false));
             QObject::connect(listing, &QNetworkReply::finished, this, [this, listing, branch, branchUrl]() {
                 listing->deleteLater();

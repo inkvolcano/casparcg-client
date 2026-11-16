@@ -130,8 +130,8 @@ QString RelayClient::checkInToken()
     return DatabaseManager::getInstance().getConfigurationByName("RelayCheckInToken").getValue().trimmed();
 }
 
-// Hidden, like RelayGitHubApi: almost nobody needs it, and the default is right.
-// The tests set it so a batch boundary can be crossed without 501 files.
+// Settings > Templates (shown since build 314). The default is right for almost
+// everybody; the tests set it so a batch boundary can be crossed without 501 files.
 int RelayClient::filesPerPoll()
 {
     const int configured = DatabaseManager::getInstance()
@@ -200,9 +200,8 @@ QString RelayClient::gitHubBranch()
 // https://github.example.com/api/v3. Without somewhere to put that, a client on one
 // could not reach its own repositories at all.
 //
-// There is no field for this in the settings, deliberately: almost nobody needs it,
-// and an empty value does the right thing. It is a database setting, and GITHUB.md
-// says where to put it.
+// Settings > Templates > GitHub API address (shown since build 314). Empty does
+// the right thing for github.com.
 QString RelayClient::gitHubApi()
 {
     QString configured = DatabaseManager::getInstance()

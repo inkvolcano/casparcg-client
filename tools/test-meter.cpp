@@ -43,6 +43,22 @@ static void near(double actual, double wanted, double tolerance, const QString& 
                         << "\n            got: " << actual << "\n";
 }
 
+// Build 314: a venue's own clip level, and the default put back after.
+static void theClipLevelCanBeSet()
+{
+    MeterBallistics::setClipDb(-2.0);
+    MeterBallistics::Meter meter;
+    meter.reset();
+    meter.addReading(-2.5, 0);
+    expectTrue(!meter.clipped(), "clip level -2: a reading at -2.5 does not clip");
+    meter.addReading(-1.9, 20);
+    expectTrue(meter.clipped(), "clip level -2: a reading at -1.9 does");
+    MeterBallistics::setClipDb(5.0);
+    near(MeterBallistics::clipDb(), 0.0, 0.001, "a clip level above full scale is brought to 0");
+    MeterBallistics::setClipDb(-0.1);
+    near(MeterBallistics::clipDb(), -0.1, 0.001, "and the default goes back");
+}
+
 static void aFreshMeterIsSilentAndClean()
 {
     MeterBallistics::Meter meter;
@@ -336,6 +352,7 @@ int main(int argc, char* argv[])
     aClockGoingBackwardsDoesNotBreakIt();
     resetPutsEverythingBack();
     theConstantsAreTheOnesTheMetersAlreadyUse();
+    theClipLevelCanBeSet();
 
     QTextStream(stdout) << "\n" << (checks - failures) << " passed, " << failures << " failed\n";
 
