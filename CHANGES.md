@@ -1838,6 +1838,23 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Presenter View On A Channel
+
+- **The presenter view on a confidence monitor, played by the server.**
+  Rundown > **Presenter View On A Channel...**: choose a server, a channel and a
+  layer and press Put On. The server's HTML producer plays the presenter view -
+  what is on air with its countdown, what comes next with its note - so any
+  monitor fed from that channel shows it. The page fills the whole picture:
+  choose a channel that goes to a monitor, not to air.
+- The server fetches the page from this client, so the live run sheet has to be
+  served; the window says so and has a button to turn it on. The address it
+  gives the server is the one the client reaches that server from.
+- **Take Off** clears the place the page was last put on - remembered across
+  restarts - and never whatever the form shows, so it cannot clear something
+  else. Putting it on somewhere new takes it off the old place first.
+- If the client stops answering, the presenter view dims and says so, rather
+  than counting down from what it last knew.
+
 ## Keep The Machine Awake, A Quieter Log
 
 - **The machine stays awake while the client runs.** Windows does not sleep,

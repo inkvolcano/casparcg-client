@@ -1,6 +1,6 @@
 """Run every check, and say plainly what passed.
 
-There are fifty-two test suites and a syntax checker. Twenty-three commands that each take a
+There are fifty-three test suites and a syntax checker. Twenty-three commands that each take a
 minute is a thing nobody runs, so this is the one command: it builds and runs all
 of them, adds up the assertions, and exits non-zero if anything failed.
 
@@ -42,6 +42,7 @@ SUITES = [
     ('test-undosnapshot', False, 'an undo step gives back exactly the rundown it took, stored compressed'),
     ('test-templatepreview', False, 'what the Preview hands a CasparCG template, and how the page fits the panel'),
     ('test-liverunsheet', False, 'the live run sheet page: on air, playing, time left'),
+    ('test-presenteroutput', False, 'presenter view on a channel: the address and AMCP commands'),
     ('test-runsheet', False, 'run sheet start times, offsets or back-timed'),
     ('test-timetriggers', False, 'items that fire at a time of day'),
     ('test-frozen', False, 'when a playing clip counts as frozen'),

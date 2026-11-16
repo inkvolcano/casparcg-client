@@ -25,6 +25,10 @@ class CASPAR_EXPORT AmcpDevice : public QObject
         int getPort() const;
         const QString& getAddress() const;
 
+        // This machine's address on the connection to the server: the one the
+        // server can reach the client on. Empty while not connected.
+        QString localAddress() const;
+
         Q_SLOT void connectDevice();
 
         // A command was written to the server - only when it really was: not while

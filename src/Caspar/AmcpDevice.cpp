@@ -97,6 +97,13 @@ bool AmcpDevice::isConnected() const
     return this->connected;
 }
 
+QString AmcpDevice::localAddress() const
+{
+    if (this->socket == nullptr || !this->connected)
+        return QString();
+    return this->socket->localAddress().toString();
+}
+
 int AmcpDevice::getPort() const
 {
     return this->port;

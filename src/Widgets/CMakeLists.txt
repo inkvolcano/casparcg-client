@@ -162,6 +162,7 @@ qt_add_library(widgets
     ServerDownloadDialog.cpp ServerDownloadDialog.h
     ServerReleaseWatcher.cpp ServerReleaseWatcher.h
     ReadinessDialog.cpp ReadinessDialog.h
+    PresenterOutputDialog.cpp PresenterOutputDialog.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
     LogViewerDialog.cpp LogViewerDialog.h

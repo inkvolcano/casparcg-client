@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#presenter-channel">Presenter View On A Channel</a><br>
 <a href="#keep-awake">Keep The Machine Awake, A Quieter Log</a><br>
 <a href="#presenter-view">Presenter View</a><br>
 <a href="#live-run-sheet">A Live Run Sheet For Phones</a><br>
@@ -1891,6 +1892,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="presenter-channel">Presenter View On A Channel</h2>
+
+<ul>
+<li><b>The presenter view on a confidence monitor, played by the server.</b> Rundown &gt; <b>Presenter View On A Channel...</b>: choose a server, a channel and a layer and press Put On. The server's HTML producer plays the presenter view - what is on air with its countdown, what comes next with its note - so any monitor fed from that channel shows it. The page fills the whole picture: choose a channel that goes to a monitor, not to air.</li>
+<li>The server fetches the page from this client, so the live run sheet has to be served; the window says so and has a button to turn it on. The address it gives the server is the one the client reaches that server from.</li>
+<li><b>Take Off</b> clears the place the page was last put on - remembered across restarts - and never whatever the form shows, so it cannot clear something else. Putting it on somewhere new takes it off the old place first.</li>
+<li>If the client stops answering, the presenter view dims and says so, rather than counting down from what it last knew.</li>
+</ul>
 
 <h2 id="keep-awake">Keep The Machine Awake, A Quieter Log</h2>
 

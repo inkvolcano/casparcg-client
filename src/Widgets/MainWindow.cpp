@@ -13,6 +13,7 @@
 #include "InspectorUndo.h"
 #include "SafeStart.h"
 #include "ReadinessDialog.h"
+#include "PresenterOutputDialog.h"
 #include "RundownVersionsDialog.h"
 #include "LogViewerDialog.h"
 #include "TimeTriggers.h"
@@ -438,6 +439,9 @@ void MainWindow::setupMenu()
         if (active != nullptr)
             ReadinessDialog::openFor(active->treeWidget(), this);
     });
+
+    // The presenter view played by a server on a channel, for a confidence monitor.
+    this->rundownMenu->addAction("Presenter View On A Channel...", this, [this]() { PresenterOutputDialog::open(this); });
     this->rundownMenu->addSeparator();
     this->insertRepositoryChangesAction = this->rundownMenu->addAction("Insert Repository Changes", this, SLOT(insertRepositoryChanges()), QKeySequence::fromString("Ins"));
     this->insertRepositoryChangesAction->setEnabled(false);

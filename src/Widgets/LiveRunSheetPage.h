@@ -6,6 +6,9 @@
 // down between polls on the phone's own clock, corrected to the client's.
 // Kept under MSVC's 16 KB limit for one string literal.
 //
+// &output=1 (build 308) is the form a server plays on a channel: no links,
+// no cursor.
+//
 // ?view=presenter (build 306) shows only what is on air, big, and what comes
 // next with its note - for a confidence monitor or a tablet on the desk. Which
 // item is "on air" and which is "next" is chosen by the client (primary, next).
@@ -69,6 +72,11 @@ body.presenter #pv{display:flex;flex-direction:column;gap:2vh;padding:2vh 5vw 4v
 .pvnote{font-style:italic;font-size:clamp(17px,min(3.2vw,5vh),48px);color:#f0c674;white-space:pre-wrap}
 #hard{font-size:clamp(14px,2.2vw,30px);color:var(--dim)}
 #hard.over{color:var(--air)}
+body.output{overflow:hidden;cursor:none}
+body.output #mode{display:none}
+body.output header{border-bottom:0}
+body.presenter.lost #pv{opacity:.3}
+body.presenter.lost #title::after{content:" - no answer from the client";color:var(--air)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 <header><div class="top"><span id="dot" title="Live"></span><h1 id="title">Run sheet</h1><a id="mode" href="?view=presenter">Presenter view</a><span id="clock">--:--:--</span></div>
@@ -79,7 +87,7 @@ body.presenter #pv{display:flex;flex-direction:column;gap:2vh;padding:2vh 5vw 4v
 <div id="empty" hidden>No rundown is open in the client.</div>
 <script>
 let data=null,offset=0,chosen=null,lastOk=0;
-const presenter=new URLSearchParams(location.search).get('view')==='presenter';
+const qs=new URLSearchParams(location.search),presenter=qs.get('view')==='presenter',output=qs.get('output')==='1';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function fmt(sec){sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
@@ -141,13 +149,14 @@ function tick(){
  $('clock').textContent=clockOf(Date.now()+offset);
  $('dot').className=(Date.now()-lastOk>3500)?'stale':'';
  $('dot').title=(Date.now()-lastOk>3500)?'No answer from the client':'Live';
+ document.body.classList.toggle('lost',Date.now()-lastOk>3500);
  const rd=current();if(!rd)return;
  if(presenter){tickPresenter(rd);return;}
  document.querySelectorAll('.aircard').forEach(c=>{const it=rd.items.find(x=>String(x.n)===c.dataset.k);if(!it)return;
   const l=left(it),el=c.querySelector('.left');if(el&&l!=null)el.textContent=fmt(l);});
  document.querySelectorAll('.row.on').forEach((r,k)=>{const it=rd.items.filter(x=>x.state)[k];const el=r.querySelector('.cd');
   if(it&&el){const l=left(it);if(l!=null)el.textContent=fmt(l);}});}
-document.body.classList.toggle('presenter',presenter);
+document.body.classList.toggle('presenter',presenter);document.body.classList.toggle('output',output);
 $('mode').textContent=presenter?'Full list':'Presenter view';$('mode').href=presenter?'?':'?view=presenter';
 poll();setInterval(tick,250);
 </script></body></html>
