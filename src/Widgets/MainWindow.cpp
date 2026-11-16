@@ -16,6 +16,7 @@
 #include "RundownVersionsDialog.h"
 #include "LogViewerDialog.h"
 #include "TimeTriggers.h"
+#include "RunSheet.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -343,6 +344,22 @@ void MainWindow::setupMenu()
     this->fileMenu->addSeparator();
     this->fileMenu->addAction("Rundown Versions...", this, [this]() {
         RundownVersionsDialog::openFor(this->widgetRundown->activeTreeWidget(), this);
+    });
+    this->fileMenu->addAction("Export Run Sheet...", this, [this]() {
+        RundownTreeWidget* rundown = this->widgetRundown->activeTreeWidget();
+        if (rundown == nullptr)
+            return;
+        const QString base = rundown->getActiveRundown() == Rundown::DEFAULT_NAME
+            ? QDir(QDir::homePath()).filePath("Run sheet.pdf")
+            : QDir(QFileInfo(rundown->getActiveRundown()).absolutePath()).filePath(QFileInfo(rundown->getActiveRundown()).completeBaseName() + " run sheet.pdf");
+        const QString path = QFileDialog::getSaveFileName(this, "Export Run Sheet", base, "PDF (*.pdf)");
+        if (path.isEmpty())
+            return;
+        QString error;
+        if (RunSheet::exportPdf(rundown, path, &error))
+            EventManager::getInstance().fireStatusbarEvent(StatusbarEvent("Run sheet saved to " + QDir::toNativeSeparators(path), 6000));
+        else
+            QMessageBox::warning(this, "Export Run Sheet", error);
     });
     this->fileMenu->addAction("Export As-Run Log...", this, SLOT(exportAsRunLog()));
     this->fileMenu->addSeparator();

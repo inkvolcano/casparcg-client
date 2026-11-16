@@ -32,6 +32,10 @@ class WIDGETS_EXPORT RundownTimingBar : public QFrame
 
         Q_SLOT void recompute();
 
+        // Each item the bar counts, top to bottom, with its length in seconds -
+        // the run sheet's timing, so the two always agree (build 304).
+        QList<QPair<QTreeWidgetItem*, double>> timedItems();
+
     protected:
         void showEvent(QShowEvent* event) override;
         void hideEvent(QHideEvent* event) override;

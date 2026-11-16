@@ -103,6 +103,7 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         // The file this rundown was opened from or last saved to, or
         // Rundown::DEFAULT_NAME when it has never been given one.
         const QString& getActiveRundown() const;
+        RundownTimingBar* getTimingBar() const { return this->timingBar; }
 
         // Loads a recovery copy and points it back at the file it was recovered
         // for, leaving it marked unsaved so the operator decides whether it wins.

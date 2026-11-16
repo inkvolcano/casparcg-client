@@ -184,6 +184,19 @@ double RundownTimingBar::walk(QTreeWidgetItem* item, QList<Leaf>& leaves, bool c
     return planned > 0 ? planned : sum;
 }
 
+QList<QPair<QTreeWidgetItem*, double>> RundownTimingBar::timedItems()
+{
+    QList<Leaf> leaves;
+    QTreeWidgetItem* root = this->tree->invisibleRootItem();
+    for (int i = 0; i < root->childCount(); i++)
+        walk(root->child(i), leaves, true);
+
+    QList<QPair<QTreeWidgetItem*, double>> items;
+    for (const Leaf& leaf : leaves)
+        items << qMakePair(leaf.item, leaf.seconds);
+    return items;
+}
+
 void RundownTimingBar::recompute()
 {
     if (!isVisible())

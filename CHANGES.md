@@ -1838,6 +1838,16 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Run Sheet As A PDF
+
+- **File > Export Run Sheet...** writes the open rundown as a PDF for whoever is
+  not at the client: a floor manager, a presenter, a producer.
+- One line per item, groups indented, with its type, server and channel-layer,
+  length, start time, operator note and reference picture.
+- Lengths and start times come from the timing bar, so the sheet and the bar
+  agree. With a hard out, start times are back-timed to it; without one, they
+  are counted from the top.
+
 ## Items That Fire At A Time Of Day
 
 - **Items can fire at a time of day.** Type a time in **Fire at** in the

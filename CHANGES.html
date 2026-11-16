@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#run-sheet">Run Sheet As A PDF</a><br>
 <a href="#time-triggers">Items That Fire At A Time Of Day</a><br>
 <a href="#frozen-output">Frozen Output Pointed Out</a><br>
 <a href="#log-viewer">The Log In The Client</a><br>
@@ -1887,6 +1888,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="run-sheet">Run Sheet As A PDF</h2>
+
+<ul>
+<li><b>File &gt; Export Run Sheet...</b> writes the open rundown as a PDF for whoever is not at the client: a floor manager, a presenter, a producer.</li>
+<li>One line per item, groups indented, with its type, server and channel-layer, length, start time, operator note and reference picture.</li>
+<li>Lengths and start times come from the timing bar, so the sheet and the bar agree. With a hard out, start times are back-timed to it; without one, they are counted from the top.</li>
+</ul>
 
 <h2 id="time-triggers">Items That Fire At A Time Of Day</h2>
 

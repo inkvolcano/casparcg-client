@@ -167,6 +167,7 @@ qt_add_library(widgets
     LogViewerDialog.cpp LogViewerDialog.h
     FrozenOutputs.cpp FrozenOutputs.h
     TimeTriggers.cpp TimeTriggers.h
+    RunSheet.cpp RunSheet.h
     ShotboxPanelWidget.cpp ShotboxPanelWidget.h
     AsRunLogWriter.cpp AsRunLogWriter.h
     InspectorUndo.cpp InspectorUndo.h
