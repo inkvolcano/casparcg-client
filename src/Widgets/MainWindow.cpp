@@ -14,6 +14,7 @@
 #include "SafeStart.h"
 #include "ReadinessDialog.h"
 #include "PresenterOutputDialog.h"
+#include "FindReplaceDialog.h"
 #include "RundownVersionsDialog.h"
 #include "LogViewerDialog.h"
 #include "TimeTriggers.h"
@@ -377,6 +378,10 @@ void MainWindow::setupMenu()
     QAction* redoAction = this->widgetRundown->undoGroup()->createRedoAction(this, "Redo");
     redoAction->setShortcut(QKeySequence::fromString("Ctrl+Y"));
     this->editMenu->addAction(redoAction);
+    this->editMenu->addSeparator();
+    // Text replaced across the open rundown, or all of them, in the kinds of text ticked.
+    this->editMenu->addAction("Find and Replace...", this, [this]() { FindReplaceDialog::open(this->widgetRundown, this); },
+                              QKeySequence::fromString("Ctrl+Shift+F"));
     this->editMenu->addSeparator();
     this->editMenu->addAction("Settings...", this, SLOT(showSettingsDialog()));
 

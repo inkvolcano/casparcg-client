@@ -1838,6 +1838,21 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Find And Replace
+
+- **Edit > Find and Replace (Ctrl+Shift+F)** replaces text across the open
+  rundown, or every open rundown, in the kinds of text you tick: item labels,
+  template field values and operator notes (ticked to start with), and HTML page
+  addresses, custom AMCP commands and shell command lines.
+- **Find All** lists every match first - rundown, item, where (which field or
+  command line) and the text - and **Show** goes to the item. **Replace All**
+  then changes them all.
+- Match case and Whole words as you would expect. What you type is taken
+  literally, both what is looked for and what replaces it.
+- Each rundown's replacements are one step of its undo: Edit > Undo in that
+  rundown takes them back. A locked rundown is left alone, and the window says
+  which.
+
 ## Notes And Pictures On Keys And Shotbox Rows
 
 - **Simple Mode keys and Shotbox rows show an item's reference picture and
