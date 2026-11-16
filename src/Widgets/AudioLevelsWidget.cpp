@@ -1,5 +1,6 @@
 #include "AudioLevelsWidget.h"
 #include "AudioMeterWidget.h"
+#include "LoudnessReadout.h"
 
 #include "Global.h"
 #include "DeviceManager.h"
@@ -78,6 +79,8 @@ void AudioLevelsWidget::rebuildTabs()
                 meter->configureForDevice(i, model.getName(), ch);
                 layout->addWidget(meter);
             }
+            // The channel's loudness beside its meters (build 312).
+            layout->addWidget(new LoudnessReadout(model.getName(), ch, tabPage));
             layout->addStretch();
 
             QString tabLabel = multipleDevices

@@ -165,6 +165,8 @@ qt_add_library(widgets
     PresenterOutputDialog.cpp PresenterOutputDialog.h
     FindReplaceDialog.cpp FindReplaceDialog.h
     Inspector/InspectorSelection.cpp Inspector/InspectorSelection.h
+    LoudnessMonitor.cpp LoudnessMonitor.h
+    LoudnessReadout.cpp LoudnessReadout.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
     LogViewerDialog.cpp LogViewerDialog.h

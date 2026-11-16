@@ -124,6 +124,8 @@ function tickPresenter(rd){
  const pr=rd.items.find(i=>i.n===rd.primary),c=$('pvc');if(!pr||!c)return;const l=left(pr);if(l==null)return;
  c.textContent=fmt(l);c.className='pvc'+(pr.state==='paused'?'':(l<=10?' urgent':(l<=30?' warn':'')));
  const e=$('pve');if(e&&pr.state!=='paused')e.textContent='ends '+clockOf(Date.now()+offset+l*1000);}
+function loudText(){const l=(data&&data.loudness)||[];if(!l.length)return'';
+ return' · '+l.map(x=>x.name+' '+(x.est?'~':'')+(x.s||'\u2013')+' LUFS'+(x.i?' (I '+(x.est?'~':'')+x.i+')':'')).join(', ');}
 function render(){
  const rd=current();
  $('empty').hidden=!!rd;
@@ -132,7 +134,7 @@ function render(){
  if(!rd){$('list').innerHTML='';$('air').innerHTML='';$('summary').textContent='';return;}
  $('title').textContent=rd.name;
  if(presenter){renderPresenter(rd);return;}
- $('summary').textContent='Running time '+rd.total+(rd.hardOut?' · hard out '+rd.hardOut+' (start times back-timed)':' · start times from the top');
+ $('summary').textContent='Running time '+rd.total+(rd.hardOut?' · hard out '+rd.hardOut+' (start times back-timed)':' · start times from the top')+loudText();
  const on=rd.items.filter(i=>i.state);
  $('air').innerHTML=on.map(i=>{const l=left(i);
   return '<div class="aircard '+(i.state==='paused'?'paused':'')+'" data-k="'+i.n+'"><div class="name">'+esc(i.label)+

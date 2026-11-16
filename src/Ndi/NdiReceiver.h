@@ -35,7 +35,14 @@ public:
     void setTargetSize(int width, int height);
     void setScalingMode(int mode);
 
+    // Loudness (build 312): measure the audio as it comes, on this thread, and
+    // say what it measures ten times a second. Set before run(). Meant for an
+    // audio-only, muted receiver; nothing is played.
+    void setLoudness(bool on);
+    void resetLoudness();
+
     Q_SIGNAL void videoFrameReceived(const QImage& image);
+    Q_SIGNAL void loudnessMeasured(double momentary, double shortTerm, double integrated);
     Q_SIGNAL void connectionStateChanged(bool connected);
     Q_SIGNAL void finished();
 
@@ -61,6 +68,9 @@ private:
     std::atomic<int> targetHeight{0};
     std::atomic<int> scalingMode{1};   // Qt::SmoothTransformation
     NDIlib_recv_bandwidth_e bandwidth_ = NDIlib_recv_bandwidth_highest;
+
+    std::atomic<bool> loudness{false};
+    std::atomic<bool> loudnessReset{false};
 
     QAudioSink* audioSink = nullptr;
     QIODevice* audioDevice = nullptr;

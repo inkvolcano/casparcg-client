@@ -60,27 +60,7 @@ ReferenceCaptureRules::Situation ReferenceCapture::situationFor(const QString& d
         return s;
 
     // The channel's NDI output, from the server's own casparcg.config.
-    const QString executable = ServerProcessControl::serverExecutableFor(model->getServerPath());
-    if (!executable.isEmpty())
-    {
-        QFile file(QDir(QFileInfo(executable).absolutePath()).filePath("casparcg.config"));
-        if (file.open(QIODevice::ReadOnly))
-        {
-            const ServerConfigXml::Document document = ServerConfigXml::parse(QString::fromUtf8(file.readAll()));
-            if (document.ok)
-            {
-                s.configRead = true;
-                const QList<ServerConfigXml::NodePtr> channels =
-                    ServerConfigXml::elements(ServerConfigXml::child(document.root, "channels"), "channel");
-                if (channel >= 1 && channel <= channels.count())
-                {
-                    const ServerConfigXml::NodePtr ndi = ServerConfigXml::find(channels.at(channel - 1), "consumers/ndi");
-                    s.ndiDeclared = ndi != nullptr;
-                    s.ndiName = ServerConfigXml::value(ndi, "name");
-                }
-            }
-        }
-    }
+    s.ndiName = declaredNdiName(deviceName, channel, &s.configRead, &s.ndiDeclared);
 
     s.ndiAvailable = !SafeStart::active() && NdiManager::getInstance().initialize();
     if (s.ndiDeclared && s.ndiAvailable)
@@ -94,6 +74,42 @@ ReferenceCaptureRules::Situation ReferenceCapture::situationFor(const QString& d
     const QString mediaPath = model->getMediaPath().trimmed();
     s.mediaFolderSet = !mediaPath.isEmpty() && QDir::isAbsolutePath(mediaPath) && QFileInfo(mediaPath).isDir();
     return s;
+}
+
+QString ReferenceCapture::declaredNdiName(const QString& deviceName, int channel, bool* configRead, bool* declared)
+{
+    if (configRead != nullptr)
+        *configRead = false;
+    if (declared != nullptr)
+        *declared = false;
+
+    const QSharedPointer<DeviceModel> model = DeviceManager::getInstance().getDeviceModelByName(deviceName);
+    if (model == nullptr)
+        return QString();
+
+    const QString executable = ServerProcessControl::serverExecutableFor(model->getServerPath());
+    if (executable.isEmpty())
+        return QString();
+
+    QFile file(QDir(QFileInfo(executable).absolutePath()).filePath("casparcg.config"));
+    if (!file.open(QIODevice::ReadOnly))
+        return QString();
+
+    const ServerConfigXml::Document document = ServerConfigXml::parse(QString::fromUtf8(file.readAll()));
+    if (!document.ok)
+        return QString();
+
+    if (configRead != nullptr)
+        *configRead = true;
+    const QList<ServerConfigXml::NodePtr> channels =
+        ServerConfigXml::elements(ServerConfigXml::child(document.root, "channels"), "channel");
+    if (channel < 1 || channel > channels.count())
+        return QString();
+
+    const ServerConfigXml::NodePtr ndi = ServerConfigXml::find(channels.at(channel - 1), "consumers/ndi");
+    if (declared != nullptr)
+        *declared = ndi != nullptr;
+    return ServerConfigXml::value(ndi, "name");
 }
 
 void ReferenceCapture::capture(QObject* context, const QString& deviceName, int itemChannel, const Done& done)

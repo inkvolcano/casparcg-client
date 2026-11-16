@@ -3,6 +3,8 @@
 #include "DatabaseManager.h"
 #include "LiveRunSheetPage.h"
 #include "LiveRunSheetRules.h"
+#include "LoudnessMeter.h"
+#include "LoudnessMonitor.h"
 #include "RundownTiming.h"
 #include "RunSheetRules.h"
 #include "Rundown/AbstractRundownWidget.h"
@@ -19,6 +21,7 @@
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QSet>
 
 #include <QtWidgets/QTreeWidgetItem>
 
@@ -237,6 +240,27 @@ QByteArray LiveRunSheet::snapshot()
         }
     }
     root.insert("rundowns", rundowns);
+
+    // The loudness of every channel being measured (build 312), as the meters
+    // panel shows it; an estimate says so.
+    QJsonArray loudness;
+    const QList<LoudnessMonitor*> monitors = LoudnessMonitor::started();
+    QSet<QString> servers;
+    for (LoudnessMonitor* monitor : monitors)
+        servers.insert(monitor->server());
+    for (LoudnessMonitor* monitor : monitors)
+    {
+        QJsonObject entry;
+        entry.insert("name", servers.count() > 1 ? QString("%1 CH%2").arg(monitor->server()).arg(monitor->channel())
+                                                 : QString("CH%1").arg(monitor->channel()));
+        if (Loudness::isReading(monitor->shortTerm()))
+            entry.insert("s", Loudness::text(monitor->shortTerm()));
+        if (Loudness::isReading(monitor->integrated()))
+            entry.insert("i", Loudness::text(monitor->integrated()));
+        entry.insert("est", !monitor->measured());
+        loudness.append(entry);
+    }
+    root.insert("loudness", loudness);
 
     return QJsonDocument(root).toJson(QJsonDocument::Compact);
 }

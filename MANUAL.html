@@ -1229,6 +1229,9 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li>Disabled items are listed in grey with no time.</li>
 </ul>
 
+<h3>Loudness</h3>
+<p>Beside each channel's audio meters (build 312): short-term loudness (3 s) in LUFS, with the integrated (I) and momentary (M) readings under it. Amber when more than 2 LU from -23 LUFS, red beyond 5; double-click to start the integrated reading again. When the channel has an NDI output in the server's casparcg.config and the client can see it, this is a real EBU R128 measurement of the server's own audio. Without one it is an estimate from the OSC peak levels, marked with a ~, which reads high on speech. Measuring starts when the channel's tab is first shown and continues while the client runs; the live run sheet shows the same numbers.</p>
+
 <h3>Live run sheet on a phone</h3>
 <p>Settings &gt; General &gt; <b>Serve a live run sheet on the network</b> (off by default) makes every open rundown a page any phone or laptop on the same network can open: <code>http://&lt;this machine&gt;:3000/runsheet</code> (the port is the one set for the sheet cache). Hover the setting for this machine's addresses.</p>
 <ul>

@@ -1838,6 +1838,24 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Loudness
+
+- **Each channel's loudness beside its audio meters**, in LUFS: short-term
+  (3 s) large, integrated and momentary under it. Amber when more than 2 LU
+  from the -23 LUFS target of EBU R128, red beyond 5. Double-click it to start
+  the integrated reading again.
+- **Measured from the channel's NDI output** when the server's casparcg.config
+  declares one and it is on the network: a real EBU R128 reading (K-weighted,
+  gated), taken by an audio-only NDI receiver that plays nothing. The samples
+  are the server's own, so full scale is the server's.
+- **Otherwise an estimate from the OSC levels** the meters already read, shown
+  with a ~ and labelled as an estimate. Those levels are peaks without
+  weighting, so the estimate reads high on speech. NDI is never started for a
+  channel that does not declare it, nor in a safe start; if NDI audio stops for
+  5 seconds the estimate takes over until it comes back.
+- Measuring starts when a channel's tab is first shown and keeps going while
+  the client runs. The live run sheet lists the same readings.
+
 ## Edit Many Items At Once
 
 - **Select several items and the Inspector changes all of them.** Channel,

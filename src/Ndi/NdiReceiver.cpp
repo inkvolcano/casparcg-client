@@ -1,5 +1,7 @@
 #include "NdiReceiver.h"
 
+#include "../Common/LoudnessMeter.h"
+
 #include <QtCore/QDebug>
 #include <QtCore/QElapsedTimer>
 #include <QtGui/QImage>
@@ -31,6 +33,16 @@ void NdiReceiver::setMuted(bool m)
 void NdiReceiver::setBandwidth(NDIlib_recv_bandwidth_e bw)
 {
     bandwidth_ = bw;
+}
+
+void NdiReceiver::setLoudness(bool on)
+{
+    loudness = on;
+}
+
+void NdiReceiver::resetLoudness()
+{
+    loudnessReset = true;
 }
 
 void NdiReceiver::setFpsLimit(int fps)
@@ -87,6 +99,11 @@ void NdiReceiver::run()
     QElapsedTimer frameTimer;
     frameTimer.start();
     qint64 lastFrameEmitMs = 0;
+
+    Loudness::Meter meter;
+    std::vector<int32_t> loudnessInt;
+    std::vector<float> loudnessFloat;
+    qint64 lastLoudnessEmitMs = 0;
 
     while (!stopFlag)
     {
@@ -158,6 +175,40 @@ void NdiReceiver::run()
             if (frameCount < 3)
                 qDebug("NDI Receiver: [A] Audio frame: rate=%d ch=%d samples=%d",
                        audio.sample_rate, audio.no_channels, audio.no_samples);
+
+            // Loudness: the samples as the server sent them. CasparCG's NDI
+            // consumer sends 32-bit integers at reference level 0, so asking for
+            // the same gives back its own values - full scale is the server's.
+            if (loudness && p_NDI->util_audio_to_interleaved_32s_v3 && audio.no_channels > 0 && audio.no_samples > 0)
+            {
+                if (loudnessReset.exchange(false))
+                    meter.reset();
+
+                const int channels = audio.no_channels;
+                const int samples = audio.no_samples;
+                loudnessInt.resize(size_t(samples) * channels);
+                NDIlib_audio_frame_interleaved_32s_t pcm;
+                pcm.sample_rate = audio.sample_rate;
+                pcm.no_channels = channels;
+                pcm.no_samples = samples;
+                pcm.reference_level = 0;
+                pcm.p_data = loudnessInt.data();
+                if (p_NDI->util_audio_to_interleaved_32s_v3(&audio, &pcm))
+                {
+                    loudnessFloat.resize(loudnessInt.size());
+                    for (size_t k = 0; k < loudnessInt.size(); k++)
+                        loudnessFloat[k] = float(loudnessInt[k] / 2147483648.0);
+                    meter.configure(audio.sample_rate, channels);
+                    meter.addInterleaved(loudnessFloat.data(), samples);
+                }
+
+                const qint64 nowMs = frameTimer.elapsed();
+                if (nowMs - lastLoudnessEmitMs >= 100)
+                {
+                    lastLoudnessEmitMs = nowMs;
+                    emit loudnessMeasured(meter.momentary(), meter.shortTerm(), meter.integrated());
+                }
+            }
 
             if (!muted && p_NDI->util_audio_to_interleaved_16s_v3)
             {
