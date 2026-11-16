@@ -3379,6 +3379,25 @@ void SettingsDialog::setupHotkeyTab()
     releaseHelp->setStyleSheet("color: rgb(150, 150, 150);");
     mainLayout->addWidget(releaseHelp);
 
+    // The double-Esc panic clear. Off by default.
+    this->panicDoubleEscCheck = new QCheckBox("Esc twice clears every output (panic)");
+    this->panicDoubleEscCheck->setStyleSheet("font-weight: bold;");
+    this->panicDoubleEscCheck->setChecked(DatabaseManager::getInstance()
+        .getConfigurationByName("PanicDoubleEsc").getValue() == "true");
+    QObject::connect(this->panicDoubleEscCheck, &QCheckBox::toggled, [this](bool on) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "PanicDoubleEsc", on ? "true" : "false"));
+        emit hotkeyChanged();
+    });
+    mainLayout->addWidget(this->panicDoubleEscCheck);
+    QLabel* panicHelp = new QLabel(
+        "Pressing Esc twice within half a second clears every channel on every connected server. "
+        "It works in every window of the client, so while it is on Esc does not close the Server Config "
+        "and Download Server Build windows. Off, Esc is an ordinary key.");
+    panicHelp->setWordWrap(true);
+    panicHelp->setStyleSheet("color: rgb(150, 150, 150);");
+    mainLayout->addWidget(panicHelp);
+
     loadHotkeys();
 }
 
@@ -3449,6 +3468,12 @@ void SettingsDialog::restoreDefaultHotkeysClicked()
         ConfigurationModel(0, "PreviewModifier", "Shift"));
     if (this->previewModifierCombo)
         this->previewModifierCombo->setCurrentText("Shift");
+
+    // Reset the double-Esc panic clear to default: off.
+    DatabaseManager::getInstance().updateConfiguration(
+        ConfigurationModel(0, "PanicDoubleEsc", "false"));
+    if (this->panicDoubleEscCheck)
+        this->panicDoubleEscCheck->setChecked(false);
 
     // Reset hotkeys on release to default: off.
     DatabaseManager::getInstance().updateConfiguration(

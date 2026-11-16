@@ -130,7 +130,7 @@ Description: Open or save a rundown file.
 
 Escape, twice within half a second
 Function: Panic
-Description: Clear every output on every server.
+Description: Clear every output on every server. Off unless switched on in Settings > Hotkeys.
 
 Ctrl+H
 Function: Help

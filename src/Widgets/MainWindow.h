@@ -29,6 +29,10 @@
 #include <QtGui/QAction>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
+
+QT_BEGIN_NAMESPACE
+class QShortcut;
+QT_END_NAMESPACE
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QLabel>
@@ -197,6 +201,10 @@ class WIDGETS_EXPORT MainWindow : public QMainWindow, Ui::MainWindow
 
         QElapsedTimer m_panicTimer;
         bool m_panicArmed = false;
+
+        // Esc twice: clear everything. Only when switched on in Settings > Hotkeys
+        // (PanicDoubleEsc, off by default); off, Esc is an ordinary key everywhere.
+        QShortcut* panicShortcut = nullptr;
 
         // Playout hotkeys fired on key release (Settings > Hotkeys, off by default).
         // When on, the playout actions carry no shortcuts; these bindings stand in

@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Panic Clear Is A Setting
+
+- **The double-Esc panic clear is now a setting, and it is off.** Settings >
+  Hotkeys > **Esc twice clears every output (panic)**. Until it is ticked,
+  pressing Esc twice does nothing special. **On a machine that relied on it,
+  tick it again after updating.**
+- On, it works as before: Esc twice within half a second clears every channel on
+  every connected server, from any window of the client.
+- Off, Esc is an ordinary key again: it closes the Server Config and Download
+  Server Build windows and the rundown search box.
+- Restore Defaults on the Hotkeys tab switches it off.
+
 ## Playout Hotkeys On Key Release
 
 - **Playout hotkeys can fire when the key is let go.** A new option in Settings >

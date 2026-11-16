@@ -192,9 +192,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     qApp->installEventFilter(this);
 
-    QShortcut* panicShortcut = new QShortcut(Qt::Key_Escape, this);
-    panicShortcut->setContext(Qt::ApplicationShortcut);
-    QObject::connect(panicShortcut, &QShortcut::activated, this, &MainWindow::panicClearAll);
+    // In every window of the client while it is on; loadHotkeys switches it.
+    this->panicShortcut = new QShortcut(Qt::Key_Escape, this);
+    this->panicShortcut->setContext(Qt::ApplicationShortcut);
+    this->panicShortcut->setEnabled(DatabaseManager::getInstance().getConfigurationByName("PanicDoubleEsc").getValue() == "true");
+    QObject::connect(this->panicShortcut, &QShortcut::activated, this, &MainWindow::panicClearAll);
 
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModeChanged(bool)), this, SLOT(previewModeActivated(bool)));
     QObject::connect(&EventManager::getInstance(), SIGNAL(previewModifierHeld(bool)), this, SLOT(previewModifierActivated(bool)));
@@ -944,6 +946,14 @@ void MainWindow::loadHotkeys()
     // for the same action, the hotkey fires either way. shouldPreviewRedirect() detects
     // the held modifier via queryKeyboardModifiers() and routes to the preview channel.
     this->previewModifierKey = cfgVal("PreviewModifier");
+
+    // The double-Esc panic clear, off unless switched on. Off, the shortcut is
+    // not there at all: Esc closes windows and the search box as it would.
+    if (this->panicShortcut != nullptr)
+    {
+        this->panicShortcut->setEnabled(cfgVal("PanicDoubleEsc") == "true");
+        this->m_panicArmed = false;
+    }
 
     // On release: the actions lose their shortcuts and these stand in for them.
     this->hotkeysOnRelease = cfgVal("HotkeyOnRelease") == "true";
