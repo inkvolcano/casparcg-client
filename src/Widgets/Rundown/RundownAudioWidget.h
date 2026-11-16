@@ -143,6 +143,11 @@ class WIDGETS_EXPORT RundownAudioWidget : public QWidget, Ui::RundownAudioWidget
         Q_SLOT void clearVideolayerControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void timeSubscriptionReceived(const QString&, const QList<QVariant>&);
+
+    public:
+        bool clipTime(double* elapsed, double* total, bool* paused) override;
+
+    private:
         Q_SLOT void clipSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void fpsSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void nameSubscriptionReceived(const QString&, const QList<QVariant>&);

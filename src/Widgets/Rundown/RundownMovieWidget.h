@@ -65,6 +65,8 @@ class WIDGETS_EXPORT RundownMovieWidget : public QWidget, Ui::RundownMovieWidget
 
         void requestEndOfClipAutoPlay();
 
+        bool clipTime(double* elapsed, double* total, bool* paused) override;
+
     private:
         bool active = false;
         bool loaded = false;

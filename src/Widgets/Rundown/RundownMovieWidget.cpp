@@ -1190,6 +1190,16 @@ void RundownMovieWidget::timeSubscriptionReceived(const QString& predicate, cons
     updateOscWidget();
 }
 
+bool RundownMovieWidget::clipTime(double* elapsed, double* total, bool* paused)
+{
+    if (!this->playing || this->fileModel.getTotalTime() <= 0)
+        return false;
+    *elapsed = this->fileModel.getTime();
+    *total = this->fileModel.getTotalTime();
+    *paused = this->paused;
+    return true;
+}
+
 void RundownMovieWidget::checkFrozen()
 {
     const bool now = FrozenRules::isFrozen(QDateTime::currentMSecsSinceEpoch(), this->lastTimeChange, this->lastTime,

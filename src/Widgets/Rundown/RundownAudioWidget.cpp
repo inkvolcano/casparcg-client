@@ -996,6 +996,16 @@ void RundownAudioWidget::timeSubscriptionReceived(const QString& predicate, cons
     fireProgressEvent();
 }
 
+bool RundownAudioWidget::clipTime(double* elapsed, double* total, bool* paused)
+{
+    if (!this->playing || this->oscTotalTime <= 0)
+        return false;
+    *elapsed = this->oscTime;
+    *total = this->oscTotalTime;
+    *paused = this->paused;
+    return true;
+}
+
 void RundownAudioWidget::clipSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
 {
     Q_UNUSED(predicate);

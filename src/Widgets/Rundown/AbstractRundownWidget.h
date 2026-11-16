@@ -43,4 +43,9 @@ class WIDGETS_EXPORT AbstractRundownWidget : public AbstractProperties
         // Apply or remove the visual indicator for disabled state (italic + gray + dim).
         // Default no-op so widgets that don't care can ignore it.
         virtual void setRundownDisabled(bool /*disabled*/) {}
+
+        // A clip that is playing or paused: where it is and how long it is, from
+        // the server's OSC time (the live run sheet's countdown, build 305). False
+        // for anything that is not a clip, or not playing.
+        virtual bool clipTime(double* /*elapsed*/, double* /*total*/, bool* /*paused*/) { return false; }
 };

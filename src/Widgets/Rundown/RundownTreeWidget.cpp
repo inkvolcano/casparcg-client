@@ -77,6 +77,7 @@
 #include "Models/RundownModel.h"
 #include "Library/LibraryWidget.h"
 #include "../RundownVersionsDialog.h"
+#include "../LiveRunSheet.h"
 #include "MissingMediaScanner.h"
 #include "SimpleModeMarker.h"
 
@@ -3298,6 +3299,9 @@ bool RundownTreeWidget::executeCommand(Playout::PlayoutType type, Action::Action
                                                                     type == Playout::PlayoutType::ClearChannel);
         else
             EventManager::getInstance().fireRundownItemFiredEvent(currentItem, channel);
+
+        // What is on air and since when, for the live run sheet's countdowns.
+        LiveRunSheet::getInstance().noteExecuted(rundownWidget, type, channel);
 
         // For top-level movies with autoPlay, use Next (direct PLAY) instead of Play (LOADBG AUTO).
         // LOADBG AUTO on an empty CasparCG layer doesn't start playback.

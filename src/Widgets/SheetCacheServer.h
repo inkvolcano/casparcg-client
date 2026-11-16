@@ -73,7 +73,7 @@ class WIDGETS_EXPORT SheetCacheServer : public QObject
                     const QByteArray& body, const QString& pushToken,
                     const QString& contentSha1 = QString());
         void respond(QTcpSocket* socket, int status, const QByteArray& body,
-                     const QDateTime& cachedAt = QDateTime());
+                     const QDateTime& cachedAt = QDateTime(), const QByteArray& contentType = "application/json");
 
         static QString cacheFilePath(const QString& spreadsheetId, const QString& sheetNumber);
 

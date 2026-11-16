@@ -2,6 +2,7 @@
 
 #include "SheetDataResolver.h"
 #include "TemplateInstaller.h"
+#include "LiveRunSheet.h"
 
 #include "DatabaseManager.h"
 #include "Models/ConfigurationModel.h"
@@ -177,9 +178,9 @@ void SheetCacheServer::start()
     if (isRunning())
         return;
 
-    // The push endpoint rides on this same socket, so the server is wanted if
-    // either feature is on.
-    if (!isEnabled() && !TemplateInstaller::isEnabled())
+    // The push endpoint and the live run sheet ride on this same socket, so the
+    // server is wanted if any of them is on.
+    if (!isEnabled() && !TemplateInstaller::isEnabled() && !LiveRunSheet::isEnabled())
         return;
 
     QDir().mkpath(cacheDirectory());
@@ -310,6 +311,26 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
     // Named routes first. The cache below is matched on its parameters rather than
     // its path, so that an unedited template still reaches it \xe2\x80\x94 but that is a
     // fallback, and a request that named a route outright must not fall into it.
+    // ---- live run sheet (build 305): read-only, open to the network ----
+    if (path == "/runsheet" || path == "/runsheet/" || path == "/runsheet.json")
+    {
+        if (!LiveRunSheet::isEnabled())
+        {
+            respond(socket, 404, "{\"error\":\"The live run sheet is off (Settings > General)\"}");
+            return;
+        }
+        if (method != "GET")
+        {
+            respond(socket, 405, "{\"error\":\"Read-only\"}");
+            return;
+        }
+        if (path == "/runsheet.json")
+            respond(socket, 200, LiveRunSheet::getInstance().snapshot());
+        else
+            respond(socket, 200, LiveRunSheet::page(), QDateTime(), "text/html; charset=utf-8");
+        return;
+    }
+
     // ---- strain ----
     if (path.endsWith("/strain") || path == "/strain")
     {
@@ -551,7 +572,8 @@ void SheetCacheServer::handle(QTcpSocket* socket, const QString& method, const Q
     respond(socket, 404, "{\"error\":\"No such route\"}");
 }
 
-void SheetCacheServer::respond(QTcpSocket* socket, int status, const QByteArray& body, const QDateTime& cachedAt)
+void SheetCacheServer::respond(QTcpSocket* socket, int status, const QByteArray& body, const QDateTime& cachedAt,
+                               const QByteArray& contentType)
 {
     QString reason = "OK";
     switch (status)
@@ -570,7 +592,7 @@ void SheetCacheServer::respond(QTcpSocket* socket, int status, const QByteArray&
 
     QByteArray response;
     response.append(QString("HTTP/1.1 %1 %2\r\n").arg(status).arg(reason).toLatin1());
-    response.append("Content-Type: application/json\r\n");
+    response.append("Content-Type: " + contentType + "\r\n");
     // Graphics run from file:// as often as from http://, so neither origin can be named.
     response.append("Access-Control-Allow-Origin: *\r\n");
     response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");

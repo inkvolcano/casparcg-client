@@ -17,6 +17,7 @@
 #include "LogViewerDialog.h"
 #include "TimeTriggers.h"
 #include "RunSheet.h"
+#include "LiveRunSheet.h"
 #include "AsRunLog.h"
 #include "SheetsPanelWidget.h"
 #include "SimpleModeWidget.h"
@@ -143,6 +144,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     this->widgetSimpleInspector = new SimpleInspectorWidget(this);
 
     this->timeTriggers = new TimeTriggers(this->widgetRundown, this);
+    LiveRunSheet::getInstance().setArea(this->widgetRundown);
 
     // Inspector edits, one undo step per field, on the rundown the Inspector is
     // showing. The Edit menu records an edit in progress before it opens, so the

@@ -1838,6 +1838,18 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## A Live Run Sheet For Phones
+
+- **A live run sheet for phones.** Settings > General > **Serve a live run sheet
+  on the network** makes every open rundown a page anyone on the network can
+  open at `http://<this machine>:3000/runsheet` - floor manager, producer,
+  presenter.
+- What is on air is at the top with a large countdown to its end and the time it
+  ends: clips from the server's own time, other items with a Duration from when
+  they were fired.
+- Below, the whole rundown with lengths, back-timed start times and notes; a tab
+  per open rundown. Read-only, updated every second. Off by default.
+
 ## Run Sheet As A PDF
 
 - **File > Export Run Sheet...** writes the open rundown as a PDF for whoever is

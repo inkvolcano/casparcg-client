@@ -1222,6 +1222,15 @@ The channel is the server's preview channel, or the item's own channel when the 
 <li>Disabled items are listed in grey with no time.</li>
 </ul>
 
+<h3>Live run sheet on a phone</h3>
+<p>Settings &gt; General &gt; <b>Serve a live run sheet on the network</b> (off by default) makes every open rundown a page any phone or laptop on the same network can open: <code>http://&lt;this machine&gt;:3000/runsheet</code> (the port is the one set for the sheet cache). Hover the setting for this machine's addresses.</p>
+<ul>
+<li>A tab per open rundown, the one on screen first; the page follows what the client has open.</li>
+<li><b>On air</b> at the top: each item that is on air, with a large countdown to its end and the clock time it ends. Clips (movies, audio) count down from the server's own time for them; other items with a Duration count down from when they were fired; items without one show as on air until stopped.</li>
+<li>Below, every item with its type, server and channel-layer, length, start time (back-timed to the hard out when there is one), note, and what is on air marked.</li>
+<li>Read-only, and open to anyone on that network. It needs the client's web server, so it is not there during a safe start.</li>
+</ul>
+
 <h3>Rundown versions</h3>
 <p>Each save that changes a rundown keeps the file as it was before, in a folder beside it named after it - for <code>Show.xml</code>, <code>Show.xml versions</code>. The newest ten are kept.</p>
 <ul>

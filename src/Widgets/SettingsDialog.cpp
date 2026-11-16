@@ -1,4 +1,7 @@
 #include "SettingsDialog.h"
+#include "LiveRunSheet.h"
+#include "SheetCacheServer.h"
+#include <QtNetwork/QNetworkInterface>
 #include "ReferenceCapture.h"
 #include "PreviewWidget.h"
 #include "StreamCommand.h"
@@ -1659,6 +1662,32 @@ void SettingsDialog::setupGeneralTab()
         ReferenceCapture::setSetting(ReferenceCaptureRules::settingFrom(this->comboReferenceSource->currentData().toString()));
     });
     grid->addWidget(this->comboReferenceSource, row, 1, 1, 3);
+    row++;
+
+    // The live run sheet: every open rundown as a read-only page on the network.
+    this->checkBoxLiveRunSheet = new QCheckBox("Serve a live run sheet on the network");
+    this->checkBoxLiveRunSheet->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxLiveRunSheet->setChecked(LiveRunSheet::isEnabled());
+    {
+        QStringList addresses;
+        for (const QHostAddress& address : QNetworkInterface::allAddresses())
+        {
+            if (address.protocol() == QAbstractSocket::IPv4Protocol && !address.isLoopback())
+                addresses << QString("http://%1:%2/runsheet").arg(address.toString()).arg(SheetCacheServer::configuredPort());
+        }
+        this->checkBoxLiveRunSheet->setToolTip(QString("Every open rundown, with what is on air and countdowns to the end of each "
+                                                       "playing clip, as a page for any phone or laptop on the network. Read-only, "
+                                                       "and open to anyone on the network.\n\nOpen it at:\n%1")
+            .arg(addresses.isEmpty() ? QString("http://<this machine>:%1/runsheet").arg(SheetCacheServer::configuredPort())
+                                     : addresses.join("\n")));
+    }
+    QObject::connect(this->checkBoxLiveRunSheet, &QCheckBox::toggled, this, [](bool on) {
+        LiveRunSheet::setEnabled(on);
+        // The web server is started for it if nothing else had it running.
+        if (on)
+            SheetCacheServer::getInstance().start();
+    });
+    grid->addWidget(this->checkBoxLiveRunSheet, row, 1, 1, 3);
     row++;
 
     this->checkBoxAllowShellCommands = new QCheckBox("Allow Shell Command items to run");
