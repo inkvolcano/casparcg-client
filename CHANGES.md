@@ -1838,6 +1838,23 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Settings Fixes
+
+- **Custom channel colours are kept across restarts.** They were applied only
+  once a slider in Settings was moved, so every start went back to the default
+  colours.
+- **NDI and Performance panel header colours** are applied at startup too, like
+  the other nine panels.
+- **Live Stream parameters are saved on OK**, including a preset picked from
+  "Try:". They were saved only when the Port field finished editing.
+- **Ctrl+, opens Settings.**
+- **Clearer labels:** "Server connect button" (ask before disconnecting,
+  disconnect at once, hidden), "Mark the last item fired on each channel",
+  "OSC update rate" (it drives progress and countdowns as well as the meters),
+  "Player log level" on Live Stream, text on the two clock boxes, and the
+  template preview box no longer names a key that can be changed.
+- 14 settings nothing reads any more are removed from the database.
+
 ## Loudness
 
 - **Each channel's loudness beside its audio meters**, in LUFS: short-term

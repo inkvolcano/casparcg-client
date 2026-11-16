@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#settings-fixes">Settings Fixes</a><br>
 <a href="#loudness">Loudness</a><br>
 <a href="#multi-edit">Edit Many Items At Once</a><br>
 <a href="#find-replace">Find And Replace</a><br>
@@ -1896,6 +1897,17 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="settings-fixes">Settings Fixes</h2>
+
+<ul>
+<li><b>Custom channel colours are kept across restarts.</b> They were applied only once a slider in Settings was moved, so every start went back to the default colours.</li>
+<li><b>NDI and Performance panel header colours</b> are applied at startup too, like the other nine panels.</li>
+<li><b>Live Stream parameters are saved on OK</b>, including a preset picked from "Try:". They were saved only when the Port field finished editing.</li>
+<li><b>Ctrl+, opens Settings.</b></li>
+<li><b>Clearer labels:</b> "Server connect button" (ask before disconnecting, disconnect at once, hidden), "Mark the last item fired on each channel", "OSC update rate" (it drives progress and countdowns as well as the meters), "Player log level" on Live Stream, text on the two clock boxes, and the template preview box no longer names a key that can be changed.</li>
+<li>14 settings nothing reads any more are removed from the database.</li>
+</ul>
 
 <h2 id="loudness">Loudness</h2>
 

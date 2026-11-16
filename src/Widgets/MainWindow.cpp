@@ -383,7 +383,7 @@ void MainWindow::setupMenu()
     this->editMenu->addAction("Find and Replace...", this, [this]() { FindReplaceDialog::open(this->widgetRundown, this); },
                               QKeySequence::fromString("Ctrl+Shift+F"));
     this->editMenu->addSeparator();
-    this->editMenu->addAction("Settings...", this, SLOT(showSettingsDialog()));
+    this->editMenu->addAction("Settings...", this, SLOT(showSettingsDialog()), QKeySequence::fromString("Ctrl+,"));
 
     this->viewMenu = new QMenu(this);
     this->viewMenu->setObjectName("menuView");

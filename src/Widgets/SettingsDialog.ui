@@ -171,7 +171,7 @@
       </rect>
      </property>
      <property name="text">
-      <string>Log level:</string>
+      <string>Player log level:</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

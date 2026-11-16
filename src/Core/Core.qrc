@@ -54,5 +54,6 @@
         <file>Sql/ChangeScript-258.sql</file>
         <file>Sql/ChangeScript-259.sql</file>
         <file>Sql/ChangeScript-260.sql</file>
+        <file>Sql/ChangeScript-261.sql</file>
     </qresource>
 </RCC>

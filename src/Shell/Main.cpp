@@ -241,7 +241,8 @@ void loadStyleSheets(QApplication& application)
 
     static const char* panelKeys[] = {
         "Library", "Inspector", "AudioLevels", "Preview",
-        "Live", "Clock", "ServerStatus", "Activity", "TriggerBanks"
+        "Live", "Clock", "ServerStatus", "Activity", "TriggerBanks",
+        "NDI", "Performance"
     };
     for (const auto& key : panelKeys)
     {
@@ -252,6 +253,18 @@ void loadStyleSheets(QApplication& application)
         if (!blockVal.isEmpty()) ColorCache::setBlockOverride(key, blockVal);
         if (!textVal.isEmpty())  ColorCache::setTextOverride(key, textVal);
     }
+
+    // Channel colours: before build 313 they were applied only once a slider
+    // in Settings was moved, so a venue's colours were lost at every start.
+    auto channelColor = [&cfgVal](const char* key, double fallback) {
+        bool ok = false;
+        const double v = cfgVal(key).toDouble(&ok);
+        return ok ? v : fallback;
+    };
+    ChannelColor::setAngle(channelColor("ChannelColorAngle", ChannelColor::DEFAULT_ANGLE));
+    ChannelColor::setOffset(channelColor("ChannelColorOffset", ChannelColor::DEFAULT_OFFSET));
+    ChannelColor::setSaturation(channelColor("ChannelColorSaturation", ChannelColor::DEFAULT_SATURATION));
+    ChannelColor::setLightness(channelColor("ChannelColorLightness", ChannelColor::DEFAULT_LIGHTNESS));
 
     ColorCache::setClockColor1(cfgVal("ClockColor1"));
     ColorCache::setClockColor2(cfgVal("ClockColor2"));

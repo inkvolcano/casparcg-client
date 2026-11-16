@@ -1564,14 +1564,15 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->comboBoxDurationFormat, row, 1);
     row++;
 
-    addLabel("Audio polling rate:");
+    addLabel("OSC update rate:");
     this->spinBoxOscRefreshRate = new QSpinBox();
     this->spinBoxOscRefreshRate->setMinimum(50);
     this->spinBoxOscRefreshRate->setMaximum(1000);
     this->spinBoxOscRefreshRate->setSingleStep(10);
     this->spinBoxOscRefreshRate->setValue(200);
     this->spinBoxOscRefreshRate->setSuffix(" ms");
-    this->spinBoxOscRefreshRate->setToolTip("Lower values give smoother audio meters and faster progress updates. "
+    this->spinBoxOscRefreshRate->setToolTip("How often OSC readings from the servers are passed on: the audio meters, clip progress and countdowns.\n"
+                                            "Lower values give smoother audio meters and faster progress updates. "
                                             "Warning: values below 100ms can cause performance issues on low-performance devices.");
     grid->addWidget(this->spinBoxOscRefreshRate, row, 1);
     row++;
@@ -1715,12 +1716,12 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxShowPreviewBorder, row, 1, 1, 3);
     row++;
 
-    this->previewFreezeTemplateCheck = new QCheckBox("Load template without playing on preview (F8)");
+    this->previewFreezeTemplateCheck = new QCheckBox("Previewing a template loads it without playing it");
     this->previewFreezeTemplateCheck->setFocusPolicy(Qt::NoFocus);
     grid->addWidget(this->previewFreezeTemplateCheck, row, 1, 1, 3);
     row++;
 
-    this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview: server thumbnails only, nothing opened (default)");
+    this->checkBoxPreviewLegacyMode = new QCheckBox("Legacy preview: server thumbnails only, nothing opened");
     this->checkBoxPreviewLegacyMode->setFocusPolicy(Qt::NoFocus);
     this->checkBoxPreviewLegacyMode->setToolTip(
         "The thumbnail the server made, for stills and movies, and nothing else.\n"
@@ -1843,14 +1844,20 @@ void SettingsDialog::setupGeneralTab()
     grid->addWidget(this->checkBoxShowLastAction, row, 1, 1, 3);
     row++;
 
-    this->checkBoxActiveIndicatorPerChannel = new QCheckBox("Active indicator per channel");
+    this->checkBoxActiveIndicatorPerChannel = new QCheckBox("Mark the last item fired on each channel");
     this->checkBoxActiveIndicatorPerChannel->setFocusPolicy(Qt::NoFocus);
+    this->checkBoxActiveIndicatorPerChannel->setToolTip("On: every channel keeps its own active marker, on the item last fired there.\n"
+                                                         "Off: one marker for the whole rundown, on the item fired last.");
     grid->addWidget(this->checkBoxActiveIndicatorPerChannel, row, 1, 1, 3);
     row++;
 
-    addLabel("Disconnect mode:");
+    addLabel("Server connect button:");
     this->comboBoxDisconnectMode = new QComboBox();
-    this->comboBoxDisconnectMode->addItems({"ask", "hidden", "direct"});
+    this->comboBoxDisconnectMode->addItem("Ask before disconnecting", "ask");
+    this->comboBoxDisconnectMode->addItem("Disconnect at once", "direct");
+    this->comboBoxDisconnectMode->addItem("Hidden", "hidden");
+    this->comboBoxDisconnectMode->setToolTip("The connect/disconnect button beside each server in Server Status:\n"
+                                             "ask first, disconnect with one click, or not shown at all.");
     grid->addWidget(this->comboBoxDisconnectMode, row, 1);
     row++;
 
@@ -1920,12 +1927,12 @@ void SettingsDialog::setupGeneralTab()
     row++;
 
     addLabel("Show labels:");
-    this->checkBoxClockShowLabels = new QCheckBox();
+    this->checkBoxClockShowLabels = new QCheckBox("Time zone name under each clock");
     grid->addWidget(this->checkBoxClockShowLabels, row, 1);
     row++;
 
     addLabel("Stack clocks:");
-    this->checkBoxClockStacked = new QCheckBox();
+    this->checkBoxClockStacked = new QCheckBox("One clock above the other");
     grid->addWidget(this->checkBoxClockStacked, row, 1);
     row++;
 
@@ -2153,10 +2160,11 @@ void SettingsDialog::setupGeneralTab()
 
     // Disconnect mode dropdown.
     QString disconnectMode = DatabaseManager::getInstance().getConfigurationByName("DisconnectMode").getValue();
-    int dmIdx = this->comboBoxDisconnectMode->findText(disconnectMode.isEmpty() ? "ask" : disconnectMode);
+    int dmIdx = this->comboBoxDisconnectMode->findData(disconnectMode.isEmpty() ? "ask" : disconnectMode);
     if (dmIdx >= 0) this->comboBoxDisconnectMode->setCurrentIndex(dmIdx);
-    QObject::connect(this->comboBoxDisconnectMode, &QComboBox::currentTextChanged, [](const QString& text) {
-        DatabaseManager::getInstance().updateConfiguration(ConfigurationModel(0, "DisconnectMode", text));
+    QObject::connect(this->comboBoxDisconnectMode, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index) {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "DisconnectMode", this->comboBoxDisconnectMode->itemData(index).toString()));
     });
 
     // Preview panel. Legacy mode turns the parts off in the UI as well as in
@@ -2946,6 +2954,14 @@ void SettingsDialog::fillRelayPackList(const QList<RelayClient::PackListing>& pa
 
 void SettingsDialog::flushPendingWrites()
 {
+    // Live Stream parameters (and a preset picked from "Try:") are saved on OK.
+    // They were written only when the Port field finished editing.
+    if (this->lineEditStreamParameters != nullptr)
+    {
+        DatabaseManager::getInstance().updateConfiguration(
+            ConfigurationModel(0, "StreamParameters", this->lineEditStreamParameters->text().trimmed()));
+    }
+
     if (this->fontSizeDebounceTimer->isActive())
     {
         this->fontSizeDebounceTimer->stop();
