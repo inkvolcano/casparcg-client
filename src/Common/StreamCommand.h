@@ -24,10 +24,18 @@
 // and guessing at ffmpeg options that somebody's working setup depends on is how
 // you break the people it currently works for.
 //
-// So the parameters become editable, and the default is exactly the string the
-// client has always sent. Nothing changes for anyone it works for, and anyone it
-// does not work for — or costs too much — can now do something about it without
-// waiting for a release.
+// So the parameters became editable (build 201), with the original string as
+// the default.
+//
+// Build 318 measured it, against a 2.5 server on a 1080p25 channel (12-core
+// machine, a clip looping, the server's CPU with and without the stream, three
+// rounds each): the cost was the scaler, not x264. The default bicubic scale of
+// every full-size frame down to a thumbnail cost about 6% of the machine;
+// fast_bilinear halved it (about 3%). mpeg2video instead of x264 saved almost
+// nothing. The Live window, which sent the full 1080p picture, cost about 13%
+// and 6.5 Mbit/s; scaled to 1280 wide it is about 9% and 3.6 Mbit/s. Capping the
+// rate at 25 costs nothing on a 25p channel and halves the frames on a 50p one.
+// So the default changed to that, and the original string is a preset.
 //
 // Header-only so the assembly can be tested without a server or a socket.
 
@@ -36,11 +44,10 @@
 
 namespace StreamCommand
 {
-    // Everything after the URL, exactly as the client has always sent it.
-    //
-    // Kept character for character on purpose: this is the compatibility
-    // baseline, and a test pins it so it cannot drift by accident.
-    inline QString defaultParameters(int quality, bool key, int width, int height)
+    // Everything after the URL as the client sent it up to build 317. Kept
+    // character for character (and pinned by a test) as the "Original" preset,
+    // for a server that will not take the newer default.
+    inline QString originalParameters(int quality, bool key, int width, int height)
     {
         if (width > 0 && height > 0)
         {
@@ -57,6 +64,20 @@ namespace StreamCommand
                        "-preset:v ultrafast %2  -filter:a \"pan=stereo|c0=FL|c1=FR\"")
             .arg(quality)
             .arg(key ? "-filter:v alphaextract" : "");
+    }
+
+    // The default since build 318: at most 25 frames a second, scaled with
+    // fast_bilinear - the thumbnail to its size, the Live window to 1280 wide
+    // with the channel's own shape.
+    inline QString defaultParameters(int quality, bool key, int width, int height)
+    {
+        const QString keyFilter = key ? "alphaextract,format=pix_fmts=yuv422p," : "";
+        const QString scale = (width > 0 && height > 0) ? QString("scale=%1:%2").arg(width).arg(height) : QString("scale=1280:-2");
+        return QString("-format mpegts -codec:v libx264 -crf:v %1 -tune:v zerolatency -preset:v ultrafast "
+                       "-filter:v fps=25,%2%3:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"")
+            .arg(quality)
+            .arg(keyFilter)
+            .arg(scale);
     }
 
     // What a custom string may stand in for. The tokens exist so a preset can
@@ -120,33 +141,35 @@ namespace StreamCommand
     {
         QList<Preset> list;
 
-        list.append({ "Default (as shipped)", QString(),
-                      "Exactly what the client has always sent. Leave this if the Live panel works." });
+        list.append({ "Default", QString(),
+                      "At most 25 frames a second with a cheap scaler: about half the server CPU of the "
+                      "original string for the panel, a third less for the Live window (measured, build 318)." });
 
-        // The cost complaint in #271 is x264 doing real work per frame for a
-        // thumbnail. mpeg2video is far cheaper per frame and nobody is judging
-        // picture quality on a 288-pixel-wide preview.
-        list.append({ "Lower server CPU (mpeg2video)",
+        // The string sent up to build 317. Scale 0:0 is ffmpeg for "the input's
+        // own size", which is what the Live window always got.
+        list.append({ "Original (up to build 317)",
+                      "-format mpegts -codec:v libx264 -crf:v {quality} -tune:v zerolatency "
+                      "-preset:v ultrafast -filter:v {key}scale={width}:{height} "
+                      "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
+                      "What the client always sent: every frame, bicubic scaling, the full picture in "
+                      "the Live window. For a server that will not take the default." });
+
+        // Half again, for a machine where every bit counts.
+        list.append({ "Lowest server CPU (12.5 frames a second)",
+                      "-format mpegts -codec:v libx264 -crf:v {quality} -tune:v zerolatency "
+                      "-preset:v ultrafast -filter:v fps=12.5,{key}scale={width}:{height}:flags=fast_bilinear "
+                      "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
+                      "A choppier preview for less work. In the Live window it sends the full picture." });
+
+        // Kept because it was offered; measured, it does not do what it promised.
+        list.append({ "mpeg2video",
                       "-format mpegts -codec:v mpeg2video -q:v 8 -filter:v {key}scale={width}:{height} "
                       "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
-                      "Cheaper on the playout machine than x264. Try this first if enabling Live "
-                      "costs you CPU you need." });
+                      "A different encoder. Measured on a 2.5 server it was hardly cheaper than x264 - "
+                      "the scaling was the cost - so it is only worth trying if x264 itself is the problem." });
 
-        // Halving the rate halves the encode, and a preview does not need 50.
-        list.append({ "Lower server CPU (half frame rate)",
-                      "-format mpegts -codec:v libx264 -crf:v {quality} -tune:v zerolatency "
-                      "-preset:v ultrafast -r 25 -filter:v {key}scale={width}:{height} "
-                      "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
-                      "The same encoder at half the frames. A preview does not need the channel's "
-                      "full rate." });
-
-        // The #316 shape: no audio filter to fall over, and a packet size that
-        // fits inside a normal MTU once headers are added.
-        list.append({ "Video only, small packets",
-                      "-format mpegts -codec:v libx264 -crf:v {quality} -tune:v zerolatency "
-                      "-preset:v ultrafast -an -filter:v {key}scale={width}:{height}",
-                      "No audio, and nothing exotic. Worth trying when the stream does not arrive "
-                      "at all - if this works, the audio filter or the packet size was the problem." });
+        // "Video only" (-an) is gone: on a 2.5 server the stream never arrived
+        // and the consumer was dropped (measured, build 318).
 
         return list;
     }

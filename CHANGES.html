@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#live-cpu">Live Panel CPU</a><br>
 <a href="#watch-folders">Watch Folders</a><br>
 <a href="#settings-rules">Settings: One Save Rule, Restarts, Defaults</a><br>
 <a href="#settings-sections">Settings By Task, With Search</a><br>
@@ -1901,6 +1902,16 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="live-cpu">Live Panel CPU</h2>
+
+<ul>
+<li><b>The Live panel costs the server about half the CPU.</b> Measured against a 2.5 server on a 1080p25 channel: the cost was the scaler, not the encoder. The stream now uses a cheap scaler and at most 25 frames a second - about 3% of a 12-core machine instead of 6% for the panel. On a 50p channel the frame cap halves the work again.</li>
+<li><b>The Live window is lighter too.</b> It sent the full 1080p picture (about 13% of the machine and 6.5 Mbit/s); it is now 1280 wide with the channel's shape kept (about 8% and 3.6 Mbit/s).</li>
+<li><b>The old settings are still there.</b> Settings &gt; Control &gt; Live Stream &gt; Try: has "Original (up to build 317)" for a server that will not take the new default, and "Lowest server CPU" at 12.5 frames a second. Custom parameters are untouched.</li>
+<li><b>Presets that did not deliver are corrected.</b> "Video only, small packets" is gone: on a 2.5 server that stream never arrived. The mpeg2video preset now says it was hardly cheaper than x264.</li>
+<li><b>A fix in the client.</b> Two of the Live player's start-up options (log level, network caching) were read from memory that had already been freed.</li>
+</ul>
 
 <h2 id="watch-folders">Watch Folders</h2>
 

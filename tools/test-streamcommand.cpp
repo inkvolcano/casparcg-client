@@ -47,33 +47,65 @@ static void same(const QString& actual, const QString& wanted, const QString& wh
                         << "\n            got: " << actual << "\n";
 }
 
-static void theDefaultIsExactlyWhatWasAlwaysSent()
+static void theOriginalIsKeptExactly()
 {
     // Character for character, from CasparDevice::startStream before this was
     // made configurable — including the double space, which is in the original.
-    const QString sized = StreamCommand::defaultParameters(23, false, 288, 162);
+    const QString sized = StreamCommand::originalParameters(23, false, 288, 162);
     same(sized,
          "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency "
          "-preset:v ultrafast -filter:v scale=288:162  "
          "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
          "the sized form is unchanged");
 
-    const QString full = StreamCommand::defaultParameters(23, false, 0, 0);
+    const QString full = StreamCommand::originalParameters(23, false, 0, 0);
     same(full,
          "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency "
          "-preset:v ultrafast   -filter:a \"pan=stereo|c0=FL|c1=FR\"",
          "the full-size form is unchanged");
 }
 
+static void theDefaultIsTheMeasuredOne()
+{
+    // Build 318: at most 25 frames a second, a cheap scaler; the window 1280 wide.
+    same(StreamCommand::defaultParameters(23, false, 288, 162),
+         "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency -preset:v ultrafast "
+         "-filter:v fps=25,scale=288:162:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"",
+         "the panel: 25 fps, fast_bilinear, its own size");
+    same(StreamCommand::defaultParameters(23, false, 0, 0),
+         "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency -preset:v ultrafast "
+         "-filter:v fps=25,scale=1280:-2:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"",
+         "the window: 1280 wide, the channel's shape kept");
+
+    // The Original preset, expanded, is the original string (bar the double space).
+    const QList<StreamCommand::Preset> presets = StreamCommand::presets();
+    bool found = false;
+    for (const StreamCommand::Preset& preset : presets)
+    {
+        if (preset.name.startsWith("Original"))
+        {
+            found = true;
+            same(StreamCommand::parametersFor(preset.parameters, 23, false, 288, 162),
+                 StreamCommand::originalParameters(23, false, 288, 162).replace("  ", " "),
+                 "the Original preset sends the original string");
+        }
+        expectTrue(!preset.parameters.contains(" -an"), "no preset drops the audio: on a 2.5 server that stream never arrives");
+    }
+    expectTrue(found, "the original string is offered as a preset");
+}
+
 static void theKeyChannelFormIsUnchangedToo()
 {
     const QString sizedKey = StreamCommand::defaultParameters(23, true, 288, 162);
-    expectTrue(sizedKey.contains("alphaextract,format=pix_fmts=yuv422p,scale=288:162"),
+    expectTrue(sizedKey.contains("fps=25,alphaextract,format=pix_fmts=yuv422p,scale=288:162"),
                "a key channel still extracts alpha before scaling");
 
     const QString fullKey = StreamCommand::defaultParameters(23, true, 0, 0);
-    expectTrue(fullKey.contains("-filter:v alphaextract"),
-               "and at full size it still extracts alpha");
+    expectTrue(fullKey.contains("fps=25,alphaextract,format=pix_fmts=yuv422p,scale=1280:-2"),
+               "and in the window it extracts alpha too");
+
+    expectTrue(StreamCommand::originalParameters(23, true, 0, 0).contains("-filter:v alphaextract"),
+               "the original full-size key form is kept");
 }
 
 static void nothingOverriddenMeansTheDefault()
@@ -178,7 +210,8 @@ int main(int argc, char* argv[])
 
     QTextStream(stdout) << "Live stream command\n";
 
-    theDefaultIsExactlyWhatWasAlwaysSent();
+    theOriginalIsKeptExactly();
+    theDefaultIsTheMeasuredOne();
     theKeyChannelFormIsUnchangedToo();
     nothingOverriddenMeansTheDefault();
     anOverrideReplacesEverythingAfterTheUrl();

@@ -1838,6 +1838,14 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Live Panel CPU
+
+- **The Live panel costs the server about half the CPU.** Measured against a 2.5 server on a 1080p25 channel: the cost was the scaler, not the encoder. The stream now uses a cheap scaler and at most 25 frames a second - about 3% of a 12-core machine instead of 6% for the panel. On a 50p channel the frame cap halves the work again.
+- **The Live window is lighter too.** It sent the full 1080p picture (about 13% of the machine and 6.5 Mbit/s); it is now 1280 wide with the channel's shape kept (about 8% and 3.6 Mbit/s).
+- **The old settings are still there.** Settings > Control > Live Stream > Try: has "Original (up to build 317)" for a server that will not take the new default, and "Lowest server CPU" at 12.5 frames a second. Custom parameters are untouched.
+- **Presets that did not deliver are corrected.** "Video only, small packets" is gone: on a 2.5 server that stream never arrived. The mpeg2video preset now says it was hardly cheaper than x264.
+- **A fix in the client.** Two of the Live player's start-up options (log level, network caching) were read from memory that had already been freed.
+
 ## Watch Folders
 
 - **A group that fills itself from a media folder.** Select a group, and in the Inspector tick Watch Folder: choose the server and a folder inside its media (INCOMING, say), and the channel and layer for new items. Every new clip, still or audio file that appears there becomes an item at the end of the group.

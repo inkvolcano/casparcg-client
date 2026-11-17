@@ -189,14 +189,18 @@ void LiveWidget::startStream()
     {
         bool disableAudioInStream = (DatabaseManager::getInstance().getConfigurationByName("DisableAudioInStream").getValue() == "true") ? true : false;
 
-        char *vlcArguments[] = {
-            qstrdup("--ignore-config"),
-            qstrdup("--deinterlace=-1"),
-            qstrdup("--deinterlace-mode=yadif"),
-            qstrdup("--video-filter=deinterlace"),
-            QString("--verbose=%1").arg(DatabaseManager::getInstance().getConfigurationByName("LogLevel").getValue()).toUtf8().data(),
-            QString("--network-caching=%1").arg(DatabaseManager::getInstance().getConfigurationByName("NetworkCache").getValue()).toUtf8().data(),
-            qstrdup("--no-audio"),
+        // Held for the call: these two were pointers into temporaries that were
+        // gone before libvlc_new read them (build 318).
+        const QByteArray verbose = QString("--verbose=%1").arg(DatabaseManager::getInstance().getConfigurationByName("LogLevel").getValue()).toUtf8();
+        const QByteArray caching = QString("--network-caching=%1").arg(DatabaseManager::getInstance().getConfigurationByName("NetworkCache").getValue()).toUtf8();
+        const char *vlcArguments[] = {
+            "--ignore-config",
+            "--deinterlace=-1",
+            "--deinterlace-mode=yadif",
+            "--video-filter=deinterlace",
+            verbose.constData(),
+            caching.constData(),
+            "--no-audio",
         };
         int len = 6;
         if (disableAudioInStream)
