@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#watch-folders">Watch Folders</a><br>
 <a href="#settings-rules">Settings: One Save Rule, Restarts, Defaults</a><br>
 <a href="#settings-sections">Settings By Task, With Search</a><br>
 <a href="#settings-values">Settings For Values That Were Fixed</a><br>
@@ -1900,6 +1901,15 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="watch-folders">Watch Folders</h2>
+
+<ul>
+<li><b>A group that fills itself from a media folder.</b> Select a group, and in the Inspector tick Watch Folder: choose the server and a folder inside its media (INCOMING, say), and the channel and layer for new items. Every new clip, still or audio file that appears there becomes an item at the end of the group.</li>
+<li><b>Works with any server.</b> It reads the server's own media list, so a server on another machine works the same as one on this one. Watched servers are asked every 15 seconds (Settings &gt; Rundown &gt; Watch folders check every); a Library refresh counts too.</li>
+<li><b>Nothing surprises the operator.</b> Additions go to the end of the group, never move the selection and are not undo steps. An item you delete is not put back. A file that disappears leaves its item where it is, marked missing. A locked rundown is left alone.</li>
+<li><b>Already there.</b> "Also add the files already there" decides whether the folder's current files are added when the watch starts; off, only files that arrive from then on.</li>
+</ul>
 
 <h2 id="settings-rules">Settings: One Save Rule, Restarts, Defaults</h2>
 

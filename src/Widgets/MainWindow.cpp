@@ -20,6 +20,7 @@
 #include "TimeTriggers.h"
 #include "RunSheet.h"
 #include "LiveRunSheet.h"
+#include "WatchFolders.h"
 #include "ClientRestart.h"
 #include "AppearanceSettings.h"
 #include "MeterBallistics.h"
@@ -161,6 +162,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     this->timeTriggers = new TimeTriggers(this->widgetRundown, this);
     LiveRunSheet::getInstance().setArea(this->widgetRundown);
+    WatchFolders::getInstance().setArea(this->widgetRundown);
 
     // The audio meters' clip level (Settings, build 314).
     {

@@ -1,5 +1,7 @@
 #include "GroupCommand.h"
 
+#include "WatchFolderRules.h"
+
 #include <QtCore/QXmlStreamWriter>
 
 GroupCommand::GroupCommand(QObject* parent)
@@ -123,6 +125,13 @@ void GroupCommand::readProperties(boost::property_tree::wptree& pt)
     // modes being on at once - a hand-edited file with both ends up a shotbox
     // rather than ending up as whichever the grid happened to test for first.
     setTreatAsShotbox(pt.get(L"treatasshotbox", false));
+
+    setWatchServer(QString::fromStdWString(pt.get(L"watchserver", std::wstring())));
+    setWatchFolder(QString::fromStdWString(pt.get(L"watchfolder", std::wstring())));
+    setWatchChannel(pt.get(L"watchchannel", 1));
+    setWatchLayer(pt.get(L"watchlayer", 10));
+    setWatchSeen(WatchFolderRules::splitSeen(QString::fromStdWString(pt.get(L"watchseen", std::wstring()))));
+    setWatchEnabled(pt.get(L"watchenabled", false));
 }
 
 void GroupCommand::writeProperties(QXmlStreamWriter& writer)
@@ -144,4 +153,50 @@ void GroupCommand::writeProperties(QXmlStreamWriter& writer)
     // gains nothing in its file.
     if (getTreatAsShotbox())
         writer.writeTextElement("treatasshotbox", "true");
+
+    // Only for a group that has watched a folder.
+    if (getWatchEnabled() || !getWatchSeen().isEmpty())
+    {
+        writer.writeTextElement("watchenabled", getWatchEnabled() ? "true" : "false");
+        writer.writeTextElement("watchserver", getWatchServer());
+        writer.writeTextElement("watchfolder", getWatchFolder());
+        writer.writeTextElement("watchchannel", QString::number(getWatchChannel()));
+        writer.writeTextElement("watchlayer", QString::number(getWatchLayer()));
+        writer.writeTextElement("watchseen", WatchFolderRules::joinSeen(getWatchSeen()));
+    }
+}
+
+void GroupCommand::setWatchEnabled(bool on)
+{
+    this->watchEnabled = on;
+    emit propertyChanged();
+}
+
+void GroupCommand::setWatchServer(const QString& server)
+{
+    this->watchServer = server;
+    emit propertyChanged();
+}
+
+void GroupCommand::setWatchFolder(const QString& folder)
+{
+    this->watchFolder = WatchFolderRules::normaliseFolder(folder);
+    emit propertyChanged();
+}
+
+void GroupCommand::setWatchChannel(int channel)
+{
+    this->watchChannel = channel;
+    emit propertyChanged();
+}
+
+void GroupCommand::setWatchLayer(int layer)
+{
+    this->watchLayer = layer;
+    emit propertyChanged();
+}
+
+void GroupCommand::setWatchSeen(const QStringList& seen)
+{
+    this->watchSeen = seen;
 }

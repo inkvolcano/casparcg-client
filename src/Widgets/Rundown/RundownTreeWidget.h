@@ -112,6 +112,12 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         bool getAllowRemoteTriggering() const;
         bool isLocked() const;
+
+        // Watch folders (build 317): an item at the end of a group, made from a
+        // Library row, without moving the selection or making an undo step.
+        // finishAppending lays the rundown out again after a batch.
+        bool appendToGroup(QTreeWidgetItem* group, const LibraryModel& model, int channel, int layer);
+        void finishAppending();
         void setLocked(bool locked);
         RundownTreeBaseWidget* treeWidget() const;
         QUndoStack* undoStack() const;

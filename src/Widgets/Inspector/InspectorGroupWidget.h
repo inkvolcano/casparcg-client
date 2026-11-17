@@ -11,6 +11,9 @@
 #include <QtCore/QObject>
 
 #include <QtWidgets/QCheckBox>
+#include <QtWidgets/QComboBox>
+#include <QtWidgets/QGridLayout>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QSpinBox>
 #include <QtWidgets/QWidget>
 
@@ -28,6 +31,20 @@ class WIDGETS_EXPORT InspectorGroupWidget : public QWidget, Ui::InspectorGroupWi
 
         QCheckBox* checkBoxAutoLoop = nullptr;
         QSpinBox* spinBoxAutoLoopDelay = nullptr;
+
+        // Watch folder (build 317).
+        QCheckBox* checkBoxWatch = nullptr;
+        QComboBox* comboWatchServer = nullptr;
+        QComboBox* comboWatchFolder = nullptr;
+        QSpinBox* spinWatchChannel = nullptr;
+        QSpinBox* spinWatchLayer = nullptr;
+        QCheckBox* checkBoxWatchExisting = nullptr;
+        QLabel* labelWatchStatus = nullptr;
+        void buildWatchRows(QGridLayout* grid);
+        void loadWatch();
+        void fillWatchFolders();
+        void watchChanged();
+        void showWatchStatus();
 
         void blockAllSignals(bool block);
 

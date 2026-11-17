@@ -2536,6 +2536,8 @@ void SettingsDialog::setupGeneralTab()
     addSection("Timing and Alarms");
     addIntSetting("Frozen clip alarm after:", "FrozenAlarmSeconds", 3, 1, 60, " s",
                   "A playing clip whose time has not moved for this long is marked FROZEN.", nullptr);
+    addIntSetting("Watch folders check every:", "WatchFolderSeconds", 15, 2, 3600, " s",
+                  "How often a server with a watched folder is asked for its media list (Inspector > Watch Folder on a group).", nullptr);
     addIntSetting("Gateway re-check every:", "GatewayRecheckSeconds", 30, 1, 3600, " s",
                   "How often gateway items look at their conditions again. Gateways already open keep the\n"
                   "old interval until the rundown is opened again.", nullptr);

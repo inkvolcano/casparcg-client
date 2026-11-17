@@ -170,6 +170,7 @@ qt_add_library(widgets
     ServerConfigFile.cpp ServerConfigFile.h
     AppearanceSettings.cpp AppearanceSettings.h
     ClientRestart.cpp ClientRestart.h
+    WatchFolders.cpp WatchFolders.h
     ReferenceCapture.cpp ReferenceCapture.h
     RundownVersionsDialog.cpp RundownVersionsDialog.h
     LogViewerDialog.cpp LogViewerDialog.h

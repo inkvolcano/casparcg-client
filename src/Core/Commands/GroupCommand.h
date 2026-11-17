@@ -9,6 +9,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 
 #include <QtCore/QString>
+#include <QtCore/QStringList>
 
 class QObject;
 class QXmlStreamWriter;
@@ -31,6 +32,22 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         bool getTreatAsDropdown() const;
         int getDropdownIndex() const;
         bool getTreatAsShotbox() const;
+
+        // Watch folder (build 317, WatchFolders): new files in a folder inside
+        // one server's media become items at the end of this group. `seen` is
+        // every file it has had, so a deleted item is not put back.
+        bool getWatchEnabled() const { return this->watchEnabled; }
+        const QString& getWatchServer() const { return this->watchServer; }
+        const QString& getWatchFolder() const { return this->watchFolder; }
+        int getWatchChannel() const { return this->watchChannel; }
+        int getWatchLayer() const { return this->watchLayer; }
+        const QStringList& getWatchSeen() const { return this->watchSeen; }
+        void setWatchEnabled(bool on);
+        void setWatchServer(const QString& server);
+        void setWatchFolder(const QString& folder);
+        void setWatchChannel(int channel);
+        void setWatchLayer(int layer);
+        void setWatchSeen(const QStringList& seen);
 
         void setNotes(const QString& notes);
         void setAutoPlay(bool autoPlay);
@@ -60,6 +77,13 @@ class CORE_EXPORT GroupCommand : public AbstractCommand
         // "what does this group look like on the grid" and a group cannot be a
         // chooser and a rack at the same time.
         bool treatAsShotbox = false;
+
+        bool watchEnabled = false;
+        QString watchServer;
+        QString watchFolder;
+        int watchChannel = 1;
+        int watchLayer = 10;
+        QStringList watchSeen;
 
         Q_SIGNAL void notesChanged(const QString&);
         Q_SIGNAL void autoPlayChanged(bool);

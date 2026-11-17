@@ -1071,6 +1071,9 @@ The channel is the server's preview channel, or the item's own channel when the 
 <h3>Editing several items at once</h3>
 <p>Select several items (Ctrl or Shift click) and change a field in the Inspector: it is changed on all of them (build 311). Channel, layer, delay and duration go to every selected item; a transition, a clip flag (loop, freeze on load, trigger on next, auto, auto play, auto loop) or a template flag goes to every selected item of the same kind. A blue line at the top of the Inspector shows how many are selected. Edit &gt; Undo takes the change back in one step.</p>
 
+<h3>Watch folders</h3>
+<p>A group can fill itself from a folder inside a server's media (build 317). Select the group and, in the Inspector, tick <b>Watch Folder</b>; choose the server, the folder (subfolders count too) and the channel and layer for new items. Every new clip, still or audio file there becomes an item at the end of the group within the check interval (Settings &gt; Rundown, 15 s unless set). Tick <b>Also add the files already there</b> to take in what the folder holds when the watch starts. Deleted items are not put back; a file that disappears leaves its item, marked missing; locked rundowns are left alone. The watch is saved with the rundown.</p>
+
 <h3>Find and Replace</h3>
 <p><b>Edit &gt; Find and Replace</b> (Ctrl+Shift+F, build 310) replaces text in the open rundown or in every open rundown. Tick what to look in: item labels, template field values, operator notes, HTML page addresses, custom AMCP commands, shell command lines. <b>Find All</b> lists each match with its rundown, item and field; <b>Show</b> (or a double-click) goes to the item; <b>Replace All</b> changes them. Text is taken literally. Each rundown's change is one undo step there; locked rundowns are skipped. Ctrl+F still searches labels and names without replacing.</p>
 

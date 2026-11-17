@@ -1838,6 +1838,13 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Watch Folders
+
+- **A group that fills itself from a media folder.** Select a group, and in the Inspector tick Watch Folder: choose the server and a folder inside its media (INCOMING, say), and the channel and layer for new items. Every new clip, still or audio file that appears there becomes an item at the end of the group.
+- **Works with any server.** It reads the server's own media list, so a server on another machine works the same as one on this one. Watched servers are asked every 15 seconds (Settings > Rundown > Watch folders check every); a Library refresh counts too.
+- **Nothing surprises the operator.** Additions go to the end of the group, never move the selection and are not undo steps. An item you delete is not put back. A file that disappears leaves its item where it is, marked missing. A locked rundown is left alone.
+- **Already there.** "Also add the files already there" decides whether the folder's current files are added when the watch starts; off, only files that arrive from then on.
+
 ## Settings: One Save Rule, Restarts, Defaults
 
 - **OK and Cancel for everything.** Cancel - or Esc, or closing the window - puts every setting back as it was when Settings opened, in every section; OK keeps them. Before, some sections saved as you typed and others only on OK. The server, GPI and OSC output lists still save as you change them, and the window says so.

@@ -756,6 +756,42 @@ void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
     }
 }
 
+bool RundownTreeWidget::appendToGroup(QTreeWidgetItem* group, const LibraryModel& model, int channel, int layer)
+{
+    if (group == nullptr)
+        return false;
+
+    AbstractRundownWidget* widget = RundownItemFactory::getInstance().createWidget(model);
+    if (widget == nullptr)
+        return false;
+
+    if (widget->getCommand() != nullptr)
+    {
+        widget->getCommand()->setChannel(channel);
+        widget->getCommand()->setVideolayer(layer);
+    }
+
+    const bool compact = this->treeWidgetRundown->getCompactView();
+    widget->setCompactView(compact);
+    widget->setInGroup(true);
+
+    QTreeWidgetItem* item = new QTreeWidgetItem();
+    group->addChild(item);
+    this->treeWidgetRundown->setItemWidget(item, 0, dynamic_cast<QWidget*>(widget));
+    dynamic_cast<QWidget*>(widget)->setFixedHeight(compact ? Rundown::COMPACT_ITEM_HEIGHT : Rundown::DEFAULT_ITEM_HEIGHT);
+    return true;
+}
+
+void RundownTreeWidget::finishAppending()
+{
+    this->treeWidgetRundown->updateAllGroupWidgets();
+    if (this->treeWidgetRundown->updatesEnabled())
+    {
+        this->treeWidgetRundown->doItemsLayout();
+        this->treeWidgetRundown->checkEmptyRundown();
+    }
+}
+
 void RundownTreeWidget::autoPlayChanged(const AutoPlayChangedEvent& event)
 {
     if (!this->active)
