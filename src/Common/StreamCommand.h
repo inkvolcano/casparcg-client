@@ -37,6 +37,15 @@
 // rate at 25 costs nothing on a 25p channel and halves the frames on a 50p one.
 // So the default changed to that, and the original string is a preset.
 //
+// Build 319, from upstream #333 and #316, checked by decoding the stream with
+// ffmpeg: the server sent H.264 High 4:4:4 (yuv444p), which many decoders
+// cannot play, and its parameter sets only once, at the start - a receiver
+// that joins late, or loses those packets, never shows a picture. format=yuv420p
+// makes it plain 4:2:0 (Constrained Baseline), and repeat-headers with a key
+// frame every 25 frames lets a late receiver start within a second. The server
+// wants the stream specifier on codec options (-x264-params:v, -g:v); without
+// it they were ignored. Same CPU as before (measured), a little more bandwidth.
+//
 // Header-only so the assembly can be tested without a server or a socket.
 
 #include <QtCore/QList>
@@ -74,7 +83,8 @@ namespace StreamCommand
         const QString keyFilter = key ? "alphaextract,format=pix_fmts=yuv422p," : "";
         const QString scale = (width > 0 && height > 0) ? QString("scale=%1:%2").arg(width).arg(height) : QString("scale=1280:-2");
         return QString("-format mpegts -codec:v libx264 -crf:v %1 -tune:v zerolatency -preset:v ultrafast "
-                       "-filter:v fps=25,%2%3:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"")
+                       "-x264-params:v repeat-headers=1 -g:v 25 "
+                       "-filter:v fps=25,%2%3:flags=fast_bilinear,format=yuv420p -filter:a \"pan=stereo|c0=FL|c1=FR\"")
             .arg(quality)
             .arg(keyFilter)
             .arg(scale);
@@ -143,7 +153,9 @@ namespace StreamCommand
 
         list.append({ "Default", QString(),
                       "At most 25 frames a second with a cheap scaler: about half the server CPU of the "
-                      "original string for the panel, a third less for the Live window (measured, build 318)." });
+                      "original string for the panel, a third less for the Live window (measured, build 318). "
+                      "Plain 4:2:0 with its headers repeated, so any decoder can play it and a late start "
+                      "recovers within a second (build 319)." });
 
         // The string sent up to build 317. Scale 0:0 is ffmpeg for "the input's
         // own size", which is what the Live window always got.
@@ -157,7 +169,8 @@ namespace StreamCommand
         // Half again, for a machine where every bit counts.
         list.append({ "Lowest server CPU (12.5 frames a second)",
                       "-format mpegts -codec:v libx264 -crf:v {quality} -tune:v zerolatency "
-                      "-preset:v ultrafast -filter:v fps=12.5,{key}scale={width}:{height}:flags=fast_bilinear "
+                      "-preset:v ultrafast -x264-params:v repeat-headers=1 -g:v 13 "
+                      "-filter:v fps=12.5,{key}scale={width}:{height}:flags=fast_bilinear,format=yuv420p "
                       "-filter:a \"pan=stereo|c0=FL|c1=FR\"",
                       "A choppier preview for less work. In the Live window it sends the full picture." });
 

@@ -6,9 +6,12 @@ on:
   pull_request:
     branches: ["main"]
 
+env:
+  MACOSX_DEPLOYMENT_TARGET: 13 # Boost is built with 13 as minimum
+
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-latest
     timeout-minutes: 180
 
     strategy:
@@ -100,7 +103,7 @@ jobs:
             fi
           fi
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: casparcg-client-macos-${{ matrix.arch }}
           path: ${{ steps.upload-build.outputs.artifactname }}

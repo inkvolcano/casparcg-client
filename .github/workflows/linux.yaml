@@ -8,7 +8,16 @@ on:
 
 jobs:
     build-deb:
-        runs-on: ubuntu-22.04
+        runs-on: ${{ matrix.os }}
+
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: ubuntu-22.04
+                      distro: ubuntu22
+                    - os: ubuntu-24.04
+                      distro: ubuntu24
 
         steps:
             - uses: actions/checkout@v6
@@ -40,7 +49,7 @@ jobs:
               id: "upload-build"
               shell: bash
               run: |
-                  TARGET=casparcg-client-${{ github.sha }}-ubuntu22.deb
+                  TARGET=casparcg-client-${{ github.sha }}-${{ matrix.distro }}.deb
                   mv build/CasparCG*.deb "$TARGET"
 
                   echo "artifactname=$TARGET" >> $GITHUB_OUTPUT
@@ -62,7 +71,7 @@ jobs:
                     fi
                   fi
 
-            - uses: actions/upload-artifact@v6
+            - uses: actions/upload-artifact@v7
               with:
-                  name: upload-artifact
+                  name: upload-artifact-${{ matrix.distro }}
                   path: ${{ steps.upload-build.outputs.artifactname }}

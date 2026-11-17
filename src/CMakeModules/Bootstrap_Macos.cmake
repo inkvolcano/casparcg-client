@@ -14,8 +14,8 @@ set(BOOST_USE_PRECOMPILED ON CACHE BOOL "Use precompiled boost")
 # casparcg_add_external_project(boost)
 if (BOOST_USE_PRECOMPILED)
 	ExternalProject_Add(boost
-		URL ${CASPARCG_DOWNLOAD_MIRROR}/boost/boost_1_83_0-macos-multiarch-release.zip
-		URL_HASH MD5=029541b7a7d6827fc0d79b1822b3b3be
+		URL ${CASPARCG_DOWNLOAD_MIRROR}/boost/boost_1_83_0-macos-multiarch-release3.zip
+		URL_HASH SHA256=6d4ef91c72d6d7990bf89b0f0da113dc9096ff06e7f1b75740a7b5b770530700
 		DOWNLOAD_DIR ${CASPARCG_DOWNLOAD_CACHE}
 		CONFIGURE_COMMAND ""
 		BUILD_COMMAND ""
@@ -29,12 +29,11 @@ else ()
 	set(BOOST_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-install)
 	ExternalProject_Add(boost
 		URL ${CASPARCG_DOWNLOAD_MIRROR}/boost/boost_1_83_0.zip
-		URL_HASH MD5=03d5aea72401ffed848cb5daf8cd2b9b
+		URL_HASH SHA256=c86bd9d9eef795b4b0d3802279419fde5221922805b073b9bd822edecb1ca28e
 		DOWNLOAD_DIR ${CASPARCG_DOWNLOAD_CACHE}
 		BUILD_IN_SOURCE 1
 		CONFIGURE_COMMAND ./bootstrap.sh
-			--with-libraries=thread
-			--with-libraries=system
+			--with-libraries=thread,system,chrono
 		BUILD_COMMAND ./b2 install release architecture=arm+x86 --prefix=${BOOST_INSTALL_DIR} link=static -j ${CONFIG_CPU_COUNT} 
 		INSTALL_COMMAND ""
 	)
@@ -42,7 +41,7 @@ else ()
 	link_directories("${BOOST_INSTALL_DIR}/lib")
     include_directories(${BOOST_INCLUDE_PATH}) # TODO this is not pretty
 endif ()
-set(Boost_LIBRARIES "boost_thread")
+set(Boost_LIBRARIES "boost_thread" "boost_chrono")
 add_definitions( -D_HAS_AUTO_PTR_ETC=0 ) # fix incompatibility with c++17
 add_definitions( -DBOOST_ERROR_CODE_HEADER_ONLY ) # fix a link issue inside of 
 
@@ -52,7 +51,7 @@ SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-deprecated-builtins -Wno-deprecate
 if (CMAKE_OSX_ARCHITECTURES MATCHES "(arm|aarch)")
 	ExternalProject_Add(libvlc2
 		URL ${CASPARCG_DOWNLOAD_MIRROR}/libvlc/libvlc-3.0.20-macos-arm64.zip
-		URL_HASH MD5=bdf16f561cf9ee85bee66ab63d8ce191
+		URL_HASH SHA256=fc03614ee52a0d03b245d9a4de9e5f403277da0db62a2ce6f79f627daf379ad5
 		DOWNLOAD_DIR ${CASPARCG_DOWNLOAD_CACHE}
 		CONFIGURE_COMMAND ""
 		BUILD_COMMAND ""
@@ -61,7 +60,7 @@ if (CMAKE_OSX_ARCHITECTURES MATCHES "(arm|aarch)")
 else()
 	ExternalProject_Add(libvlc2
 		URL ${CASPARCG_DOWNLOAD_MIRROR}/libvlc/libvlc-3.0.20-macos-x64.zip
-		URL_HASH MD5=18a9c2b2efaec06ee5d3fac51f89f129
+		URL_HASH SHA256=40916c730435dc38778cd6beb379535f4105a18acd3c52abc8e2fff3041292ff
 		DOWNLOAD_DIR ${CASPARCG_DOWNLOAD_CACHE}
 		CONFIGURE_COMMAND ""
 		BUILD_COMMAND ""

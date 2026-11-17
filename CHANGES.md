@@ -1838,6 +1838,12 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Upstream Fixes, Live Stream Format, Exit Crash
+
+- **The Live stream plays everywhere.** The server was sending H.264 in 4:4:4, which many players cannot decode (upstream #333), and its stream headers only once, at the start - a viewer that started late or lost those packets showed nothing (#316). The stream is now plain 4:2:0 with its headers repeated and a key frame every second, so it plays in any decoder and a late start shows a picture within a second. Checked by decoding the stream from a 2.5 server; the CPU cost is unchanged.
+- **No crash on exit with OSC Web Socket off.** With "Enable OSC Control through Web Socket" switched off, the client crashed every time it closed (upstream #334).
+- **Upstream's fixes since the fork.** The GPI code moved off parts of Boost that newer Boost versions removed, so the client still builds when a build machine moves to Boost 1.90. The build now checks its downloads with SHA-256, builds on Ubuntu 24.04 as well as 22.04, and builds for macOS on a runner that exists.
+
 ## Live Panel CPU
 
 - **The Live panel costs the server about half the CPU.** Measured against a 2.5 server on a 1080p25 channel: the cost was the scaler, not the encoder. The stream now uses a cheap scaler and at most 25 frames a second - about 3% of a 12-core machine instead of 6% for the panel. On a 50p channel the frame cap halves the work again.

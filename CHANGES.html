@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#upstream-319">Upstream Fixes, Live Stream Format, Exit Crash</a><br>
 <a href="#live-cpu">Live Panel CPU</a><br>
 <a href="#watch-folders">Watch Folders</a><br>
 <a href="#settings-rules">Settings: One Save Rule, Restarts, Defaults</a><br>
@@ -1902,6 +1903,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="upstream-319">Upstream Fixes, Live Stream Format, Exit Crash</h2>
+
+<ul>
+<li><b>The Live stream plays everywhere.</b> The server was sending H.264 in 4:4:4, which many players cannot decode (upstream #333), and its stream headers only once, at the start - a viewer that started late or lost those packets showed nothing (#316). The stream is now plain 4:2:0 with its headers repeated and a key frame every second, so it plays in any decoder and a late start shows a picture within a second. Checked by decoding the stream from a 2.5 server; the CPU cost is unchanged.</li>
+<li><b>No crash on exit with OSC Web Socket off.</b> With "Enable OSC Control through Web Socket" switched off, the client crashed every time it closed (upstream #334).</li>
+<li><b>Upstream's fixes since the fork.</b> The GPI code moved off parts of Boost that newer Boost versions removed, so the client still builds when a build machine moves to Boost 1.90. The build now checks its downloads with SHA-256, builds on Ubuntu 24.04 as well as 22.04, and builds for macOS on a runner that exists.</li>
+</ul>
 
 <h2 id="live-cpu">Live Panel CPU</h2>
 

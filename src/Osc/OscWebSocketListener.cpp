@@ -19,7 +19,10 @@ OscWebSocketListener::OscWebSocketListener(QObject* parent)
 
 OscWebSocketListener::~OscWebSocketListener()
 {
-    this->server->close();
+    // Never made when OSC over Web Socket is switched off: closing it crashed
+    // every exit (upstream #334, build 319).
+    if (this->server != nullptr)
+        this->server->close();
     qDeleteAll(this->sockets.begin(), this->sockets.end());
 }
 
@@ -93,11 +96,9 @@ void OscWebSocketListener::textMessageReceived(const QString& message)
 void OscWebSocketListener::disconnected()
 {
     QWebSocket* socket = qobject_cast<QWebSocket*>(QObject::sender());
-
-    qDebug("Client %s was disconnected", qPrintable(socket->peerAddress().toString()));
-
     if (socket != nullptr)
     {
+        qDebug("Client %s was disconnected", qPrintable(socket->peerAddress().toString()));
         this->sockets.removeAll(socket);
         socket->deleteLater();
     }

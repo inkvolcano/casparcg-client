@@ -70,11 +70,13 @@ static void theDefaultIsTheMeasuredOne()
     // Build 318: at most 25 frames a second, a cheap scaler; the window 1280 wide.
     same(StreamCommand::defaultParameters(23, false, 288, 162),
          "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency -preset:v ultrafast "
-         "-filter:v fps=25,scale=288:162:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"",
-         "the panel: 25 fps, fast_bilinear, its own size");
+         "-x264-params:v repeat-headers=1 -g:v 25 "
+         "-filter:v fps=25,scale=288:162:flags=fast_bilinear,format=yuv420p -filter:a \"pan=stereo|c0=FL|c1=FR\"",
+         "the panel: 25 fps, fast_bilinear, its own size, 4:2:0 with repeated headers");
     same(StreamCommand::defaultParameters(23, false, 0, 0),
          "-format mpegts -codec:v libx264 -crf:v 23 -tune:v zerolatency -preset:v ultrafast "
-         "-filter:v fps=25,scale=1280:-2:flags=fast_bilinear -filter:a \"pan=stereo|c0=FL|c1=FR\"",
+         "-x264-params:v repeat-headers=1 -g:v 25 "
+         "-filter:v fps=25,scale=1280:-2:flags=fast_bilinear,format=yuv420p -filter:a \"pan=stereo|c0=FL|c1=FR\"",
          "the window: 1280 wide, the channel's shape kept");
 
     // The Original preset, expanded, is the original string (bar the double space).
