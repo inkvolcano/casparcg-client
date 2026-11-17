@@ -360,7 +360,13 @@ if ($existing) {
              "updates work without it. Deploy every file in it, the dotfiles included." +
              "`n`n``$symbolsName`` is this build's debug symbols, for reading a crash dump " +
              "(tools\read-crash-dump.ps1). Not needed on a venue machine."
-    & gh release create $tag $zipPath $sumsPath $bootstrapPath $phpPath $symbolsPath --repo $Repo --title "Build $build" --notes $notes
+    # From a file, never as an argument: Windows PowerShell 5.1 does not escape
+    # double quotes inside an argument to a native program, so notes quoting
+    # anything ("Try:") were split into pieces and gh took one of them - ">" from
+    # "->" - for an asset to upload: "no matches found for `>`" (build 316).
+    $notesPath = Join-Path $staging "release-notes.md"
+    [System.IO.File]::WriteAllText($notesPath, $notes, (New-Object System.Text.UTF8Encoding($false)))
+    & gh release create $tag $zipPath $sumsPath $bootstrapPath $phpPath $symbolsPath --repo $Repo --title "Build $build" --notes-file $notesPath
     if ($LASTEXITCODE -ne 0) { Fail "gh release create failed" }
 }
 
