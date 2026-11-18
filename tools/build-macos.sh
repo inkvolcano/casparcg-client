@@ -66,6 +66,12 @@ ln -s /Applications "$CLIENT_FOLDER/"
 # Create dmg file
 echo Creating dmg...
 DMG_NAME="$BUILD_ARCHIVE_NAME-macos-$ARCH.dmg"
+# The image is sized from the app plus room for the file system: the fixed
+# 180 MB from upstream ran out once this fork's app outgrew it ("No space left
+# on device", first seen when the macos-15 pin let the build get this far).
+APP_MB=$(du -sm "$CLIENT_FOLDER" | cut -f1)
+BUILD_HDIUTILS_WORKAROUND_SIZE="$((APP_MB * 13 / 10 + 50))m"
+echo "App folder is ${APP_MB} MB; disk image ${BUILD_HDIUTILS_WORKAROUND_SIZE}"
 hdiutil create -size "$BUILD_HDIUTILS_WORKAROUND_SIZE" -volname "$CLIENT_FOLDER" -srcfolder "$CLIENT_FOLDER" -ov -format UDZO "$DMG_NAME" || fail "Could not create dmg"
  
 # notarize dmg
