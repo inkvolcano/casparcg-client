@@ -11,7 +11,9 @@ env:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # macos-15, not macos-latest: from Xcode 26 the SDK has no AGL framework, and
+    # Qt 6.5.3's OpenGL wrapper still links it ("ld: framework 'AGL' not found").
+    runs-on: macos-15
     timeout-minutes: 180
 
     strategy:
