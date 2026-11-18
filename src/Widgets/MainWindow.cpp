@@ -446,6 +446,8 @@ void MainWindow::setupMenu()
     this->rundownMenu->addSeparator();
     this->rundownMenu->addAction("Copy Item Properties", this, SLOT(copyItemProperties()), QKeySequence::fromString("Shift+C"));
     this->rundownMenu->addAction("Paste Item Properties", this, SLOT(pasteItemProperties()), QKeySequence::fromString("Shift+V"));
+    this->rundownMenu->addAction("Go to Top", this, []() { EventManager::getInstance().fireRundownGoTo(false); }, QKeySequence::fromString("Ctrl+Home"));
+    this->rundownMenu->addAction("Go to Bottom", this, []() { EventManager::getInstance().fireRundownGoTo(true); }, QKeySequence::fromString("Ctrl+End"));
     this->allowRemoteTriggeringAction = this->rundownMenu->addAction("Allow Remote Triggering");
     this->allowRemoteTriggeringAction->setCheckable(true);
     this->lockRundownAction = this->rundownMenu->addAction("Lock Rundown");

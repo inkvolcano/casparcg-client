@@ -103,6 +103,9 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         void removeAllItems();
         void selectItemAbove();
         void selectItemBelow();
+        // Go to the top or bottom of the rundown (upstream #220): selects the first
+        // or last row, so the next Play starts there, and scrolls it into view.
+        void selectEdgeItem(bool bottom);
         void checkEmptyRundown();
         void checRepositoryChanges();
         void applyRepositoryChanges();
@@ -118,6 +121,9 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         // every keyboard paste; a drop aimed at the upper half of a row sets 0
         // for the length of that drop, so the library's insert lands there too.
         int dropPasteOffset() const { return this->pasteOffset; }
+        // The empty group a drop in progress lands in (upstream #224), or null.
+        // Every insert during that drop appends to it, so several items keep their order.
+        QTreeWidgetItem* dropIntoGroup() const { return this->dropGroup; }
 
         QUndoStack* undoStack() const { return m_undoStack; }
         QString serializeTree() const;
@@ -194,6 +200,7 @@ class WIDGETS_EXPORT RundownTreeBaseWidget : public QTreeWidget
         // refreshed when it is shown rather than on every tick of the spin box.
         bool groupsStale = false;
         int pasteOffset = 1;
+        QTreeWidgetItem* dropGroup = nullptr;
         int pasteCount = 0;
 
         QList<RepositoryChangeModel> repositoryChanges;

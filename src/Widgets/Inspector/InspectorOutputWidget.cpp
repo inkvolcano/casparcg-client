@@ -17,6 +17,7 @@
 #include "Commands/CustomCommand.h"
 #include "Commands/ClipCommand.h"
 #include "Commands/DeckLinkInputCommand.h"
+#include "Commands/NdiInputCommand.h"
 #include "Commands/FillCommand.h"
 #include "Commands/GpiOutputCommand.h"
 #include "Commands/GroupCommand.h"
@@ -390,6 +391,7 @@ void InspectorOutputWidget::rundownItemSelected(const RundownItemSelectedEvent &
             this->spinBoxDuration->setValue(Output::DEFAULT_DURATION);
         }
         else if (dynamic_cast<DeckLinkInputCommand *>(event.getCommand()) ||
+                 dynamic_cast<NdiInputCommand *>(event.getCommand()) ||
                  dynamic_cast<BlendModeCommand *>(event.getCommand()) ||
                  dynamic_cast<BrightnessCommand *>(event.getCommand()) ||
                  dynamic_cast<ContrastCommand *>(event.getCommand()) ||

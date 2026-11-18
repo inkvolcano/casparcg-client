@@ -136,7 +136,11 @@ static void theDropLandsWhereTheLineIs()
 
     expectTrue(DropRules::placeFor(true, 150, 100, 60, true) == Place::Into, "the lower half of an open group lands first inside it");
     expectTrue(DropRules::placeFor(true, 110, 100, 60, true) == Place::Before, "its upper half lands before the group");
-    expectTrue(DropRules::placeFor(true, 150, 100, 60, false) == Place::After, "a closed or empty group is a row like any other");
+    expectTrue(DropRules::placeFor(true, 150, 100, 60, false) == Place::After, "a closed group is a row like any other");
+    expectTrue(DropRules::placeFor(true, 150, 100, 60, false, true) == Place::IntoEmpty, "the lower half of an empty group lands inside it (#224)");
+    expectTrue(DropRules::placeFor(true, 110, 100, 60, false, true) == Place::Before, "its upper half still lands before the group");
+    expectTrue(DropRules::indicatorY(Place::IntoEmpty, 100, 159) == 159, "the line for an empty group is under its header");
+    expectTrue(DropRules::pasteOffset(Place::IntoEmpty) == 0, "into an empty group: its first row");
 
     expectTrue(DropRules::placeFor(false, 900, 0, 0, false) == Place::End, "past the last row is the end of the list");
 

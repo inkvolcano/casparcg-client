@@ -1838,6 +1838,15 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## NDI Input, Go To Top, Upstream Fixes
+
+- **NDI Input item.** Plays an NDI source on a layer, the way DeckLink Input plays a card's input (upstream #290). Library > Tools, or right-click > Other. The Inspector's NDI Input section lists the sources the item's server can see (Find asks again), and a name can be typed for a source that is not up yet. Choosing a source names the row after it while the row still has its default label. Low bandwidth and the usual transition are there too. Shadow servers get the same command. Needs CasparCG Server 2.4 or newer with the NDI runtime on the server machine.
+- **Go to the top or bottom of the rundown.** Two small buttons at the ends of the rundown's scrollbar select the first or last item and scroll to it (upstream #220). Also Rundown > Go to Top (Ctrl+Home) and Go to Bottom (Ctrl+End), the OSC paths /control/top and /control/bottom (with Allow Remote Triggering on, like /control/up and /control/down), and two new choices on the Playout Command item. The buttons sit inside the scrollbar, so a rundown short enough not to scroll has neither.
+- **Time left on a clip with Seek and Length.** A clip played with Seek or Length counted down from the end of the whole file, and the end-of-clip autoplay fired early (upstream #272). The server reports the in point and the length that plays, measured on 2.5; the row's countdown, its progress bar, its length and the Activity panel's bar now use the part that plays.
+- **A clip's length follows its target.** Changing a clip's target in the Inspector now updates the length on its row (upstream #285); it kept the old clip's length until the rundown was reopened.
+- **Dropping into an empty group.** The lower half of an empty group's row now drops inside the group, from the Library, from the rundown and with Ctrl-drag clones (upstream #224). The line is drawn under the group's header, as for an open group. Until now the only way in was Ctrl+Right.
+- **OSC control without the wait.** Commands to /control/... over OSC are carried out as they arrive instead of every 400 ms, so a group fired over OSC starts when the message arrives instead of up to 400 ms later, and a second press within that time is no longer lost (upstream #195).
+
 ## Live Panel Picture And Delay
 
 - **The Live panel shows a picture with a 2.5 server.** The server sent datagrams that split the stream's packets in two, and the Live panel's player never got in step, so it stayed black (upstream #316). The client now asks for whole-packet datagrams. Measured: nothing before, 25 frames a second after.

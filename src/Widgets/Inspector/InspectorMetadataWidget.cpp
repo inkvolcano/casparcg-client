@@ -94,6 +94,15 @@ InspectorMetadataWidget::InspectorMetadataWidget(QWidget* parent)
     this->editFireAt->setVisible(false);
     QObject::connect(this->editFireAt, &QLineEdit::editingFinished, this, [this]() { saveFireAt(); });
 
+    // A label set from elsewhere in the Inspector (the NDI Input source names its
+    // row, build 321) shows here too, without firing a second change.
+    QObject::connect(&EventManager::getInstance(), &EventManager::labelChanged, this, [this](const LabelChangedEvent& event) {
+        if (this->lineEditLabel->text() == event.getLabel())
+            return;
+        const QSignalBlocker blocker(this->lineEditLabel);
+        this->lineEditLabel->setText(event.getLabel());
+    });
+
     QObject::connect(choose, &QPushButton::clicked, this, [this]() { chooseReference(); });
     QObject::connect(this->buttonReferenceCapture, &QPushButton::clicked, this, [this]() { captureReference(); });
     QObject::connect(this->buttonReferenceClear, &QPushButton::clicked, this, [this]() {

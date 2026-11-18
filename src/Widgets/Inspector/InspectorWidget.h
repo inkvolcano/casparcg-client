@@ -40,6 +40,7 @@ class WIDGETS_EXPORT InspectorWidget : public QWidget, Ui::InspectorWidget
         // a row for everything declared after Template once this exists.
         QTreeWidgetItem* templateSettingsTopLevel = nullptr;
         QTreeWidgetItem* shellCommandTopLevel = nullptr;
+        QTreeWidgetItem* ndiInputTopLevel = nullptr;
         QTreeWidgetItem* sectionItem(int declaredIndex) const;
 
         void setDefaultVisibleWidgets();

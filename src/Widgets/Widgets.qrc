@@ -78,6 +78,7 @@
         <file>Images/LevelsSmall.png</file>
         <file>Images/LevelsSmallHover.png</file>
         <file>Images/DeckLinkProducer.png</file>
+        <file>Images/NdiInput.png</file>
         <file>Images/SeparatorSmall.png</file>
         <file>Images/SeparatorSmallHover.png</file>
         <file>Images/gateway_entry.png</file>
@@ -98,6 +99,8 @@
         <file>Images/CropSmallHover.png</file>
         <file>Images/DeckLinkProducerSmall.png</file>
         <file>Images/DeckLinkProducerSmallHover.png</file>
+        <file>Images/NdiInputSmall.png</file>
+        <file>Images/NdiInputSmallHover.png</file>
         <file>Images/GridSmall.png</file>
         <file>Images/GridSmallHover.png</file>
         <file>Images/KeyerSmall.png</file>

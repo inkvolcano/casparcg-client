@@ -111,6 +111,10 @@
 #include <QtWidgets/QFrame>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QTreeWidgetItem>
+#include <QtWidgets/QStyle>
+#include <QtWidgets/QToolButton>
+#include <QtGui/QPainter>
+#include <QtGui/QPolygonF>
 
 RundownTreeWidget::RundownTreeWidget(QWidget* parent)
     : QWidget(parent),
@@ -128,6 +132,12 @@ RundownTreeWidget::RundownTreeWidget(QWidget* parent)
     this->verticalLayout->addWidget(this->timingBar);
 
     this->referenceImageMarker = new ReferenceImageMarker(this->treeWidgetRundown, this);
+
+    addEdgeButtons();
+    QObject::connect(&EventManager::getInstance(), &EventManager::rundownGoTo, this, [this](bool bottom) {
+        if (this->active)
+            goToEdge(bottom);
+    });
     QObject::connect(this->treeWidgetRundown, &RundownTreeBaseWidget::itemsChanged,
                      this->referenceImageMarker, &ReferenceImageMarker::queueSweep);
 
@@ -221,6 +231,7 @@ void RundownTreeWidget::setupMenus()
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/ClearSmall.png"), "Clear Output", this, SLOT(addClearOutputItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/CustomCommandSmall.png"), "Custom Command", this, SLOT(addCustomCommandItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/DeckLinkProducerSmall.png"), "DeckLink Input", this, SLOT(addDeckLinkInputItem()));
+    this->contextMenuOther->addAction(QIcon(":/Graphics/Images/NdiInputSmall.png"), "NDI Input", this, SLOT(addNdiInputItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/SolidColorSmall.png"), "Fade Out", this, SLOT(addFadeToBlackItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/FileRecorderSmall.png"), "File Recorder", this, SLOT(addFileRecorderItem()));
     this->contextMenuOther->addAction(QIcon(":/Graphics/Images/GpiOutputSmall.png"), "GPI Output", this, SLOT(addGpiOutputItem()));
@@ -652,7 +663,12 @@ void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
         auto insertOneWidget = [&](AbstractRundownWidget* w) -> QTreeWidgetItem* {
             w->setCompactView(compact);
             QTreeWidgetItem* treeItem = new QTreeWidgetItem();
-            if (this->treeWidgetRundown->currentItem() == NULL)
+            if (QTreeWidgetItem* group = this->treeWidgetRundown->dropIntoGroup())
+            {
+                group->addChild(treeItem);
+                w->setInGroup(true);
+            }
+            else if (this->treeWidgetRundown->currentItem() == NULL)
                 this->treeWidgetRundown->invisibleRootItem()->addChild(treeItem);
             else if (this->treeWidgetRundown->currentItem()->parent() == NULL)
                 this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), treeItem);
@@ -724,7 +740,12 @@ void RundownTreeWidget::insertRundownItem(const LibraryModel& model)
     widget->setCompactView(this->treeWidgetRundown->getCompactView());
 
     QTreeWidgetItem* item = new QTreeWidgetItem();
-    if (this->treeWidgetRundown->currentItem() == NULL) // There is no item selected.
+    if (QTreeWidgetItem* group = this->treeWidgetRundown->dropIntoGroup()) // Dropped on an empty group (#224).
+    {
+        group->addChild(item);
+        widget->setInGroup(true);
+    }
+    else if (this->treeWidgetRundown->currentItem() == NULL) // There is no item selected.
         this->treeWidgetRundown->invisibleRootItem()->addChild(item); // Add item to the bottom of the rundown.
     else if (this->treeWidgetRundown->currentItem()->parent() == NULL) // Top level item.
         this->treeWidgetRundown->invisibleRootItem()->insertChild(this->treeWidgetRundown->currentIndex().row() + this->treeWidgetRundown->dropPasteOffset(), item); // Insert item below.
@@ -3780,6 +3801,11 @@ void RundownTreeWidget::addDeckLinkInputItem()
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::DECKLINKINPUT);
 }
 
+void RundownTreeWidget::addNdiInputItem()
+{
+    EventManager::getInstance().fireAddRudnownItemEvent(Rundown::NDIINPUT);
+}
+
 void RundownTreeWidget::addPrintItem()
 {
     EventManager::getInstance().fireAddRudnownItemEvent(Rundown::PRINT);
@@ -4387,6 +4413,12 @@ void RundownTreeWidget::resetOscSubscriptions()
 
     delete this->clearChannelControlSubscription;
     this->clearChannelControlSubscription = nullptr;
+
+    delete this->topControlSubscription;
+    this->topControlSubscription = nullptr;
+
+    delete this->bottomControlSubscription;
+    this->bottomControlSubscription = nullptr;
 }
 
 void RundownTreeWidget::configureOscSubscriptions()
@@ -4404,6 +4436,20 @@ void RundownTreeWidget::configureOscSubscriptions()
     this->downControlSubscription = new OscSubscription(downControlFilter, this);
     QObject::connect(this->downControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
                      this, SLOT(downControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    this->topControlSubscription = new OscSubscription(Osc::RUNDOWN_CONTROL_TOP_FILTER, this);
+    QObject::connect(this->topControlSubscription, &OscSubscription::subscriptionReceived, this,
+                     [this](const QString&, const QList<QVariant>& arguments) {
+        if (this->active && this->allowRemoteRundownTriggering && arguments.count() > 0 && arguments[0].toInt() > 0)
+            goToEdge(false);
+    });
+
+    this->bottomControlSubscription = new OscSubscription(Osc::RUNDOWN_CONTROL_BOTTOM_FILTER, this);
+    QObject::connect(this->bottomControlSubscription, &OscSubscription::subscriptionReceived, this,
+                     [this](const QString&, const QList<QVariant>& arguments) {
+        if (this->active && this->allowRemoteRundownTriggering && arguments.count() > 0 && arguments[0].toInt() > 0)
+            goToEdge(true);
+    });
 
     QString playNowIfChannelControlFilter = Osc::RUNDOWN_CONTROL_PLAYNOWIFCHANNEL_FILTER;
     this->playNowIfChannelControlSubscription = new OscSubscription(playNowIfChannelControlFilter, this);
@@ -4470,6 +4516,52 @@ void RundownTreeWidget::configureOscSubscriptions()
     QObject::connect(this->clearChannelControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
                      this, SLOT(clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
 
+}
+
+void RundownTreeWidget::goToEdge(bool bottom)
+{
+    this->treeWidgetRundown->selectEdgeItem(bottom);
+}
+
+// Two small buttons at the ends of the rundown's scrollbar: go to the first row
+// and go to the last (upstream #220). They sit inside the scrollbar's own strip,
+// so they come and go with it: a rundown short enough not to scroll has neither.
+void RundownTreeWidget::addEdgeButtons()
+{
+    auto edgeIcon = [](bool bottom) {
+        QPixmap pixmap(10, 10);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(200, 200, 200));
+        // A bar at the edge and a triangle pointing at it.
+        const int barY = bottom ? 8 : 0;
+        painter.drawRect(QRectF(1, barY, 8, 2));
+        QPolygonF triangle;
+        if (bottom)
+            triangle << QPointF(1, 2) << QPointF(9, 2) << QPointF(5, 7);
+        else
+            triangle << QPointF(1, 8) << QPointF(9, 8) << QPointF(5, 3);
+        painter.drawPolygon(triangle);
+        return QIcon(pixmap);
+    };
+
+    const int extent = this->treeWidgetRundown->style()->pixelMetric(QStyle::PM_ScrollBarExtent, nullptr, this->treeWidgetRundown);
+    for (bool bottom : {false, true})
+    {
+        QToolButton* button = new QToolButton(this->treeWidgetRundown);
+        button->setObjectName(bottom ? "buttonRundownBottom" : "buttonRundownTop");
+        button->setIcon(edgeIcon(bottom));
+        button->setIconSize(QSize(10, 10));
+        button->setAutoRaise(true);
+        button->setFocusPolicy(Qt::NoFocus);
+        button->setFixedSize(extent, extent);
+        button->setToolTip(bottom ? "Go to the bottom: select the last item (Ctrl+End)"
+                                  : "Go to the top: select the first item (Ctrl+Home)");
+        QObject::connect(button, &QToolButton::clicked, this, [this, bottom]() { goToEdge(bottom); });
+        this->treeWidgetRundown->addScrollBarWidget(button, bottom ? Qt::AlignBottom : Qt::AlignTop);
+    }
 }
 
 void RundownTreeWidget::upControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)

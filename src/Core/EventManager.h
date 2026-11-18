@@ -102,6 +102,8 @@ class CORE_EXPORT EventManager : public QObject
 
         Q_SIGNAL void clearDelayedCommands();
         Q_SIGNAL void currentItemChanged(const CurrentItemChangedEvent&);
+        // Go to the top (false) or bottom (true) of the active rundown.
+        Q_SIGNAL void rundownGoTo(bool bottom);
         Q_SIGNAL void durationChanged(const DurationChangedEvent&);
         Q_SIGNAL void removeItemFromAutoPlayQueue(const RemoveItemFromAutoPlayQueueEvent&);
         Q_SIGNAL void clearCurrentPlayingItem(const ClearCurrentPlayingItemEvent&);
@@ -199,6 +201,7 @@ class CORE_EXPORT EventManager : public QObject
         void fireClearDelayedCommands();
         void fireUnitSettingsChangedEvent();
         void fireCurrentItemChangedEvent(const CurrentItemChangedEvent&);
+        void fireRundownGoTo(bool bottom);
         void fireShowAddHttpPostDataDialogEvent(const ShowAddHttpPostDataDialogEvent&);
         void fireShowAddHttpGetDataDialogEvent(const ShowAddHttpGetDataDialogEvent&);
         void fireDurationChangedEvent(const DurationChangedEvent&);

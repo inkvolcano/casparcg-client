@@ -142,6 +142,11 @@ void EventManager::fireShowAddHttpPostDataDialogEvent(const ShowAddHttpPostDataD
     emit showAddHttpPostDataDialog(event);
 }
 
+void EventManager::fireRundownGoTo(bool bottom)
+{
+    emit rundownGoTo(bottom);
+}
+
 void EventManager::fireCurrentItemChangedEvent(const CurrentItemChangedEvent& event)
 {
     emit currentItemChanged(event);
@@ -542,6 +547,8 @@ void EventManager::fireAddRudnownItemEvent(const QString& type)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Image Scroller", "", "", Rundown::IMAGESCROLLER, 0, "")));
     else if (type == Rundown::DECKLINKINPUT)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "DeckLink Input", "", "", Rundown::DECKLINKINPUT, 0, "")));
+    else if (type == Rundown::NDIINPUT)
+        emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "NDI Input", "", "", Rundown::NDIINPUT, 0, "")));
     else if (type == Rundown::PRINT)
         emit addRudnownItem(AddRudnownItemEvent(LibraryModel(0, "Channel Snapshot", "", "", Rundown::PRINT, 0, "")));
     else if (type == Rundown::CLEAROUTPUT)

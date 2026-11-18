@@ -598,7 +598,25 @@ bool RundownTreeBaseWidget::pasteXml(const QString& xml, bool repositoryRundown,
         int row  = QTreeWidget::currentIndex().row();
 
         QTreeWidgetItem* parentItem = new QTreeWidgetItem();
-        if (QTreeWidget::currentItem() == NULL || QTreeWidget::currentItem()->parent() == NULL) // Top level item.
+        if (this->dropGroup != nullptr)
+        {
+            // Dropped on an empty group: inside it, in order. A group inside a
+            // group is as deep as groups go, the same rule as below.
+            if (parentWidget->isGroup() && getItemDepth(this->dropGroup) + 1 >= 2)
+                continue;
+            if (parentWidget->isGroup() && parentValue.second.count(L"items") > 0)
+            {
+                bool hasInnerGroups = false;
+                for (auto& cv : parentValue.second.get_child(L"items"))
+                    if (QString::fromStdWString(cv.second.get(L"type", L"")) == "GROUP") { hasInnerGroups = true; break; }
+                if (hasInnerGroups)
+                    continue;
+            }
+
+            parentWidget->setInGroup(true);
+            this->dropGroup->addChild(parentItem);
+        }
+        else if (QTreeWidget::currentItem() == NULL || QTreeWidget::currentItem()->parent() == NULL) // Top level item.
         {
             parentWidget->setInGroup(false);
             parentWidget->setExpanded(false);
@@ -2098,8 +2116,9 @@ RundownTreeBaseWidget::DropSpot RundownTreeBaseWidget::resolveDropSpot(const QPo
     const QRect row = QTreeWidget::visualItemRect(item);
     const AbstractRundownWidget* widget = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(item, 0));
     const bool openGroup = widget != nullptr && widget->isGroup() && item->isExpanded() && item->childCount() > 0;
+    const bool emptyGroup = widget != nullptr && widget->isGroup() && item->childCount() == 0;
 
-    spot.place = DropRules::placeFor(true, viewportPos.y(), row.top(), row.height(), openGroup);
+    spot.place = DropRules::placeFor(true, viewportPos.y(), row.top(), row.height(), openGroup, emptyGroup);
     spot.item = (spot.place == DropRules::Place::Into) ? item->child(0) : item;
 
     return spot;
@@ -2159,7 +2178,17 @@ void RundownTreeBaseWidget::dropEvent(QDropEvent* event)
 
     QTreeWidget::dropEvent(event);
 
+    // What landed in an empty group is shown: the group opens.
+    if (this->dropGroup != nullptr && this->dropGroup->childCount() > 0)
+    {
+        this->dropGroup->setExpanded(true);
+        if (AbstractRundownWidget* group = dynamic_cast<AbstractRundownWidget*>(QTreeWidget::itemWidget(this->dropGroup, 0)))
+            group->setExpanded(true);
+        updateAllGroupWidgets();
+    }
+
     this->dropSpot = DropSpot();
+    this->dropGroup = nullptr;
     this->pasteOffset = 1;
 }
 
@@ -2168,8 +2197,16 @@ void RundownTreeBaseWidget::dropEvent(QDropEvent* event)
 // this, which named the row only when the cursor was in its middle.
 void RundownTreeBaseWidget::aimAtDropSpot()
 {
+    // An empty group dragged onto itself is a move after itself, as before: a
+    // move pastes and then deletes what was dragged, and that would take the
+    // group with everything just pasted into it.
+    if (this->dropSpot.place == DropRules::Place::IntoEmpty && dragSourceWidget == this &&
+        QTreeWidget::selectedItems().contains(this->dropSpot.item))
+        this->dropSpot.place = DropRules::Place::After;
+
     QTreeWidget::setCurrentItem(this->dropSpot.item);
     this->pasteOffset = DropRules::pasteOffset(this->dropSpot.place);
+    this->dropGroup = this->dropSpot.place == DropRules::Place::IntoEmpty ? this->dropSpot.item : nullptr;
 }
 
 void RundownTreeBaseWidget::dragLeaveEvent(QDragLeaveEvent* event)
@@ -2289,7 +2326,12 @@ bool RundownTreeBaseWidget::dropMimeData(QTreeWidgetItem* parent, int index, con
                     cloneWidget->setCompactView(this->compactView);
 
                     QTreeWidgetItem* cloneItem = new QTreeWidgetItem();
-                    if (groupParent)
+                    if (this->dropGroup != nullptr)
+                    {
+                        cloneWidget->setInGroup(true);
+                        this->dropGroup->addChild(cloneItem);
+                    }
+                    else if (groupParent)
                         groupParent->insertChild(row + offset, cloneItem);
                     else if (row >= 0)
                         QTreeWidget::invisibleRootItem()->insertChild(row + offset, cloneItem);
@@ -2481,6 +2523,23 @@ void RundownTreeBaseWidget::selectItemBelow()
 
         EventManager::getInstance().fireCurrentItemChangedEvent(CurrentItemChangedEvent(itemBelow, previousItem));
     }
+}
+
+void RundownTreeBaseWidget::selectEdgeItem(bool bottom)
+{
+    QTreeWidgetItem* root = QTreeWidget::invisibleRootItem();
+    if (root->childCount() == 0)
+        return;
+
+    QTreeWidgetItem* target = root->child(bottom ? root->childCount() - 1 : 0);
+    QTreeWidgetItem* previousItem = QTreeWidget::currentItem();
+    if (target != previousItem)
+    {
+        QTreeWidget::setCurrentItem(target);
+        EventManager::getInstance().fireCurrentItemChangedEvent(CurrentItemChangedEvent(target, previousItem));
+    }
+
+    QTreeWidget::scrollToItem(target, bottom ? QAbstractItemView::PositionAtBottom : QAbstractItemView::PositionAtTop);
 }
 
 void RundownTreeBaseWidget::repositoryRundown(const RepositoryRundownEvent& event)

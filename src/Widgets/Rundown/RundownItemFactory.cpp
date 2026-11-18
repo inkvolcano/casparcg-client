@@ -6,6 +6,7 @@
 #include "RundownContrastWidget.h"
 #include "RundownClipWidget.h"
 #include "RundownDeckLinkInputWidget.h"
+#include "RundownNdiInputWidget.h"
 #include "RundownFileRecorderWidget.h"
 #include "RundownImageScrollerWidget.h"
 #include "RundownFillWidget.h"
@@ -61,6 +62,7 @@ AbstractRundownWidget* RundownItemFactory::createWidget(const LibraryModel& mode
     else if (model.getType() == Rundown::CLIP) return new RundownClipWidget(model, this);
     else if (model.getType() == Rundown::CHROMAKEY) return new RundownChromaWidget(model, this);
     else if (model.getType() == Rundown::DECKLINKINPUT) return new RundownDeckLinkInputWidget(model, this);
+    else if (model.getType() == Rundown::NDIINPUT) return new RundownNdiInputWidget(model, this);
     else if (model.getType() == Rundown::FILERECORDER) return new RundownFileRecorderWidget(model, this);
     else if (model.getType() == Rundown::FILL) return new RundownFillWidget(model, this);
     else if (model.getType() == Rundown::GRID) return new RundownGridWidget(model, this);

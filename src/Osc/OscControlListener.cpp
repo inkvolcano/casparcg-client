@@ -1,6 +1,7 @@
 #include "OscControlListener.h"
 #include "OscSubscriptionRegistry.h"
 
+#include <QtCore/QMetaObject>
 #include <QtCore/QString>
 #include <QtCore/QThread>
 #include <QtCore/QTimer>
@@ -97,14 +98,19 @@ void OscControlListener::ProcessMessage(const osc::ReceivedMessage& message, con
 
     //qDebug("DEBUG: OSC control message received: %s", qPrintable(eventPath));
 
-    QMutexLocker locker(&eventsMutex);
     if (eventMessage.startsWith("/control"))
     {
         qDebug("Received OSC control message over UDP from %s:%d: %s", qPrintable(addressBuffer), this->port, qPrintable(eventMessage));
 
-        // Do not overwrite control commands already in queue.
-        if (!this->events.contains(eventPath))
-            this->events[eventPath] = arguments;
+        // Straight to the main thread (upstream #195). Until 321 control messages
+        // waited for the next 400 ms batch, so a group fired over OSC started up to
+        // 400 ms late, and a second press inside the same window was dropped. A
+        // button's release (argument 0) already arrived on its own whenever it was
+        // held past a batch, so every handler ignores it. The WebSocket route has
+        // always dispatched at once.
+        QMetaObject::invokeMethod(this, [eventPath, arguments]() {
+            OscSubscriptionRegistry::getInstance().dispatch(eventPath, arguments);
+        }, Qt::QueuedConnection);
     }
 }
 

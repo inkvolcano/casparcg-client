@@ -241,6 +241,10 @@ void RundownPlayoutCommandWidget::executePlay()
         EventManager::getInstance().fireExecutePlayoutCommandEvent(ExecutePlayoutCommandEvent(QEvent::KeyPress, Qt::Key_F11, Qt::NoModifier));
     else if (this->command.getPlayoutCommand() == Playout::toString(Playout::PlayoutType::ClearChannel))
         EventManager::getInstance().fireExecutePlayoutCommandEvent(ExecutePlayoutCommandEvent(QEvent::KeyPress, Qt::Key_F12, Qt::NoModifier));
+    else if (this->command.getPlayoutCommand() == "Go to Top")
+        EventManager::getInstance().fireRundownGoTo(false);
+    else if (this->command.getPlayoutCommand() == "Go to Bottom")
+        EventManager::getInstance().fireRundownGoTo(true);
 
     if (this->markUsedItems)
         setUsed(true);

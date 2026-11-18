@@ -1,0 +1,755 @@
+#include "RundownNdiInputWidget.h"
+
+#include "Global.h"
+
+#include "RundownWidgetHelper.h"
+#include "DatabaseManager.h"
+#include "DeviceManager.h"
+#include "GpiManager.h"
+#include "EventManager.h"
+#include "Events/ConnectionStateChangedEvent.h"
+#include "Utils/ItemScheduler.h"
+
+#include "NdiInputRules.h"
+
+#include <QtCore/QObject>
+
+#include <QtWidgets/QGraphicsOpacityEffect>
+
+RundownNdiInputWidget::RundownNdiInputWidget(const LibraryModel& model, QWidget* parent, const QString& color,
+                                                       bool active, bool loaded, bool paused, bool playing, bool inGroup,
+                                                       bool compactView)
+    : QWidget(parent),
+      active(active), loaded(loaded), paused(paused), playing(playing), inGroup(inGroup), compactView(compactView), color(color),
+      model(model), stopControlSubscription(NULL), playControlSubscription(NULL), playNowControlSubscription(NULL), loadControlSubscription(NULL),
+      pauseControlSubscription(NULL), clearControlSubscription(NULL), clearVideolayerControlSubscription(NULL), clearChannelControlSubscription(NULL)
+{
+    setupUi(this);
+
+    this->animation = new ActiveAnimation(this->labelActiveColor);
+
+    this->delayType = RundownWidgetHelper::cachedDelayType();
+    this->markUsedItems = RundownWidgetHelper::cachedMarkUsedItems();
+
+    setColor(this->color);
+    setActive(this->active);
+    setCompactView(this->compactView);
+
+    this->labelGroupColor->setVisible(this->inGroup);
+    this->labelGroupColor->setStyleSheet(QString("background-color: %1;").arg(Color::DEFAULT_GROUP_COLOR));
+
+    this->labelLabel->setText(this->model.getLabel());
+    this->labelChannel->setText(QString("%1").arg(this->command.getChannel()));
+    this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(this->command.getVideolayer()));
+    this->labelDelay->setText(RundownWidgetHelper::formatDelay(this->command.getDelay(), this->delayType, RundownWidgetHelper::getChannelFps(this->model.getDeviceName(), this->command.getChannel())));
+    this->labelDevice->setText(QString("%1").arg(this->model.getDeviceName()));
+    RundownWidgetHelper::setupChannelBadge(this->frameItem, this->labelColor, this->command.getChannel(), this->command.getVideolayer());
+    QLabel* bankBadge = RundownWidgetHelper::createBankBadge(this->frameItem);
+    QObject::connect(&this->command, &AbstractCommand::triggerBankChanged, [this, bankBadge](int bank) {
+        RundownWidgetHelper::updateBankBadge(bankBadge, bank);
+        RundownWidgetHelper::configureBankOscSubscriptions(this, this, bank);
+    });
+    RundownWidgetHelper::updateBankBadge(bankBadge, this->command.getTriggerBank());
+    RundownWidgetHelper::configureBankOscSubscriptions(this, this, this->command.getTriggerBank());
+    RundownWidgetHelper::setupCloneSupport(this, this->frameItem, &this->command);
+    this->labelChannel->setVisible(false);
+
+    QObject::connect(&this->itemScheduler, SIGNAL(executePlay()), this, SLOT(executePlay()));
+    QObject::connect(&this->itemScheduler, SIGNAL(executeStop()), this, SLOT(executeStop()));
+
+    QObject::connect(&this->command, SIGNAL(channelChanged(int)), this, SLOT(channelChanged(int)));
+    QObject::connect(&this->command, SIGNAL(videolayerChanged(int)), this, SLOT(videolayerChanged(int)));
+    QObject::connect(&this->command, SIGNAL(delayChanged(int)), this, SLOT(delayChanged(int)));
+    QObject::connect(&this->command, SIGNAL(allowGpiChanged(bool)), this, SLOT(allowGpiChanged(bool)));
+    QObject::connect(&this->command, &AbstractCommand::disabledChanged, this, [this](bool d) { setRundownDisabled(d); });
+    QObject::connect(&this->command, SIGNAL(remoteTriggerIdChanged(const QString&)), this, SLOT(remoteTriggerIdChanged(const QString&)));
+    QObject::connect(&EventManager::getInstance(), SIGNAL(deviceChanged(const DeviceChangedEvent&)), this, SLOT(deviceChanged(const DeviceChangedEvent&)));
+    QObject::connect(&EventManager::getInstance(), SIGNAL(labelChanged(const LabelChangedEvent&)), this, SLOT(labelChanged(const LabelChangedEvent&)));
+
+    QObject::connect(&DeviceManager::getInstance(), SIGNAL(deviceAdded(CasparDevice&)), this, SLOT(deviceAdded(CasparDevice&)));
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL)
+        QObject::connect(device.data(), SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
+
+    QObject::connect(GpiManager::getInstance().getGpiDevice().data(), SIGNAL(connectionStateChanged(bool, GpiDevice*)), this, SLOT(gpiConnectionStateChanged(bool, GpiDevice*)));
+
+    checkEmptyDevice();
+    checkGpiConnection();
+    checkDeviceConnection();
+}
+
+void RundownNdiInputWidget::labelChanged(const LabelChangedEvent& event)
+{
+    // This event is not for us.
+    if (!this->selected)
+        return;
+
+    this->model.setLabel(event.getLabel());
+
+    this->labelLabel->setText(this->model.getLabel());
+}
+
+void RundownNdiInputWidget::deviceChanged(const DeviceChangedEvent& event)
+{
+    // This event is not for us.
+    if (!this->selected)
+        return;
+
+    // Should we update the device name?
+    if (!event.getDeviceName().isEmpty() && event.getDeviceName() != this->model.getDeviceName())
+    {
+        // Disconnect connectionStateChanged() from the old device.
+        const QSharedPointer<CasparDevice> oldDevice = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+        if (oldDevice != NULL)
+            QObject::disconnect(oldDevice.data(), SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
+
+        // Update the model with the new device.
+        this->model.setDeviceName(event.getDeviceName());
+        this->labelDevice->setText(QString("%1").arg(this->model.getDeviceName()));
+
+        // Connect connectionStateChanged() to the new device.
+        const QSharedPointer<CasparDevice> newDevice = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+        if (newDevice != NULL)
+            QObject::connect(newDevice.data(), SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
+    }
+
+    checkEmptyDevice();
+    checkDeviceConnection();
+}
+
+AbstractRundownWidget* RundownNdiInputWidget::clone()
+{
+    RundownNdiInputWidget* widget = new RundownNdiInputWidget(this->model, this->parentWidget(), this->color,
+                                                                        this->active, this->loaded, this->paused, this->playing,
+                                                                        this->inGroup, this->compactView);
+
+    NdiInputCommand* command = dynamic_cast<NdiInputCommand*>(widget->getCommand());
+    command->setChannel(this->command.getChannel());
+    command->setVideolayer(this->command.getVideolayer());
+    command->setDelay(this->command.getDelay());
+    command->setDuration(this->command.getDuration());
+    command->setAllowGpi(this->command.getAllowGpi());
+    command->setAllowRemoteTriggering(this->command.getAllowRemoteTriggering());
+    command->setRemoteTriggerId(this->command.getRemoteTriggerId());
+    command->setSource(this->command.getSource());
+    command->setLowBandwidth(this->command.getLowBandwidth());
+    command->setTransition(this->command.getTransition());
+    command->setTransitionDuration(this->command.getTransitionDuration());
+    command->setTween(this->command.getTween());
+    command->setDirection(this->command.getDirection());
+
+    return widget;
+}
+
+void RundownNdiInputWidget::setCompactView(bool compactView)
+{
+    if (compactView)
+    {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::COMPACT_ITEM_HEIGHT);
+        this->labelIcon->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
+        this->labelGpiConnected->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
+        this->labelDisconnected->setFixedSize(Rundown::COMPACT_ICON_WIDTH, Rundown::COMPACT_ICON_HEIGHT);
+    }
+    else
+    {
+        this->labelColor->setFixedSize(RundownWidgetHelper::BADGE_WIDTH, Rundown::DEFAULT_ITEM_HEIGHT);
+        this->labelIcon->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
+        this->labelGpiConnected->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
+        this->labelDisconnected->setFixedSize(Rundown::DEFAULT_ICON_WIDTH, Rundown::DEFAULT_ICON_HEIGHT);
+    }
+
+    this->compactView = compactView;
+}
+
+void RundownNdiInputWidget::readProperties(boost::property_tree::wptree& pt)
+{
+    if (pt.count(L"color") > 0) setColor(QString::fromStdWString(pt.get<std::wstring>(L"color")));
+}
+
+void RundownNdiInputWidget::writeProperties(QXmlStreamWriter& writer)
+{
+    writer.writeTextElement("color", this->color);
+}
+
+bool RundownNdiInputWidget::isGroup() const
+{
+    return false;
+}
+
+bool RundownNdiInputWidget::isInGroup() const
+{
+    return this->inGroup;
+}
+
+AbstractCommand* RundownNdiInputWidget::getCommand()
+{
+    return &this->command;
+}
+
+LibraryModel* RundownNdiInputWidget::getLibraryModel()
+{
+    return &this->model;
+}
+
+void RundownNdiInputWidget::setSelected(bool selected)
+{
+    this->selected = selected;
+}
+
+void RundownNdiInputWidget::setActive(bool active)
+{
+    this->active = active;
+
+    this->animation->stop();
+
+    if (this->active)
+        RundownWidgetHelper::setActiveColorPalette(this->labelActiveColor, this->command.getChannel());
+    else
+        RundownWidgetHelper::clearActiveColorPalette(this->labelActiveColor);
+}
+
+void RundownNdiInputWidget::setInGroup(bool inGroup)
+{
+    this->inGroup = inGroup;
+    this->labelGroupColor->setVisible(this->inGroup);
+}
+
+QString RundownNdiInputWidget::getColor() const
+{
+    return this->color;
+}
+
+void RundownNdiInputWidget::setColor(const QString& color)
+{
+    this->color = color;
+    RundownWidgetHelper::setStyleSheetIfChanged(this, QString("#frameItem, #frameStatus { background-color: %1; }").arg(color));
+}
+
+void RundownNdiInputWidget::checkEmptyDevice()
+{
+    if (this->labelDevice->text() == "Device: ")
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "color: firebrick;");
+    else
+        RundownWidgetHelper::setStyleSheetIfChanged(this->labelDevice, "");
+}
+
+void RundownNdiInputWidget::clearDelayedCommands()
+{
+    this->itemScheduler.cancel();
+}
+
+void RundownNdiInputWidget::setUsed(bool used)
+{
+    if (used)
+    {
+        if (this->frameItem->graphicsEffect() == NULL)
+        {
+            QGraphicsOpacityEffect* effect = new QGraphicsOpacityEffect(this);
+            effect->setOpacity(0.25);
+
+            this->frameItem->setGraphicsEffect(effect);
+        }
+    }
+    else
+        this->frameItem->setGraphicsEffect(NULL);
+}
+
+bool RundownNdiInputWidget::executeCommand(Playout::PlayoutType type)
+{
+    if (this->command.getDisabled()) return true;
+    if (type == Playout::PlayoutType::Stop)
+        executeStop();
+    else if (type == Playout::PlayoutType::Play)
+    {
+        if (this->command.getDelay() < 0)
+            return true;
+
+        if (!this->model.getDeviceName().isEmpty()) // The user need to select a device.
+        {
+            const QStringList& channelFormats = DatabaseManager::getInstance().getDeviceByName(this->model.getDeviceName()).getChannelFormats().split(",");
+            if (this->command.getChannel() > channelFormats.count())
+                return true;
+
+            this->itemScheduler.schedulePlayAndStop(
+                this->command.getDelay(),
+                this->command.getDuration(),
+                this->delayType,
+                DatabaseManager::getInstance().getFormat(channelFormats[this->command.getChannel() - 1]).getFramesPerSecond().toDouble());
+        }
+    }
+    else if (type == Playout::PlayoutType::PlayNow)
+        executePlay();
+    else if (type == Playout::PlayoutType::PauseResume)
+        executePause();
+    else if (type == Playout::PlayoutType::Load)
+        executeLoad();
+    else if (type == Playout::PlayoutType::Clear)
+        executeClearVideolayer();
+    else if (type == Playout::PlayoutType::ClearVideoLayer)
+        executeClearVideolayer();
+    else if (type == Playout::PlayoutType::ClearChannel)
+        executeClearChannel();
+
+    if (this->active)
+    {
+        this->animation->setChannel(this->command.getChannel());
+        this->animation->start(1);
+    }
+
+    return true;
+}
+
+void RundownNdiInputWidget::executeStop()
+{
+    this->itemScheduler.cancel();
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+        device->stop(this->command.getChannel(), this->command.getVideolayer());
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+            deviceShadow->stop(this->command.getChannel(), this->command.getVideolayer());
+    }
+
+    this->paused = false;
+    this->loaded = false;
+    this->playing = false;
+}
+
+QString RundownNdiInputWidget::ndiCommand(const QString& verb) const
+{
+    return NdiInputRules::command(verb, this->command.getChannel(), this->command.getVideolayer(), this->command.getSource(),
+                                  this->command.getTransition(), this->command.getTransitionDuration(),
+                                  this->command.getTween(), this->command.getDirection(), this->command.getLowBandwidth());
+}
+
+void RundownNdiInputWidget::executePlay()
+{
+    if (this->command.getSource().trimmed().isEmpty() && !this->loaded)
+        return;
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+    {
+        if (this->loaded)
+            device->play(this->command.getChannel(), this->command.getVideolayer());
+        else
+            device->sendCommand(ndiCommand("PLAY"));
+    }
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice>  deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+        {
+            if (this->loaded)
+                deviceShadow->play(this->command.getChannel(), this->command.getVideolayer());
+            else
+                deviceShadow->sendCommand(ndiCommand("PLAY"));
+        }
+    }
+
+    if (this->markUsedItems)
+        setUsed(true);
+
+    this->paused = false;
+    this->loaded = false;
+    this->playing = true;
+}
+
+void RundownNdiInputWidget::executePause()
+{
+    if (!this->playing)
+        return;
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+    {
+        if (this->paused)
+            device->resume(this->command.getChannel(), this->command.getVideolayer());
+        else
+            device->pause(this->command.getChannel(), this->command.getVideolayer());
+    }
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+        {
+            if (this->paused)
+                deviceShadow->resume(this->command.getChannel(), this->command.getVideolayer());
+            else
+                deviceShadow->pause(this->command.getChannel(), this->command.getVideolayer());
+        }
+    }
+
+    this->paused = !this->paused;
+}
+
+void RundownNdiInputWidget::executeLoad()
+{
+    if (this->command.getSource().trimmed().isEmpty())
+        return;
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+        device->sendCommand(ndiCommand("LOADBG"));
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice>  deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+            deviceShadow->sendCommand(ndiCommand("LOADBG"));
+    }
+
+    this->loaded = true;
+    this->paused = false;
+    this->playing = false;
+}
+
+void RundownNdiInputWidget::executeClearVideolayer()
+{
+    this->itemScheduler.cancel();
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+        device->clearVideolayer(this->command.getChannel(), this->command.getVideolayer());
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+            deviceShadow->clearVideolayer(this->command.getChannel(), this->command.getVideolayer());
+    }
+
+    this->paused = false;
+    this->loaded = false;
+    this->playing = false;
+}
+
+void RundownNdiInputWidget::executeClearChannel()
+{
+    this->itemScheduler.cancel();
+
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device != NULL && device->isConnected())
+    {
+        device->clearChannel(this->command.getChannel());
+        device->clearMixerChannel(this->command.getChannel());
+    }
+
+    foreach (const DeviceModel& model, DeviceManager::getInstance().getDeviceModels())
+    {
+        if (model.getShadow() == "No")
+            continue;
+
+        const QSharedPointer<CasparDevice> deviceShadow = DeviceManager::getInstance().getDeviceByName(model.getName());
+        if (deviceShadow != NULL && deviceShadow->isConnected())
+        {
+            deviceShadow->clearChannel(this->command.getChannel());
+            deviceShadow->clearMixerChannel(this->command.getChannel());
+        }
+    }
+
+    this->paused = false;
+    this->loaded = false;
+    this->playing = false;
+}
+
+void RundownNdiInputWidget::channelChanged(int channel)
+{
+    this->labelChannel->setText(QString("%1").arg(channel));
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, channel, this->command.getVideolayer());
+}
+
+void RundownNdiInputWidget::videolayerChanged(int videolayer)
+{
+    this->labelVideolayer->setText(QString::fromUtf8("\xe2\xa7\x89 %1").arg(videolayer));
+    RundownWidgetHelper::updateChannelBadge(this->labelColor, this->command.getBaseChannel(), videolayer);
+}
+
+void RundownNdiInputWidget::delayChanged(int delay)
+{
+    this->labelDelay->setText(RundownWidgetHelper::formatDelay(delay, this->delayType, RundownWidgetHelper::getChannelFps(this->model.getDeviceName(), this->command.getChannel())));
+}
+
+void RundownNdiInputWidget::checkGpiConnection()
+{
+    this->labelGpiConnected->setVisible(this->command.getAllowGpi());
+
+    if (GpiManager::getInstance().getGpiDevice()->isConnected())
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiConnectedPixmap());
+    else
+        this->labelGpiConnected->setPixmap(RundownWidgetHelper::gpiDisconnectedPixmap());
+}
+
+void RundownNdiInputWidget::checkDeviceConnection()
+{
+    const QSharedPointer<CasparDevice> device = DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    if (device == NULL)
+        this->labelDisconnected->setVisible(true);
+    else
+        this->labelDisconnected->setVisible(!device->isConnected());
+}
+
+void RundownNdiInputWidget::configureOscSubscriptions()
+{
+    if (!this->command.getAllowRemoteTriggering())
+        return;
+
+    delete this->stopControlSubscription;
+    this->stopControlSubscription = nullptr;
+
+    delete this->playControlSubscription;
+    this->playControlSubscription = nullptr;
+
+    delete this->playNowControlSubscription;
+    this->playNowControlSubscription = nullptr;
+
+    delete this->loadControlSubscription;
+    this->loadControlSubscription = nullptr;
+
+    delete this->pauseControlSubscription;
+    this->pauseControlSubscription = nullptr;
+
+    delete this->clearControlSubscription;
+    this->clearControlSubscription = nullptr;
+
+    delete this->clearVideolayerControlSubscription;
+    this->clearVideolayerControlSubscription = nullptr;
+
+    delete this->clearChannelControlSubscription;
+    this->clearChannelControlSubscription = nullptr;
+
+    QString stopControlFilter = Osc::ITEM_CONTROL_STOP_FILTER;
+    stopControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->stopControlSubscription = new OscSubscription(stopControlFilter, this);
+    QObject::connect(this->stopControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(stopControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString playControlFilter = Osc::ITEM_CONTROL_PLAY_FILTER;
+    playControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->playControlSubscription = new OscSubscription(playControlFilter, this);
+    QObject::connect(this->playControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(playControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString playNowControlFilter = Osc::ITEM_CONTROL_PLAYNOW_FILTER;
+    playNowControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->playNowControlSubscription = new OscSubscription(playNowControlFilter, this);
+    QObject::connect(this->playNowControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(playNowControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString loadControlFilter = Osc::ITEM_CONTROL_LOAD_FILTER;
+    loadControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->loadControlSubscription = new OscSubscription(loadControlFilter, this);
+    QObject::connect(this->loadControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(loadControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString pauseControlFilter = Osc::ITEM_CONTROL_PAUSE_FILTER;
+    pauseControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->pauseControlSubscription = new OscSubscription(pauseControlFilter, this);
+    QObject::connect(this->pauseControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(pauseControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString clearControlFilter = Osc::ITEM_CONTROL_CLEAR_FILTER;
+    clearControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->clearControlSubscription = new OscSubscription(clearControlFilter, this);
+    QObject::connect(this->clearControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(clearControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString clearVideolayerControlFilter = Osc::ITEM_CONTROL_CLEARVIDEOLAYER_FILTER;
+    clearVideolayerControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->clearVideolayerControlSubscription = new OscSubscription(clearVideolayerControlFilter, this);
+    QObject::connect(this->clearVideolayerControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(clearVideolayerControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+
+    QString clearChannelControlFilter = Osc::ITEM_CONTROL_CLEARCHANNEL_FILTER;
+    clearChannelControlFilter.replace("#UID#", this->command.getRemoteTriggerId());
+    this->clearChannelControlSubscription = new OscSubscription(clearChannelControlFilter, this);
+    QObject::connect(this->clearChannelControlSubscription, SIGNAL(subscriptionReceived(const QString&, const QList<QVariant>&)),
+                     this, SLOT(clearChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&)));
+}
+
+void RundownNdiInputWidget::allowGpiChanged(bool allowGpi)
+{
+    Q_UNUSED(allowGpi);
+
+    checkGpiConnection();
+}
+
+void RundownNdiInputWidget::gpiConnectionStateChanged(bool connected, GpiDevice* device)
+{
+    Q_UNUSED(connected);
+    Q_UNUSED(device);
+
+    checkGpiConnection();
+}
+
+void RundownNdiInputWidget::remoteTriggerIdChanged(const QString& remoteTriggerId)
+{
+    configureOscSubscriptions();
+
+    if (remoteTriggerId.trimmed().isEmpty() || !this->command.getAllowRemoteTriggering())
+        this->labelRemoteTriggerId->setText("");
+    else
+        this->labelRemoteTriggerId->setText(QString::fromUtf8("\xe2\x87\xa5 %1").arg(remoteTriggerId));
+}
+
+void RundownNdiInputWidget::deviceConnectionStateChanged(CasparDevice& device)
+{
+    Q_UNUSED(device);
+
+    checkDeviceConnection();
+}
+
+void RundownNdiInputWidget::deviceAdded(CasparDevice& device)
+{
+    // Only this item's own server. Every row hears every server being added -
+    // each one at startup, and again for each one a Settings change adds - and
+    // used to re-check its connection (which also resets its time display) and
+    // rebuild its OSC subscriptions for all of them. Compared by the device
+    // object rather than by address, so two servers on one address are told
+    // apart; and the address lookup this replaces could return null.
+    if (DeviceManager::getInstance().getDeviceByName(this->model.getDeviceName()).data() != &device)
+        return;
+
+    if (DeviceManager::getInstance().getDeviceModelByAddress(device.getAddress())->getName() == this->model.getDeviceName())
+        QObject::connect(&device, SIGNAL(connectionStateChanged(CasparDevice&)), this, SLOT(deviceConnectionStateChanged(CasparDevice&)));
+
+    checkDeviceConnection();
+}
+
+void RundownNdiInputWidget::stopControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::Stop);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Stop);
+    }
+}
+
+void RundownNdiInputWidget::playControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::Play);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Play);
+    }
+}
+
+void RundownNdiInputWidget::playNowControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::PlayNow);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PlayNow);
+    }
+}
+
+void RundownNdiInputWidget::loadControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::Load);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Load);
+    }
+}
+
+void RundownNdiInputWidget::pauseControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::PauseResume);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::PauseResume);
+    }
+}
+
+void RundownNdiInputWidget::clearControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::Clear);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::Clear);
+    }
+}
+
+void RundownNdiInputWidget::clearVideolayerControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::ClearVideoLayer);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearVideoLayer);
+    }
+}
+
+void RundownNdiInputWidget::clearChannelControlSubscriptionReceived(const QString& predicate, const QList<QVariant>& arguments)
+{
+    Q_UNUSED(predicate);
+
+    if (this->command.getAllowRemoteTriggering() && arguments.count() > 0 && arguments[0].toInt() > 0)
+    {
+        this->command.clearChannelOverride();
+        if (RundownWidgetHelper::isItemChannelLocked(this))
+            return;
+        executeCommand(Playout::PlayoutType::ClearChannel);
+        RundownWidgetHelper::logPlayoutAction(this, Playout::PlayoutType::ClearChannel);
+    }
+}
+
+void RundownNdiInputWidget::setRundownDisabled(bool disabled)
+{
+    RundownWidgetHelper::applyDisabledStyle(this, this->labelLabel, disabled);
+}

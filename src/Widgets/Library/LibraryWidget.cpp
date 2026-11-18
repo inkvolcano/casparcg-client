@@ -518,6 +518,15 @@ void LibraryWidget::setupTools()
     widgetDeckLinkInput->setText(4, Rundown::DECKLINKINPUT);
     widgetDeckLinkInput->setText(5, "0");
 
+    QTreeWidgetItem* widgetNdiInput = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
+    widgetNdiInput->setIcon(0, QIcon(":/Graphics/Images/NdiInputSmall.png"));
+    widgetNdiInput->setText(0, "NDI Input");
+    widgetNdiInput->setText(1, "0");
+    widgetNdiInput->setText(2, "NDI Input");
+    widgetNdiInput->setText(3, "");
+    widgetNdiInput->setText(4, Rundown::NDIINPUT);
+    widgetNdiInput->setText(5, "0");
+
     QTreeWidgetItem* widgetFadeToBlack = new QTreeWidgetItem(this->treeWidgetTool->topLevelItem(2));
     widgetFadeToBlack->setIcon(0, QIcon(":/Graphics/Images/FadeToBlackSmall.png"));
     widgetFadeToBlack->setText(0, "Fade Out");

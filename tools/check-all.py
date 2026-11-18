@@ -44,6 +44,8 @@ SUITES = [
     ('test-liverunsheet', False, 'the live run sheet page: on air, playing, time left'),
     ('test-presenteroutput', False, 'presenter view on a channel: the address and AMCP commands'),
     ('test-findreplace', False, 'find and replace: what matches, and what the text becomes'),
+    ('test-ndiinput', False, 'the NDI Input item: what it sends, and the server source list'),
+    ('test-clipwindow', False, 'a clip with Seek and Length: in, out and time left'),
     ('test-loudness', False, 'loudness: R128 against EBU Tech 3341, and the OSC estimate'),
     ('test-watchfolder', False, 'watch folders: what is in the folder, new to the group, or gone'),
     ('test-runsheet', False, 'run sheet start times, offsets or back-timed'),

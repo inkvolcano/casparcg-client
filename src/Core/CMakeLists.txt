@@ -28,6 +28,7 @@ qt_add_library(core
     Commands/CropCommand.cpp Commands/CropCommand.h
     Commands/CustomCommand.cpp Commands/CustomCommand.h
     Commands/DeckLinkInputCommand.cpp Commands/DeckLinkInputCommand.h
+    Commands/NdiInputCommand.cpp Commands/NdiInputCommand.h
     Commands/FadeToBlackCommand.cpp Commands/FadeToBlackCommand.h
     Commands/FileRecorderCommand.cpp Commands/FileRecorderCommand.h
     Commands/FillCommand.cpp Commands/FillCommand.h

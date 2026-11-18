@@ -134,7 +134,7 @@ print('Rundown item types the fork added (upstream ones are not this changelog\'
 items = ['AutoPlayGateway', 'CommandGateway', 'FocusGateway', 'StopAutoLoops', 'Grid',
          'ImageScroller', 'OscOutput', 'HttpGet', 'HttpPost', 'FileRecorder',
          'CustomCommand', 'PlayoutCommand', 'Commit', 'Print', 'Separator',
-         'ShellCommand']
+         'ShellCommand', 'NdiInput']
 for name in items:
     if upstream_has(name):
         continue
@@ -154,7 +154,8 @@ for name in items:
              'Commit': ['commit item'],
              'Print': ['print'],
              'Separator': ['separator'],
-             'ShellCommand': ['shell command']}.get(name, [name.lower()])
+             'ShellCommand': ['shell command'],
+             'NdiInput': ['ndi input']}.get(name, [name.lower()])
 
     ok = any(w in md for w in words) and any(w in html for w in words)
     print('  %-20s %s' % (name, 'described' if ok else 'NOT DESCRIBED'))

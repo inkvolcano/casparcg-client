@@ -88,6 +88,16 @@
        <string>Clear Channel</string>
       </property>
      </item>
+     <item>
+      <property name="text">
+       <string>Go to Top</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>Go to Bottom</string>
+      </property>
+     </item>
     </widget>
    </item>
    <item row="0" column="0">

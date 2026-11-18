@@ -87,15 +87,23 @@ namespace DropRules
     // lands first inside it, which is where the eye puts a line drawn under the
     // group's header. Past the last row is the end of the list. The indicator
     // line is drawn by the same rule, so it shows where the drop will go.
-    enum class Place { Before, After, Into, End };
+    //
+    // The lower half of an EMPTY group lands inside it (upstream #224): until
+    // 321 it had no first child to anchor on, so the drop went after the group
+    // and the only way in was Ctrl+Right.
+    enum class Place { Before, After, Into, IntoEmpty, End };
 
-    inline Place placeFor(bool overRow, int cursorY, int rowTop, int rowHeight, bool openGroupWithChildren)
+    inline Place placeFor(bool overRow, int cursorY, int rowTop, int rowHeight, bool openGroupWithChildren,
+                          bool emptyGroup = false)
     {
         if (!overRow)
             return Place::End;
 
         if (cursorY < rowTop + rowHeight / 2)
             return Place::Before;
+
+        if (emptyGroup)
+            return Place::IntoEmpty;
 
         if (openGroupWithChildren)
             return Place::Into;
@@ -115,7 +123,7 @@ namespace DropRules
     // on the group's first child and lands on its row.
     inline int pasteOffset(Place place)
     {
-        return (place == Place::Before || place == Place::Into) ? 0 : 1;
+        return (place == Place::Before || place == Place::Into || place == Place::IntoEmpty) ? 0 : 1;
     }
 
     // What the operator is told when a drop placed nothing: every dragged item

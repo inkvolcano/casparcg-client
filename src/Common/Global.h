@@ -97,6 +97,8 @@ namespace Osc
     static const QString RUNDOWN_CONTROL_CLEARCHANNELFILTER = "/control/clearchannel";
     static const QString RUNDOWN_CONTROL_DOWN_FILTER = "/control/down";
     static const QString RUNDOWN_CONTROL_UP_FILTER = "/control/up";
+    static const QString RUNDOWN_CONTROL_TOP_FILTER = "/control/top";
+    static const QString RUNDOWN_CONTROL_BOTTOM_FILTER = "/control/bottom";
     static const QString RUNDOWN_CONTROL_PLAYNOWIFCHANNEL_FILTER = "/control/playnowifchannel";
 }
 
@@ -620,6 +622,7 @@ namespace Rundown
     static const QString CROP = "CROP";
     static const QString IMAGESCROLLER = "IMAGESCROLLER";
     static const QString DECKLINKINPUT = "DECKLINKINPUT";
+    static const QString NDIINPUT = "NDIINPUT";
     static const QString PRINT = "PRINT";
     static const QString CLEAROUTPUT = "CLEAROUTPUT";
     static const QString FILL = "FILL";

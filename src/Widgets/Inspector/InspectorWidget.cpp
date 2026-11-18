@@ -42,6 +42,7 @@
 #include "Inspector/InspectorRouteVideolayerWidget.h"
 #include "Inspector/InspectorGatewayWidget.h"
 #include "Inspector/InspectorShellCommandWidget.h"
+#include "Inspector/InspectorNdiInputWidget.h"
 #include "Inspector/InspectorInvokeWidget.h"
 #include "Inspector/InspectorTransformWidget.h"
 #include "Inspector/InspectorSimpleModeWidget.h"
@@ -93,6 +94,7 @@
 #include "Commands/RouteVideolayerCommand.h"
 #include "Commands/GatewayCommand.h"
 #include "Commands/ShellCommand.h"
+#include "Commands/NdiInputCommand.h"
 
 InspectorWidget::InspectorWidget(QWidget *parent)
     : QWidget(parent)
@@ -279,6 +281,15 @@ InspectorWidget::InspectorWidget(QWidget *parent)
     this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(this->shellCommandTopLevel), 0,
                                              new InspectorShellCommandWidget(this));
 
+    // "NDI Input" follows Shell Command, reached through its pointer for the same reason.
+    this->ndiInputTopLevel = new QTreeWidgetItem();
+    this->ndiInputTopLevel->setText(0, "NDI Input");
+    this->ndiInputTopLevel->setBackground(0, QBrush(QColor(45, 45, 45)));
+    this->ndiInputTopLevel->setForeground(0, QBrush(QColor(255, 255, 255)));
+    this->treeWidgetInspector->addTopLevelItem(this->ndiInputTopLevel);
+    this->treeWidgetInspector->setItemWidget(new QTreeWidgetItem(this->ndiInputTopLevel), 0,
+                                             new InspectorNdiInputWidget(this));
+
     this->treeWidgetInspector->expandAll();
 
     // Embedded Transform and Simple Mode are rarely needed — start them collapsed;
@@ -434,6 +445,8 @@ void InspectorWidget::rundownItemSelected(const RundownItemSelectedEvent &event)
         sectionItem(40)->setHidden(false);
     else if (dynamic_cast<ShellCommand *>(event.getCommand()))
         this->shellCommandTopLevel->setHidden(false);
+    else if (dynamic_cast<NdiInputCommand *>(event.getCommand()))
+        this->ndiInputTopLevel->setHidden(false);
 
     // Force the tree and scroll area to recalculate content size after
     // showing/hiding sections (especially the Embedded Transform section).
@@ -452,6 +465,7 @@ void InspectorWidget::setDefaultVisibleWidgets()
     sectionItem(3)->setHidden(true);
     this->templateSettingsTopLevel->setHidden(true);
     this->shellCommandTopLevel->setHidden(true);
+    this->ndiInputTopLevel->setHidden(true);
     sectionItem(4)->setHidden(true);
     sectionItem(5)->setHidden(true);
     sectionItem(6)->setHidden(true);

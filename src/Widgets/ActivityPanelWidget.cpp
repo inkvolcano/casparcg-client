@@ -224,7 +224,7 @@ QString ActivityPanelWidget::typeBadgeColor(const QString& itemType) const
         return "rgba(33, 150, 243, 200)";   // blue
     if (itemType == "SOLIDCOLOR")
         return "rgba(121, 85, 72, 200)";    // brown
-    if (itemType == "DECKLINKINPUT")
+    if (itemType == "DECKLINKINPUT" || itemType == "NDIINPUT")
         return "rgba(255, 87, 34, 200)";    // deep orange
     if (itemType == "ROUTECHANNEL" || itemType == "ROUTEVIDEOLAYER")
         return "rgba(96, 125, 139, 200)";   // blue-grey
@@ -657,7 +657,9 @@ void ActivityPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
         double fps = event.getFps();
         if (fps > 0)
         {
-            int rangeMin = static_cast<int>(event.getClip() * fps);
+            // Time is elapsed and TotalClip the length played (file/clip is
+            // [in point, length]), so the bar runs from 0, not from the in point.
+            int rangeMin = 0;
             int rangeMax = static_cast<int>(event.getTotalClip() * fps);
             int targetValue = static_cast<int>(event.getTime() * fps);
             bool isDone = (rangeMax > rangeMin) && (targetValue >= rangeMax - 1);
@@ -710,7 +712,7 @@ void ActivityPanelWidget::playbackProgress(const PlaybackProgressEvent& event)
     // Update progress bar range and value
     if (entry.fps > 0)
     {
-        double inTime = event.getClip();
+        double inTime = 0;
         double outTime = event.getTotalClip();
         int rangeMin = static_cast<int>(inTime * entry.fps);
         int rangeMax = static_cast<int>(outTime * entry.fps);

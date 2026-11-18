@@ -1,5 +1,7 @@
 #include "RundownMovieWidget.h"
 
+#include "ClipWindow.h"
+
 #include "Global.h"
 
 #include <QtCore/QDateTime>
@@ -186,6 +188,12 @@ void RundownMovieWidget::targetChanged(const TargetChangedEvent& event)
 
     this->model.setName(event.getTarget());
     this->command.setVideoName(event.getTarget());
+
+    // The row's length is the new clip's, from the library (upstream #285); until
+    // 321 it kept the old clip's until the rundown was reopened.
+    const DeviceModel device = DatabaseManager::getInstance().getDeviceByName(this->model.getDeviceName());
+    const QList<LibraryModel> found = DatabaseManager::getInstance().getLibraryByNameAndDeviceId(event.getTarget(), device.getId());
+    setTimecode(found.isEmpty() ? QString() : found.first().getTimecode());
 
     setThumbnail();
 }
@@ -1290,20 +1298,22 @@ void RundownMovieWidget::updateOscWidget()
     if (this->fileModel.getTime() > 0 && this->fileModel.getTotalTime() > 0 &&
         !this->fileModel.getName().isEmpty() && this->fileModel.getFramesPerSecond() > 0)
     {
+        // file/clip is [in point, length played], file/time counts from the start of
+        // the file (measured on 2.5, build 321): the countdown runs to in + length.
+        const ClipWindow::Window window = ClipWindow::from(this->fileModel.getTime(), this->fileModel.getTotalTime(),
+                                                           this->fileModel.getClip(), this->fileModel.getTotalClip());
+
         this->widgetOscTime->setFramesPerSecond(this->fileModel.getFramesPerSecond());
-        this->widgetOscTime->setProgress(this->fileModel.getTime() - this->fileModel.getClip());
+        this->widgetOscTime->setInOutTime(window.in, window.out);
+        this->widgetOscTime->setProgress(this->fileModel.getTime());
 
-        if (this->reverseOscTime && this->fileModel.getTime() > 0)
-            this->widgetOscTime->setTime(this->fileModel.getTotalTime() - (this->fileModel.getTime() - this->fileModel.getClip()));
+        if (this->reverseOscTime)
+            this->widgetOscTime->setTime(window.remaining);
         else
-            this->widgetOscTime->setTime(this->fileModel.getTime() - this->fileModel.getClip());
+            this->widgetOscTime->setTime(window.elapsed);
 
-        this->widgetOscTime->setInOutTime(this->fileModel.getClip(),
-                                          this->fileModel.getTotalTime() - (this->fileModel.getTotalTime() - this->fileModel.getTotalClip()));
-
-        // Update duration label with total clip duration
-        double duration = this->fileModel.getTotalClip() - this->fileModel.getClip();
-        QString readable = RundownWidgetHelper::formatSeconds(duration);
+        // Update duration label with the length that plays
+        QString readable = RundownWidgetHelper::formatSeconds(window.length);
         this->labelDuration->setText(readable.isEmpty() ? QString::fromUtf8("\xe2\x8f\xb1 -") : QString::fromUtf8("\xe2\x8f\xb1 %1").arg(readable));
 
         bool earlyEventFired = false;
@@ -1325,7 +1335,7 @@ void RundownMovieWidget::updateOscWidget()
         if (this->fireAtEndOfClip && !earlyEventFired &&
             this->fileModel.getTotalClip() > 0 && this->fileModel.getTime() > 1.0)
         {
-            double remaining = this->fileModel.getTotalClip() - this->fileModel.getTime();
+            double remaining = window.remaining;
             double frameTime = 1.0 / this->fileModel.getFramesPerSecond();
             if (remaining <= frameTime * 2) // Within 2 frames of the end
             {

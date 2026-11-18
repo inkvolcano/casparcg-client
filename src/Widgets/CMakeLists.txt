@@ -32,6 +32,7 @@ qt_add_library(widgets
     Inspector/InspectorCropWidget.cpp Inspector/InspectorCropWidget.h Inspector/InspectorCropWidget.ui
     Inspector/InspectorCustomCommandWidget.cpp Inspector/InspectorCustomCommandWidget.h Inspector/InspectorCustomCommandWidget.ui
     Inspector/InspectorDeckLinkInputWidget.cpp Inspector/InspectorDeckLinkInputWidget.h Inspector/InspectorDeckLinkInputWidget.ui
+    Inspector/InspectorNdiInputWidget.cpp Inspector/InspectorNdiInputWidget.h
     Inspector/InspectorFadeToBlackWidget.cpp Inspector/InspectorFadeToBlackWidget.h Inspector/InspectorFadeToBlackWidget.ui
     Inspector/InspectorFileRecorderWidget.cpp Inspector/InspectorFileRecorderWidget.h Inspector/InspectorFileRecorderWidget.ui
     Inspector/InspectorFillWidget.cpp Inspector/InspectorFillWidget.h Inspector/InspectorFillWidget.ui
@@ -87,6 +88,7 @@ qt_add_library(widgets
     LiveWidget.cpp LiveWidget.h LiveWidget.ui
     MainWindow.cpp MainWindow.h MainWindow.ui
     NdiPanelWidget.cpp NdiPanelWidget.h NdiPanelWidget.ui
+    NdiSourceQuery.cpp NdiSourceQuery.h
     NdiViewerWidget.cpp NdiViewerWidget.h
     PerformancePanelWidget.cpp PerformancePanelWidget.h PerformancePanelWidget.ui
     PanelHelper.h
@@ -115,6 +117,7 @@ qt_add_library(widgets
     Rundown/RundownCropWidget.cpp Rundown/RundownCropWidget.h Rundown/RundownCropWidget.ui
     Rundown/RundownCustomCommandWidget.cpp Rundown/RundownCustomCommandWidget.h Rundown/RundownCustomCommandWidget.ui
     Rundown/RundownDeckLinkInputWidget.cpp Rundown/RundownDeckLinkInputWidget.h Rundown/RundownDeckLinkInputWidget.ui
+    Rundown/RundownNdiInputWidget.cpp Rundown/RundownNdiInputWidget.h Rundown/RundownNdiInputWidget.ui
     Rundown/RundownFadeToBlackWidget.cpp Rundown/RundownFadeToBlackWidget.h Rundown/RundownFadeToBlackWidget.ui
     Rundown/RundownFileRecorderWidget.cpp Rundown/RundownFileRecorderWidget.h Rundown/RundownFileRecorderWidget.ui
     Rundown/RundownFillWidget.cpp Rundown/RundownFillWidget.h Rundown/RundownFillWidget.ui

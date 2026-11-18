@@ -231,6 +231,8 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
 
         OscSubscription* upControlSubscription = nullptr;
         OscSubscription* downControlSubscription = nullptr;
+        OscSubscription* topControlSubscription = nullptr;
+        OscSubscription* bottomControlSubscription = nullptr;
         OscSubscription* playNowIfChannelControlSubscription = nullptr;
         OscSubscription* stopControlSubscription = nullptr;
         OscSubscription* playControlSubscription = nullptr;
@@ -290,6 +292,7 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void addClipItem();
         Q_SLOT void addCropItem();
         Q_SLOT void addDeckLinkInputItem();
+        Q_SLOT void addNdiInputItem();
         Q_SLOT void addFillItem();
         Q_SLOT void addGpiOutputItem();
         Q_SLOT void addGridItem();
@@ -348,6 +351,8 @@ class WIDGETS_EXPORT RundownTreeWidget : public QWidget, Ui::RundownTreeWidget
         Q_SLOT void playNowIfChannelControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void upControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void downControlSubscriptionReceived(const QString&, const QList<QVariant>&);
+        void goToEdge(bool bottom);
+        void addEdgeButtons();
         Q_SLOT void stopControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playControlSubscriptionReceived(const QString&, const QList<QVariant>&);
         Q_SLOT void playNowControlSubscriptionReceived(const QString&, const QList<QVariant>&);
