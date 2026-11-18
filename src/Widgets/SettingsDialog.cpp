@@ -1641,7 +1641,7 @@ void SettingsDialog::buildNavigation()
     tagSetting(this->checkBoxDisableAudioInStream, "DisableAudioInStream", "true");
     tagSetting(this->comboBoxLogLevel, "LogLevel", "-1");
     tagSetting(this->lineEditStreamPort, "StreamPort", "9250");
-    tagSetting(this->spinBoxNetworkCache, "NetworkCache", "1000");
+    tagSetting(this->spinBoxNetworkCache, "NetworkCache", "300");
     tagSetting(this->spinBoxQuality, "StreamQuality", "25");
     tagSetting(this->lineEditStreamParameters, "StreamParameters", "");
     tagSetting(this->lineEditSerialPort, "GpiSerialPort", "COM1");

@@ -160,12 +160,12 @@ static void theCommandKeepsItsShape()
     // The server substitutes the client's own address for this placeholder, so it
     // has to be sent literally — replacing it here would send the stream nowhere.
     const QString add = StreamCommand::buildAdd(1, 9250, "-format mpegts");
-    same(add, "ADD 1 STREAM udp://<client_ip_address>:9250 -format mpegts",
-         "the add command has its placeholder and its port");
+    same(add, "ADD 1 STREAM udp://<client_ip_address>:9250?pkt_size=1316 -format mpegts",
+         "the add command has its placeholder, its port and whole-packet datagrams");
 
     const QString remove = StreamCommand::buildRemove(1, 9250);
-    same(remove, "REMOVE 1 STREAM udp://<client_ip_address>:9250",
-         "and the remove command matches it");
+    same(remove, "REMOVE 1 STREAM udp://<client_ip_address>:9250?pkt_size=1316",
+         "and the remove command names the same address");
 
     expectTrue(add.startsWith("ADD 1 STREAM udp://<client_ip_address>:9250"),
                "the address placeholder is never expanded here");

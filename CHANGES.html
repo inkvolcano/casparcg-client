@@ -143,6 +143,7 @@ hr {
 <a href="#tab-drag-found">Tab Drag Crash, Found</a><br>
 <a href="#tab-drag-crash">Tab Drag Crash</a><br>
 <a href="#bug-report">Collect A Bug Report</a><br>
+<a href="#live-picture">Live Panel Picture And Delay</a><br>
 <a href="#upstream-319">Upstream Fixes, Live Stream Format, Exit Crash</a><br>
 <a href="#live-cpu">Live Panel CPU</a><br>
 <a href="#watch-folders">Watch Folders</a><br>
@@ -1903,6 +1904,14 @@ python tools/check-all.py --list    what it would run, and why</code></pre>
 <p>After every crash an operator was sent a line of PowerShell to gather the log, the database, the Windows crash record and the error-report folder. The client does it now. <b>Help &rarr; Collect a Bug Report&hellip;</b> writes one folder on the desktop and zips it: today's and yesterday's log, a copy of the database, the Windows crash records for the client, the newest Windows Error Reporting folder for it, and <code>about.txt</code> &mdash; the build, Qt, Windows, the machine, the servers, the preview and template settings, and the largest templates on the machine, which is the fact that found the last hang. A dialog says where it went and opens the folder. Nothing is sent anywhere; you send the zip.</p>
 
 <p><b>Tokens, API keys and passwords are removed from the database copy</b> before it is written &mdash; the relay, push, update and template-push tokens and every Sheets key &mdash; and if that removal cannot be done the copy is left out rather than included. The rule is tested against every secret the client stores.</p>
+
+<h2 id="live-picture">Live Panel Picture And Delay</h2>
+
+<ul>
+<li><b>The Live panel shows a picture with a 2.5 server.</b> The server sent datagrams that split the stream's packets in two, and the Live panel's player never got in step, so it stayed black (upstream #316). The client now asks for whole-packet datagrams. Measured: nothing before, 25 frames a second after.</li>
+<li><b>Less delay.</b> The player's network cache is 300 ms instead of 1000, so the Live picture is about half a second behind the server's output instead of 1.2 s, at the full frame rate. Changed only where the setting was still the old default; Settings &gt; Control &gt; Live Stream &gt; Network cache.</li>
+<li><b>VLC stays.</b> Replacing the Live panel's player with Qt Multimedia (upstream pull request #326) was measured side by side and not taken: it ran 1.4 to 1.7 s behind the server with no way to shorten it in this Qt, and took 7 to 8 seconds to pick up a stream that was already running, against about 1 s.</li>
+</ul>
 
 <h2 id="upstream-319">Upstream Fixes, Live Stream Format, Exit Crash</h2>
 

@@ -120,21 +120,34 @@ namespace StreamCommand
         return expand(trimmed, quality, key, width, height);
     }
 
-    // The whole command. The server substitutes the client's address for the
+    // Where the stream goes. The server substitutes the client's address for the
     // placeholder, which is why it is sent literally.
+    //
+    // pkt_size=1316 (build 320): seven whole 188-byte transport packets per
+    // datagram. A 2.5 server otherwise sends 1472-byte datagrams, which split
+    // packets across datagrams; VLC - the Live panel's player - expects whole
+    // packets in each one and never got in sync, so the panel stayed black
+    // (upstream #316). Measured: no frames before, 25 a second after.
+    inline QString streamUrl(int port)
+    {
+        return QString("udp://<client_ip_address>:%1?pkt_size=1316").arg(port);
+    }
+
+    // The whole command.
     inline QString buildAdd(int channel, int port, const QString& parameters)
     {
-        return QString("ADD %1 STREAM udp://<client_ip_address>:%2 %3")
+        return QString("ADD %1 STREAM %2 %3")
             .arg(channel)
-            .arg(port)
+            .arg(streamUrl(port))
             .arg(parameters);
     }
 
+    // The same address, or the server would not find the stream to remove.
     inline QString buildRemove(int channel, int port)
     {
-        return QString("REMOVE %1 STREAM udp://<client_ip_address>:%2")
+        return QString("REMOVE %1 STREAM %2")
             .arg(channel)
-            .arg(port);
+            .arg(streamUrl(port));
     }
 
     // Starting points, offered in the settings tab. Each says what it trades,

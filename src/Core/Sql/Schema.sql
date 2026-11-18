@@ -89,7 +89,7 @@ INSERT INTO Configuration (Name, Value) VALUES('MarkUsedItems', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('UseFreezeOnLoad', 'false');
 INSERT INTO Configuration (Name, Value) VALUES('DisableAudioInStream', 'true');
 INSERT INTO Configuration (Name, Value) VALUES('StreamQuality', '25');
-INSERT INTO Configuration (Name, Value) VALUES('NetworkCache', '1000');
+INSERT INTO Configuration (Name, Value) VALUES('NetworkCache', '300');
 INSERT INTO Configuration (Name, Value) VALUES('StreamPort', '9250');
 INSERT INTO Configuration (Name, Value) VALUES('LogLevel', '-1');
 INSERT INTO Configuration (Name, Value) VALUES('UseDropFrameNotation', 'false');

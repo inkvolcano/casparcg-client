@@ -1838,6 +1838,12 @@ it is written — the relay, push, update and template-push tokens and every
 Sheets key — and if that removal cannot be done the copy is left out rather
 than included. The rule is tested against every secret the client stores.
 
+## Live Panel Picture And Delay
+
+- **The Live panel shows a picture with a 2.5 server.** The server sent datagrams that split the stream's packets in two, and the Live panel's player never got in step, so it stayed black (upstream #316). The client now asks for whole-packet datagrams. Measured: nothing before, 25 frames a second after.
+- **Less delay.** The player's network cache is 300 ms instead of 1000, so the Live picture is about half a second behind the server's output instead of 1.2 s, at the full frame rate. Changed only where the setting was still the old default; Settings > Control > Live Stream > Network cache.
+- **VLC stays.** Replacing the Live panel's player with Qt Multimedia (upstream pull request #326) was measured side by side and not taken: it ran 1.4 to 1.7 s behind the server with no way to shorten it in this Qt, and took 7 to 8 seconds to pick up a stream that was already running, against about 1 s.
+
 ## Upstream Fixes, Live Stream Format, Exit Crash
 
 - **The Live stream plays everywhere.** The server was sending H.264 in 4:4:4, which many players cannot decode (upstream #333), and its stream headers only once, at the start - a viewer that started late or lost those packets showed nothing (#316). The stream is now plain 4:2:0 with its headers repeated and a key frame every second, so it plays in any decoder and a late start shows a picture within a second. Checked by decoding the stream from a 2.5 server; the CPU cost is unchanged.
